@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Quản lý Đầu việc</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
+    
+    <style>
+        /* CSS CHUNG (Đồng bộ với các dashboard khác) */
+        body { font-family: 'Roboto', sans-serif; background-color: #f4f7f6; }
+        .container-fluid { max-width: 95%; margin-top: 30px; }
+        h1 { font-weight: 700; color: #1A73E8; border-bottom: 3px solid #E8F0FE; padding-bottom: 10px; margin-bottom: 25px; }
+        .card { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); border-radius: 12px; border: none; }
+        .kpi-tile { 
+            text-align: center; padding: 20px; border-radius: 12px; 
+            color: white; font-weight: 700; box-shadow: 0 2px 5px rgba(0,0,0,.1);
+            cursor: pointer; 
+        }
+        .kpi-tile:hover { opacity: 0.9; transform: translateY(-2px); transition: all 0.2s; }
+        .kpi-value { font-size: 2.2rem; display: block; }
+        .kpi-label { font-size: 0.9rem; opacity: 0.9; }
+        .bg-total { background-color: #6c757d; }
+        .bg-completed { background-color: #34A853; } 
+        .bg-pending { background-color: #F9AA33; } 
+        .bg-help { background-color: #DB4437; } 
+        .kpi-active { border: 3px solid #1A73E8; box-shadow: 0 0 15px rgba(26, 115, 232, 0.5); }
+
+        /* NÚT HEADER MỚI */
+        .btn-header-action {
+            font-weight: 600;
+            padding: 8px 15px; 
+            border-radius: 6px;
+            background-color: #6c757d; 
+            color: white; 
+            border: none;
+            transition: background-color 0.2s;
+        }
+        .btn-header-action:hover {
+            background-color: #5a6268;
+            color: white;
+        }
+        
+        /* ======================================= */
+        /* KANBAN BOARD STYLES */
+        /* ======================================= */
+        .kanban-container { 
+            display: flex; 
+            gap: 15px; 
+            min-height: 400px; 
+            padding: 10px;
+        }
+        .kanban-column {
+            flex-basis: 25%; 
+            min-width: 250px;
+            background-color: #e9ecef; 
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            max-height: 70vh;
+        }
+        .kanban-column-header {
+            font-weight: 700;
+            font-size: 1rem;
+            padding: 8px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #ced4da;
+            text-align: center;
+        }
+        .task-list {
+            overflow-y: auto; 
+            flex-grow: 1;
+            padding-right: 5px;
+        }
+        .task-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 5px solid #4285F4; 
+            font-size: 0.85rem;
+            line-height: 1.3;
+        }
+        .task-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            cursor: pointer;
+        }
+        /* PHÂN BIỆT PRIORITY */
+        .task-card.priority-high {
+            border-left: 5px solid #DB4437; /* Đỏ đậm cho Task Giao việc */
+            background-color: #FFF3CD; /* Nền vàng nhạt */
+        }
+        .task-card.priority-alert {
+            border-left: 5px solid #F9AA33; /* Vàng cam cho Task Yêu cầu Hỗ trợ */
+        }
+        .task-title-small { font-weight: 600; margin-bottom: 5px; }
+        .task-id-tag { float: right; font-size: 0.75rem; color: #6c757d; }
+
+        /* Cấu hình Autocomplete */
+        .search-results-dropdown { 
+            width: 100%; border-radius: 8px; border: 1px solid #4285F4; 
+            outline: none; display: none; position: absolute; z-index: 1000;
+            margin-top: 5px;
+        }
+        .search-container { position: relative; }
+        
+        /* BẢNG LỊCH SỬ */
+        .table-task th { background-color: #1A73E8; color: white; }
+        .table-task td { font-size: 0.85rem; }
+        /* .table-task th, .table-task td { white-space: nowrap; } */
+        
+        /* YÊU CẦU 1: Cắt nội dung chi tiết */
+        .truncate-content {
+            max-width: 400px; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            cursor: default;
+        }
+        
+        /* YÊU CẦU 2: Phân trang DataTables style */
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            padding: 0.2em 0.5em;
+            margin-left: 0.1em;
+        }
+        .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_info {
+            font-size: 0.85rem;
+        }
+        
+        /* ======================================= */
+        /* MEDIA QUERIES (MOBILE OPTIMIZATION) */
+        /* ======================================= */
+        @media (max-width: 992px) {
+            .kanban-container {
+                flex-direction: column; 
+                gap: 10px;
+                min-height: auto;
+                max-height: none;
+                padding: 0;
+            }
+            .kanban-column {
+                min-width: 100%;
+                max-height: 400px; 
+            }
+            .task-list {
+                max-height: 300px; 
+            }
+            .kpi-tile {
+                padding: 15px;
+                margin-bottom: 10px;
+            }
+            .kpi-value {
+                font-size: 1.8rem;
+            }
+            .kpi-label {
+                font-size: 0.8rem;
+            }
+            .table-responsive {
+                overflow-x: auto;
+            }
+            .table-task th, .table-task td {
+                font-size: 0.75rem;
+                white-space: nowrap;
+            }
+            .truncate-content {
+                max-width: 200px; /* Điều chỉnh cho màn hình nhỏ */
+            }
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1><i class="fas fa-tasks me-2"></i> QUẢN LÝ ĐẦU VIỆC HÀNG NGÀY</h1>
+            
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('index') }}" class="btn btn-header-action">
+                    <i class="fas fa-home me-1"></i> Về Portal
+                </a>
+
+                {% if can_manage_view %}
+                    {% if view_mode == 'SUPERVISOR' %}
+                        <a href="{{ url_for('task_dashboard', view='USER', filter=active_filter, search=text_search_term) }}" class="btn btn-warning btn-header-action">
+                             <i class="fas fa-user-circle me-1"></i> View Cá nhân
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('task_dashboard', view='SUPERVISOR', filter=active_filter, search=text_search_term) }}" class="btn btn-danger btn-header-action">
+                            <i class="fas fa-user-tie me-1"></i> View Quản lý
+                        </a>
+                    {% endif %}
+                {% endif %}
+            </div>
+            </div>
+        
+        <div class="row g-4 mb-4">
+            <div class="col-md-3 col-6">
+                <div class="kpi-tile bg-total {% if active_filter == 'ALL' %}kpi-active{% endif %}" onclick="filterTasks('ALL')">
+                    <span class="kpi-value">{{ kpi.TotalTasks|default(0) }}</span>
+                    <span class="kpi-label">Tổng Task (30 Ngày)</span>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="kpi-tile bg-completed {% if active_filter == 'COMPLETED' %}kpi-active{% endif %}" onclick="filterTasks('COMPLETED')">
+                    <span class="kpi-value">{{ kpi.Completed|default(0) }} ({{ kpi.CompletedPercent|default(0) }}%)</span>
+                    <span class="kpi-label">Đã Hoàn thành</span>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="kpi-tile bg-pending {% if active_filter == 'PENDING' %}kpi-active{% endif %}" onclick="filterTasks('PENDING')">
+                    <span class="kpi-value">{{ kpi.Pending|default(0) }}</span>
+                    <span class="kpi-label">Đang Chờ/Mới</span>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="kpi-tile bg-help {% if active_filter == 'HELP' %}kpi-active{% endif %}" onclick="filterTasks('HELP')">
+                    <span class="kpi-value">{{ kpi.HelpNeeded|default(0) }}</span>
+                    <span class="kpi-label">Cần hỗ trợ/ Giao việc</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-3 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0 text-dark">
+                    <i class="fas fa-columns me-2"></i> KANBAN BOARD (Task Rủi ro - 30 Ngày)
+                </h5>
+                <button class="btn btn-primary" onclick="openCreateTaskModal()">
+                    <i class="fas fa-plus me-1"></i> Tạo Task Mới
+                </button>
+            </div>
+            
+            <div class="kanban-container">
+                
+                <div class="kanban-column" style="border-top: 5px solid #6c757d;">
+                    <div class="kanban-column-header text-secondary">MỚI TẠO (OPEN)</div>
+                    <div class="task-list">
+                        {% for task in kanban_tasks if task.Status == 'OPEN' %}
+                            <div class="task-card" onclick="openUpdateModal({{ task.TaskID }})"> 
+                                <span class="task-id-tag">#{{ task.TaskID }}</span>
+                                <div class="task-title-small">{{ task.Title }}</div>
+                                <p class="mt-1 mb-0 text-muted" style="font-size: 0.75rem;">
+                                    <span class="badge bg-secondary">{{ task.TaskType }}</span> | {{ task.TaskDateDisplay }}
+                                    {% if task.ClientName %}
+                                        <span class="float-end text-primary"><i class="fas fa-user-tag me-1"></i> {{ task.ClientName|default(task.ObjectID)|truncate(15, True) }}</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="kanban-column" style="border-top: 5px solid #F9AA33;">
+                    <div class="kanban-column-header text-warning">ĐANG XỬ LÝ (PENDING)</div>
+                    <div class="task-list">
+                        {% for task in kanban_tasks if task.Status == 'PENDING' %}
+                            <div class="task-card" onclick="openUpdateModal({{ task.TaskID }})"> 
+                                <span class="task-id-tag">#{{ task.TaskID }}</span>
+                                <div class="task-title-small">{{ task.Title }}</div>
+                                <p class="mt-1 mb-0 text-muted" style="font-size: 0.75rem;">
+                                    <span class="badge bg-secondary">{{ task.TaskType }}</span> | {{ task.TaskDateDisplay }}
+                                    {% if task.ClientName %}
+                                        <span class="float-end text-primary"><i class="fas fa-user-tag me-1"></i> {{ task.ClientName|default(task.ObjectID)|truncate(15, True) }}</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="kanban-column" style="border-top: 5px solid #DB4437;">
+                    <div class="kanban-column-header text-danger">CẦN HỖ TRỢ/ GIAO VIỆC</div>
+                    <div class="task-list">
+                        {% for task in kanban_tasks if task.Status == 'HELP_NEEDED' %}
+                            {% set priority_class = '' %}
+                            {% if task.Priority == 'HIGH' %}
+                                {% set priority_class = 'priority-high' %}
+                            {% elif task.Priority == 'ALERT' %}
+                                {% set priority_class = 'priority-alert' %}
+                            {% endif %}
+                            
+                            <div class="task-card {{ priority_class }}" onclick="openUpdateModal({{ task.TaskID }})"> 
+                                <span class="task-id-tag">#{{ task.TaskID }}</span>
+                                <div class="task-title-small">{{ task.Title }}</div>
+                                <p class="mt-1 mb-0 text-muted" style="font-size: 0.75rem;">
+                                    <span class="badge bg-secondary">{{ task.TaskType }}</span> | {{ task.TaskDateDisplay }}
+                                    {% if task.ClientName %}
+                                        <span class="float-end text-primary"><i class="fas fa-user-tag me-1"></i> {{ task.ClientName|default(task.ObjectID)|truncate(15, True) }}</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="kanban-column" style="border-top: 5px solid #34A853;">
+                    <div class="kanban-column-header text-success">HOÀN THÀNH (COMPLETED)</div>
+                    <div class="task-list">
+                        {% for task in kanban_tasks if task.Status == 'COMPLETED' %}
+                            {% set priority_class = '' %}
+                            {% if task.Priority == 'HIGH' %}
+                                {% set priority_class = 'priority-high' %}
+                            {% elif task.Priority == 'ALERT' %}
+                                {% set priority_class = 'priority-alert' %}
+                            {% endif %}
+                            
+                            <div class="task-card {{ priority_class }}" onclick="openUpdateModal({{ task.TaskID }})"> 
+                                <span class="task-id-tag">#{{ task.TaskID }}</span>
+                                <div class="task-title-small">{{ task.Title }}</div>
+                                <p class="mt-1 mb-0 text-muted" style="font-size: 0.75rem;">
+                                    <span class="badge bg-secondary">{{ task.TaskType }}</span> | {{ task.TaskDateDisplay }}
+                                    {% if task.ClientName %}
+                                        <span class="float-end text-primary"><i class="fas fa-user-tag me-1"></i> {{ task.ClientName|default(task.ObjectID)|truncate(15, True) }}</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-3">
+            <h5 class="mb-3 text-dark"><i class="fas fa-history me-2"></i> Bảng Truy vấn Lịch sử Chi tiết (30 Ngày)</h5>
+            
+            <form method="GET" action="{{ url_for('task_dashboard', view=view_mode, filter=active_filter) }}" class="mb-3">
+                <div class="input-group">
+                    <input type="text" name="search" class="form-control" placeholder="Lọc nhanh theo Tiêu đề, Nội dung hoặc Khách hàng..." 
+                               value="{{ text_search_term }}" aria-label="Lọc từ bất kỳ">
+                    <button class="btn btn-secondary" type="submit">
+                        <i class="fas fa-search"></i> Lọc
+                    </button>
+                    <a href="{{ url_for('task_dashboard', view=view_mode, filter=active_filter) }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-undo"></i> Reset
+                    </a>
+                </div>
+            </form>
+
+            {% if history_tasks %}
+                <div class="table-responsive">
+                    <table id="task-history-table" class="table table-hover table-sm table-task">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Ngày</th>
+                                <th>Loại</th>
+                                <th>Tiêu đề</th>
+                                <th>Đối tượng</th>
+                                <th>Người Gán</th> 
+                                <th>Nội dung chi tiết</th>
+                                <th>Trạng thái</th>
+                                <th>Note Cấp trên</th>
+                                <th>Ưu tiên</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                             {% for task in history_tasks %}
+                                <tr data-task-id="{{ task.TaskID }}" class="{% if task.NoteCapTren %}task-new-note{% endif %}">
+                                    <td>{{ task.TaskID }}</td>
+                                    <td>{{ task.TaskDateDisplay }}</td>
+                                    <td><span class="badge bg-secondary">{{ task.TaskType }}</span></td>
+                                    <td>{{ task.Title }}</td>
+                                    <td class="text-start">{{ task.ClientName or task.ObjectID or '—' }}</td>
+                                    <td>{{ task.AssigneeShortName or task.UserCode }}</td> 
+                                    <td class="truncate-content">{{ task.DetailContent | default('—') }}</td>
+                                    <td><span class="badge bg-{% if task.Status == 'COMPLETED' %}success{% elif task.Status == 'HELP_NEEDED' %}danger{% else %}warning{% endif %}">{{ task.Status | replace('HELP_NEEDED', 'CẦN HỖ TRỢ/GV') }}</span></td>
+                                    
+                                    <td>
+                                        {% if task.NoteCapTren %}
+                                            <span class="badge bg-primary me-1">Note</span> 
+                                            <span class="small text-muted" title="{{ task.NoteCapTren }}">{{ task.NoteCapTren|truncate(30, True) }}</span>
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-link p-0" 
+                                                    onclick="togglePriority({{ task.TaskID }}, this); event.stopPropagation();">
+                                            <i class="fas fa-star" style="color: {% if task.Priority == 'HIGH' or task.Priority == 'ALERT' %}#ffc107{% else %}#ccc{% endif %};"></i>
+                                        </button>
+                                    </td>
+                                    
+                                    <td>
+                                        <button class="btn btn-sm btn-info" onclick="openUpdateModal({{ task.TaskID }})">Xem/Sửa</button>
+                                        {% if is_admin %}
+                                            <button class="btn btn-sm btn-secondary" onclick="openSupervisorNoteModal({{ task.TaskID }})">Note</button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                             {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                 <div class="alert alert-info mt-2 mb-0">Không có Task nào trong lịch sử 30 ngày qua cho bộ lọc hiện tại.</div>
+            {% endif %}
+        </div>
+        
+    </div>
+    
+    <div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('task_dashboard') }}">
+                    <input type="hidden" name="create_task" value="1">
+                    <input type="hidden" name="view" value="{{ view_mode }}">
+                    <input type="hidden" name="filter" value="{{ active_filter }}">
+
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createTaskModalLabel">Tạo Task Mới cho Ngày {{ current_date }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="task_title" class="form-label">Tiêu đề Tóm tắt (Bắt buộc)</label>
+                            <input type="text" class="form-control" id="task_title" name="task_title" required>
+                        </div>
+                        
+                        <div class="mb-3 search-container">
+                            <label for="create_object_id_input" class="form-label">Đối tượng/Khách hàng</label>
+                            <input type="text" class="form-control" id="create_object_id_input" placeholder="Gõ tên KH để tìm kiếm...">
+                            <input type="hidden" name="object_id" id="create_object_id_selected"> <select id="create_kh_search_results" class="form-select search-results-dropdown" size="5" onchange="selectClient('create_kh_search_results', 'create_object_id_input', 'create_object_id_selected')"></select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="task_type" class="form-label">Loại Task</label>
+                            <select class="form-select" id="task_type" name="task_type" required>
+                                <option value="NHU_CAU_KH" selected>1. Nhu cầu KH</option>
+                                <option value="THAM_KH">2. Thăm KH</option>
+                                <option value="SU_CO">3. Sự cố</option>
+                                <option value="NGUON_HANG">4. Nguồn hàng</option>
+                                <option value="NOI_BO">5. Nội bộ</option>
+                                <option value="KHAC">6. Khác</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-success">Tạo Task</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal fade" id="updateTaskModal" tabindex="-1" aria-labelledby="updateTaskModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="updateTaskModalLabel">Cập nhật Tiến độ Task #<span id="updateTaskIdDisplay"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="updateTaskForm">
+                        <input type="hidden" id="update_task_id" name="task_id">
+                        <div class="row g-3">
+                            <div class="col-md-6 mb-3">
+                                <label for="update_object_id" class="form-label">Đối tượng/Khách hàng liên quan</label>
+                                <input type="text" class="form-control" id="update_object_id" name="object_id" placeholder="Mã KH (Tùy chọn)">
+                                
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="update_status" class="form-label">Tình trạng Xử lý</label>
+                                <select class="form-select" id="update_status" name="status" required>
+                                    <option value="">-- Chọn trạng thái --</option>
+                                    <option value="PENDING">Đang xử lý</option> 
+                                    <option value="COMPLETED">Đã hoàn thành</option> 
+                                    <option value="HELP_NEEDED">Cần hỗ trợ/ Giao việc</option>
+                                </select>
+                            </div>
+                            <div class="col-12 mb-3" id="helperSelectionBox" style="display: none;">
+                                <label for="helper_code_select" class="form-label text-danger">Chọn người cần hỗ trợ/ Giao việc *</label> 
+                                <select class="form-select" id="helper_code_select" name="helper_code">
+                                    <option value="">-- Vui lòng chọn --</option>
+                                </select>
+                            </div>
+
+                            <div class="col-12 mb-3">
+                                <label for="update_detail_content" class="form-label">Nội dung Cụ thể / Mã Báo giá/Ghi chú</label>
+                                <textarea class="form-control" id="update_detail_content" name="detail_content" rows="3" required></textarea>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label for="update_attachment_file" class="form-label">Đính kèm File (Tùy chọn)</label>
+                                <input type="file" class="form-control" id="update_attachment_file" name="attachment_file" multiple>
+                                <input type="hidden" name="existing_attachments" id="existing_attachments"> 
+                            </div>
+
+                            <div class="col-12 text-end">
+                                <button type="button" id="helpRequestBtn" class="btn btn-warning me-2" style="display: none;"><i class="fas fa-envelope me-1"></i> Gửi Mail Yêu cầu Hỗ trợ</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-success" form="updateTaskForm" id="saveProgressBtn"><i class="fas fa-save me-1"></i> Lưu Tiến độ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if is_admin %}
+    <div class="modal fade" id="supervisorNoteModal" tabindex="-1" aria-labelledby="supervisorNoteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                 <form id="supervisorNoteForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Ghi chú Cấp trên Task #<span id="noteTaskIdDisplay"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                         <input type="hidden" id="note_task_id">
+                         <div class="mb-3">
+                            <label for="note_content" class="form-label">Ghi chú/Phản hồi</label>
+                            <textarea class="form-control" id="note_content" rows="4"></textarea>
+                         </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary" id="saveNoteBtn">Lưu Ghi chú</button>
+                    </div>
+                 </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
+    <script>
+        
+        // BỔ SUNG: HÀM LỌC KPI
+        window.filterTasks = function(filterType) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentView = urlParams.get('view') || 'USER';
+            const currentSearch = urlParams.get('search') || '';
+            
+            window.location.href = `{{ url_for('task_dashboard') }}?view=${currentView}&filter=${filterType}&search=${currentSearch}`;
+        };
+        
+        // Lớp Task Management JS (Giữ nguyên)
+        class TaskManager {
+            constructor(tasks) {
+                this.tasks = tasks.daily_tasks.concat(tasks.history_tasks);
+                this.tasksMap = this.tasks.reduce((map, task) => {
+                    map[task.TaskID] = task;
+                    return map;
+                }, {});
+            }
+
+            getTask(id) {
+                return this.tasksMap[id];
+            }
+
+            openUpdateModal(taskId) {
+                loadEligibleHelpers(); 
+                const task = this.getTask(taskId);
+                if (!task) { alert('Task không tồn tại!'); return; }
+
+                $('#updateTaskIdDisplay').text(taskId);
+                $('#update_task_id').val(taskId);
+                
+                const objectIdInput = $('#update_object_id');
+                const isReadOnly = task.DetailContent || task.CompletedDate; 
+                
+                // ĐẶT READONLY CHO ObjectID
+                if (isReadOnly) {
+                    objectIdInput.attr('readonly', true).css('background-color', '#e9ecef');
+                } else {
+                    objectIdInput.attr('readonly', false).css('background-color', '');
+                }
+
+                if (task.ClientName) {
+                     objectIdInput.val(task.ObjectID + ' - ' + task.ClientName);
+                } else {
+                     objectIdInput.val(task.ObjectID || '');
+                }
+
+                $('#update_detail_content').val(task.DetailContent || '');
+                $('#existing_attachments').val(task.Attachments || ''); 
+                $('#update_status').val(task.Status); 
+                
+                const isHelpNeeded = (task.Status === 'HELP_NEEDED');
+                $('#helperSelectionBox').toggle(isHelpNeeded);
+                
+                if (isHelpNeeded) {
+                     $('#helper_code_select').val(task.SupervisorCode || ''); 
+                } else {
+                     $('#helper_code_select').val('');
+                }
+
+
+                $('#updateTaskModal').modal('show'); 
+            }
+            
+            openSupervisorNoteModal(taskId) {
+                 const task = this.getTask(taskId);
+                 if (!task) { return; }
+                 
+                 $('#noteTaskIdDisplay').text(taskId);
+                 $('#note_task_id').val(taskId);
+                 $('#note_content').val(task.NoteCapTren || '');
+
+                 $('#supervisorNoteModal').modal('show');
+            }
+        }
+        
+        // Khởi tạo TaskManager với dữ liệu từ Flask
+        const taskManager = new TaskManager({
+            daily_tasks: {{ kanban_tasks|tojson }},
+            history_tasks: {{ history_tasks|tojson }}
+        });
+
+        // Hàm debounce
+        function debounce(func, timeout = 300) {
+            let timer;
+            return (...args) => {
+                clearTimeout(timer);
+                timer = setTimeout(() => { func.apply(this, args); }, timeout);
+            };
+        }
+        
+        let eligibleHelpers = []; 
+
+        function loadEligibleHelpers() {
+            if (eligibleHelpers.length > 0) return;
+            
+            fetch('/api/get_eligible_helpers')
+                .then(response => response.json())
+                .then(data => {
+                    eligibleHelpers = data;
+                    const ddl = $('#helper_code_select');
+                    ddl.empty().append('<option value="">-- Vui lòng chọn --</option>');
+                    data.forEach(h => {
+                        ddl.append(`<option value="${h.code}">${h.name}</option>`);
+                    });
+                })
+                .catch(error => console.error("Error loading helpers:", error));
+        }
+
+        // --- HÀM XỬ LÝ KHÁCH HÀNG (AUTOSUGGEST) ---
+        function timKhachHangAutocomplete(term, resultsDropdown) {
+             const cleanedTerm = String(term || '').trim();
+             if (cleanedTerm.length < 2) {
+                 resultsDropdown.hide().empty();
+                 return;
+             }
+             
+             resultsDropdown.empty().show();
+
+             fetch(`/api/khachhang/${cleanedTerm}`)
+                 .then(response => {
+                     if (response.status === 404) return [];
+                     if (!response.ok) throw new Error('Lỗi Server.');
+                     return response.json(); 
+                 })
+                 .then(data => {
+                     if (data && data.length > 0) {
+                         data.forEach(kh => {
+                             const option = `<option value="${kh.ID}" data-fullname="${kh.FullName}">${kh.FullName} (${kh.ID})</option>`;
+                             resultsDropdown.append(option);
+                         });
+                         resultsDropdown.attr('size', Math.min(data.length, 5));
+                     } else {
+                         resultsDropdown.hide();
+                     }
+                 })
+                 .catch(error => {
+                     console.error("Fetch KH Error:", error);
+                     resultsDropdown.hide();
+                 });
+        }
+        
+        // Hàm xử lý chọn Khách hàng (Sử dụng cho cả Create Modal)
+        window.selectClient = function(dropdownId, inputId, hiddenId) {
+             const dropdown = $(`#${dropdownId}`);
+             const selectedOption = dropdown.find('option:selected');
+             
+             if (selectedOption.length) {
+                 const id = selectedOption.val();
+                 const fullName = selectedOption.data('fullname');
+                 const displayText = fullName + ' (' + id + ')';
+                 
+                 // Ánh xạ giá trị
+                 $(`#${hiddenId}`).val(id); // Lưu ID thực tế
+                 $(`#${inputId}`).val(displayText); // Hiển thị tên đầy đủ
+                 dropdown.hide();
+             }
+        };
+
+        // --- ĐĂNG KÝ SỰ KIỆN VÀ LIÊN KẾT ---
+        
+        // Kích hoạt Autocomplete khi gõ vào trường ObjectID (Tạo Task)
+        $('#create_object_id_input').on('input', debounce(function() {
+             const inputElement = $('#create_object_id_input');
+             const dropdown = $('#create_kh_search_results');
+             timKhachHangAutocomplete(inputElement.val(), dropdown);
+        }, 300));
+        
+        // Bắt sự kiện chọn Khách hàng từ droplist để lưu giá trị
+        $('#create_kh_search_results').on('change', function() {
+            selectClient('create_kh_search_results', 'create_object_id_input', 'create_object_id_selected');
+        });
+
+        // Ngăn chặn submit form khi nhấn ENTER và ẩn dropdown
+        $('#create_object_id_input').on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                $('#create_kh_search_results').trigger('change'); 
+            }
+        });
+        
+        // Ẩn dropdown khi click ra ngoài
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('.search-container').length) {
+                $('#create_kh_search_results').hide();
+            }
+        });
+
+
+        // Xử lý Form Submit (Cập nhật Tiến độ & Ghi chú Cấp trên)
+        $('#updateTaskForm, #supervisorNoteForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            const form = $(this);
+            const isNoteForm = form.attr('id') === 'supervisorNoteForm';
+            
+            const data = isNoteForm ? { 
+                task_id: form.find('#note_task_id').val(),
+                note_content: form.find('#note_content').val()
+            } : {
+                task_id: form.find('#update_task_id').val(),
+                // Lấy mã KH (chỉ phần ID, không lấy tên)
+                object_id: form.find('#update_object_id').val().split(' - ')[0], 
+                detail_content: form.find('#update_detail_content').val(),
+                status: form.find('#update_status').val(),
+                helper_code: form.find('#helper_code_select').val() // helper_code
+            };
+            
+            // KIỂM TRA BẮT BUỘC CHỌN HELPER 
+            if (data.status === 'HELP_NEEDED' && !data.helper_code) {
+                 alert('Vui lòng chọn người cần hỗ trợ/ Giao việc.');
+                 return;
+            }
+            
+            const apiPath = isNoteForm ? '/api/task/note' : '/api/task/update';
+
+            fetch(apiPath, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                alert(result.message);
+                if (result.success) {
+                    $('#supervisorNoteModal, #updateTaskModal').modal('hide');
+                    window.location.reload(); 
+                }
+            })
+            .catch(error => {
+                console.error(`Error ${isNoteForm ? 'noting' : 'updating'} task:`, error);
+                alert('Lỗi kết nối hoặc xử lý dữ liệu.');
+            });
+        });
+        
+        // Logic cho nút Yêu cầu Hỗ trợ (Nếu trạng thái là HELP_NEEDED)
+        $('#update_status').on('change', function() {
+             const status = $(this).val();
+             
+             // Lấy Task hiện tại để áp dụng quy tắc readonly
+             const task = taskManager.getTask($('#update_task_id').val());
+             const objectIdInput = $('#update_object_id');
+             const isReadOnly = task.DetailContent || task.CompletedDate;
+
+             if (status === 'HELP_NEEDED') {
+                 $('#helperSelectionBox').show();
+                 loadEligibleHelpers(); 
+                 
+                 if (isReadOnly) {
+                    objectIdInput.attr('readonly', true).css('background-color', '#e9ecef');
+                 } else {
+                    objectIdInput.attr('readonly', false).css('background-color', '');
+                 }
+
+             } else {
+                 $('#helperSelectionBox').hide();
+                 // Nếu chuyển ra khỏi HELP_NEEDED, ta vẫn phải áp dụng quy tắc readonly ban đầu
+                 if (task && isReadOnly) {
+                     objectIdInput.attr('readonly', true).css('background-color', '#e9ecef');
+                 } else {
+                     objectIdInput.attr('readonly', false).css('background-color', '');
+                 }
+             }
+        });
+
+        // ĐĂNG KÝ SỰ KIỆN GLOBAL
+        window.openCreateTaskModal = function() {
+            $('#createTaskModal').modal('show'); 
+        };
+        
+        window.openUpdateModal = function(taskId) { taskManager.openUpdateModal(taskId); };
+        window.openSupervisorNoteModal = function(taskId) { taskManager.openSupervisorNoteModal(taskId); };
+        
+        window.togglePriority = function(taskId, buttonElement) {
+             const icon = $(buttonElement).find('i');
+             const isHigh = icon.css('color') !== 'rgb(204, 204, 204)';
+             const newPriority = isHigh ? 'NORMAL' : 'HIGH'; 
+             
+             fetch(`/api/task/toggle_priority/${taskId}`, { method: 'POST' })
+                 .then(response => response.json())
+                 .then(data => {
+                     if (data.success) {
+                         if (data.new_priority === 'HIGH' || data.new_priority === 'ALERT') {
+                             icon.css('color', '#ffc107'); 
+                         } else {
+                             icon.css('color', '#ccc'); 
+                         }
+                     } else {
+                         alert('Lỗi cập nhật ưu tiên: ' + data.message);
+                     }
+                 })
+                 .catch(error => {
+                     console.error('Error updating priority:', error);
+                     alert('Lỗi kết nối khi cập nhật ưu tiên.');
+                 });
+        };
+        
+        // BỔ SUNG: LOGIC SERVER-SENT EVENTS (NOTIFICATION)
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // YÊU CẦU 2: KHỞI TẠO DATATABLES CHO LỊCH SỬ
+            if ($('#task-history-table').length) {
+                // Tùy chỉnh DataTables cho phân trang và ngôn ngữ Việt
+                $('#task-history-table').DataTable({
+                    "paging": true,           // Kích hoạt phân trang
+                    "pageLength": 10,         // Mặc định 10 dòng mỗi trang
+                    "lengthChange": true,     // Cho phép thay đổi số dòng
+                    "searching": false,       // Vô hiệu hóa DataTables Search vì đã có form tìm kiếm riêng
+                    "ordering": true,         // Cho phép sắp xếp
+                    "info": true,             // Hiển thị thông tin trang
+                    "scrollY": "45vh",        // Giới hạn chiều cao cho scroll
+                    "scrollCollapse": true,
+                    "order": [[1, 'desc']],   // Sắp xếp theo Ngày (cột index 1)
+                    "dom": 'lrtip',           // Chỉ giữ Length (l), Table (t), Info (i), Paging (p)
+                    "language": {
+                        "lengthMenu": "Hiển thị _MENU_ mục",
+                        "zeroRecords": "Không tìm thấy đầu việc nào.",
+                        "info": "Hiển thị từ _START_ đến _END_ trong tổng số _TOTAL_ mục",
+                        "infoEmpty": "Không có dữ liệu",
+                        "infoFiltered": "(lọc từ _MAX_ mục)",
+                        "paginate": {
+                            "first": "Đầu",
+                            "last": "Cuối",
+                            "next": "Sau",
+                            "previous": "Trước"
+                        }
+                    }
+                });
+            }
+            
+            // Ghi nhớ Task ID mới nhất đã hiển thị/đã xem, CHUYỂN RÕ RÀNG SANG SỐ
+            let lastNotifiedTaskId = parseInt(localStorage.getItem('last_notified_task_id')) || 0;
+            
+            // 1. KHỞI TẠO TOAST VÀ NÚT XEM NGAY
+            const toastElement = document.getElementById('realTimeToast');
+            if (toastElement) { // Đảm bảo phần tử tồn tại trước khi khởi tạo
+                const notificationToast = new bootstrap.Toast(toastElement, { autohide: false }); 
+                
+                $('#viewTaskButton').on('click', function() {
+                    // Đánh dấu task mới nhất đã được xem vào localStorage và ẩn Toast
+                    localStorage.setItem('last_notified_task_id', lastNotifiedTaskId);
+                    notificationToast.hide();
+                    // Chuyển hướng để tải lại dashboard và cập nhật Kanban
+                    window.location.href = '{{ url_for("task_dashboard") }}'; 
+                });
+            }
+
+        
+        });
+    </script>
+</body>
+</html>

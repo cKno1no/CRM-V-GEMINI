@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Hiệu Suất Bán Hàng</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        /* ================================================= */
+        /* CSS CHỦ ĐẠO POWER BI/LOOKER STUDIO */
+        /* ================================================= */
+        body { 
+            font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #F7F9FC; /* Nền xám nhạt */
+            color: #3C4043; 
+        }
+        .container { max-width: 1200px; margin-top: 30px; }
+        h1 { 
+            font-weight: 700; 
+            color: #1A73E8; /* Xanh Google */
+            border-bottom: 3px solid #E8F0FE; 
+            padding-bottom: 10px; 
+            margin-bottom: 25px; 
+        }
+        .card { 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+            border-radius: 12px; 
+            margin-bottom: 25px; 
+            border: none;
+        }
+
+        /* KPI Tiles (Giữ nguyên) */
+        .kpi-tile {
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            transition: transform 0.2s;
+            text-align: center;
+        }
+        .kpi-label { font-size: 0.9rem; font-weight: 500; opacity: 0.9; margin-bottom: 5px; }
+        .kpi-value { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+        .kpi-unit { font-size: 0.8rem; font-weight: 500; margin-top: 5px; }
+
+        /* Màu Sắc Chiến Lược */
+        .bg-registered { background-color: #34A853; }
+        .bg-ytd { background-color: #1A73E8; }
+        .bg-pending { background-color: #DB4437; }
+        
+        /* BAR CHART STYLING */
+        .progress-cell { 
+            position: relative; 
+            padding: 4px 10px 4px 0 !important; 
+            text-align: right; 
+        }
+        .progress-bar-inline {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            /* FIX: MÀU BAR CHART NHẸ NHÀNG */
+            background-color: #A8DCD2; 
+            z-index: 1;
+            transition: width 0.5s;
+            border-radius: 0;
+        }
+        .progress-text {
+            position: relative;
+            z-index: 2;
+            padding-right: 10px;
+            display: block;
+            min-width: 100%;
+            text-align: right;
+            /* FIX: BỎ TÔ ĐẬM TRÊN GIÁ TRỊ */
+            color: #3C4043;
+        }
+        
+        /* CĂN CHỈNH BẢNG (FIX) */
+        .table { table-layout: fixed; width: 100%; }
+        /* YÊU CẦU 2: TIÊU ĐỀ NỀN XANH, CHỮ TRẮNG, CĂN GIỮA */
+        .table th { 
+            background-color: #E8F0FE !important; 
+            color: #1A73E8 !important; 
+            font-weight: 600; 
+            text-align: center !important; /* Căn giữa tiêu đề */
+            white-space: nowrap; 
+        }
+        /* YÊU CẦU 1: CĂN GIỮA MÃ NV VÀ DỮ LIỆU SỐ */
+        .table td { vertical-align: middle; text-align: center; font-size: 0.85rem; }
+        .table .col-id { width: 8%; }
+        .table .col-name { width: 15%; text-align: left !important; font-weight: normal; } /* FIX: BỎ TÔ ĐẬM TÊN NV */
+        .table .col-data { width: 13%; text-align: right !important; } /* FIX: CĂN PHẢI DỮ LIỆU SỐ */
+        .table .col-detail { width: 5%; }
+        
+        /* FIX: BỎ TÔ ĐẬM TRÊN GIÁ TRỊ DỮ LIỆU SỐ */
+        .data-amount, .pending-amount { color: #3C4043; font-weight: normal; } 
+        .detail-row:hover { background-color: #F0F8FF; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1>BÁO CÁO HIỆU SUẤT BÁN HÀNG ({{ current_year }})</h1>
+            <a href="/" class="btn btn-secondary">Về Dashboard Báo Cáo</a>
+        </div>
+        
+        <div class="row g-4 mb-4">
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="kpi-tile bg-registered">
+                    <div class="kpi-label"><i class="fas fa-bullseye me-2"></i> TỔNG DS ĐĂNG KÝ (Mục tiêu)</div>
+                    <div class="kpi-value">
+                        {{ "{:,.0f}".format(total_registered_sales | float) }}
+                    </div>
+                    <div class="kpi-unit">Triệu VNĐ</div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6">
+                <div class="kpi-tile bg-ytd">
+                    <div class="kpi-label"><i class="fas fa-dollar-sign me-2"></i> TỔNG DS YTD (Thực hiện)</div>
+                    <div class="kpi-value">
+                        {{ "{:,.0f}".format(total_ytd_sales | float) }}
+                    </div>
+                    <div class="kpi-unit">Triệu VNĐ</div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-md-12">
+                <div class="kpi-tile bg-pending">
+                    <div class="kpi-label"><i class="fas fa-exclamation-triangle me-2"></i> TỔNG ĐƠN HÀNG CHỜ GIAO (PO)</div>
+                    <div class="kpi-value">
+                        {{ "{:,.0f}".format(total_pending_orders_amount | float) }}
+                    </div>
+                    <div class="kpi-unit">Triệu VNĐ ({{ "{:,.0f}".format(total_orders | float) }} Số DHB)</div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title text-start text-secondary"><i class="fas fa-user-friends me-2"></i> Phân tích Hiệu suất từng Nhân viên</h4>
+                <div class="table-responsive">
+                    <table class="table table-hover table-bordered table-sm mt-3">
+                        <thead>
+                            <tr>
+                                <th class="col-id">Mã NV</th>
+                                <th class="col-name">Tên NV</th>
+                                <th class="col-data">DS tháng</th>
+                                <th class="col-data">DS Đăng ký</th> 
+                                <th class="col-data">DS YTD</th>     
+                                <th class="col-data">Số DHB</th>
+                                <th class="col-data">PO</th>
+                                <th class="col-detail">Chi tiết</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in summary %}
+                            <tr class="detail-row" onclick="window.location.href='/sales_detail/{{ row.EmployeeID }}'">
+                                <td class="col-id">{{ row.EmployeeID | default('N/A') }}</td>
+                                <td class="col-name">{{ row.SalesManName | default('N/A') }}</td>
+                                
+                                <td class="data-amount col-data">
+                                    {{ "{:,.0f}".format(row.CurrentMonthSales | default(0) | float) | default('0') }}
+                                </td>
+                                
+                                {% set reg_sales = row.RegisteredSales | default(0) | float %}
+                                <td class="data-amount col-data">
+                                    {{ "{:,.0f}".format(reg_sales) | default('0') }}
+                                </td>
+                                
+                                {% set ytd_sales = row.TotalSalesAmount | default(0) | float %}
+                                <td class="progress-cell col-data">
+                                    {% set completion_percent = (ytd_sales / reg_sales) * 100 if reg_sales > 0 else 0 %}
+                                    {% set bar_width = [completion_percent, 100] | min %} 
+                                    
+                                    <div class="progress-bar-inline" style="width: {{ bar_width }}%; background-color: {{ '#34A853' if completion_percent >= 100 else '#A8DCD2' }};"></div>
+                                    <span class="progress-text data-amount">
+                                        {{ "{:,.0f}".format(ytd_sales) | default('0') }}
+                                    </span>
+                                </td>
+                                
+                                <td class="col-data">{{ row.TotalOrders | default('0') }}</td>
+                                <td class="pending-amount col-data">
+                                    {{ "{:,.0f}".format(row.PendingOrdersAmount | default(0) | float) | default('0') }}
+                                </td>
+                                <td class="col-detail text-center"><i class="fa fa-arrow-right text-muted"></i></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

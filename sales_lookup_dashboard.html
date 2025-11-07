@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Tra Cứu Thông Tin Bán Hàng</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <style>
+        /* TÔNG MÀU VÀ THIẾT KẾ ĐƯỢC ĐỒNG BỘ HÓA TỪ NHẬP LIỆU */
+        body { background-color: #F8F9FA; color: #3C4043; font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .container { max-width: 1400px; margin-top: 30px; }
+        .card-container { margin-bottom: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); padding: 15px; }
+        
+        /* HEADER VÀ KHU VỰC LỌC */
+        h1 { font-weight: 700; color: #4285F4; border-bottom: 3px solid #4285F4; padding-bottom: 10px; margin-bottom: 25px; }
+        .panel-heading { background-color: #3f90e9; color: white; padding: 10px 15px; margin: -15px -15px 15px -15px; border-top-left-radius: 8px; border-top-right-radius: 8px; font-size: 1.1em; font-weight: 600; }
+        
+        /* KHU VỰC LỌC MÀU RÊU ĐẬM */
+        #lookup-card .card-header { background-color: #346265 !important; color: white !important; font-size: 1.2rem; font-weight: 600; }
+        .search-container { position: relative; }
+
+        /* INPUT VÀ DROPDOWN ĐƯỢC THIẾT KẾ ĐẶC BIỆT */
+        .form-control-lg { height: 48px; }
+        .search-results-dropdown { 
+            width: 100%; 
+            border-radius: 8px; 
+            border: 1px solid #4285F4; /* Border xanh */
+            outline: none;
+            display: none;
+            position: absolute;
+            z-index: 1000;
+            margin-top: 0px; 
+        }
+        .btn-lookup-custom { background-color: #3f90e9 !important; color: white; font-weight: 600; min-width: 100px; height: 48px; }
+        
+        /* BẢNG */
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .data-table th { background-color: #d6e8ff; color: #333; padding: 10px; text-align: left; border-bottom: 2px solid #3f90e9; font-weight: 600; }
+        .data-table td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 0.9em; }
+        .data-table tbody tr:hover { background-color: #f8f9fa; }
+        .admin-data-block { border-top: 2px dashed #007bff; padding-top: 15px; margin-top: 20px; }
+        
+        /* KHUNG HIỂN THỊ ĐÃ CHỌN */
+        .selected-display-box {
+             background-color: #e3f2fd;
+             border: 1px solid #90caf9;
+             padding: 10px;
+             border-radius: 4px;
+             margin-top: 8px;
+             font-size: 0.9rem;
+             color: #1e88e5;
+             font-weight: 500;
+             min-height: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="color: #3f90e9;"><i class="bi bi-search"></i> Tra Cứu Thông Tin Bán Hàng</h1>
+
+        <div class="card mb-4" id="lookup-card">
+            <div class="card-header">Thông tin Tra cứu</div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('sales_bp.sales_lookup_dashboard') }}">
+                    <div class="row g-3 align-items-start">
+                        
+                        <div class="col-md-4 search-container">
+                            <label class="form-label fw-bold text-dark">Tìm theo Mã/Tên Mặt hàng</label>
+                            <input type="text" id="inv_search_input" placeholder="Gõ Mã/Tên Mặt hàng..." class="form-control form-control-lg">
+                            <small id="inv_status" class="form-text text-muted mb-1 d-block">Nhập mã/tên để tìm kiếm tự động (Có thể chọn nhiều).</small>
+                            <div id="inv_display_box" class="selected-display-box">{{ inventory_ids_display|default(inventory_ids)|default('') }}</div>
+                            
+                            <input type="hidden" name="inventory_ids" id="inv_ma_selected" value="{{ inventory_ids|default('') }}">
+                            <input type="hidden" name="inventory_ids_display" id="inv_display_selected" value="{{ inventory_ids_display|default('') }}">
+                            
+                            <select id="inv_search_results" class="form-select search-results-dropdown" size="5" onchange="chonMatHang()" multiple></select>
+                        </div>
+
+                        <div class="col-md-4 search-container">
+                            <label class="form-label fw-bold text-dark">Tìm theo Mã/Tên Khách hàng (Tùy chọn)</label>
+                            <input type="text" id="kh_search_input" placeholder="Gõ Mã/Tên Khách hàng..." class="form-control form-control-lg">
+                            <small id="kh_status" class="form-text text-muted mb-1 d-block">Nhập tên/mã để tìm kiếm.</small>
+                            <div id="kh_display_box" class="selected-display-box">{{ object_id_display|default(object_id)|default('') }}</div>
+
+                            <input type="hidden" name="object_id" id="kh_ma_selected" value="{{ object_id|default('') }}">
+                            <input type="hidden" name="object_id_display" id="kh_display_selected" value="{{ object_id_display|default('') }}">
+
+                            <select id="kh_search_results" class="form-select search-results-dropdown" size="5" onchange="chonKhachHang()"></select>
+                        </div>
+                        
+                        <div class="col-md-4 d-flex align-items-center">
+                            <button type="submit" class="btn btn-primary btn-lg btn-lookup-custom mt-3">🔍 Tra cứu</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        {% if results %}
+            
+            {% for item in results %}
+            <div class="card-container">
+                <div class="panel-heading">Mặt hàng: {{ item.InventoryID }} - {{ item.InventoryName }}</div>
+                
+                <h4 style="margin-top: 0; color: #333;">1. Tồn kho và Giá Quy định</h4>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="text-nowrap">Tồn kho (Ton)</th>
+                            <th class="text-nowrap">Back Order (Con)</th>
+                            <th class="text-nowrap">Giá Bán Quy định (SalePrice01)</th>
+                            <th class="text-nowrap">Giá Bán Gần nhất (Hóa đơn)</th>
+                            <th class="text-nowrap">Giá Chào Gần nhất (Báo giá)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{ item.Ton|int }}</td>
+                            <td>{{ item.BackOrder|int }}</td>
+                            <td>{{ "{:,.0f}".format(item.SalePrice01) }}</td>
+                            <td>
+                                {% if item.RecentSalePrice.SalePrice is string %}
+                                    {{ item.RecentSalePrice.SalePrice }}
+                                {% else %}
+                                    {{ "{:,.0f}".format(item.RecentSalePrice.SalePrice) }} ({{ item.RecentSalePrice.InvoiceDate|default('N/A') }})
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.RecentQuotePrice.QuotePrice is string %}
+                                    {{ item.RecentQuotePrice.QuotePrice }}
+                                {% else %}
+                                    {{ "{:,.0f}".format(item.RecentQuotePrice.QuotePrice) }} ({{ item.RecentQuotePrice.QuoteDate|default('N/A') }})
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                {% if is_admin %}
+                <div class="admin-data-block">
+                    <h4 style="color: #007bff;">[Dữ liệu Admin] Lịch sử Chi tiết</h4>
+
+                    <div style="margin-top: 15px;">
+                        <div class="panel-heading" style="background-color: #f7a030; margin: -15px; margin-bottom: 15px;">
+                            ⭐ Top 5 Khách hàng có báo giá thành công (3 năm)
+                        </div>
+                        {% if item.Top5SuccessfulQuotes %}
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th class="text-nowrap">Mã KH</th>
+                                        <th>Tên Khách hàng</th>
+                                        <th>Tổng SL Báo giá</th>
+                                        <th>Tổng SL Kế thừa (DHB)</th>
+                                        <th>Đơn giá TB Chào</th>
+                                        <th style="color: #832a00;">% GBQD</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for q in item.Top5SuccessfulQuotes %}
+                                    <tr>
+                                        <td>{{ q.ClientID }}</td>
+                                        <td>{{ q.ClientName }}</td>
+                                        <td>{{ q.TotalQuoteQuantity|int }}</td>
+                                        <td style="font-weight: bold; color: #1e7e34;">{{ q.TotalSuccessQuantity|int }}</td>
+                                        <td>{{ "{:,.0f}".format(q.AverageQuotePrice) }}</td>
+                                        <td style="font-weight: bold; color: {% if q.PercentGBQD is string and q.PercentGBQD.startswith('-') %}#dc3545{% else %}#1e7e34{% endif %};">
+                                            {{ q.PercentGBQD }}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <p>Không có báo giá thành công nào trong 3 năm.</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div style="margin-top: 25px;">
+                        <div class="panel-heading" style="background-color: #6c757d; margin: -15px; margin-bottom: 15px;">
+                            📦 Top 10 Phiếu Nhập kho gần nhất (Vào kho Q4)
+                        </div>
+                        {% if item.Top10RecentReceipts %}
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Số Phiếu</th>
+                                        <th>Ngày Nhập</th>
+                                        <th>Đối tượng Nhập</th>
+                                        <th>SL Nhập</th>
+                                        <th>Giá Nhập</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for r in item.Top10RecentReceipts %}
+                                    <tr>
+                                        <td class="text-nowrap">{{ r.VoucherNo }}</td>
+                                        <td>{{ r.VoucherDate }}</td>
+                                        <td>{{ r.CustomerName }} ({{ r.CustomerID }})</td>
+                                        <td>{{ r.ReceiptQuantity|int }}</td>
+                                        <td>{{ "{:,.0f}".format(r.ReceiptPrice) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <p>Không có phiếu nhập kho vào kho Q4 gần đây.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            
+        {% elif request.method == 'POST' %}
+            <p class="alert alert-warning">Không tìm thấy mặt hàng nào phù hợp với điều kiện tra cứu.</p>
+        {% endif %}
+
+    </div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    
+    // --- KHAI BÁO BIẾN CHO MULTI-SELECT MẶT HÀNG ---
+    let selectedInvItems = {}; // { 'ID': 'Display Text' }
+    
+    // KHÔI PHỤC DANH SÁCH MẶT HÀNG ĐÃ CHỌN VÀO JS OBJECT
+    const invIdList = $('#inv_ma_selected').val().split(',');
+    const invDisplayList = $('#inv_display_selected').val().split(',');
+    
+    if (invIdList.length > 0 && invIdList[0].trim() !== '') {
+        invIdList.forEach((id, index) => {
+            const trimmedId = id.trim();
+            const displayName = invDisplayList[index] ? invDisplayList[index].trim() : trimmedId;
+            selectedInvItems[trimmedId] = displayName;
+        });
+        // Cập nhật ô hiển thị ban đầu
+        $('#inv_display_box').text(Object.values(selectedInvItems).join(', '));
+    } else {
+        $('#inv_display_box').text('Danh sách rỗng');
+    }
+    
+    // Khôi phục giá trị Khách hàng hiển thị
+    if ($('#kh_display_selected').val()) {
+         $('#kh_display_box').text($('#kh_display_selected').val());
+         $('#kh_status').html('✅ Khách hàng đã được chọn và xác nhận.');
+    }
+
+
+    // Hàm debounce: Trì hoãn việc thực thi hàm
+    function debounce(func, timeout = 300) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => { func.apply(this, args); }, timeout);
+        };
+    }
+    
+    // Hàm cập nhật trường ẩn
+    function updateHiddenFields(idField, displayField, map) {
+        const idList = Object.keys(map).join(',');
+        const displayList = Object.values(map).join(', ');
+        $(idField).val(idList);
+        $(displayField).val(displayList);
+    }
+    
+    // --- LOGIC TÌM KIẾM MẶT HÀNG ---
+    function timMatHang() {
+        const term = $('#inv_search_input').val().trim();
+        const statusMsg = $('#inv_status');
+        const resultsDropdown = $('#inv_search_results');
+        
+        resultsDropdown.hide().empty();
+        
+        if (term.length < 2) {
+            statusMsg.text('Nhập ít nhất 2 ký tự.');
+            return;
+        }
+        
+        statusMsg.text('Đang tìm kiếm...');
+        
+        fetch(`/api/inventory/${term}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Lỗi Server khi tra cứu mặt hàng.');
+                return response.json(); 
+            })
+            .then(data => {
+                if (data && data.length > 0) {
+                    data.forEach(item => {
+                        const isSelected = selectedInvItems[item.id] !== undefined ? 'selected' : '';
+                        const option = `<option value="${item.id}" ${isSelected} data-text="${item.text}">${item.text}</option>`;
+                        resultsDropdown.append(option);
+                    });
+                    
+                    resultsDropdown.show();
+                    resultsDropdown.attr('size', Math.min(data.length, 10)); 
+                    statusMsg.text(`Tìm thấy ${data.length} kết quả. Vui lòng chọn.`);
+                } else {
+                    statusMsg.text('Không tìm thấy kết quả nào.');
+                }
+            })
+            .catch(error => {
+                statusMsg.text(`Lỗi tra cứu: ${error.message}`);
+                console.error("Fetch Inventory Error:", error);
+            });
+    }
+
+    // Hàm xử lý khi người dùng chọn từ dropdown Mặt hàng (MULTI-SELECT LOGIC)
+    window.chonMatHang = function() {
+        const dropdown = $('#inv_search_results');
+        const selectedOption = dropdown.find('option:selected');
+        
+        if (selectedOption.length) {
+            selectedOption.each(function() {
+                const id = $(this).val();
+                const text = $(this).data('text');
+                
+                if (selectedInvItems[id]) {
+                    // Xóa
+                    delete selectedInvItems[id];
+                    $(this).removeAttr('selected');
+                } else {
+                    // Thêm
+                    selectedInvItems[id] = text;
+                    $(this).attr('selected', 'selected');
+                }
+            });
+
+            // CẬP NHẬT TRƯỜNG ẨN VÀ INPUT HIỂN THỊ
+            updateHiddenFields('#inv_ma_selected', '#inv_display_selected', selectedInvItems);
+            $('#inv_display_box').text(Object.values(selectedInvItems).join(', '));
+        }
+    };
+    
+    // --- LOGIC TÌM KIẾM & CHỌN KHÁCH HÀNG (SINGLE SELECT) ---
+
+    function timKhachHang() {
+        const term = $('#kh_search_input').val().trim();
+        const statusMsg = $('#kh_status');
+        const resultsDropdown = $('#kh_search_results');
+        
+        resultsDropdown.hide().empty();
+        
+        if (term.length < 2) {
+            statusMsg.text('Nhập ít nhất 2 ký tự.');
+            return;
+        }
+
+        statusMsg.text('Đang tìm kiếm...');
+        
+        fetch(`/api/khachhang/${term}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Lỗi Server khi tra cứu khách hàng.');
+                return response.json(); 
+            })
+            .then(data => {
+                if (data && data.length > 0) {
+                    data.forEach(kh => {
+                        const option = `<option value="${kh.ID}" data-fullname="${kh.FullName}">${kh.FullName} (${kh.ID})</option>`;
+                        resultsDropdown.append(option);
+                    });
+                    
+                    resultsDropdown.show();
+                    resultsDropdown.attr('size', Math.min(data.length, 5)); 
+                    statusMsg.html(`Tìm thấy ${data.length} kết quả. Vui lòng chọn.`);
+                    
+                } else {
+                    statusMsg.text('Không tìm thấy kết quả nào.');
+                }
+            })
+            .catch(error => {
+                statusMsg.text(`Lỗi tra cứu: ${error.message}`);
+                console.error("Fetch KH Error:", error);
+            });
+    }
+
+    // Hàm xử lý khi người dùng chọn từ dropdown Khách hàng (SINGLE SELECT LOGIC)
+    window.chonKhachHang = function() {
+        const dropdown = $('#kh_search_results');
+        const selectedOption = dropdown.find('option:selected');
+        
+        if (selectedOption.length) {
+            const id = selectedOption.val();
+            const fullName = selectedOption.data('fullname');
+            const displayText = fullName + ' (' + id + ')';
+            
+            // Ẩn dropdown, điền vào input
+            dropdown.hide();
+            $('#kh_ma_selected').val(id); // Mã ID thực tế
+            $('#kh_display_selected').val(displayText); // Tên hiển thị đầy đủ (Để phục hồi)
+            $('#kh_search_input').val(displayText); // Ô input hiển thị
+            $('#kh_display_box').text(displayText); // Ô hiển thị đã chọn
+            $('#kh_status').html('✅ Khách hàng đã được chọn và xác nhận.');
+        }
+    };
+    
+    $('form').on('submit', function(e) {
+    // 1. LƯU DỮ LIỆU ĐÃ CHỌN VÀO TRƯỜNG ẨN (Logic này đã có)
+    
+    // 2. XÓA NỘI DUNG CỦA Ô INPUT HIỂN THỊ 
+    $('#inv_search_input').val(''); // Xóa nội dung ô gõ Mã mặt hàng
+    $('#kh_search_input').val(''); // Xóa nội dung ô gõ Mã khách hàng
+    
+    // 3. XÓA DỮ LIỆU TẠM THỜI TRONG JS OBJECT
+    // Đây là nơi bạn cần làm sạch selectedInvItems để chuẩn bị cho lần tra cứu mới
+    
+    // NOTE: Chúng ta KHÔNG xóa các trường ẩn (`#inv_ma_selected`) vì đó là dữ liệu đang gửi đi.
+    // Chúng ta chỉ xóa các ô hiển thị (input) và reset JS state.
+});
+    // --- ĐĂNG KÝ SỰ KIỆN CHÍNH ---
+    $('#inv_search_input').on('input', debounce(timMatHang, 300));
+    $('#kh_search_input').on('input', debounce(timKhachHang, 300));
+    
+    // Ngăn chặn submit form khi nhấn ENTER và xử lý focus
+    $('#inv_search_input, #kh_search_input').on('keydown', function(e) {
+         if (e.key === 'Enter') {
+             e.preventDefault();
+         }
+    });
+
+    $('#inv_search_input, #kh_search_input').on('focus', function() {
+        if (this.id === 'inv_search_input' && Object.keys(selectedInvItems).length > 0) {
+            // Khi focus vào ô mặt hàng đã có lựa chọn, hiển thị lại dropdown
+            timMatHang(); 
+        } else if (this.id === 'kh_search_input' && this.value.length > 0) {
+            // Khi focus vào ô KH đã có giá trị, tìm kiếm lại
+            timKhachHang();
+        }
+    });
+    
+    // XÓA DROPDOWN KHI CLICK RA NGOÀI
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.search-container').length) {
+            $('#kh_search_results').hide();
+            $('#inv_search_results').hide();
+        }
+    });
+
+});
+</script>
+</body>
+</html>

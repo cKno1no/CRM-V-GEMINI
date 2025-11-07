@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Chi Tiết Báo Cáo - STT {{ report.STT | default('...') }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* TÔNG MÀU SÁNG & HIỆN ĐẠI (GOOGLE THEME) */
+        body { 
+            background-color: #F8F9FA; 
+            color: #3C4043; 
+            font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        }
+        .container { max-width: 950px; margin-top: 30px; }
+        
+        /* TIÊU ĐỀ (Đỏ cam) */
+        h2 { 
+            font-family: 'Georgia', serif; 
+            font-weight: 700; 
+            color: #FF5722; 
+            border-bottom: 3px solid #FFAB91;
+            padding-bottom: 10px; 
+            margin-bottom: 30px; 
+        }
+        
+        /* Card và Box */
+        .card { border: 1px solid #E0E0E0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); border-radius: 12px; margin-bottom: 30px; }
+        .card-header { 
+            background-color: #E8F0FE; 
+            color: #4285F4; 
+            font-weight: 600;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            padding: 1rem 1.5rem;
+            font-size: 1.2rem;
+        }
+        .card-body { padding: 1.5rem; }
+        .detail-item { margin-bottom: 1rem; border-left: 3px solid #DADCE0; padding-left: 10px; }
+        .detail-label { font-weight: 500; color: #70757A; display: block; margin-bottom: 3px; }
+        .detail-content { font-size: 1.1rem; }
+        
+        /* VÙNG NỘI DUNG LỚN */
+        .content-box { 
+            font-size: 1.05rem; 
+            line-height: 1.6; 
+            background-color: #F1F3F4; 
+            padding: 15px; 
+            border-radius: 8px; 
+            border: 1px solid #E0E0E0;
+            white-space: pre-wrap; /* FIX lỗi xuống dòng */
+            min-height: 120px;
+        }
+        .section-header { color: #34A853; border-bottom: 2px solid #34A853; padding-bottom: 5px; margin-top: 10px; margin-bottom: 15px; font-weight: 600; font-size: 1.1rem; }
+        
+        /* GHI ĐÈ CSS KHI IN ẤN (BUỘC CHIA 2 CỘT) */
+        @media print {
+            body { background-color: white !important; color: black !important; }
+            .btn, .card-header { display: none !important; }
+            .card { border: none !important; box-shadow: none !important; }
+
+            .row { display: flex; flex-wrap: wrap; width: 100%; }
+
+            /* Chia 2 cột chính 50% */
+            .card-body .col-md-6 {
+                flex: 0 0 50%; 
+                max-width: 50%;
+            }
+            /* Giữ 4 cột cho phần thông tin chung */
+            .card:first-child .col-md-3 {
+                flex: 0 0 25%;
+                max-width: 25%;
+            }
+            .content-box { background-color: white !important; border: 1px solid #ccc !important; }
+        }
+        .attachment-link {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.95rem;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="report-container">
+        
+        {% if error_message %}
+            <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading">Lỗi!</h4>
+                <p>{{ error_message }}</p>
+            </div>
+        {% else %}
+            <h2>BÁO CÁO HIỆN DIỆN #{{ report.STT | default('...') }}</h2>
+
+            <div class="card">
+                <div class="card-header">Thông Tin Chung</div>
+                <div class="card-body row">
+                    <div class="col-md-3 detail-item">
+                        <span class="detail-label">Ngày Báo Cáo:</span>
+                        <span class="detail-content">{{ report.NGAY | default('N/A') }}</span>
+                    </div>
+                    <div class="col-md-3 detail-item">
+                        <span class="detail-label">Loại Báo Cáo:</span>
+                        <span class="detail-content">{{ report.Loai_DienGiai | default('N/A') }} ({{ report.LOAI | default('') }})</span>
+                    </div>
+                    <div class="col-md-3 detail-item">
+                        <span class="detail-label">Nhân Viên Báo Cáo:</span>
+                        <span class="detail-content">{{ report.NV_Fullname | default('N/A') }}</span>
+                    </div>
+                    <div class="col-md-3 detail-item">
+                        <span class="detail-label">Khách Hàng:</span>
+                        <span class="detail-content">{{ report.KH_FullName | default('N/A') }}</span>
+                    </div>
+                    <div class="col-md-6 detail-item mt-3">
+                        <span class="detail-label">Mã Khách Hàng:</span>
+                        <span class="detail-content">{{ report.KH_Ma | default('N/A') }}</span>
+                    </div>
+                    <div class="col-md-6 detail-item mt-3">
+                        <span class="detail-label">Người Nhập Hệ Thống:</span>
+                        <span class="detail-content">{{ report.NguoiNhap | default('Hệ thống') }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {% if report.ATTACHMENT_LIST and report.ATTACHMENT_LIST|length > 0 %}
+            <div class="card mt-4">
+                <div class="card-header" style="background-color: #E6F4EA; color: #1E8E3E;">
+                    📎 Tệp Đính Kèm ({{ report.ATTACHMENT_LIST|length }} file)
+                </div>
+                <div class="card-body row">
+                    {% for file_name in report.ATTACHMENT_LIST %}
+                    <div class="col-md-4">
+                        <a href="/attachments/{{ file_name }}" target="_blank" class="attachment-link">
+                            <i class="fas fa-file-alt me-2"></i> {{ file_name }}
+                        </a>
+                    </div>
+                    {% endfor %}
+                    <small class="text-muted mt-3">
+                        *Lưu ý: Các tệp được truy cập từ thư mục 'attachments' của máy chủ LAN.
+                    </small>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card mt-4">
+                <div class="card-header">Nội Dung Chi Tiết và Đánh Giá</div>
+                <div class="card-body">
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="section-header">1. Nội dung 1</h5>
+                            <div class="content-box mb-4">{{ report['NOI DUNG 1'] | default('—') }}</div>
+
+                            <h5 class="section-header">3. Nội dung 3</h5>
+                            <div class="content-box mb-4">{{ report['NOI DUNG 3'] | default('—') }}</div>
+                            
+                            <h5 class="section-header">5. Nội dung 5</h5>
+                            <div class="content-box mb-4">{{ report['NOI DUNG 5'] | default('—') }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="section-header">2. Nội dung 2</h5>
+                            <div class="content-box mb-4">{{ report['NOI DUNG 2'] | default('—') }}</div>
+
+                            <h5 class="section-header">4. Nội dung 4</h5>
+                            <div class="content-box mb-4">{{ report['NOI DUNG 4'] | default('—') }}</div>
+                        </div>
+                    </div>
+                    
+                    <h4 class="section-header mt-4">Đánh Giá và Kết Quả</h4>
+                    <div class="row">
+                        
+                        <div class="col-md-6">
+                            <h5 class="section-header" style="color: #4285F4;">Đánh Giá 1</h5>
+                            <div class="content-box mb-4">{{ report['DANH GIA 1'] | default('—') }}</div>
+                            <h5 class="section-header" style="color: #4285F4;">Đánh Giá 3</h5>
+                            <div class="content-box mb-4">{{ report['DANH GIA 3'] | default('—') }}</div>
+                            <h5 class="section-header" style="color: #4285F4;">Đánh Giá 5</h5>
+                            <div class="content-box mb-4">{{ report['DANH GIA 5'] | default('—') }}</div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h5 class="section-header" style="color: #4285F4;">Đánh Giá 2</h5>
+                            <div class="content-box mb-4">{{ report['DANH GIA 2'] | default('—') }}</div>
+                            <h5 class="section-header" style="color: #4285F4;">Đánh Giá 4</h5>
+                            <div class="content-box mb-4">{{ report['DANH GIA 4'] | default('—') }}</div>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <button onclick="window.print()" class="btn btn-primary btn-lg" style="background-color: #4285F4; border-color: #4285F4;">
+                    Xuất File PDF (In)
+                </button>
+                <button onclick="window.close()" class="btn btn-secondary btn-lg">Đóng cửa sổ</button>
+            </div>
+
+        {% endif %}
+
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

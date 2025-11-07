@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Hệ Thống Quản Trị - CRM | KPI | CEQ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        /* ======================================= */
+        /* THIẾT KẾ BACKGROUND (Giữ nguyên) */
+        /* ======================================= */
+        body {
+            font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            color: #3C4043;
+            position: relative;
+        }
+
+        .background-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://picsum.photos/1920/1080?'); 
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed; 
+            filter: grayscale(100%) brightness(1.1);
+            z-index: -1;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.7);
+            z-index: -1;
+        }
+
+        .content-wrapper {
+            position: relative;
+            z-index: 1;
+            padding: 50px 0;
+            max-width: 900px;
+            margin: auto;
+        }
+
+        /* ======================================= */
+        /* PHONG CÁCH MUZ.LI (Giữ nguyên) */
+        /* ======================================= */
+        h1 {
+            font-weight: 900;
+            font-size: 2.5rem;
+            color: #212529; 
+            border-bottom: 2px solid #E9ECEF;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+        
+        /* Accordion Style */
+        .accordion-button {
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: #212529 !important;
+            background-color: #FFFFFF !important; 
+            border: 1px solid #E9ECEF;
+            box-shadow: none;
+            padding: 1rem 1.5rem;
+        }
+        .accordion-button:not(.collapsed) {
+            background-color: #F8F9FA !important; 
+            color: #3C4043 !important;
+        }
+        .accordion-item {
+            border: none;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        /* Menu Link Style */
+        .menu-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 1.5rem;
+            text-decoration: none;
+            color: #3C4043;
+            transition: background-color 0.15s;
+            border-left: 3px solid transparent;
+            font-weight: 500;
+        }
+
+        .menu-link:hover {
+            background-color: #F8F9FA;
+            color: #1A73E8;
+            border-left: 3px solid #1A73E8;
+        }
+
+        .menu-link i {
+            font-size: 1rem;
+            width: 30px;
+            color: #6C757D;
+        }
+
+        /* Màu sắc module đặc biệt */
+        .module-crm i { color: #34A853; }
+        .module-kpi i { color: #DB4437; } 
+        .module-ceq i { color: #F4B400; }
+        .module-title-crm i { color: #34A853; }
+        .module-title-kpi i { color: #DB4437; }
+        .module-title-ceq i { color: #F4B400; }
+        
+        /* Chữ mờ cho Dự kiến */
+        .menu-link.planned {
+            color: #ADB5BD;
+            cursor: default;
+        }
+        .menu-link.planned i {
+            color: #ADB5BD;
+        }
+    </style>
+</head>
+<body>
+    <div class="background-container"></div>
+    <div class="overlay"></div>
+
+    <div class="content-wrapper">
+        <header class="d-flex justify-content-between align-items-center mb-5">
+            <div class="logo-box">
+                </div>
+            <a href="/logout" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
+            </a>
+        </header>
+
+        <h1><i class="fas fa-sitemap me-3"></i> PORTAL ĐIỀU HÀNH</h1>
+        <p class="text-muted">Chào mừng, <strong>{{ current_user.shortname }}</strong> ({{ current_user.usercode }}).</p>
+
+        <div class="accordion" id="mainAccordion">
+
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingCRM">
+                    <button class="accordion-button module-title-crm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCRM" aria-expanded="true" aria-controls="collapseCRM">
+                        <i class="fas fa-users me-3"></i> CUSTOMER RELATIONSHIP MANAGEMENT
+                    </button>
+                </h2>
+                <div id="collapseCRM" class="accordion-collapse collapse show" aria-labelledby="headingCRM" data-bs-parent="#mainAccordion">
+                    <div class="accordion-body p-0">
+                        <a href="/dashboard" class="menu-link module-crm" target="_blank">
+                            <i class="fas fa-file-invoice me-3"></i> Dashboard Báo cáo & Lịch sử
+                        </a>
+                        <a href="/nhaplieu" class="menu-link module-crm" target="_blank">
+                            <i class="fas fa-plus-circle me-3"></i> Lập Báo cáo Hiện diện Khách hàng
+                        </a>
+                        <a href="/task_dashboard" class="menu-link module-crm" target="_blank">
+                            <i class="fas fa-tasks me-3"></i> Quản lý Đầu việc & Giao việc
+                        </a>
+                        <a href="#" class="menu-link planned"><i class="fas fa-flask me-3"></i> Dự kiến: B</a>
+                        <a href="#" class="menu-link planned"><i class="fas fa-flask me-3"></i> Dự kiến: C</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingKPI">
+                    <button class="accordion-button collapsed module-title-kpi" type="button" data-bs-toggle="collapse" data-bs-target="#collapseKPI" aria-expanded="false" aria-controls="collapseKPI">
+                        <i class="fas fa-chart-bar me-3"></i> KEY PERFORMANCE INDICATOR & APPROVAL
+                    </button>
+                </h2>
+                <div id="collapseKPI" class="accordion-collapse collapse" aria-labelledby="headingKPI" data-bs-parent="#mainAccordion">
+                    <div class="accordion-body p-0">
+                        <a href="/sales_dashboard" class="menu-link module-kpi" target="_blank">
+                            <i class="fas fa-percent me-3"></i> Hiệu suất Sales & Mục tiêu
+                        </a>
+                        
+                        <a href="/quote_approval" class="menu-link module-kpi" target="_blank">
+                            <i class="fas fa-certificate me-3"></i> Theo dõi & Phê duyệt
+                        </a>
+                        
+                        <a href="/quote_input_table" class="menu-link module-kpi" target="_blank">
+                            <i class="fas fa-bullseye me-3"></i> Bám sát & Hành động
+                        </a>
+                        
+                        <a href="/realtime_dashboard" class="menu-link module-kpi" target="_blank">
+                            <i class="fas fa-tachometer-alt me-3"></i> Chỉ số kinh doanh - Realtime Dashboard
+                        </a>
+                        
+                        <a href="/sales/sales_xlookupx" class="menu-link module-kpi" target="_blank">
+                            <i class="fas fa-search-dollar me-3"></i> Dự kiến: Tra cứu hàng
+                        </a>
+                        
+                        </div>
+                </div>
+            </div>
+
+            {% if current_user.role|upper == 'ADMIN' %}
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingCEQ">
+                    <button class="accordion-button collapsed module-title-ceq" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCEQ" aria-expanded="false" aria-controls="collapseCEQ">
+                        <i class="fas fa-chart-pie me-3"></i> CAPITAL EFFICIENCY GOVERNANCE (CEQ)
+                    </button>
+                </h2>
+                <div id="collapseCEQ" class="accordion-collapse collapse" aria-labelledby="headingCEQ" data-bs-parent="#mainAccordion">
+                    <div class="accordion-body p-0">
+                        <a href="/inventory_xagingx" class="menu-link module-ceq" target="_blank">
+                            <i class="fas fa-warehouse me-3"></i> Phân tích Tuổi hàng Tồn kho (Aging)
+                        </a>
+                        <a href="#" class="menu-link planned"><i class="fas fa-flask me-3"></i> Dự kiến: Công nợ</a>
+                        <a href="#" class="menu-link planned"><i class="fas fa-flask me-3"></i> Dự kiến: Chi phí</a>
+                        <a href="#" class="menu-link planned"><i class="fas fa-flask me-3"></i> Dự kiến: Dòng tiền</a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

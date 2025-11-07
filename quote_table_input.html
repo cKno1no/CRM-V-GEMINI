@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Nhập liệu Báo giá & Tình trạng</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        body { font-family: 'Roboto', sans-serif; background-color: #F7F9FC; color: #3C4043; }
+        .container-fluid { max-width: 98%; margin-top: 30px; }
+        h1 { font-weight: 700; color: #DB4437; border-bottom: 3px solid #F4B400; padding-bottom: 10px; margin-bottom: 25px; }
+        .table-input th { 
+            background-color: #1A73E8; color: white; font-weight: 600; font-size: 0.9rem; 
+            position: sticky; top: 0; z-index: 10; 
+            white-space: nowrap;
+        }
+        .table-input td { vertical-align: middle; font-size: 0.85rem; }
+        .readonly-data { color: #5F6368; }
+        /* Style cho ô nhập liệu */
+        .form-control-sm, .form-select-sm { padding: 0.2rem 0.4rem; font-size: 0.8rem; }
+        /* Màu trạng thái */
+        .status-win { background-color: #E6F4EA; color: #1E8E3E; font-weight: 600; }
+        .status-lost, .status-cancel { background-color: #FCE8E6; color: #DB4437; font-weight: 600; }
+        .status-delay, .status-hold { background-color: #FFF7E6; color: #F4B400; }
+        .status-chờ { background-color: #E8F0FE; }
+        /* Cột cần mở rộng */
+        .risk-reason-col { min-width: 250px; } 
+        .action-col { min-width: 150px; }
+        .time-col { min-width: 150px; }
+        .save-status-icon { margin-left: 5px; font-size: 1.1rem; }
+        
+        /* CSS MỚI: Mức độ Rủi ro (Tô màu toàn bộ hàng) */
+        .risk-col { min-width: 100px; font-weight: 700; }
+        .row-critical { background-color: #F8D7DA; color: #721C24; } 
+        .row-high { background-color: #FFF3CD; color: #856404; } 
+        .row-medium { background-color: #D6D8D9; color: #3C4043; } 
+        .row-low { background-color: #E6F4EA; color: #1E8E3E; } 
+        .row-closed { background-color: #E9ECEF; color: #6C757D; } 
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <h1><i class="fas fa-edit me-2"></i> NHẬP LIỆU TÌNH TRẠNG BÁO GIÁ & PHÂN TÍCH THẤT BẠI</h1>
+        
+        <p class="text-muted small">Cập nhật trực tiếp Báo giá của bạn trong khoảng thời gian đã chọn. (Mặc định: 7 ngày gần nhất)</p>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('quote_input_table') }}" class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="date_from" class="form-label small text-muted">Từ Ngày BG</label>
+                        <input type="date" name="date_from" id="date_from" class="form-control" 
+                                value="{{ date_from }}">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label for="date_to" class="form-label small text-muted">Đến Ngày BG</label>
+                        <input type="date" name="date_to" id="date_to" class="form-control" 
+                                value="{{ date_to }}">
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search me-1"></i> Lọc Báo giá
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 80vh; overflow-y: auto;">
+                    <table class="table table-sm table-bordered table-hover mb-0 table-input">
+                        <thead>
+                            <tr>
+                                <th class="text-center">Mã BG</th>
+                                <th class="text-start">Khách hàng</th>
+                                <th class="text-end">Giá trị BG</th>
+                                <th class="text-center">Ngày BG</th>
+                                
+                                <th class="text-center time-col bg-info">Phát sinh lúc (Bắt đầu theo dõi)</th>
+                                <th class="text-center time-col bg-info">Hoàn tất lúc (Quyết định)</th>
+                                
+                                <th class="text-center bg-danger">T.T BÁO GIÁ</th>
+                                <th class="text-center risk-col bg-danger">ĐIỂM RỦI RO</th> <th class="text-start risk-reason-col bg-warning">Lý do Thua/Hủy (RCA)</th>
+                                <th class="text-center action-col bg-success">Hành động 1</th>
+                                <th class="text-center action-col bg-success">Hành động 2</th>
+                                <th class="text-center">Tốc độ P.Ứng (Giờ)</th>
+                                <th class="text-center">Trạng thái Lưu</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for quote in quotes %}
+                            {% set quote_id_safe = quote.QuoteID | replace(" ", "_") %}
+                            {% set risk_level_class = 'row-' + quote.RiskLevel | lower %}
+                            
+                            <tr id="row_{{ quote_id_safe }}" data-quote-id="{{ quote.QuoteID }}" class="{{ risk_level_class }}">
+                                <td class="text-center readonly-data">{{ quote.QuoteID }}</td>
+                                <td class="text-start readonly-data">{{ quote.ClientName | default('N/A') }}</td>
+                                <td class="text-end readonly-data">{{ "{:,.0f}".format(quote.QuoteValue | float) }}</td>
+                                <td class="text-center readonly-data">
+                                    {{ quote.QuoteDate | default('N/A') | replace('00:00:00', '') }}
+                                </td>
+                                
+                                <td class="time-col">
+                                    <input type="datetime-local" name="TIME_START" class="form-control form-control-sm"
+                                           value="{{ quote.TimeStartValue }}"
+                                           onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)">
+                                </td>
+                                
+                                <td class="time-col">
+                                    <input type="datetime-local" name="TIME_COMPLETE" class="form-control form-control-sm"
+                                           value="{{ quote.TimeCompleteValue }}"
+                                           onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)">
+                                </td>
+                                
+                                <td>
+                                    <select name="TINH_TRANG_BG" class="form-select form-select-sm" 
+                                            onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)">
+                                        {% for status_code, status_name in quote_statuses %}
+                                            <option value="{{ status_code }}" 
+                                                    {% if status_code == quote.StatusCRM %} selected {% endif %}
+                                                    class="status-{{ status_code | lower | replace('.','') | replace(' ', '') }}">
+                                                {{ status_name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                
+                                <td class="text-center risk-col">
+                                    {{ quote.RiskScore }} 
+                                    {% if quote.RiskLevel not in ['LOW', 'CLOSED'] %}
+                                        <i class="fas fa-exclamation-triangle ms-1" title="{{ quote.RiskNotes }}"></i>
+                                    {% endif %}
+                                </td>
+                                
+                                <td class="risk-reason-col">
+                                    <textarea name="LY_DO_THUA" class="form-control form-control-sm" rows="1"
+                                              placeholder="Lý do chi tiết nếu LOSS/HỦY"
+                                              onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)"
+                                              {% if quote.StatusCRM == 'WIN' %} disabled {% endif %}
+                                              >{{ quote.LossReason }}</textarea>
+                                </td>
+                                
+                                <td class="action-col">
+                                    <select name="MA_HANH_DONG_1" class="form-select form-select-sm" 
+                                            onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)">
+                                        {% for action_code, action_name in actions %}
+                                            <option value="{{ action_code }}" 
+                                                    {% if action_code == quote.Action1 %} selected {% endif %}>
+                                                {{ action_name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+
+                                <td class="action-col">
+                                    <select name="MA_HANH_DONG_2" class="form-select form-select-sm" 
+                                            onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)">
+                                        {% for action_code, action_name in actions %}
+                                            <option value="{{ action_code }}" 
+                                                    {% if action_code == quote.Action2 %} selected {% endif %}>
+                                                {{ action_name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+
+                                <td class="text-center readonly-data">
+                                    {{ quote.ReactionTime }} 
+                                </td>
+                                
+                                <td class="text-center">
+                                    <span id="status_icon_{{ quote_id_safe }}" class="save-status-icon text-muted">
+                                        <i class="fas fa-clock"></i>
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // HÀM LƯU DỮ LIỆU BẰNG AJAX
+        function saveRow(quoteId, fieldName, fieldValue) {
+            const quoteIdSafe = quoteId.replace(" ", "_");
+            const statusIcon = document.getElementById(`status_icon_${quoteIdSafe}`);
+            const row = document.getElementById(`row_${quoteIdSafe}`);
+            
+            // Lấy giá trị hiện tại của các trường cần thiết
+            const statusSelect = row.querySelector('select[name="TINH_TRANG_BG"]');
+            const lossTextarea = row.querySelector('textarea[name="LY_DO_THUA"]');
+            
+            // Đang xử lý
+            statusIcon.innerHTML = '<i class="fas fa-spinner fa-spin text-warning"></i>';
+
+            let data = {
+                quote_id: quoteId,
+                status_code: statusSelect.value, 
+                loss_reason: lossTextarea.value,
+                action_1: row.querySelector('select[name="MA_HANH_DONG_1"]').value,
+                action_2: row.querySelector('select[name="MA_HANH_DONG_2"]').value,
+                
+                // Gửi 2 trường thời gian mới
+                time_start: row.querySelector('input[name="TIME_START"]').value,
+                time_complete: row.querySelector('input[name="TIME_COMPLETE"]').value,
+            };
+
+            // Ghi đè trường đang thay đổi
+            if (fieldName === 'TIME_START') { data.time_start = fieldValue; }
+            else if (fieldName === 'TIME_COMPLETE') { data.time_complete = fieldValue; }
+            else if (fieldName === 'TINH_TRANG_BG') { data.status_code = fieldValue; }
+            else if (fieldName === 'LY_DO_THUA') { data.loss_reason = fieldValue; }
+            else { data[fieldName.toLowerCase()] = fieldValue; }
+
+
+            // LOGIC PHẢN HỒI UX TẠI CHỖ
+            const statusCheck = data.status_code.toUpperCase();
+            
+            if (statusCheck === 'WIN') {
+                 lossTextarea.value = '';
+                 lossTextarea.disabled = true;
+            } else if (['LOST', 'CANCEL'].includes(statusCheck)) {
+                 lossTextarea.disabled = false;
+                 // Cảnh báo nếu không có lý do
+                 if (lossTextarea.value.trim() === '') {
+                     statusIcon.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i>';
+                 }
+            } else {
+                 lossTextarea.disabled = false;
+            }
+
+
+            fetch('/api/update_quote_status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    statusIcon.innerHTML = '<i class="fas fa-check-circle text-success"></i>';
+                    
+                    // Yêu cầu tải lại trang nếu cập nhật trạng thái kết thúc (WIN/LOST/CANCEL) để refresh Tốc độ P.Ứng và Risk Score
+                    if (['WIN', 'LOST', 'CANCEL'].includes(statusCheck)) {
+                         window.location.reload();
+                    } else {
+                         // Tự động reset icon sau 5 giây
+                         setTimeout(() => {
+                             statusIcon.innerHTML = '<i class="fas fa-clock text-muted"></i>';
+                         }, 5000);
+                    }
+                } else {
+                    statusIcon.innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
+                    console.error('Lỗi Server:', result.message);
+                }
+            })
+            .catch(error => {
+                statusIcon.innerHTML = '<i class="fas fa-bug text-danger"></i>';
+                console.error('Lỗi kết nối:', error);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Real-Time KPI Bán Hàng</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    
+    <style>
+        /* ================================================= */
+        /* CSS CHỦ ĐẠO POWER BI/MATERIAL DESIGN */
+        /* ================================================= */
+        body { 
+            font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #F0F2F5; 
+            color: #3C4043; 
+        }
+        .container-fluid { max-width: 98%; margin-top: 25px; }
+        h1 { 
+            font-weight: 700; 
+            color: #4285F4;
+            border-bottom: 3px solid #E8F0FE; 
+            padding-bottom: 10px; 
+            margin-bottom: 25px; 
+        }
+        
+        /* Card Nâng Cao */
+        .card { 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            border-radius: 12px; 
+            margin-bottom: 25px; 
+            border: none;
+            overflow: hidden; 
+        }
+
+        /* KPI Cards (Tiles) */
+        .kpi-card {
+            text-align: left;
+            padding: 20px;
+            border-radius: 10px;
+            color: white; 
+            transition: transform 0.2s;
+            height: 100%;
+        }
+        .kpi-card a {
+            text-decoration: none; /* Bỏ gạch chân cho link KPI */
+            color: white;
+            display: block; /* Mở rộng vùng click */
+        }
+        .kpi-title { font-size: 0.9rem; font-weight: 500; opacity: 0.8; margin-bottom: 5px; }
+        .kpi-value { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+        .kpi-unit { font-size: 0.8rem; font-weight: 500; margin-top: 5px; }
+        .bg-sales { background-color: #34A853; }
+        .bg-orders { background-color: #4285F4; }
+        .bg-risk { background-color: #DB4437; }
+        .bg-month { background-color: #F4B400; }
+
+        /* Bảng */
+        .table th { background-color: #E8F0FE; color: #4285F4; font-weight: 600; text-align: right; }
+        .table td { vertical-align: middle; text-align: right; }
+        .table .text-start { text-align: left !important; }
+        .table .text-center { text-align: center !important; }
+        .table-risk td { color: #DB4437; font-weight: 600; }
+        .table-row-link:hover { cursor: pointer; background-color: #FFFDE7 !important; }
+        
+        @media print {
+            /* Ẩn mọi thứ khác trừ Watermark (Nếu bạn không muốn in bất cứ thứ gì) */
+            body * { visibility: hidden !important; }
+            
+            /* Hiển thị Watermark */
+            #watermark-user-id {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) rotate(-45deg);
+                opacity: 0.5;
+                font-size: 50pt;
+                color: #CCC;
+                content: attr(data-user);
+                visibility: visible !important;
+                z-index: 9999;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1><i class="fas fa-chart-line me-2"></i> DASHBOARD THỜI GIAN THỰC (KPI & RỦI RO)</h1>
+            <a href="/logout" class="btn btn-outline-secondary"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <h4 class="text-primary">{{ salesman_name | default('N/A') }} ({{ selected_salesman | default('N/A') }})</h4>
+            </div>
+        </div>
+
+        
+        <form method="POST" action="/realtime_dashboard" class="row g-3 mb-4">
+            <div class="col-md-3">
+                <select name="salesman_filter" id="salesman_filter" class="form-select" {% if not is_admin %} disabled {% endif %}>
+                    
+                    {% if is_admin %}
+                        <option value="">-- Tất cả Nhân viên --</option>
+                        {% for user in users %}
+                        <option value="{{ user.USERCODE }}" 
+                                {% if selected_salesman == user.USERCODE %} selected {% endif %}
+                                >
+                            {{ user.SHORTNAME }} ({{ user.USERCODE }})
+                        </option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="{{ selected_salesman }}" selected>
+                            {{ salesman_name }} ({{ selected_salesman }})
+                        </option>
+                    {% endif %}
+                </select>
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary w-100" {% if not is_admin %} disabled {% endif %}>Lọc</button>
+            </div>
+        </form>
+        
+        <div class="row g-4">
+            
+            <div class="col-lg-3 col-md-6">
+                <a href="/sales_dashboard" class="text-decoration-none">
+                    <div class="kpi-card bg-sales">
+                        <div class="kpi-title">DOANH SỐ YTD (Đã giao hàng)</div>
+                        <div class="kpi-value">
+                            {{ "{:,.0f}".format( (kpi_summary.get('Sales_YTD', 0) | float) / 1000000 ) }}
+                        </div>
+                        <div class="kpi-unit">Triệu VNĐ</div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-lg-3 col-md-6">
+                <a href="/sales_dashboard" class="text-decoration-none">
+                    <div class="kpi-card bg-month">
+                        <div class="kpi-title">DOANH SỐ THÁNG HIỆN TẠI</div>
+                        <div class="kpi-value">
+                            {{ "{:,.0f}".format( (kpi_summary.get('Sales_CurrentMonth', 0) | float) / 1000000 ) }}
+                        </div>
+                        <div class="kpi-unit">Triệu VNĐ</div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-lg-3 col-md-6">
+                <a href="/sales_dashboard" class="text-decoration-none">
+                    <div class="kpi-card bg-orders">
+                        <div class="kpi-title">DOANH SỐ NĂM TRƯỚC ({{ current_year - 1 }})</div>
+                        <div class="kpi-value">
+                            {{ "{:,.0f}".format( (kpi_summary.get('Sales_LastYear', 0) | float) / 1000000 ) }}
+                        </div>
+                        <div class="kpi-unit">Triệu VNĐ</div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-lg-3 col-md-6">
+                <a href="/sales_dashboard" class="text-decoration-none">
+                    <div class="kpi-card bg-risk">
+                        <div class="kpi-title">ĐƠN CHỜ GIAO (Giá trị PO)</div>
+                        <div class="kpi-value">
+                            {{ "{:,.0f}".format( (kpi_summary.get('PendingOrdersAmount', 0) | float) / 1000000 ) }}
+                        </div>
+                        <div class="kpi-unit">Triệu VNĐ</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title text-start text-primary"><i class="fas fa-star me-2"></i> TOP 10 Đơn hàng LỚN NHẤT Tháng</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mt-3">
+                                <thead>
+                                    <tr>
+                                        <th class="text-start">Mã ĐH</th>
+                                        <th class="text-start">Khách hàng</th>
+                                        <th>Giá trị (Triệu VNĐ)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in top_orders %}
+                                    <tr class="table-row-link" onclick="showDrillDown('{{ row.VoucherNo }}')">
+                                        <td class="text-start">{{ row.VoucherNo }}</td>
+                                        <td class="text-start">{{ row.ClientName | default('N/A') }}</td>
+                                        <td>
+                                            {{ "{:,.0f}".format( (row.TotalConvertedAmount | float) / 1000000 ) }}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if not top_orders %}
+                                    <tr><td colspan="3" class="text-center text-muted">Không có đơn hàng nào trong tháng.</td></tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title text-start text-success"><i class="fas fa-receipt me-2"></i> TOP 10 Báo giá LỚN NHẤT Tháng</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mt-3">
+                                <thead>
+                                    <tr>
+                                        <th class="text-start">Mã BG</th>
+                                        <th class="text-start">Khách hàng</th>
+                                        <th>Giá trị (Triệu VNĐ)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in top_quotes %}
+                                    <tr class="table-row-link" onclick="showDrillDown('{{ row.VoucherNo }}')">
+                                        <td class="text-start">{{ row.VoucherNo }}</td>
+                                        <td class="text-start">{{ row.ClientName | default('N/A') }}</td>
+                                        <td>
+                                            {{ "{:,.0f}".format( (row.QuoteAmount | float) / 1000000 ) }}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if not top_quotes %}
+                                    <tr><td colspan="3" class="text-center text-muted">Không có báo giá nào trong tháng.</td></tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title text-start text-warning"><i class="fas fa-hourglass-half me-2"></i> Đơn hàng **CHỜ GIAO** (Top 20 Giá trị Lớn nhất)</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mt-3">
+                                <thead>
+                                    <tr>
+                                        <th class="text-start">Mã ĐH</th>
+                                        <th class="text-center">Ngày ĐH</th> <th class="text-start">Khách hàng</th>
+                                        <th>Giá trị (Triệu VNĐ)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in pending_orders %}
+                                    <tr class="table-row-link" onclick="showDrillDown('{{ row.VoucherNo }}')">
+                                        <td class="text-start">{{ row.VoucherNo }}</td> <td class="text-center">{{ row.TranDate | default('N/A') }}</td> <td class="text-start">{{ row.ClientName | default('N/A') }}</td>
+                                        <td>
+                                            {{ "{:,.0f}".format( (row.TotalConvertedAmount | float) / 1000000 ) }}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if not pending_orders %}
+                                    <tr><td colspan="4" class="text-center text-muted">Không có đơn hàng nào chờ giao.</td></tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title text-start text-danger"><i class="fas fa-truck me-2"></i> Hàng **SẮP GIAO** (Top 20 Mã hàng trong 3 tháng tới)</h5>
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-sm table-hover mt-3">
+                                <thead>
+                                    <tr>
+                                        <th class="text-start">Mã ĐH</th>
+                                        <th class="text-start">Mặt hàng</th>
+                                        <th class="text-center">Ngày Giao</th> <th>SL CL</th>
+                                        <th>Giá trị (Triệu VNĐ)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in upcoming_deliveries %}
+                                    <tr class="table-row-link" onclick="showDrillDown('{{ row.VoucherNo }}')">
+                                        <td class="text-start">{{ row.VoucherNo }}</td> <td class="text-start">{{ row.InventoryName | default(row.InventoryID) }}</td>
+                                        <td class="text-center">{{ row.DeliverDate | default('N/A') }}</td> <td>{{ "{:,.0f}".format(row.RemainingQuantity | default(0) | float) }}</td>
+                                        <td>
+                                            {{ "{:,.0f}".format( (row.RemainingValue | float) / 1000000 ) }}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if not upcoming_deliveries %}
+                                    <tr><td colspan="5" class="text-center text-muted">Không có mặt hàng nào sắp giao trong 3 tháng tới.</td></tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="modal fade" id="drilldownModal" tabindex="-1" aria-labelledby="drilldownModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="drilldownModalTitle">Chi tiết Đơn hàng</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="drilldownModalBody">
+                    </div>
+            </div>
+        </div>
+    </div>
+    <div id="watermark-user-id" data-user="{{ current_user.usercode }}"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Hàm Drill-down chi tiết (Yêu cầu 3)
+        function showDrillDown(voucherNo) {
+            const modalBody = document.getElementById('drilldownModalBody');
+            const modalTitle = document.getElementById('drilldownModalTitle');
+            
+            modalTitle.innerText = 'Đang tải chi tiết Đơn hàng: ' + voucherNo;
+            modalBody.innerHTML = '<p class="text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải...</p>';
+            
+            // Gọi API mới để lấy chi tiết
+            fetch(`/api/get_order_detail_drilldown/${voucherNo}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error || data.length === 0) {
+                        modalBody.innerHTML = `<p class="text-center text-danger">Không tìm thấy chi tiết mặt hàng cho ${voucherNo}.</p>`;
+                        return;
+                    }
+                    
+                    let tableHtml = '<div class="table-responsive"><table class="table table-sm table-striped mt-3">';
+                    tableHtml += '<thead class="table-primary"><tr><th>Mã hàng</th><th>Tên hàng</th><th class="text-end">Số lượng</th><th class="text-end">Thành tiền (VNĐ)</th></tr></thead><tbody>';
+                    
+                    data.forEach(item => {
+                        tableHtml += `<tr>
+                                        <td>${item.InventoryID}</td>
+                                        <td>${item.InventoryName || 'N/A'}</td>
+                                        <td class="text-end">${item.SoLuong}</td>
+                                        <td class="text-end">${item.ThanhTien}</td>
+                                      </tr>`;
+                    });
+                    tableHtml += '</tbody></table></div>';
+                    
+                    modalTitle.innerText = 'Chi tiết Đơn hàng: ' + voucherNo;
+                    modalBody.innerHTML = tableHtml;
+                })
+                .catch(error => {
+                    console.error('Error fetching drilldown details:', error);
+                    modalTitle.innerText = 'Lỗi Tải Dữ Liệu';
+                    modalBody.innerHTML = `<p class="text-center text-danger">Lỗi kết nối khi tải chi tiết: ${error.message}</p>`;
+                });
+
+            // Hiện modal
+            var drilldownModal = new bootstrap.Modal(document.getElementById('drilldownModal'));
+            drilldownModal.show();
+        }
+        
+        // === SCRIPT KHỞI TẠO BIỂU ĐỒ CHART.JS (Giữ nguyên) ===
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('salesChart');
+            
+            // Dữ liệu giả định nếu không có chart data
+            const chartData = {
+                labels: ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10'],
+                data: [12000000, 15000000, 13000000, 18000000, 20000000, 19000000, 22000000, 25000000, 28000000, 30000000]
+            };
+            
+            new Chart(ctx, {
+                type: 'line', // Dùng line chart cho xu hướng
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: 'Doanh số (Triệu VNĐ)',
+                        // Giả định dữ liệu đã là số thực (float)
+                        data: chartData.data.map(d => d / 1000000), 
+                        backgroundColor: 'rgba(66, 133, 244, 0.7)',
+                        borderColor: '#4285F4',
+                        borderWidth: 2,
+                        tension: 0.3, // Đường cong mượt mà
+                        fill: true,
+                    }]
+                },
+                options: {
+                    // ... (Tùy chọn Chart.js giữ nguyên)
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Doanh số (Triệu VNĐ)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (context.parsed.y !== null) {
+                                        label += ': ' + context.parsed.y.toLocaleString('vi-VN', { 
+                                            minimumFractionDigits: 0, 
+                                            maximumFractionDigits: 0 
+                                        });
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+    <script>
+        // BỔ SUNG: KHÓA CHỨC NĂNG IN (PRINT BLOCKING)
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // 1. Chặn tổ hợp phím CTRL+P (Windows/Linux) và CMD+P (Mac)
+            document.addEventListener('keydown', function(e) {
+                // Kiểm tra CTRL/CMD + P
+                if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                    e.preventDefault();
+                    alert("Chức năng in đã bị khóa trên trang này.");
+                }
+            }, true); // <<< THÊM 'true' VÀO ĐÂY ĐỂ TĂNG ƯU TIÊN
+
+            // 2. Ghi đè hàm window.print()
+            window.print = function() {
+                alert("Chức năng in đã bị khóa trên trang này.");
+            };
+            
+            // 3. Khóa các thao tác copy/chọn văn bản
+            document.addEventListener('contextmenu', e => e.preventDefault()); 
+            document.addEventListener('selectstart', e => e.preventDefault()); 
+            document.addEventListener('copy', e => { 
+                e.preventDefault();
+                alert("Sao chép nội dung bị cấm.");
+            });
+        });
+    </script>
+</body>
+</html>

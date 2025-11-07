@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Báo cáo & Theo dõi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <style>
+        /* ======================================= */
+        /* PHONG CÁCH CHUNG & HEADER */
+        /* ======================================= */
+        body { font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; }
+        .container { max-width: 95%; margin-top: 30px; margin-bottom: 50px; }
+        
+        /* HEADER VÀ ACTIONS */
+        .header-main-box { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 25px;
+            border-bottom: 3px solid #E8F0FE; 
+            padding-bottom: 10px;
+        }
+        h1 { font-weight: 700; color: #4285F4; margin-bottom: 0; font-size: 1.7rem; }
+        
+        /* Nút Tùy chỉnh */
+        .btn-header-action {
+            font-weight: 600;
+            padding: 8px 15px; 
+            border-radius: 6px;
+        }
+        .btn-create-report { background-color: #34A853; color: white; border: none; }
+        .btn-go-portal { background-color: #6c757d; color: white; border: none; }
+
+        /* KHỐI LỌC DỮ LIỆU */
+        .filter-card { 
+            background-color: #ffffff; 
+            padding: 15px; 
+            margin-bottom: 25px; 
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        .form-label { font-weight: 600; color: #495057; font-size: 0.85rem; margin-bottom: 4px; }
+        .btn-filter { 
+            background-color: #3f90e9; 
+            color: white; 
+            border: none; 
+            padding: 8px 15px; 
+            border-radius: 6px; 
+            font-weight: 600;
+        }
+
+        /* ======================================= */
+        /* BẢNG VÀ KẾT QUẢ */
+        /* ======================================= */
+        .card { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); border-radius: 12px; border: none; }
+        
+        .table-header-sticky th { 
+            position: sticky; 
+            top: 0; 
+            background-color: #1A73E8 !important; /* Xanh đậm */
+            color: white !important; 
+            font-weight: 600; 
+            padding: 0.75rem 0.5rem;
+            vertical-align: middle;
+            z-index: 10;
+            cursor: default;
+            text-align: center;
+        }
+        .report-row:hover { 
+            background-color: #E8F0FE !important; 
+            cursor: pointer; 
+        }
+        .report-table td { 
+            padding: 10px; 
+            border-bottom: 1px solid #e9ecef; 
+            font-size: 0.9rem;
+            vertical-align: top;
+            text-align: center; 
+        }
+        /* CSS cho cột Nội dung và Đánh giá */
+        .content-col { 
+            max-width: none; /* Bỏ max-width cũ */
+            white-space: pre-wrap; 
+            text-align: left;
+             
+        }
+        .content-cell { 
+            line-height: 1.3em; 
+            max-width: 300px; 
+            white-space: pre-line; 
+            font-size: 0.9rem;
+            color: #3C4043;
+            text-align: left;
+        }
+        
+        /* HIGHLIGHT SEARCH TERM */
+        .highlight { background-color: yellow; font-weight: 600; padding: 1px 0; }
+        
+        /* PHÂN TRANG */
+        .pagination-status { font-size: 1rem; font-weight: 600; color: #3C4043; }
+        
+        @media print {
+            /* Ẩn mọi thứ khác trừ Watermark (Nếu bạn không muốn in bất cứ thứ gì) */
+            body * { visibility: hidden !important; }
+            
+            /* Hiển thị Watermark */
+            #watermark-user-id {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) rotate(-45deg);
+                opacity: 0.5;
+                font-size: 50pt;
+                color: #CCC;
+                content: attr(data-user);
+                visibility: visible !important;
+                z-index: 9999;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <div class="header-main-box">
+            <h1><i class="fas fa-file-alt me-2"></i> DASHBOARD BÁO CÁO KHÁCH HÀNG</h1>
+            <div class="d-flex gap-2">
+                
+                <a href="{{ url_for('nhap_lieu') }}" class="btn btn-header-action btn-create-report">
+                    <i class="fas fa-plus-circle me-1"></i> Tạo Báo cáo
+                </a>
+                
+                <a href="{{ url_for('index') }}" class="btn btn-header-action btn-go-portal">
+                    <i class="fas fa-home me-1"></i> Về Portal
+                </a>
+            </div>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <div class="filter-card">
+            <form method="POST" action="{{ url_for('dashboard_reports', page=1) }}" class="row g-3 align-items-end">
+                
+                <div class="col-md-2">
+                    <label for="date_from" class="form-label">Từ Ngày</label>
+                    <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="date_to" class="form-label">Đến Ngày</label>
+                    <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="nv_bao_cao" class="form-label">Nhân viên Báo cáo</label>
+                    <select name="nv_bao_cao" id="nv_bao_cao" class="form-select">
+                        <option value="">-- Tất cả --</option>
+                        {% for user in users %}
+                        <option value="{{ user.USERCODE }}" 
+                                {% if selected_user == user.USERCODE %} selected {% endif %}>
+                            {{ user.SHORTNAME }} ({{ user.USERCODE }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="kh_search" class="form-label">Tên Khách hàng</label>
+                    <input type="text" name="kh_search" id="kh_search" class="form-control" 
+                           value="{{ kh_search_term }}" placeholder="Tên KH bất kỳ...">
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="text_search" class="form-label">Nội dung / Đánh giá</label>
+                    <input type="text" name="text_search" id="text_search" class="form-control" 
+                           value="{{ text_search_term }}" placeholder="Chữ bất kỳ; ngăn cách bằng ;">
+                </div>
+                
+                <div class="col-md-1 d-grid">
+                    <button type="submit" class="btn btn-filter btn-modern w-100"><i class="fas fa-search me-1"></i> Lọc</button>
+                </div>
+                
+            </form>
+        </div>
+
+        <div class="card p-0">
+            <div class="card-body p-0">
+                
+                <div class="d-flex justify-content-between align-items-center p-3">
+                    <h3 class="pagination-status">
+                        <i class="fas fa-list-alt me-2"></i> Danh sách Báo cáo (Trang {{ page }} / Tổng {{ total_reports|default(0) }} báo cáo)
+                    </h3>
+                    <div class="btn-group">
+                        <a href="{{ url_for('dashboard_reports', page=page - 1, nv_bao_cao=selected_user, date_from=date_from, date_to=date_to, kh_search=kh_search_term, text_search=text_search_term) }}" class="btn btn-sm btn-outline-primary {% if page <= 1 %}disabled{% endif %}">
+                            <i class="fas fa-arrow-left"></i> Trước
+                        </a>
+                        <button type="button" class="btn btn-sm btn-primary disabled">Trang {{ page }}</button>
+                        <a href="{{ url_for('dashboard_reports', page=page + 1, nv_bao_cao=selected_user, date_from=date_from, date_to=date_to, kh_search=kh_search_term, text_search=text_search_term) }}" class="btn btn-sm btn-outline-primary {% if page >= total_pages or total_reports == 0 %}disabled{% endif %}">
+                            Sau <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                {% if reports %}
+                <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+                    <table class="table table-sm table-hover" style="margin-bottom: 0;">
+                        <thead class="table-header-sticky">
+                            <tr>
+                                <th style="width: 4%;">Mã BC</th>
+                                <th class="date-col" style="width: 7%;">Ngày</th>
+                                <th style="width: 5%;">NV</th>
+                                <th style="width: 17%;">Đối tượng</th>
+                                <th style="width: 30%;">Nội dung Chính</th>
+                                <th style="width: 30%;">Đánh giá Chính</th>
+                                <th style="width: 7%;">Tệp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-master-body">
+                            {% for row in reports %}
+                            <tr class="report-row" 
+                                onclick="window.open('{{ url_for('report_detail_page', report_stt=row.ID_KEY) }}', '_blank')">
+                                
+                                <td>{{ row.ID_KEY }}</td>
+                                <td>{{ row.NGAY }}</td>
+                                <td>{{ row.NV }}</td>
+                                <td>{{ row.KH }}</td>
+                                
+                                <td class="content-cell">
+                                    {{ row['NOI DUNG 1'] | default('') }}
+                                </td>
+                                
+                                <td class="content-cell">
+                                    {{ row['DANH GIA 1'] | default('') }}
+                                </td>
+                                
+                                <td class="text-center">
+                                    {% if row.FILE_COUNT and row.FILE_COUNT > 0 %}
+                                        <span class="badge bg-success">{{ row.FILE_COUNT }}</span>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-center p-3">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination pagination-sm mb-0">
+                            {% set url_params = {'nv_bao_cao': selected_user, 'date_from': date_from, 'date_to': date_to, 'kh_search': kh_search_term, 'text_search': text_search_term} %}
+                            
+                            {% set start_page = [1, page - 2] | max %}
+                            {% set end_page = [total_pages, page + 2] | min %}
+                            
+                            {# Previous Button #}
+                            <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                                <a class="page-link" href="{{ url_for('dashboard_reports', page=page - 1, **url_params) }}">&laquo;</a>
+                            </li>
+                            
+                            {# Page Numbers #}
+                            {% if start_page > 1 %}
+                                <li class="page-item"><a class="page-link" href="{{ url_for('dashboard_reports', page=1, **url_params) }}">1</a></li>
+                                {% if start_page > 2 %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}
+                            {% endif %}
+        
+                            {% for p in range(start_page, end_page + 1) %}
+                                <li class="page-item {% if p == page %}active{% endif %}">
+                                    <a class="page-link" href="{{ url_for('dashboard_reports', page=p, **url_params) }}">{{ p }}</a>
+                                </li>
+                            {% endfor %}
+        
+                            {% if end_page < total_pages %}
+                                {% if end_page < total_pages - 1 %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}
+                                <li class="page-item"><a class="page-link" href="{{ url_for('dashboard_reports', page=total_pages, **url_params) }}">{{ total_pages }}</a></li>
+                            {% endif %}
+                            
+                            {# Next Button #}
+                            <li class="page-item {% if page == total_pages or total_reports == 0 %}disabled{% endif %}">
+                                <a class="page-link" href="{{ url_for('dashboard_reports', page=page + 1, **url_params) }}">&raquo;</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+                
+                {% else %}
+                <p class="alert alert-info m-3">Không tìm thấy báo cáo nào trong điều kiện lọc hiện tại.</p>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+    <div id="watermark-user-id" data-user="{{ current_user.usercode }}"></div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // JS cho highlight search terms
+        function highlightSearchTerm(text, terms) {
+            if (!terms || terms.length === 0 || !text) return text;
+            
+            let highlightedText = text;
+            terms.forEach(term => {
+                if (term.trim() === '') return;
+                const escapedTerm = term.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&');
+                const regex = new RegExp('(' + escapedTerm + ')', 'gi');
+                highlightedText = highlightedText.replace(regex, '<span class="highlight">$1</span>');
+            });
+            return highlightedText;
+        }
+    
+        document.addEventListener('DOMContentLoaded', function() {
+            const rawSearchTerm = '{{ text_search_term | default('') }}';
+            const searchTerms = rawSearchTerm.split(';').map(term => term.trim()).filter(term => term.length > 0);
+
+            // ÁP DỤNG HIGHLIGHT CHO CÁC Ô NỘI DUNG VÀ ĐÁNH GIÁ
+            if (searchTerms.length > 0) {
+                document.querySelectorAll('.content-cell').forEach(cell => {
+                    const originalText = cell.textContent;
+                    const highlightedHtml = highlightSearchTerm(originalText, searchTerms);
+                    cell.innerHTML = highlightedHtml;
+                });
+            }
+        });
+    </script>
+    <script>
+        // BỔ SUNG: KHÓA CHỨC NĂNG IN (PRINT BLOCKING)
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // 1. Chặn tổ hợp phím CTRL+P (Windows/Linux) và CMD+P (Mac)
+            document.addEventListener('keydown', function(e) {
+                // Kiểm tra CTRL/CMD + P
+                if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                    e.preventDefault();
+                    alert("Chức năng in đã bị khóa trên trang này.");
+                }
+            }, true); // <<< THÊM 'true' VÀO ĐÂY ĐỂ TĂNG ƯU TIÊN
+
+            // 2. Ghi đè hàm window.print()
+            window.print = function() {
+                alert("Chức năng in đã bị khóa trên trang này.");
+            };
+            
+            // 3. Khóa các thao tác copy/chọn văn bản
+            document.addEventListener('contextmenu', e => e.preventDefault()); 
+            document.addEventListener('selectstart', e => e.preventDefault()); 
+            document.addEventListener('copy', e => { 
+                e.preventDefault();
+                alert("Sao chép nội dung bị cấm.");
+            });
+        });
+    </script>
+</body>
+</html>

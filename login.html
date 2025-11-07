@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng nhập Hệ thống - Báo Cáo Khách Hàng</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* ======================================= */
+        /* THIẾT KẾ BACKGROUND VÀ BỐ CỤC (2 CỘT) */
+        /* ======================================= */
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            min-height: 100vh;
+            color: white; /* Màu chữ chính cho nền */
+        }
+        
+        /* Hình nền, cố định và phủ màu tối */
+        .background-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            
+            /* NGUỒN ẢNH ĐỘNG HÀNG NGÀY: Unsplash Source */
+            background-image: url('https://picsum.photos/1920/1080?'); 
+            
+            background-size: cover;
+            background-position: center;
+            /* Hiệu ứng Parallax/Động nhẹ */
+            background-attachment: fixed; 
+            z-index: -1;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4); /* Màu phủ tối */
+            z-index: 0;
+        }
+
+        .content-wrapper {
+            width: 100%;
+            display: flex;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ======================================= */
+        /* CỘT TRÁI: WELCOME & QUOTE */
+        /* ======================================= */
+        .welcome-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 50px;
+            /* Hiệu ứng gradient nhẹ theo tone hình mẫu */
+            background: linear-gradient(to right, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0) 100%);
+        }
+        
+        .logo-box {
+            margin-bottom: 20px;
+        }
+        .logo-box img {
+            max-height: 80px; /* Kích thước logo */
+            width: auto;
+        }
+
+        .welcome-panel h1 {
+            font-weight: 900;
+            font-size: 4rem;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .quote-box {
+            max-width: 450px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-top: 20px;
+        }
+
+        /* ======================================= */
+        /* CỘT PHẢI: FORM ĐĂNG NHẬP */
+        /* ======================================= */
+        .login-panel {
+            width: 450px; /* Độ rộng cố định cho form */
+            background-color: rgba(255, 255, 255, 0.1); /* Nền bán trong suốt */
+            backdrop-filter: blur(5px); /* Hiệu ứng blur nhẹ */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 50px;
+        }
+
+        .login-form-container {
+            width: 100%;
+            max-width: 350px;
+            background-color: rgba(255, 255, 255, 0.95); /* Nền form gần như trắng */
+            padding: 30px;
+            border-radius: 8px;
+            color: #3C4043; /* Màu chữ trong form */
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .login-form-container h2 {
+            font-weight: 700;
+            color: #DB4437; /* Màu cam đỏ */
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        /* Nút đăng nhập */
+        .btn-sign-in { 
+            background-color: #FF5722; /* Màu cam */
+            border-color: #FF5722;
+            font-weight: 600;
+            padding: 10px 0;
+            transition: background-color 0.2s;
+        }
+        .btn-sign-in:hover {
+             background-color: #E64A19; 
+             border-color: #E64A19;
+        }
+
+        /* Cải thiện hiển thị Alert */
+        .alert {
+            font-size: 0.9rem;
+            padding: 10px 15px;
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .welcome-panel { display: none; }
+            .login-panel { width: 100%; }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="background-container"></div>
+    <div class="overlay"></div>
+
+    <div class="content-wrapper">
+        <div class="welcome-panel">
+            <div class="logo-box">
+                <img src="{{ url_for('static', filename='images/dolphin_logo.png') }}" alt="Logo Công ty Cá Heo">
+            </div>
+            
+            <h1>Welcome Back</h1>
+            <div class="quote-box">
+                <blockquote id="daily-quote">"Loading daily motivation..."</blockquote>
+            </div>
+            
+        </div>
+        
+        <div class="login-panel">
+            <div class="login-form-container">
+                <h2>Sign in</h2>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="{{ url_for('login') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Mã NV/Tên Đăng nhập</label>
+                        <input type="text" class="form-control" id="username" name="username" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Mật khẩu</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember-me">
+                        <label class="form-check-label" for="remember-me">Ghi nhớ đăng nhập</label>
+                    </div>
+                    <button type="submit" class="btn btn-sign-in w-100 mt-3">Đăng nhập ngay</button>
+                    <div class="text-center mt-3">
+                        <small><a href="#" class="text-muted text-decoration-none">Quên mật khẩu?</a></small>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // === LOGIC QUOTE NGẪU NHIÊN MỖI NGÀY ===
+        
+        const quotes = [
+            "Chất lượng công việc của bạn là sự phản ánh chất lượng tư duy của bạn.",
+            "Tập trung vào những gì bạn có thể kiểm soát. Buông bỏ phần còn lại.",
+            "Hành trình vạn dặm bắt đầu từ một bước chân nhỏ bé.",
+            "Giá trị thực sự của bạn không nằm ở những gì bạn nhận được, mà ở những gì bạn cống hiến.",
+            "Thành công không phải là chìa khóa của hạnh phúc. Hạnh phúc là chìa khóa của thành công.",
+            "Mỗi ngày là một cơ hội mới để thay đổi cuộc đời bạn.",
+            "Đừng ngại thất bại, hãy sợ đứng yên tại chỗ.",
+            "Bạn không thể thay đổi hướng gió, nhưng bạn có thể điều chỉnh cánh buồm."
+        ];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const quoteElement = document.getElementById('daily-quote');
+            
+            // Sử dụng Date để đảm bảo quote thay đổi mỗi ngày (dùng ngày làm seed)
+            const today = new Date();
+            const seed = today.getFullYear() + today.getMonth() + today.getDate(); 
+            
+            // Hàm băm đơn giản để tạo chỉ mục dựa trên ngày
+            const index = seed % quotes.length;
+            
+            if (quoteElement) {
+                quoteElement.textContent = quotes[index];
+            }
+        });
+    </script>
+</body>
+</html>
