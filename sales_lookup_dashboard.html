@@ -2,253 +2,349 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Tra Cứu Thông Tin Bán Hàng</title>
+    <title>Tra Cứu Thông Tin Bán Hàng (v2)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
     
     <style>
-        /* TÔNG MÀU VÀ THIẾT KẾ ĐƯỢC ĐỒNG BỘ HÓA TỪ NHẬP LIỆU */
+        /* (CSS Giữ nguyên, bao gồm cả CSS Căn chỉnh Nút và Chặn in) */
         body { background-color: #F8F9FA; color: #3C4043; font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .container { max-width: 1400px; margin-top: 30px; }
+        .container { max-width: 98%; margin-top: 30px; }
         .card-container { margin-bottom: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); padding: 15px; }
-        
-        /* HEADER VÀ KHU VỰC LỌC */
-        h1 { font-weight: 700; color: #4285F4; border-bottom: 3px solid #4285F4; padding-bottom: 10px; margin-bottom: 25px; }
+        h1 { font-weight: 700; color: #4285F4; margin-bottom: 0; }
+        .header-main-box {
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 10px; 
+            border-bottom: 3px solid #E8F0FE; 
+            padding-bottom: 10px;
+        }
+        .btn-header-action {
+            font-weight: 600;
+            padding: 8px 15px; 
+            border-radius: 6px;
+            background-color: #6c757d; 
+            color: white; 
+            border: none;
+            transition: background-color 0.2s;
+        }
+        .btn-header-action:hover {
+            background-color: #5a6268;
+            color: white;
+        }
         .panel-heading { background-color: #3f90e9; color: white; padding: 10px 15px; margin: -15px -15px 15px -15px; border-top-left-radius: 8px; border-top-right-radius: 8px; font-size: 1.1em; font-weight: 600; }
-        
-        /* KHU VỰC LỌC MÀU RÊU ĐẬM */
         #lookup-card .card-header { background-color: #346265 !important; color: white !important; font-size: 1.2rem; font-weight: 600; }
         .search-container { position: relative; }
-
-        /* INPUT VÀ DROPDOWN ĐƯỢC THIẾT KẾ ĐẶC BIỆT */
         .form-control-lg { height: 48px; }
         .search-results-dropdown { 
-            width: 100%; 
-            border-radius: 8px; 
-            border: 1px solid #4285F4; /* Border xanh */
-            outline: none;
-            display: none;
-            position: absolute;
-            z-index: 1000;
-            margin-top: 0px; 
+            width: 100%; border-radius: 8px; border: 1px solid #4285F4;
+            outline: none; display: none; position: absolute;
+            z-index: 1000; margin-top: 0px; 
         }
-        .btn-lookup-custom { background-color: #3f90e9 !important; color: white; font-weight: 600; min-width: 100px; height: 48px; }
-        
-        /* BẢNG */
+        .btn-lookup-custom { 
+            background-color: #3f90e9 !important; 
+            color: white; 
+            font-weight: 600; 
+            height: 48px; /* Fix chiều cao */
+        }
+        .btn-quick-lookup { 
+            background-color: #ffc107 !important; 
+            color: #212529; 
+            font-weight: 600; 
+            border-color: #ffc107; 
+            height: 48px; /* Fix chiều cao */
+        }
+        .button-column-fix {
+            padding-top: 28px; 
+        }
         .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         .data-table th { background-color: #d6e8ff; color: #333; padding: 10px; text-align: left; border-bottom: 2px solid #3f90e9; font-weight: 600; }
         .data-table td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 0.9em; }
         .data-table tbody tr:hover { background-color: #f8f9fa; }
-        .admin-data-block { border-top: 2px dashed #007bff; padding-top: 15px; margin-top: 20px; }
+        .history-table { width: 100%; margin-top: 10px; font-size: 0.8rem; }
+        .history-table th { background-color: #E8F0FE; color: #1A73E8; padding: 6px; text-align: center; border-bottom: 2px solid #1A73E8; white-space: nowrap; }
+        .history-table td { padding: 5px; border-bottom: 1px solid #eee; text-align: center; white-space: nowrap; }
+        .text-end { text-align: right !important; }
+        .text-start { text-align: left !important; }
+        .text-nowrap { white-space: nowrap; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 0.3em 0.6em; }
+        .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_info { font-size: 0.9rem; }
+        #block1-filter-toolbar label { font-weight: 600; font-size: 0.9rem; }
+        #block1-filter-toolbar input { margin-left: 5px; border-radius: 4px; padding: 4px 8px; border: 1px solid #ccc; }
         
-        /* KHUNG HIỂN THỊ ĐÃ CHỌN */
-        .selected-display-box {
-             background-color: #e3f2fd;
-             border: 1px solid #90caf9;
-             padding: 10px;
-             border-radius: 4px;
-             margin-top: 8px;
-             font-size: 0.9rem;
-             color: #1e88e5;
-             font-weight: 500;
-             min-height: 40px;
+        @media print {
+            body * { visibility: hidden !important; }
+            #watermark-user-id, #watermark-user-id * { visibility: visible !important; }
+            #watermark-user-id {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) rotate(-45deg);
+                opacity: 0.3 !important;
+                font-size: 50pt;
+                color: #CCC !important;
+                content: attr(data-user);
+                z-index: 9999;
+                visibility: visible !important;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 style="color: #3f90e9;"><i class="bi bi-search"></i> Tra Cứu Thông Tin Bán Hàng</h1>
+        
+        <div class="header-main-box">
+            <h1>Tra Cứu Thông Tin Bán Hàng (v2)</h1>
+            <a href="{{ url_for('index') }}" class="btn btn-header-action">
+                <i class="fas fa-home me-1"></i> Về Portal
+            </a>
+        </div>
+        
+        <p class="text-muted mb-3">
+            Chào bạn, <strong>{{ current_user.shortname }}</strong> ({{ current_user.usercode }}).
+        </p>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
         <div class="card mb-4" id="lookup-card">
             <div class="card-header">Thông tin Tra cứu</div>
             <div class="card-body">
-                <form method="POST" action="{{ url_for('sales_bp.sales_lookup_dashboard') }}">
-                    <div class="row g-3 align-items-start">
-                        
-                        <div class="col-md-4 search-container">
-                            <label class="form-label fw-bold text-dark">Tìm theo Mã/Tên Mặt hàng</label>
-                            <input type="text" id="inv_search_input" placeholder="Gõ Mã/Tên Mặt hàng..." class="form-control form-control-lg">
-                            <small id="inv_status" class="form-text text-muted mb-1 d-block">Nhập mã/tên để tìm kiếm tự động (Có thể chọn nhiều).</small>
-                            <div id="inv_display_box" class="selected-display-box">{{ inventory_ids_display|default(inventory_ids)|default('') }}</div>
-                            
-                            <input type="hidden" name="inventory_ids" id="inv_ma_selected" value="{{ inventory_ids|default('') }}">
-                            <input type="hidden" name="inventory_ids_display" id="inv_display_selected" value="{{ inventory_ids_display|default('') }}">
-                            
-                            <select id="inv_search_results" class="form-select search-results-dropdown" size="5" onchange="chonMatHang()" multiple></select>
-                        </div>
+                <form method="POST" action="{{ url_for('sales_bp.sales_lookup_dashboard') }}" class="row g-3">
+                    
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-dark">Tìm theo Mã/Tên Mặt hàng</label>
+                        <input type="text" id="item_search_input" name="item_search" 
+                               placeholder="Gõ Mã/Tên (VD: 23152, 6220)" class="form-control form-control-lg"
+                               value="{{ item_search | default('') }}">
+                        <small class="form-text text-muted mb-1 d-block">Nhập nhiều mã/tên, ngăn cách bằng dấu phẩy (,).</small>
+                    </div>
 
-                        <div class="col-md-4 search-container">
-                            <label class="form-label fw-bold text-dark">Tìm theo Mã/Tên Khách hàng (Tùy chọn)</label>
-                            <input type="text" id="kh_search_input" placeholder="Gõ Mã/Tên Khách hàng..." class="form-control form-control-lg">
-                            <small id="kh_status" class="form-text text-muted mb-1 d-block">Nhập tên/mã để tìm kiếm.</small>
-                            <div id="kh_display_box" class="selected-display-box">{{ object_id_display|default(object_id)|default('') }}</div>
+                    <div class="col-md-5 search-container">
+                        <label class="form-label fw-bold text-dark">Tìm theo Mã/Tên Khách hàng (Tùy chọn)</label>
+                        <input type="text" id="kh_search_input" 
+                               placeholder="Gõ Mã/Tên Khách hàng để chọn..." class="form-control form-control-lg"
+                               value="{{ object_id_display | default('') }}">
+                        <small id="kh_status" class="form-text text-muted mb-1 d-block">Để trống nếu muốn xem giá chung.</small>
 
-                            <input type="hidden" name="object_id" id="kh_ma_selected" value="{{ object_id|default('') }}">
-                            <input type="hidden" name="object_id_display" id="kh_display_selected" value="{{ object_id_display|default('') }}">
+                        <input type="hidden" name="object_id" id="kh_ma_selected" value="{{ object_id | default('') }}">
+                        <input type="hidden" name="object_id_display" id="kh_display_selected" value="{{ object_id_display | default('') }}">
 
-                            <select id="kh_search_results" class="form-select search-results-dropdown" size="5" onchange="chonKhachHang()"></select>
-                        </div>
-                        
-                        <div class="col-md-4 d-flex align-items-center">
-                            <button type="submit" class="btn btn-primary btn-lg btn-lookup-custom mt-3">🔍 Tra cứu</button>
+                        <select id="kh_search_results" class="form-select search-results-dropdown" size="5" onchange="chonKhachHang()"></select>
+                    </div>
+                    
+                    <div class="col-md-3 button-column-fix">
+                        <div class="d-flex w-100 gap-2">
+                            <button type="button" class="btn btn-quick-lookup btn-lg w-50" id="quickLookupBtn" title="Tra cứu nhanh Tồn kho và Giá QĐ (Không lọc KH)">
+                                <i class="fas fa-bolt"></i> Tra nhanh Tồn
+                            </button>
+                            <button type="submit" class="btn btn-primary btn-lg btn-lookup-custom w-50">
+                                <i class="fas fa-search"></i> Tra cứu
+                            </button>
                         </div>
                     </div>
                 </form>
             </div>
         </div>
         
-        {% if results %}
-            
-            {% for item in results %}
-            <div class="card-container">
-                <div class="panel-heading">Mặt hàng: {{ item.InventoryID }} - {{ item.InventoryName }}</div>
-                
-                <h4 style="margin-top: 0; color: #333;">1. Tồn kho và Giá Quy định</h4>
-                <table class="data-table">
+        <div class="card-container" id="block1-container" {% if not results.block1 %}style="display: none;"{% endif %}>
+            <div class="panel-heading d-flex justify-content-between align-items-center">
+                <span>1. Tồn kho và Giá (Khớp với '{{ item_search }}' | KH: {{ object_id_display or 'Tất cả' }})</span>
+                <div id="block1-filter-toolbar" class="ms-3"></div>
+            </div>
+            <div class="table-responsive">
+                <table id="block1-table" class="data-table table table-hover">
                     <thead>
                         <tr>
-                            <th class="text-nowrap">Tồn kho (Ton)</th>
-                            <th class="text-nowrap">Back Order (Con)</th>
-                            <th class="text-nowrap">Giá Bán Quy định (SalePrice01)</th>
-                            <th class="text-nowrap">Giá Bán Gần nhất (Hóa đơn)</th>
-                            <th class="text-nowrap">Giá Chào Gần nhất (Báo giá)</th>
+                            <th class="text-start">Mã hàng</th>
+                            <th class="text-start">Tên hàng</th>
+                            <th class="text-end">Tồn kho (Ton)</th>
+                            <th class="text-end">Back Order (Con)</th>
+                            <th class="text-end">Giá Bán QĐ</th>
+                            <th class="text-end">Giá Bán Gần nhất (HĐ)</th>
+                            <th class="text-end">Giá Chào Gần nhất (BG)</th>
                         </tr>
                     </thead>
                     <tbody>
+                        {% for item in results.block1 %}
                         <tr>
-                            <td>{{ item.Ton|int }}</td>
-                            <td>{{ item.BackOrder|int }}</td>
-                            <td>{{ "{:,.0f}".format(item.SalePrice01) }}</td>
-                            <td>
-                                {% if item.RecentSalePrice.SalePrice is string %}
-                                    {{ item.RecentSalePrice.SalePrice }}
-                                {% else %}
-                                    {{ "{:,.0f}".format(item.RecentSalePrice.SalePrice) }} ({{ item.RecentSalePrice.InvoiceDate|default('N/A') }})
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if item.RecentQuotePrice.QuotePrice is string %}
-                                    {{ item.RecentQuotePrice.QuotePrice }}
-                                {% else %}
-                                    {{ "{:,.0f}".format(item.RecentQuotePrice.QuotePrice) }} ({{ item.RecentQuotePrice.QuoteDate|default('N/A') }})
-                                {% endif %}
-                            </td>
+                            <td class="text-start">{{ item.InventoryID }}</td>
+                            <td class="text-start">{{ item.InventoryName }}</td>
+                            <td class="text-end">{{ "{:,.0f}".format(item.Ton | float) }}</td>
+                            <td class="text-end">{{ "{:,.0f}".format(item.BackOrder | float) }}</td>
+                            <td class="text-end">{{ "{:,.0f}".format(item.GiaBanQuyDinh | float) }}</td>
+                            <td class="text-end">{{ "{:,.0f}".format(item.GiaBanGanNhat_HD | float) }}</td>
+                            <td class="text-end">{{ "{:,.0f}".format(item.GiaChaoGanNhat_BG | float) }}</td>
                         </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
-
-                {% if is_admin %}
-                <div class="admin-data-block">
-                    <h4 style="color: #007bff;">[Dữ liệu Admin] Lịch sử Chi tiết</h4>
-
-                    <div style="margin-top: 15px;">
-                        <div class="panel-heading" style="background-color: #f7a030; margin: -15px; margin-bottom: 15px;">
-                            ⭐ Top 5 Khách hàng có báo giá thành công (3 năm)
-                        </div>
-                        {% if item.Top5SuccessfulQuotes %}
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th class="text-nowrap">Mã KH</th>
-                                        <th>Tên Khách hàng</th>
-                                        <th>Tổng SL Báo giá</th>
-                                        <th>Tổng SL Kế thừa (DHB)</th>
-                                        <th>Đơn giá TB Chào</th>
-                                        <th style="color: #832a00;">% GBQD</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for q in item.Top5SuccessfulQuotes %}
-                                    <tr>
-                                        <td>{{ q.ClientID }}</td>
-                                        <td>{{ q.ClientName }}</td>
-                                        <td>{{ q.TotalQuoteQuantity|int }}</td>
-                                        <td style="font-weight: bold; color: #1e7e34;">{{ q.TotalSuccessQuantity|int }}</td>
-                                        <td>{{ "{:,.0f}".format(q.AverageQuotePrice) }}</td>
-                                        <td style="font-weight: bold; color: {% if q.PercentGBQD is string and q.PercentGBQD.startswith('-') %}#dc3545{% else %}#1e7e34{% endif %};">
-                                            {{ q.PercentGBQD }}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        {% else %}
-                            <p>Không có báo giá thành công nào trong 3 năm.</p>
-                        {% endif %}
-                    </div>
-                    
-                    <div style="margin-top: 25px;">
-                        <div class="panel-heading" style="background-color: #6c757d; margin: -15px; margin-bottom: 15px;">
-                            📦 Top 10 Phiếu Nhập kho gần nhất (Vào kho Q4)
-                        </div>
-                        {% if item.Top10RecentReceipts %}
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Số Phiếu</th>
-                                        <th>Ngày Nhập</th>
-                                        <th>Đối tượng Nhập</th>
-                                        <th>SL Nhập</th>
-                                        <th>Giá Nhập</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for r in item.Top10RecentReceipts %}
-                                    <tr>
-                                        <td class="text-nowrap">{{ r.VoucherNo }}</td>
-                                        <td>{{ r.VoucherDate }}</td>
-                                        <td>{{ r.CustomerName }} ({{ r.CustomerID }})</td>
-                                        <td>{{ r.ReceiptQuantity|int }}</td>
-                                        <td>{{ "{:,.0f}".format(r.ReceiptPrice) }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        {% else %}
-                            <p>Không có phiếu nhập kho vào kho Q4 gần đây.</p>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
             </div>
-            {% endfor %}
+        </div>
             
-        {% elif request.method == 'POST' %}
-            <p class="alert alert-warning">Không tìm thấy mặt hàng nào phù hợp với điều kiện tra cứu.</p>
+        {% if show_block_2 and results.block2 %}
+        <div class="card-container" id="block2-container">
+            <div class="panel-heading" style="background-color: #34A853;">2. Lịch sử ĐH Bán, Xuất kho (PXK) & Hóa đơn (Top 20)</div>
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                <table class="history-table table table-sm table-bordered">
+                    <thead>
+                        <tr style="background-color: #E8F0FE; color: #1A73E8;">
+                            <th colspan="4" class="text-center">Đơn Hàng Bán</th>
+                            <th colspan="3" class="text-center" style="background-color: #E6F4EA; color: #1E8E3E;">Phiếu Xuất Kho</th>
+                            <th colspan="3" class="text-center" style="background-color: #FFF7E6; color: #C28B00;">Hóa Đơn</th>
+                        </tr>
+                        <tr>
+                            <th>Số ĐH Bán</th>
+                            <th>Ngày ĐH</th>
+                            <th class="text-end">SL Đặt</th>
+                            <th class="text-end">Đơn giá</th>
+                            <th style="background-color: #E6F4EA;">Số PXK</th>
+                            <th style="background-color: #E6F4EA;">Ngày PXK</th>
+                            <th class="text-end" style="background-color: #E6F4EA;">SL Xuất</th>
+                            <th style="background-color: #FFF7E6;">Số Hóa Đơn</th>
+                            <th style="background-color: #FFF7E6;">Ngày HĐ</th>
+                            <th class="text-end" style="background-color: #FFF7E6;">SL Xuất</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for history in results.block2 %}
+                        <tr>
+                            <td class="text-nowrap">{{ history.VoucherNo | default('—') }}</td>
+                            <td>{{ history.OrderDate | default('—') }}</td>
+                            <td class="text-end">{{ "{:,.0f}".format(history.OrderQuantity | float) }}</td>
+                            <td class="text-end">{{ "{:,.0f}".format(history.SalePrice | float) }}</td>
+                            <td class="text-start" style="background-color: #F8F9FA;">{{ history.SoPXK | default('—') }}</td>
+                            <td style="background-color: #F8F9FA;">{{ history.NgayPXK | default('—') }}</td>
+                            <td class="text-end" style="background-color: #F8F9FA;">{{ "{:,.0f}".format(history.SL_PXK | float) }}</td>
+                            <td class="text-start" style="background-color: #FDFBF5;">{{ history.SoHoaDon | default('—') }}</td>
+                            <td style="background-color: #FDFBF5;">{{ history.NgayHĐ | default('—') }}</td>
+                            <td class="text-end" style="background-color: #FDFBF5;">{{ "{:,.0f}".format(history.SL_HoaDon | float) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if show_block_3 and results.block3 %}
+        <div class="card-container" id="block3-container">
+            <div class="panel-heading" style="background-color: #F4B400;">3. Lịch sử Đơn hàng Mua (PO) & Phiếu Nhập (Top 20)</div>
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                <table class="history-table table table-sm table-bordered">
+                     <thead>
+                        <tr style="background-color: #E8F0FE; color: #1A73E8;">
+                            <th colspan="4" class="text-center">Đơn Hàng Bán (Tham chiếu)</th>
+                            <th colspan="3" class="text-center" style="background-color: #FFF7E6; color: #C28B00;">Đơn Hàng Mua (PO)</th>
+                            <th colspan="3" class="text-center" style="background-color: #E6F4EA; color: #1E8E3E;">Phiếu Nhập Kho</th>
+                        </tr>
+                        <tr>
+                            <th>Số ĐH Bán</th>
+                            <th>Ngày ĐH</th>
+                            <th class="text-end">SL Đặt</th>
+                            <th class="text-end">Đơn giá</th>
+                            <th style="background-color: #FFF7E6;">Số PO</th>
+                            <th style="background-color: #FFF7E6;">Ngày PO</th>
+                            <th class="text-end" style="background-color: #FFF7E6;">SL PO</th>
+                            <th style="background-color: #E6F4EA;">Số PN</th>
+                            <th style="background-color: #E6F4EA;">Ngày Nhập</th>
+                            <th class="text-end" style="background-color: #E6F4EA;">SL Nhập</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for history in results.block3 %}
+                        <tr>
+                            <td class="text-nowrap">{{ history.VoucherNo | default('—') }}</td>
+                            <td>{{ history.OrderDate | default('—') }}</td>
+                            <td class="text-end">{{ "{:,.0f}".format(history.OrderQuantity | float) }}</td>
+                            <td class="text-end">{{ "{:,.0f}".format(history.SalePrice | float) }}</td>
+                            <td class="text-start" style="background-color: #FDFBF5;">{{ history.SoPO | default('—') }}</td>
+                            <td style="background-color: #FDFBF5;">{{ history.NgayPO | default('—') }}</td>
+                            <td class="text-end" style="background-color: #FDFBF5;">{{ "{:,.0f}".format(history.SL_PO | float) }}</td>
+                            <td class="text-start" style="background-color: #F8F9FA;">{{ history.SoPN | default('—') }}</td>
+                            <td style="background-color: #F8F9FA;">{{ history.NgayPN | default('—') }}</td>
+                            <td class="text-end" style="background-color: #F8F9FA;">{{ "{:,.0f}".format(history.SL_PN | float) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if request.method == 'POST' and (not results.block1 and not results.block2 and not results.block3) %}
+             <p class="alert alert-warning">Không tìm thấy mặt hàng nào phù hợp với điều kiện tra cứu (Khách hàng: {{ object_id_display or 'Tất cả' }}, Mặt hàng: '{{ item_search }}').</p>
         {% endif %}
 
     </div>
+    
+<div id="watermark-user-id" data-user="{{ current_user.usercode }}">{{ current_user.usercode }}</div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
-$(document).ready(function() {
     
-    // --- KHAI BÁO BIẾN CHO MULTI-SELECT MẶT HÀNG ---
-    let selectedInvItems = {}; // { 'ID': 'Display Text' }
-    
-    // KHÔI PHỤC DANH SÁCH MẶT HÀNG ĐÃ CHỌN VÀO JS OBJECT
-    const invIdList = $('#inv_ma_selected').val().split(',');
-    const invDisplayList = $('#inv_display_selected').val().split(',');
-    
-    if (invIdList.length > 0 && invIdList[0].trim() !== '') {
-        invIdList.forEach((id, index) => {
-            const trimmedId = id.trim();
-            const displayName = invDisplayList[index] ? invDisplayList[index].trim() : trimmedId;
-            selectedInvItems[trimmedId] = displayName;
-        });
-        // Cập nhật ô hiển thị ban đầu
-        $('#inv_display_box').text(Object.values(selectedInvItems).join(', '));
-    } else {
-        $('#inv_display_box').text('Danh sách rỗng');
+    // Hàm định dạng số (để dùng trong JS)
+    function formatCurrency(num) {
+        return new Intl.NumberFormat('vi-VN').format(num || 0);
     }
     
-    // Khôi phục giá trị Khách hàng hiển thị
+    let block1Table = null; // Biến global để giữ instance
+    
+    function initializeBlock1DataTable() {
+        // Hủy instance cũ nếu nó tồn tại
+        if (block1Table) {
+            block1Table.destroy();
+            $('#block1-filter-toolbar').empty(); // Xóa ô lọc cũ
+        }
+        
+        // Khởi tạo instance mới
+        block1Table = $('#block1-table').DataTable({
+            "paging": true,
+            "pageLength": 15,
+            "lengthChange": false,
+            "searching": true, 
+            "ordering": true,
+            "info": true,
+            "order": [[0, 'asc']],
+            // SỬA LỖI 2: Đặt 't' (table) vào trong wrapper
+            "dom": '<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"f>>' + 
+                   '<"row"<"col-sm-12"tr>>' + // 't' và 'r' (processing) phải ở trong wrapper
+                   '<"row"<"col-sm-12"p>>', // Bottom: Pagination(p)
+            "language": {
+                "search": "Lọc nhanh bảng này:",
+                "zeroRecords": "Không tìm thấy mặt hàng nào.",
+                "info": "Hiển thị trang _PAGE_ / _PAGES_ (Tổng _TOTAL_ mặt hàng)",
+                "infoEmpty": "Không có dữ liệu",
+                "infoFiltered": "", 
+                "paginate": { "next": "Sau", "previous": "Trước" },
+                "lengthMenu": "Hiển thị _MENU_ dòng"
+            }
+        });
+
+        // Di chuyển ô lọc vào vị trí tùy chỉnh
+        const searchInput = $('#block1-table_filter');
+        $('#block1-filter-toolbar').html(searchInput);
+    }
+
+$(document).ready(function() {
+    
     if ($('#kh_display_selected').val()) {
-         $('#kh_display_box').text($('#kh_display_selected').val());
          $('#kh_status').html('✅ Khách hàng đã được chọn và xác nhận.');
     }
 
-
-    // Hàm debounce: Trì hoãn việc thực thi hàm
     function debounce(func, timeout = 300) {
         let timer;
         return (...args) => {
@@ -257,90 +353,15 @@ $(document).ready(function() {
         };
     }
     
-    // Hàm cập nhật trường ẩn
-    function updateHiddenFields(idField, displayField, map) {
-        const idList = Object.keys(map).join(',');
-        const displayList = Object.values(map).join(', ');
-        $(idField).val(idList);
-        $(displayField).val(displayList);
-    }
-    
-    // --- LOGIC TÌM KIẾM MẶT HÀNG ---
-    function timMatHang() {
-        const term = $('#inv_search_input').val().trim();
-        const statusMsg = $('#inv_status');
-        const resultsDropdown = $('#inv_search_results');
-        
-        resultsDropdown.hide().empty();
-        
-        if (term.length < 2) {
-            statusMsg.text('Nhập ít nhất 2 ký tự.');
-            return;
-        }
-        
-        statusMsg.text('Đang tìm kiếm...');
-        
-        fetch(`/api/inventory/${term}`)
-            .then(response => {
-                if (!response.ok) throw new Error('Lỗi Server khi tra cứu mặt hàng.');
-                return response.json(); 
-            })
-            .then(data => {
-                if (data && data.length > 0) {
-                    data.forEach(item => {
-                        const isSelected = selectedInvItems[item.id] !== undefined ? 'selected' : '';
-                        const option = `<option value="${item.id}" ${isSelected} data-text="${item.text}">${item.text}</option>`;
-                        resultsDropdown.append(option);
-                    });
-                    
-                    resultsDropdown.show();
-                    resultsDropdown.attr('size', Math.min(data.length, 10)); 
-                    statusMsg.text(`Tìm thấy ${data.length} kết quả. Vui lòng chọn.`);
-                } else {
-                    statusMsg.text('Không tìm thấy kết quả nào.');
-                }
-            })
-            .catch(error => {
-                statusMsg.text(`Lỗi tra cứu: ${error.message}`);
-                console.error("Fetch Inventory Error:", error);
-            });
-    }
-
-    // Hàm xử lý khi người dùng chọn từ dropdown Mặt hàng (MULTI-SELECT LOGIC)
-    window.chonMatHang = function() {
-        const dropdown = $('#inv_search_results');
-        const selectedOption = dropdown.find('option:selected');
-        
-        if (selectedOption.length) {
-            selectedOption.each(function() {
-                const id = $(this).val();
-                const text = $(this).data('text');
-                
-                if (selectedInvItems[id]) {
-                    // Xóa
-                    delete selectedInvItems[id];
-                    $(this).removeAttr('selected');
-                } else {
-                    // Thêm
-                    selectedInvItems[id] = text;
-                    $(this).attr('selected', 'selected');
-                }
-            });
-
-            // CẬP NHẬT TRƯỜNG ẨN VÀ INPUT HIỂN THỊ
-            updateHiddenFields('#inv_ma_selected', '#inv_display_selected', selectedInvItems);
-            $('#inv_display_box').text(Object.values(selectedInvItems).join(', '));
-        }
-    };
-    
-    // --- LOGIC TÌM KIẾM & CHỌN KHÁCH HÀNG (SINGLE SELECT) ---
-
+    // --- LOGIC TÌM KIẾM & CHỌN KHÁCH HÀNG ---
     function timKhachHang() {
         const term = $('#kh_search_input').val().trim();
         const statusMsg = $('#kh_status');
         const resultsDropdown = $('#kh_search_results');
         
         resultsDropdown.hide().empty();
+        $('#kh_ma_selected').val('');
+        $('#kh_display_selected').val('');
         
         if (term.length < 2) {
             statusMsg.text('Nhập ít nhất 2 ký tự.');
@@ -350,92 +371,142 @@ $(document).ready(function() {
         statusMsg.text('Đang tìm kiếm...');
         
         fetch(`/api/khachhang/${term}`)
-            .then(response => {
-                if (!response.ok) throw new Error('Lỗi Server khi tra cứu khách hàng.');
-                return response.json(); 
-            })
+            .then(response => response.json())
             .then(data => {
                 if (data && data.length > 0) {
                     data.forEach(kh => {
                         const option = `<option value="${kh.ID}" data-fullname="${kh.FullName}">${kh.FullName} (${kh.ID})</option>`;
                         resultsDropdown.append(option);
                     });
-                    
-                    resultsDropdown.show();
-                    resultsDropdown.attr('size', Math.min(data.length, 5)); 
+                    resultsDropdown.show().attr('size', Math.min(data.length, 5)); 
                     statusMsg.html(`Tìm thấy ${data.length} kết quả. Vui lòng chọn.`);
-                    
                 } else {
                     statusMsg.text('Không tìm thấy kết quả nào.');
                 }
             })
             .catch(error => {
                 statusMsg.text(`Lỗi tra cứu: ${error.message}`);
-                console.error("Fetch KH Error:", error);
             });
     }
 
-    // Hàm xử lý khi người dùng chọn từ dropdown Khách hàng (SINGLE SELECT LOGIC)
     window.chonKhachHang = function() {
-        const dropdown = $('#kh_search_results');
-        const selectedOption = dropdown.find('option:selected');
+        const selectedOption = $('#kh_search_results').find('option:selected');
         
         if (selectedOption.length) {
             const id = selectedOption.val();
             const fullName = selectedOption.data('fullname');
             const displayText = fullName + ' (' + id + ')';
             
-            // Ẩn dropdown, điền vào input
-            dropdown.hide();
-            $('#kh_ma_selected').val(id); // Mã ID thực tế
-            $('#kh_display_selected').val(displayText); // Tên hiển thị đầy đủ (Để phục hồi)
-            $('#kh_search_input').val(displayText); // Ô input hiển thị
-            $('#kh_display_box').text(displayText); // Ô hiển thị đã chọn
+            $('#kh_search_results').hide();
+            $('#kh_ma_selected').val(id); 
+            $('#kh_display_selected').val(displayText); 
+            $('#kh_search_input').val(displayText); 
             $('#kh_status').html('✅ Khách hàng đã được chọn và xác nhận.');
         }
     };
     
-    $('form').on('submit', function(e) {
-    // 1. LƯU DỮ LIỆU ĐÃ CHỌN VÀO TRƯỜNG ẨN (Logic này đã có)
-    
-    // 2. XÓA NỘI DUNG CỦA Ô INPUT HIỂN THỊ 
-    $('#inv_search_input').val(''); // Xóa nội dung ô gõ Mã mặt hàng
-    $('#kh_search_input').val(''); // Xóa nội dung ô gõ Mã khách hàng
-    
-    // 3. XÓA DỮ LIỆU TẠM THỜI TRONG JS OBJECT
-    // Đây là nơi bạn cần làm sạch selectedInvItems để chuẩn bị cho lần tra cứu mới
-    
-    // NOTE: Chúng ta KHÔNG xóa các trường ẩn (`#inv_ma_selected`) vì đó là dữ liệu đang gửi đi.
-    // Chúng ta chỉ xóa các ô hiển thị (input) và reset JS state.
-});
     // --- ĐĂNG KÝ SỰ KIỆN CHÍNH ---
-    $('#inv_search_input').on('input', debounce(timMatHang, 300));
     $('#kh_search_input').on('input', debounce(timKhachHang, 300));
     
-    // Ngăn chặn submit form khi nhấn ENTER và xử lý focus
-    $('#inv_search_input, #kh_search_input').on('keydown', function(e) {
-         if (e.key === 'Enter') {
-             e.preventDefault();
-         }
-    });
-
-    $('#inv_search_input, #kh_search_input').on('focus', function() {
-        if (this.id === 'inv_search_input' && Object.keys(selectedInvItems).length > 0) {
-            // Khi focus vào ô mặt hàng đã có lựa chọn, hiển thị lại dropdown
-            timMatHang(); 
-        } else if (this.id === 'kh_search_input' && this.value.length > 0) {
-            // Khi focus vào ô KH đã có giá trị, tìm kiếm lại
-            timKhachHang();
-        }
+    $('#item_search_input, #kh_search_input').on('keydown', function(e) {
+         if (e.key === 'Enter') { e.preventDefault(); }
     });
     
-    // XÓA DROPDOWN KHI CLICK RA NGOÀI
     $(document).on('click', function(e) {
         if (!$(e.target).closest('.search-container').length) {
             $('#kh_search_results').hide();
-            $('#inv_search_results').hide();
         }
     });
+
+    // KHỞI TẠO DATATABLES KHI TẢI TRANG
+    if ($('#block1-table tbody tr').length > 0) {
+        initializeBlock1DataTable();
+    }
+
+    
+    // --- YÊU CẦU 5: LOGIC NÚT TRA CỨU NHANH ---
+    $('#quickLookupBtn').on('click', function() {
+        const itemSearchTerm = $('#item_search_input').val().trim();
+        const button = $(this);
+        
+        if (!itemSearchTerm) {
+            alert('Vui lòng nhập Tên hoặc Mã Mặt hàng để tra cứu nhanh.');
+            return;
+        }
+
+        button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+        
+        // Ẩn các khối không liên quan
+        $('#block2-container, #block3-container').hide();
+        // Hiện khối 1
+        $('#block1-container').show(); 
+        
+        const formData = new FormData();
+        formData.append('item_search', itemSearchTerm);
+
+        fetch('/sales/api/quick_lookup', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) { return response.json().then(err => { throw new Error(err.message || 'Lỗi server'); }); }
+            return response.json();
+        })
+        .then(data => {
+            
+            // SỬA LỖI 2: Hủy DataTables cũ (nếu có)
+            if (block1Table) {
+                block1Table.destroy();
+                $('#block1-filter-toolbar').empty(); 
+            }
+            
+            const tbody = $('#block1-table tbody');
+            tbody.empty(); 
+            
+            $('#block1-container .panel-heading span').text(`1. Tra cứu Tồn kho Nhanh (Khớp với '${itemSearchTerm}')`);
+            
+            if (data && data.length > 0) {
+                data.forEach(item => {
+                    const row = `<tr>
+                        <td class="text-start">${item.InventoryID}</td>
+                        <td class="text-start">${item.InventoryName}</td>
+                        <td class="text-end">${formatCurrency(item.Ton)}</td>
+                        <td class="text-end">${formatCurrency(item.BackOrder)}</td>
+                        <td class="text-end">${formatCurrency(item.GiaBanQuyDinh)}</td>
+                        <td class="text-end">—</td>
+                        <td class="text-end">—</td>
+                    </tr>`;
+                    tbody.append(row);
+                });
+            } else {
+                tbody.append('<tr><td colspan="7" class="text-center">Không tìm thấy dữ liệu tra cứu nhanh.</td></tr>');
+            }
+            
+            // SỬA LỖI 2: Khởi tạo lại DataTables
+            initializeBlock1DataTable();
+        })
+        .catch(error => {
+            alert('Lỗi Tra cứu nhanh: ' + error.message);
+        })
+        .finally(() => {
+            button.prop('disabled', false).html('<i class="fas fa-bolt"></i> Tra nhanh Tồn');
+        });
+    });
+    
+    // --- YÊU CẦU 2: BỔ SUNG KHÓA CHỨC NĂNG IN (PRINT BLOCKING) ---
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+            e.preventDefault();
+            alert("Chức năng in đã bị khóa trên trang này.");
+        }
+    }, true); 
+
+    window.print = function() {
+        alert("Chức năng in đã bị khóa trên trang này.");
+    };
+    
+    // Chặn chuột phải
+    document.addEventListener('contextmenu', e => e.preventDefault()); 
 
 });
 </script>

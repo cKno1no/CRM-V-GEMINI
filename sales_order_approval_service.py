@@ -142,22 +142,45 @@ class SalesOrderApprovalService:
         
         # 2. TRƯỜNG HỢP PHẢI XÉT NGƯỜI DUYỆT CẤP CAO (Kiểm tra đúng người trong nhóm)
         else: 
-            # Giả định config.ERP_APPROVER_MASTER chứa logic duyệt cấp cao
-            approver_data = self.db.get_data(f"SELECT TOP 1 Approver FROM {config.ERP_APPROVER_MASTER} WHERE VoucherTypeID = ?", (voucher_type,))
-            approver_id = approver_data[0]['Approver'] if approver_data else 'ADMIN'
+            # --- BẮT ĐẦU SỬA LOGIC (GIỐNG BÊN CHÀO GIÁ) ---
+            # Bỏ `TOP 1`, lấy về DANH SÁCH người duyệt
+            approver_query = f"""
+                SELECT Approver 
+                FROM {config.ERP_APPROVER_MASTER} 
+                WHERE VoucherTypeID = ?
+            """
+            approver_data = self.db.get_data(approver_query, (voucher_type,))
             
-            approval_status['ApproverDisplay'] = approver_id
-            approval_status['ApproverRequired'] = approver_id
+            # Tạo danh sách approvers
+            approvers = [d['Approver'].strip() for d in approver_data if d.get('Approver')] if approver_data else []
             
-            if approver_id != current_user_code:
+            if not approvers:
+                approvers = ['ADMIN'] # Mặc định là ADMIN nếu không ai được gán
+
+            approvers_str = ", ".join(approvers)
+            
+            approval_status['ApproverDisplay'] = approvers_str
+            approval_status['ApproverRequired'] = approvers_str # Lưu danh sách (để UI có thể check)
+            
+            # Kiểm tra xem user hiện tại CÓ TRONG danh sách duyệt không
+            is_current_user_approver = current_user_code in approvers
+
+            if not is_current_user_approver:
+                 # Người dùng này không có quyền duyệt
                  approval_status['Passed'] = False
                  if not ratio_failed:
-                     approval_status['Reason'] = f"PENDING: Cần sự duyệt của {approver_id}."
+                     approval_status['Reason'] = f"PENDING: Cần sự duyệt của {approvers_str}."
                  else:
-                     approval_status['Reason'] = f"FAILED: {approval_status['Reason']} (Cần Sửa lỗi & Duyệt bởi {approver_id})."
-                 
-            elif approver_id == current_user_code and not approval_status['Passed']:
-                approval_status['Reason'] = f"FAILED: {approval_status['Reason']} (Cần SỬA LỖI TRƯỚC KHI DUYỆT)."
+                     # Vừa fail ratio, vừa sai người duyệt
+                     approval_status['Reason'] = f"FAILED: {approval_status['Reason']} (Cần Sửa lỗi & Duyệt bởi {approvers_str})."
+            
+            elif is_current_user_approver and not approval_status['Passed']:
+                # Đúng người duyệt, nhưng fail ratio (hoặc điều kiện 1)
+                approval_status['Reason'] = f"FAILED: {approval_status['Reason']} (Bạn là người duyệt, Cần SỬA LỖI TRƯỚC KHI DUYỆT)."
+            
+            # Trường hợp còn lại: is_current_user_approver = True VÀ approval_status['Passed'] = True
+            # -> Giữ nguyên 'Passed' = True, sẵn sàng để duyệt.
+            # --- KẾT THÚC SỬA LOGIC ---
             
         return order
 
@@ -271,4 +294,4 @@ class SalesOrderApprovalService:
             return {"success": False, "message": f"Duyệt thất bại. Lỗi hệ thống: {str(e)}"}
         finally:
             if conn:
-                conn.close()  
+                conn.close()

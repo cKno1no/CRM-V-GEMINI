@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Phân tích Công nợ Quá hạn</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
+    <style>
+        body { font-family: 'Roboto', sans-serif; background-color: #F7F9FC; color: #3C4043; }
+        .container-fluid { max-width: 98%; margin-top: 30px; }
+        h1 { font-weight: 700; color: #DB4437; border-bottom: 3px solid #F4B400; padding-bottom: 10px; margin-bottom: 25px; }
+        .card { box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 12px; border: none; }
+        .kpi-tile { padding: 20px; border-radius: 10px; color: white; text-align: center; }
+        .kpi-label { font-size: 0.9rem; font-weight: 500; opacity: 0.9; }
+        .kpi-value { font-size: 2rem; font-weight: 700; }
+        .bg-debt-total { background-color: #6c757d; }
+        .bg-debt-risk { background-color: #DB4437; }
+        .bg-debt-warn { background-color: #F4B400; }
+        .table-aging th { 
+            position: sticky !important; top: 0; z-index: 10; 
+            background-color: #DB4437 !important; color: white !important; 
+            font-weight: 600; text-align: center !important; font-size: 0.8rem;
+        }
+        .table-aging td { vertical-align: middle; text-align: right; font-size: 0.85rem; }
+        .text-start { text-align: left !important; }
+        .text-center { text-align: center !important; }
+        
+        .debt-overdue { color: #DB4437; font-weight: 700; background-color: #FCE8E6; }
+        .debt-over-180 { color: #DB4437; font-weight: 700; }
+        .debt-warn-91 { color: #E65100; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1><i class="fas fa-dollar-sign me-2"></i> PHÂN TÍCH CÔNG NỢ QUÁ HẠN (AR AGING)</h1>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i>Về Portal</a>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-4 col-md-6">
+                <div class="kpi-tile bg-debt-total">
+                    <div class="kpi-label">TỔNG CÔNG NỢ</div>
+                    <div class="kpi-value">{{ "{:,.0f}".format(kpi_total_debt | float) }}</div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="kpi-tile bg-debt-risk">
+                    <div class="kpi-label">TỔNG NỢ QUÁ HẠN (ALL)</div>
+                    <div class="kpi-value">{{ "{:,.0f}".format(kpi_total_overdue | float) }}</div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="kpi-tile bg-debt-warn" style="background-color: #b71c1c;">
+                    <div class="kpi-label">NỢ RỦI RO (> 180 NGÀY)</div>
+                    <div class="kpi-value">{{ "{:,.0f}".format(kpi_over_180 | float) }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('ar_aging_dashboard') }}" class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="customer_name" class="form-label small text-muted">Lọc theo Tên Khách hàng</label>
+                        <input type="text" name="customer_name" id="customer_name" class="form-control" 
+                                value="{{ customer_name_filter | default('') }}" placeholder="Tên KH (ví dụ: Vina Kraft)">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="fas fa-search me-1"></i> Lọc
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card" style="background-color: white;">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table id="ar-aging-table" class="table table-sm table-bordered table-hover mb-0 table-aging">
+                        <thead>
+                            <tr>
+                                <th class="text-start">Mã KH</th>
+                                <th class="text-start">Tên Khách hàng</th>
+                                <th class="text-start">NVKD</th>
+                                <th>Hạn nợ (ngày)</th>
+                                <th>Tổng Nợ</th>
+                                <th>Tổng Nợ Quá Hạn</th>
+                                <th>Trong hạn</th>
+                                <th>Nợ 1-30 ngày</th>
+                                <th>Nợ 31-90 ngày</th>
+                                <th>Nợ 91-180 ngày</th>
+                                <th>Nợ > 180 ngày</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in aging_data %}
+                            <tr>
+                                <td class="text-start">{{ row.ObjectID }}</td>
+                                <td class="text-start">{{ row.ObjectName | default('N/A') }}</td>
+                                <td class="text-start">{{ row.SalesManName | default('N/A') }}</td>
+                                
+                                <td class="text-center">{{ row.ReDueDays }}</td>
+                                <td class="fw-bold">{{ "{:,.0f}".format(row.TotalDebt | float) }}</td>
+                                <td class="debt-overdue">{{ "{:,.0f}".format(row.TotalOverdueDebt | float) }}</td>
+                                
+                                <td>{{ "{:,.0f}".format(row.Debt_Current | float) }}</td>
+                                <td>{{ "{:,.0f}".format(row.Debt_Range_1_30 | float) }}</td>
+                                <td>{{ "{:,.0f}".format(row.Debt_Range_31_90 | float) }}</td>
+                                <td class="debt-warn-91">{{ "{:,.0f}".format(row.Debt_Range_91_180 | float) }}</td>
+                                <td class="debt-over-180">{{ "{:,.0f}".format(row.Debt_Over_180 | float) }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="11" class="text-center text-muted">Không tìm thấy dữ liệu công nợ theo tiêu chí lọc.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            // Kích hoạt DataTables
+            $('#ar-aging-table').DataTable({
+                "paging": true,
+                "pageLength": 25,
+                "lengthChange": true,
+                "searching": false, 
+                "ordering": true,
+                "info": true,
+                "order": [[5, 'desc'], [4, 'desc']], // Sắp xếp theo Tổng Nợ Quá Hạn
+                "language": {
+                    "lengthMenu": "Hiển thị _MENU_ mục",
+                    "zeroRecords": "Không tìm thấy dữ liệu.",
+                    "info": "Hiển thị từ _START_ đến _END_ / Tổng _TOTAL_ KH",
+                    "infoEmpty": "Không có dữ liệu",
+                    "paginate": { "next": "Sau", "previous": "Trước" }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

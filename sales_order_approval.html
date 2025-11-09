@@ -190,11 +190,11 @@
                                         </td>
                                         
                                         <td>
-                                            {% if status and approver_id == current_user_code %}
+                                            {% if status and current_user_code in approver_id %}
                                                 <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); approveOrder(this)">
                                                     <i class="fas fa-check"></i> Duyệt
                                                 </button>
-                                            {% elif approver_id == current_user_code and 'FAILED' in result.Reason %}
+                                            {% elif current_user_code in approver_id and 'FAILED' in result.Reason %}
                                                 <button class="btn btn-danger btn-sm" disabled>
                                                     <i class="fas fa-times"></i> Cần sửa lỗi
                                                 </button>
@@ -204,7 +204,7 @@
                                                 <span class="text-muted small">Chờ {{ result.ApproverDisplay }}</span>
                                             {% endif %}
                                         </td>
-                                    </tr>
+                                        </tr>
                                     {% endfor %}
                                     {% if not orders %}
                                     <tr><td colspan="9" class="text-center text-muted">Không có đơn hàng nào cần duyệt.</td></tr>
@@ -258,8 +258,8 @@
 
             details.forEach(item => {
                 // Sử dụng hàm formatCurrency cho việc hiển thị
-                const DonGiaQuyDinh_raw = item.DonGiaQuyDinh.replace(/,/g, '');
-                const DonGia_raw = item.DonGia.replace(/,/g, '');
+                const DonGiaQuyDinh_raw = String(item.DonGiaQuyDinh).replace(/,/g, '');
+                const DonGia_raw = String(item.DonGia).replace(/,/g, '');
                 
                 const price_ratio_color = (parseFloat(DonGia_raw) < parseFloat(DonGiaQuyDinh_raw)) ? 'text-danger' : 'text-success';
                 const date01_color = (item.Date01 === 'N/A') ? 'text-danger fw-bold' : '';

@@ -26,6 +26,9 @@ from services.sales_lookup_service import SalesLookupService # <--- SỬA THÀNH
 # ...
 from routes import sales_bp # <--- IMPORT BLUEPRINT TRA CỨU
 from services.task_service import TaskService
+from services.chatbot_service import ChatbotService # <-- IMPORT MỚI
+from services.ar_aging_service import ARAgingService # <-- Import AR Aging
+from services.delivery_service import DeliveryService # <-- THÊM IMPORT MỚI
 # =========================================================================
 # KHỞI TẠO ỨNG DỤNG VÀ DỊCH VỤ (SERVICE INJECTION)
 # =========================================================================
@@ -36,6 +39,13 @@ app.config['UPLOAD_FOLDER'] = config.UPLOAD_FOLDER_PATH
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=6) # <-- Đặt thời gian sống tối đa là 6 tiếng
 # 1. KHỞI TẠO TẦNG TRUY CẬP DỮ LIỆU
 db_manager = DBManager()
+
+print("="*50)
+print(f"!!! CHẨN ĐOÁN KẾT NỐI (PYTHON) !!!")
+print(f"!!! Đang kết nối tới SERVER: {config.DB_SERVER}")
+print(f"!!! Đang kết nối tới DATABASE: {config.DB_NAME}")
+print(f"!!! Đang sử dụng USER: {config.DB_UID}")
+print("="*50)
 
 # 2. KHỞI TẠO CÁC TẦNG DỊCH VỤ
 sales_service = SalesService(db_manager)
@@ -48,6 +58,10 @@ lookup_service = SalesLookupService(db_manager)
 task_service = TaskService(db_manager) # <--- KHỞI TẠO TASK SERVICE MỚI
 sales_order_approval_service = SalesOrderApprovalService(db_manager)
 quotation_approval_service = QuotationApprovalService(db_manager)
+chatbot_service = ChatbotService(lookup_service, customer_service)
+ar_aging_service = ARAgingService(db_manager)
+delivery_service = DeliveryService(db_manager) # <-- KHỞI TẠO SERVICE MỚI
+# --- KẾT THÚC KHỞI TẠO MỚI ---
 # =========================================================================
 # HÀM HELPER VÀ XỬ LÝ LOGIN/AUTH
 # =========================================================================
@@ -1064,12 +1078,22 @@ def quote_approval_dashboard():
     # 3. Gọi Service để lấy dữ liệu Báo giá trong khoảng ngày
     quotes_for_review = approval_service.get_quotes_for_approval(user_code, date_from_str, date_to_str)
     
+    # --- BỔ SUNG: Tải danh sách NVKD để truyền cho Modal ---
+    salesman_list = []
+    try:
+        # Tận dụng hàm đã có trong task_service để lấy danh sách NVKD
+        salesman_list = task_service.get_eligible_helpers() 
+    except Exception as e:
+        print(f"Lỗi tải danh sách NVKD cho Quote Approval: {e}")
+    # --- KẾT THÚC BỔ SUNG ---
+
     return render_template(
         'quote_approval.html',
         quotes=quotes_for_review,
         current_user_code=user_code,
         date_from=date_from_str, 
-        date_to=date_to_str     
+        date_to=date_to_str,
+        salesman_list=salesman_list  # <-- Truyền danh sách NVKD vào template
     )
 # CRM STDD/app.py - API Handler cho duyệt báo giá
 
@@ -1474,6 +1498,228 @@ def api_approve_order():
     except Exception as e:
         print(f"LỖI HỆ THỐNG API DUYỆT DHB: {e}")
         return jsonify({'success': False, 'message': f'Lỗi hệ thống: {str(e)}'}), 500
+
+# 2. Thêm API endpoint mới (vào khu vực API ROUTES)
+@app.route('/api/quote/update_salesman', methods=['POST'])
+@login_required
+def api_update_quote_salesman():
+    """API: Cập nhật NVKD (SalesManID) cho một Chào giá."""
+    data = request.json
+    quotation_id = data.get('quotation_id')
+    new_salesman_id = data.get('new_salesman_id')
+    
+    if not quotation_id or not new_salesman_id:
+        return jsonify({'success': False, 'message': 'Thiếu QuotationID hoặc NVKD mới.'}), 400
+        
+    try:
+        # Gọi service để thực hiện update
+        result = quotation_approval_service.update_quote_salesman(quotation_id, new_salesman_id)
+        
+        if result['success']:
+            return jsonify({'success': True, 'message': result['message']})
+        else:
+            return jsonify({'success': False, 'message': result['message']}), 500
+            
+    except Exception as e:
+        app.logger.error(f"Lỗi API cập nhật NVKD: {e}")
+        return jsonify({'success': False, 'message': f'Lỗi hệ thống: {str(e)}'}), 500
+    
+@app.route('/api/chatbot_query', methods=['POST'])
+@login_required
+def api_chatbot_query():
+    """API: Nhận tin nhắn từ Widget Chatbot và trả về phản hồi."""
+    
+    data = request.json
+    message = data.get('message', '').strip()
+    
+    if not message:
+        return jsonify({'response': 'Vui lòng nhập câu hỏi.'})
+        
+    # Lấy thông tin session để truyền vào service (cho bảo mật/phân quyền)
+    user_code = session.get('user_code')
+    user_role = session.get('user_role', '').strip().upper()
+    
+    try:
+        # 1. Gọi "bộ não" Chatbot
+        response_message = chatbot_service.process_message(message, user_code, user_role)
+        
+        # 2. Trả về phản hồi đã định dạng
+        # (Chatbot service đã tự định dạng dấu * và xuống dòng)
+        return jsonify({'response': response_message})
+        
+    except Exception as e:
+        print(f"LỖI API Chatbot: {e}")
+        return jsonify({'response': f'Lỗi hệ thống: {str(e)}'}), 500
+
+@app.route('/ar_aging', methods=['GET', 'POST'])
+@login_required
+def ar_aging_dashboard():
+    """ROUTE: Hiển thị Dashboard Công nợ Quá hạn (AR Aging)."""
+    
+    user_code = session.get('user_code')
+    user_role = session.get('user_role', '').strip().upper()
+    
+    customer_name_filter = request.form.get('customer_name', '')
+    
+    aging_data = ar_aging_service.get_ar_aging_summary(
+        user_code, 
+        user_role, 
+        customer_name_filter
+    )
+    
+    # --- SỬA LOGIC TÍNH KPI ---
+    kpi_total_debt = sum(row.get('TotalDebt', 0) for row in aging_data)
+    # KPI MỚI: TỔNG NỢ QUÁ HẠN
+    kpi_total_overdue = sum(row.get('TotalOverdueDebt', 0) for row in aging_data)
+    # KPI Rủi ro nghiêm trọng (> 180 ngày)
+    kpi_over_180 = sum(row.get('Debt_Over_180', 0) for row in aging_data)
+    # --- KẾT THÚC SỬA ---
+    
+    return render_template(
+        'ar_aging.html', 
+        aging_data=aging_data,
+        customer_name_filter=customer_name_filter,
+        # SỬA TÊN BIẾN
+        kpi_total_debt=kpi_total_debt,
+        kpi_total_overdue=kpi_total_overdue,
+        kpi_over_180=kpi_over_180
+    )
+# =========================================================================
+# =========================================================================
+# MODULE 6: ĐIỀU PHỐI GIAO VẬN (DELIVERY PLANNING)
+# (Cập nhật các hàm này)
+# =========================================================================
+# =========================================================================
+# MODULE 6: ĐIỀU PHỐI GIAO VẬN (DELIVERY PLANNING)
+# =========================================================================
+
+# =========================================================================
+# MODULE 6: ĐIỀU PHỐI GIAO VẬN (DELIVERY PLANNING)
+# =========================================================================
+
+@app.route('/delivery_dashboard', methods=['GET'])
+@login_required
+def delivery_dashboard():
+    """ROUTE: Hiển thị Bảng Điều phối Giao vận (2 Tab)."""
+    
+    # --- YÊU CẦU 4: LOGIC PHÂN QUYỀN ---
+    user_code = session.get('user_code')
+    user_role = session.get('user_role', '').strip().upper()
+    user_bo_phan = session.get('bo_phan', '').strip() 
+    
+    is_admin_or_gm = user_role in ['ADMIN', 'GM']
+    is_thu_ky = user_bo_phan == '3. THU KY'
+    is_kho = user_bo_phan == '5. KHO'
+    
+    can_edit_planner = is_admin_or_gm
+    can_view_dispatch = is_admin_or_gm or is_kho or is_thu_ky
+    can_edit_dispatch = is_admin_or_gm or is_kho
+    # --- KẾT THÚC YÊU CẦU 4 ---
+
+    grouped_tasks_json, ungrouped_tasks_json = delivery_service.get_planning_board_data()
+    
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    today_weekday = datetime.now().strftime('%A').upper() 
+    
+    # --- LOGIC CHO TAB 2 (KHO - Dùng danh sách LXH LẺ) ---
+    
+    # Lấy danh sách các phiếu LXH đang ở trạng thái CẦN XỬ LÝ (Open/Da Soan)
+    dispatch_pool = [t for t in ungrouped_tasks_json if t['DeliveryStatus'] != 'Da Giao']
+    
+    # 1a. Hôm nay phải giao (Planned_Day là hôm nay HOẶC URGENT, và chưa Giao)
+    kho_hom_nay = [t for t in dispatch_pool if t['Planned_Day'] == today_weekday or t['Planned_Day'] == 'URGENT']
+    
+    # 1b. Trong tuần sẽ giao (Planned_Day là ngày khác trong tuần, và chưa Giao)
+    kho_trong_tuan = [t for t in dispatch_pool if t['Planned_Day'] not in ['POOL', 'URGENT', 'WITHIN_WEEK', 'PICKUP', today_weekday]]
+    
+    # 1c. Sắp xếp trong tuần (Planned_Day là WITHIN_WEEK)
+    kho_sap_xep = [t for t in dispatch_pool if t['Planned_Day'] == 'WITHIN_WEEK']
+    
+    # (YÊU CẦU 2b) Đã Giao
+    kho_da_giao = [t for t in ungrouped_tasks_json if t['DeliveryStatus'] == 'Da Giao']
+    # --- KẾT THÚC LOGIC TAB 2 ---
+
+
+    return render_template(
+        'delivery_dashboard.html',
+        grouped_tasks_json=grouped_tasks_json,   
+        ungrouped_tasks_json=ungrouped_tasks_json, 
+        
+        # Truyền List cho Tab 2 (Jinja)
+        kho_hom_nay=kho_hom_nay,
+        kho_trong_tuan=kho_trong_tuan,
+        kho_sap_xep=kho_sap_xep,
+        kho_da_giao=kho_da_giao, 
+        
+        current_date_str=today_str,
+        current_weekday_str=today_weekday,
+        
+        can_edit_planner=can_edit_planner,
+        can_view_dispatch=can_view_dispatch,
+        can_edit_dispatch=can_edit_dispatch
+    )
+
+# --- API CHO DELIVERY (THÊM PHÂN QUYỀN) ---
+
+@app.route('/api/delivery/set_day', methods=['POST'])
+@login_required
+def api_delivery_set_day():
+    """API: (Thư ký) Kéo thả 1 LXH hoặc 1 Nhóm KH vào 1 ngày kế hoạch."""
+    
+    user_role = session.get('user_role', '').strip().upper()
+    if user_role not in ['ADMIN', 'GM']:
+        return jsonify({'success': False, 'message': 'Bạn không có quyền thực hiện thao tác này.'}), 403
+        
+    data = request.json
+    user_code = session.get('user_code')
+    
+    voucher_id = data.get('voucher_id') 
+    object_id = data.get('object_id')   
+    new_day = data.get('new_day')       
+    old_day = data.get('old_day') # (Yêu cầu 1) Lấy CỘT CŨ
+
+    if not new_day or not old_day:
+        return jsonify({'success': False, 'message': 'Thiếu Ngày kế hoạch (Mới hoặc Cũ).'}), 400
+    if not voucher_id and not object_id:
+        return jsonify({'success': False, 'message': 'Thiếu ID (Voucher/Object).'}), 400
+
+    success = delivery_service.set_planned_day(voucher_id, object_id, new_day, user_code, old_day)
+    
+    if success:
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False, 'message': 'Lỗi CSDL khi cập nhật Kế hoạch.'}), 500
+
+@app.route('/api/delivery/set_status', methods=['POST'])
+@login_required
+def api_delivery_set_status():
+    user_role = session.get('user_role', '').strip().upper()
+    user_bo_phan = session.get('bo_phan', '').strip()
+    if user_role not in ['ADMIN', 'GM'] and user_bo_phan != '5. KHO':
+        return jsonify({'success': False, 'message': 'Bạn không có quyền thực hiện thao tác này.'}), 403
+
+    data = request.json
+    user_code = session.get('user_code')
+    voucher_id = data.get('voucher_id')
+    new_status = data.get('new_status') 
+    if not all([voucher_id, new_status]):
+        return jsonify({'success': False, 'message': 'Thiếu VoucherID hoặc Trạng thái.'}), 400
+    success = delivery_service.set_delivery_status(voucher_id, new_status, user_code)
+    if success:
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False, 'message': 'Lỗi CSDL khi cập nhật Trạng thái.'}), 500
+
+@app.route('/api/delivery/get_items/<string:voucher_id>', methods=['GET'])
+@login_required
+def api_delivery_get_items(voucher_id):
+    user_role = session.get('user_role', '').strip().upper()
+    user_bo_phan = session.get('bo_phan', '').strip()
+    if user_role not in ['ADMIN', 'GM'] and user_bo_phan not in ['5. KHO', '3. THU KY']:
+        return jsonify({'error': 'Bạn không có quyền xem dữ liệu này.'}), 403
+        
+    items = delivery_service.get_delivery_items(voucher_id)
+    return jsonify(items)
 
 if __name__ == '__main__':
     # Sử dụng Waitress WSGI server để xử lý kết nối SSE ổn định hơn
