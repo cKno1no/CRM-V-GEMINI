@@ -154,7 +154,7 @@
         <div class="d-flex justify-content-between align-items-center">
             <h1><i class="fas fa-certificate me-2"></i> PHÊ DUYỆT BÁO GIÁ CẦN KIỂM SOÁT</h1>
             <div class="d-flex gap-2">
-                <a href="{{ url_for('dashboard') }}" class="btn btn-header-action text-white" style="background-color: #4285F4;">
+                <a href="{{ url_for('index') }}" class="btn btn-header-action text-white" style="background-color: #4285F4;">
                     <i class="fas fa-home me-1"></i> Về Portal
                 </a>
                 <a href="{{ url_for('sales_order_approval_dashboard') }}" target="_blank" class="btn btn-header-action text-white" style="background-color: #34A853;">
@@ -207,13 +207,13 @@
                             <table id="approval-table" class="table table-hover table-approval"> 
                                 <thead>
                                     <tr>
-                                        <th class="col-hs">Hệ số <i class="fas fa-sort"></i></th>           
+                                        <th class="col-hs">Hệ số <i class="fas fa-sort"></i></th> 
                                         <th class="col-ma">Mã BG <i class="fas fa-sort"></i></th>
-                                        <th class="col-ngay">Ngày <i class="fas fa-sort"></i></th>                           
+                                        <th class="col-ngay">Ngày <i class="fas fa-sort"></i></th> 
                                         <th class="col-khach">Khách hàng <i class="fas fa-sort"></i></th>
-                                        <th class="col-nvkd">NVKD <i class="fas fa-sort"></i></th>            
-                                        <th class="col-nguoi-lap">TKKD <i class="fas fa-sort"></i></th>   
-                                        <th class="col-gt">Tổng GT <i class="fas fa-sort"></i></th>     
+                                        <th class="col-nvkd">NVKD <i class="fas fa-sort"></i></th> 
+                                        <th class="col-nguoi-lap">TKKD <i class="fas fa-sort"></i></th> 
+                                        <th class="col-gt">Tổng GT <i class="fas fa-sort"></i></th> 
                                         <th class="col-result">KẾT QUẢ KIỂM TRA <i class="fas fa-sort"></i></th>
                                         <th class="action-cell">Hành động</th>
                                     </tr>
@@ -252,8 +252,13 @@
                                         
                                         <td>{{ quote.ClientName | default('N/A') }}</td>
                                         
-                                        <td class="col-nvkd">{{ quote.NVKDName | default(quote.SalesManID) }}</td>
-                                        
+                                        <td class="col-nvkd" id="salesman-cell-{{ quote.QuotationID }}">
+                                            {{ quote.NVKDName | default(quote.SalesManID) }}
+                                            <button class="btn btn-xs btn-outline-primary p-0 px-1" style="font-size: 0.65rem;"
+                                                    onclick="event.stopPropagation(); openSalesmanModal('{{ quote.QuotationID }}', '{{ quote.QuotationNo }}', '{{ quote.SalesManID | default('') }}', '{{ quote.NVKDName | default('N/A') }}')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </td>
                                         <td class="col-nguoi-lap">{{ quote.SalesAdminName | default(quote.EmployeeID) }}</td> 
                                         
                                         <td class="text-end col-gt">{{ "{:,.0f}".format(quote.SaleAmount | float) }}</td>
@@ -270,7 +275,7 @@
                                                         <i class="fas fa-money-bill-wave me-1"></i> Cost
                                                     </button>
                                                 
-                                                {% elif status and approver_id == current_user_code %}
+                                                {% elif status and current_user_code in approver_id %}
                                                     <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); approveQuote(this)">
                                                         <i class="fas fa-check"></i> Duyệt
                                                     </button>
@@ -315,7 +320,6 @@
         </div>
     </div>
 
-    
     <div class="modal fade" id="costOverrideModal" tabindex="-1" aria-labelledby="costOverrideModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
@@ -342,6 +346,39 @@
         </div>
     </div>
     
+    <div class="modal fade" id="salesmanUpdateModal" tabindex="-1" aria-labelledby="salesmanUpdateModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="salesmanUpdateModalLabel">Thay đổi NVKD cho Báo giá</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Bạn đang thay đổi NVKD cho Báo giá: <strong id="salesmanModalQuoteNo">...</strong></p>
+                    <input type="hidden" id="salesmanModalQuoteID" value="">
+                    
+                    <div class="mb-3">
+                        <label for="currentSalesman" class="form-label">NVKD Hiện tại:</label>
+                        <input type="text" id="currentSalesman" class="form-control" readonly disabled>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newSalesmanSelect" class="form-label">Chọn NVKD Mới:</label>
+                        <select id="newSalesmanSelect" class="form-select" required>
+                            <option value="">-- Vui lòng chọn --</option>
+                            {% for salesman in salesman_list %}
+                                <option value="{{ salesman.USERCODE }}">{{ salesman.SHORTNAME }} ({{ salesman.USERCODE }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-success" id="saveSalesmanChangeBtn"><i class="fas fa-save me-1"></i> Lưu Thay đổi</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
@@ -588,6 +625,91 @@
             window.print = function() { alert("Chức năng in đã bị khóa trên trang này."); };
             document.addEventListener('contextmenu', e => e.preventDefault()); 
             document.addEventListener('copy', e => { e.preventDefault(); alert("Sao chép nội dung bị cấm."); });
+            
+            
+            // --- LOGIC MỚI ĐỂ CẬP NHẬT NVKD ---
+            let salesmanUpdateModalInstance = null;
+            
+            // Hàm mở Modal và truyền dữ liệu
+            window.openSalesmanModal = function(quoteId, quoteNo, currentSalesmanId, currentSalesmanName) {
+                if (!salesmanUpdateModalInstance) {
+                    salesmanUpdateModalInstance = new bootstrap.Modal(document.getElementById('salesmanUpdateModal'));
+                }
+                
+                $('#salesmanModalQuoteNo').text(quoteNo);
+                $('#salesmanModalQuoteID').val(quoteId);
+                
+                // Hiển thị tên hoặc ID nếu không có tên
+                const displayName = (currentSalesmanName && currentSalesmanName !== 'N/A' && currentSalesmanName.trim() !== '') ? `${currentSalesmanName} (${currentSalesmanId})` : currentSalesmanId;
+                $('#currentSalesman').val(displayName);
+                
+                // Reset dropdown
+                $('#newSalesmanSelect').val('');
+                
+                salesmanUpdateModalInstance.show();
+            }
+
+            // Hàm gọi API để lưu
+            $('#saveSalesmanChangeBtn').on('click', function() {
+                const button = $(this);
+                const quoteId = $('#salesmanModalQuoteID').val();
+                const newSalesmanId = $('#newSalesmanSelect').val();
+                
+                if (!newSalesmanId) {
+                    alert('Vui lòng chọn một NVKD mới.');
+                    return;
+                }
+
+                button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Đang lưu...');
+
+                fetch('/api/quote/update_salesman', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        quotation_id: quoteId,
+                        new_salesman_id: newSalesmanId
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) { 
+                        return response.json().then(err => { throw new Error(err.message || 'Lỗi không xác định'); }); 
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        
+                        // Cập nhật tên NVKD mới trên giao diện (trong bảng DataTables)
+                        const newSalesmanName = $('#newSalesmanSelect option:selected').text().split('(')[0].trim();
+                        const table = $('#approval-table').DataTable();
+                        const cell = $(`#salesman-cell-${quoteId}`);
+                        
+                        // Cập nhật nội dung ô
+                        const newContent = `${newSalesmanName} 
+                            <button class="btn btn-xs btn-outline-primary p-0 px-1" style="font-size: 0.65rem;"
+                                    onclick="event.stopPropagation(); openSalesmanModal('${quoteId}', '...', '${newSalesmanId}', '${newSalesmanName}')">
+                                <i class="fas fa-edit"></i>
+                            </button>`;
+                        
+                        // Cập nhật DataTables mà không filter lại
+                        table.cell(cell).data(newContent).draw('page'); 
+                        
+                        salesmanUpdateModalInstance.hide();
+                    } else {
+                        alert('Lỗi cập nhật: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Lỗi kết nối:', error);
+                    alert('Lỗi kết nối hoặc xử lý API: ' + error.message);
+                })
+                .finally(() => {
+                    button.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Lưu Thay đổi');
+                });
+            });
+            // --- KẾT THÚC LOGIC MỚI ---
+
         });
     </script>
 </body>

@@ -169,3 +169,19 @@ class CustomerService:
             quote['TimeCompleteValue'] = self._safe_strftime(time_completed)
             
         return quotes
+    
+    # --- HÀM MỚI (Hỗ trợ Chatbot) ---
+    def get_customer_by_name(self, name_fragment):
+        """
+        Tìm kiếm khách hàng (giống api/khachhang) nhưng trả về data cho service.
+        """
+        query = f"""
+            SELECT TOP 5 T1.ObjectID AS ID, T1.ShortObjectName AS FullName
+            FROM {config.ERP_IT1202} AS T1 
+            WHERE T1.ShortObjectName LIKE ? OR T1.ObjectID LIKE ? 
+            ORDER BY T1.ShortObjectName
+        """
+        like_param = f'%{name_fragment}%'
+        
+        data = self.db.get_data(query, (like_param, like_param))
+        return data if data else []

@@ -42,7 +42,7 @@ class QuotationApprovalService:
             """
 
         # 3. TRUY VẤN CHÍNH
-        where_conditions = ["T1.Status = 0", "T1.QuotationDate BETWEEN ? AND ?"] # FIX: Status=0
+        where_conditions = ["T1.OrderStatus = 0", "T1.QuotationDate BETWEEN ? AND ?"] # FIX: Status=0
         where_clause = " AND ".join(where_conditions)
         
         quote_query = f"""
@@ -348,7 +348,7 @@ class QuotationApprovalService:
             # 2. Thực hiện phê duyệt trong ERP (Update Status = 1)
             update_query_erp = f"""
                 UPDATE {config.ERP_QUOTES} -- OT2101
-                SET Status = 1 
+                SET OrderStatus = 1 
                 WHERE QuotationNo = ?
             """
             db.execute_query_in_transaction(conn, update_query_erp, (quotation_no,)) 
@@ -379,4 +379,29 @@ class QuotationApprovalService:
         finally:
             if conn:
                 conn.close()
-    
+    # CRM STDD/quotation_approval_service.py
+# ... (thêm vào cuối class QuotationApprovalService) ...
+
+    def update_quote_salesman(self, quotation_id, new_salesman_id):
+        """
+        Cập nhật SalesManID (NVKD) cho một Chào giá (OT2101) dựa trên QuotationID.
+        """
+        db = self.db
+        
+        # Cập nhật bảng OT2101 (Bảng Header của Chào giá)
+        update_query = f"""
+            UPDATE {config.ERP_QUOTES} 
+            SET SalesManID = ? 
+            WHERE QuotationID = ?
+        """
+        
+        try:
+            # Sử dụng execute_non_query (tự động commit)
+            if db.execute_non_query(update_query, (new_salesman_id, quotation_id)):
+                return {"success": True, "message": "Cập nhật NVKD thành công."}
+            else:
+                return {"success": False, "message": "Lệnh UPDATE không thực thi."}
+                
+        except Exception as e:
+            print(f"LỖI UPDATE SALESMAN (SERVICE): {e}")
+            return {"success": False, "message": f"Lỗi hệ thống: {str(e)}"}

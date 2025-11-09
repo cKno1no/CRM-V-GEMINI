@@ -147,9 +147,11 @@ class DBManager:
         return None
         
     def execute_sp_multi(self, sp_name, params=None):
-        """Thực thi SP và trả về nhiều Result Set (đã fix lỗi NoneType)."""
+        """
+        (ĐÃ SỬA) Thực thi SP và trả về tất cả các Result Set (linh hoạt).
+        """
         conn = None
-        results = []
+        results = [] # <--- Danh sách chứa các list (mỗi list là 1 result set)
         try:
             conn = pyodbc.connect(self.conn_str)
             cursor = conn.cursor()
@@ -162,36 +164,35 @@ class DBManager:
             else:
                 cursor.execute(sql_command)
                 
-            while True:
-                if cursor.description is None:
-                    if cursor.nextset() == True:
-                        continue
-                    else:
-                        break
-
-                columns = [column[0] for column in cursor.description]
-                data = cursor.fetchall()
+            # BẮT ĐẦU VÒNG LẶP LẤY KẾT QUẢ
+            while True: 
                 
-                if data:
-                    df = pd.DataFrame.from_records(data, columns=columns)
-                    for col in df.select_dtypes(include=['object']).columns:
-                         df[col] = df[col].astype(str).str.strip().replace('nan', '').replace('None', '')
-                    results.append(df.to_dict('records'))
-                else:
-                     results.append([])
-
+                # 1. Lấy dữ liệu (nếu có)
+                if cursor.description: # Kiểm tra xem có cột hay không
+                    columns = [column[0] for column in cursor.description]
+                    data = cursor.fetchall()
+                    
+                    # Chuyển đổi sang DataFrame để làm sạch (giống get_data)
+                    if data:
+                        df = pd.DataFrame.from_records(data, columns=columns)
+                        for col in df.select_dtypes(include=['object']).columns:
+                             df[col] = df[col].astype(str).str.strip().replace('nan', '').replace('None', '')
+                        results.append(df.to_dict('records'))
+                    else:
+                         results.append([]) # Thêm list rỗng nếu query không có data
+                
+                # 2. Di chuyển đến result set tiếp theo
                 if not cursor.nextset():
-                    break
+                    break # Kết thúc nếu không còn result set nào
 
-            while len(results) < 5:
-                 results.append([])
-                 
+            # Trả về tất cả các result set đã thu thập
             return results
             
         except pyodbc.Error as ex:
             sqlstate = ex.args[0]
             print(f"LỖI SQL SP - CODE: {sqlstate}, SP: {sp_name}, Params: {params}")
-            return [[]] * 5
+            # Trả về list rỗng tương ứng với số lượng lỗi (hoặc chỉ 1 list rỗng)
+            return [[]] 
         finally:
             if conn:
                 conn.close()

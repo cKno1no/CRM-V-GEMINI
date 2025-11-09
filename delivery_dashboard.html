@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Bảng Điều phối Giao vận</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        body { font-family: 'Roboto', sans-serif; background-color: #F7F9FC; }
+        .container-fluid { max-width: 98%; margin-top: 30px; }
+        h1 { font-weight: 700; color: #007bff; border-bottom: 3px solid #007bff; padding-bottom: 10px; }
+        
+        .kanban-board-container { display: flex; width: 100%; overflow-x: auto; gap: 15px; padding: 10px; min-height: 80vh; }
+        .kanban-column { flex-shrink: 0; width: 280px; background-color: #e9ecef; border-radius: 8px; padding: 0; display: flex; flex-direction: column; max-height: 80vh; }
+        .kanban-column-header { font-weight: 700; font-size: 1rem; padding: 12px; border-bottom: 2px solid #ccc; text-align: center; background-color: #dee2e6; border-top-left-radius: 8px; border-top-right-radius: 8px; }
+        
+        /* (YÊU CẦU 2: THẨM MỸ - MÀU SẮC KHỐI KANBAN) */
+        #POOL .kanban-column-header { background-color: #6c757d; color: white; } 
+        #URGENT .kanban-column-header { background-color: #DB4437; color: white; } 
+        #WITHIN_WEEK .kanban-column-header { background-color: #F9AA33; color: #212529; } 
+        #COMPLETED .kanban-column-header { background-color: #34A853; color: white; } 
+        #MONDAY .kanban-column-header, #TUESDAY .kanban-column-header, #WEDNESDAY .kanban-column-header,
+        #THURSDAY .kanban-column-header, #FRIDAY .kanban-column-header, #SATURDAY .kanban-column-header {
+            background-color: #0d6efd; color: white; border-bottom-color: #0a58ca;
+        }
+
+        .task-list { min-height: 100px; overflow-y: auto; flex-grow: 1; padding: 10px; }
+        
+        .delivery-card { background-color: white; border-radius: 6px; padding: 10px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 5px solid #007bff; font-size: 0.85rem; line-height: 1.4; cursor: grab; }
+        .delivery-card:active { cursor: grabbing; }
+        
+        /* (YÊU CẦU 1) Thẻ Gộp nhóm (Màu xanh) */
+        .delivery-card.group-card {
+            border-left-color: #198754;
+            background-color: #f6fff9;
+        }
+        
+        .delivery-card.no-drag { cursor: not-allowed; }
+        .delivery-card.status-open { border-left-color: #6c757d; }
+        .delivery-card.status-dasoan { border-left-color: #ffc107; background-color: #fffbeb; }
+        .delivery-card.status-dagiao { border-left-color: #198754; background-color: #f0fdf4; opacity: 0.8; }
+        .delivery-card.overdue { border-left-color: #DB4437 !important; background-color: #FCE8E6; }
+        
+        .item-title { font-weight: 600; font-size: 0.9rem; }
+        .item-customer { color: #007bff; font-weight: 600; }
+        .item-details { font-size: 0.8rem; color: #6c757d; }
+        .drag-over { background-color: #d6e8ff; border: 2px dashed #007bff; }
+        
+        .dispatch-column-kho { flex: 1; min-width: 250px; }
+        #dispatch-view .delivery-card { cursor: pointer; }
+        #dispatch-view .delivery-card.no-edit { cursor: not-allowed; }
+        
+        #confirmDeliveryModal .modal-body { max-height: 400px; overflow-y: auto; }
+        .btn-status-dasoan { background-color: #ffc107; color: #212529; }
+        .btn-status-dagiao { background-color: #198754; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-truck-loading me-2"></i> BẢNG ĐIỀU PHỐI GIAO VẬN</h1>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i>Về Portal</a>
+        </div>
+        
+        <ul class="nav nav-tabs mb-3" id="deliveryTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="planner-tab" data-bs-toggle="tab" data-bs-target="#planner-view" type="button" role="tab">
+                    <i class="fas fa-calendar-alt me-2"></i> 1. Lập Kế hoạch Tuần (Thư ký)
+                </button>
+            </li>
+            {% if can_view_dispatch %} <li class="nav-item" role="presentation">
+                <button class="nav-link" id="dispatch-tab" data-bs-toggle="tab" data-bs-target="#dispatch-view" type="button" role="tab">
+                    <i class="fas fa-shipping-fast me-2"></i> 2. Thực thi Giao hàng (Kho)
+                </button>
+            </li>
+            {% endif %}
+        </ul>
+        
+        <div class="tab-content" id="deliveryTabsContent">
+            
+            <div class="tab-pane fade show active" id="planner-view" role="tabpanel">
+                <div class="kanban-board-container" id="planner-board">
+                    
+                    <div class="kanban-column" id="POOL" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <div class="kanban-column-header">
+                            <i class="fas fa-inbox me-2"></i> BỂ CHỜ (POOL)
+                        </div>
+                        <div class="task-list" id="task-list-POOL">
+                            </div>
+                    </div>
+                    
+                    <div class="kanban-column" id="URGENT" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <div class="kanban-column-header">
+                            <i class="fas fa-bolt me-2"></i> GIAO GẤP
+                        </div>
+                        <div class="task-list" id="task-list-URGENT"></div>
+                    </div>
+                    
+                    <div class="kanban-column" id="WITHIN_WEEK" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <div class="kanban-column-header">SẮP XẾP TRONG TUẦN</div>
+                        <div class="task-list" id="task-list-WITHIN_WEEK"></div>
+                    </div>
+                    
+                    <div class="kanban-column" id="MONDAY" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <div class="kanban-column-header">THỨ 2</div>
+                        <div class="task-list" id="task-list-MONDAY"></div>
+                    </div>
+                    <div class="kanban-column" id="TUESDAY" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <div class="kanban-column-header">THỨ 3</div>
+                        <div class="task-list" id="task-list-TUESDAY"></div>
+                    </div>
+                    <div class="kanban-column" id="WEDNESDAY" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <div class="kanban-column-header">THỨ 4</div>
+                        <div class="task-list" id="task-list-WEDNESDAY"></div>
+                    </div>
+                    <div class="kanban-column" id="THURSDAY" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <div class="kanban-column-header">THỨ 5</div>
+                        <div class="task-list" id="task-list-THURSDAY"></div>
+                    </div>
+                    <div class="kanban-column" id="FRIDAY" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <div class="kanban-column-header">THỨ 6</div>
+                        <div class="task-list" id="task-list-FRIDAY"></div>
+                    </div>
+                    <div class="kanban-column" id="SATURDAY" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <div class="kanban-column-header">THỨ 7</div>
+                        <div class="task-list" id="task-list-SATURDAY"></div>
+                    </div>
+                    
+                    <div class="kanban-column" id="COMPLETED" ondrop="false" ondragover="false"> <div class="kanban-column-header">
+                            <i class="fas fa-check-circle me-2"></i> ĐÃ GIAO (7 NGÀY)
+                        </div>
+                        <div class="task-list" id="task-list-COMPLETED">
+                            </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% if can_view_dispatch %} 
+            <div class="tab-pane fade" id="dispatch-view" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4>Kế hoạch Giao hàng cho Hôm nay ({{ current_date_str }} - {{ current_weekday_str }})</h4>
+                    <div class="col-md-4">
+                        <input type="text" id="dispatchSearchInput" class="form-control" placeholder="Lọc nhanh theo Mã LXH, Tên KH, RefNo02...">
+                    </div>
+                </div>
+                
+                <div class="kanban-board-container" id="dispatch-board">
+                
+                    <div class="kanban-column dispatch-column-kho" id="col-hom-nay">
+                        <div class="kanban-column-header bg-danger text-white">
+                            <i class="fas fa-exclamation-circle me-2"></i> HÔM NAY PHẢI GIAO ({{ kho_hom_nay | length }})
+                        </div>
+                        <div class="task-list">
+                            {% for item in kho_hom_nay %}
+                                {% include 'delivery_card.html' %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="kanban-column dispatch-column-kho" id="col-sap-xep">
+                        <div class="kanban-column-header" style="background-color: #F9AA33; color: #212529;">
+                            <i class="fas fa-random me-2"></i> SẮP XẾP TRONG TUẦN ({{ kho_sap_xep | length }})
+                        </div>
+                        <div class="task-list">
+                            {% for item in kho_sap_xep %}
+                                {% include 'delivery_card.html' %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="kanban-column dispatch-column-kho" id="col-trong-tuan">
+                        <div class="kanban-column-header bg-primary text-white">
+                            <i class="fas fa-calendar-day me-2"></i> TRONG TUẦN SẼ GIAO ({{ kho_trong_tuan | length }})
+                        </div>
+                        <div class="task-list">
+                            {% for item in kho_trong_tuan %}
+                                {% include 'delivery_card.html' %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="kanban-column dispatch-column-kho" id="col-da-giao">
+                        <div class="kanban-column-header bg-success text-white">
+                            <i class="fas fa-check-circle me-2"></i> ĐÃ GIAO (7 NGÀY) ({{ kho_da_giao | length }})
+                        </div>
+                        <div class="task-list">
+                            {% for item in kho_da_giao %}
+                                {% include 'delivery_card.html' %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %} 
+        </div>
+    </div>
+    
+    <div class="modal fade" id="confirmDeliveryModal" tabindex="-1" aria-labelledby="confirmDeliveryModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeliveryModalLabel">Xác nhận Trạng thái Giao hàng</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Lệnh Xuất Hàng: <strong id="modalVoucherNo" class="text-primary"></strong></h6>
+                    <p>Khách hàng: <strong id="modalObjectName"></strong></p>
+                    <input type="hidden" id="modalVoucherID" value="">
+                    
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Mã hàng</th>
+                                    <th>Tên hàng</th>
+                                    <th>Số lượng</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modalItemTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <div id="modal-action-buttons" {% if not can_edit_dispatch %}style="display: none;"{% endif %}> 
+                        <button type="button" class="btn btn-status-dasoan" onclick="updateStatus('Da Soan')">
+                            <i class="fas fa-box-open me-1"></i> Đã Soạn Hàng
+                        </button>
+                        <button type="button" class="btn btn-success btn-status-dagiao" onclick="updateStatus('Da Giao')">
+                            <i class="fas fa-check-circle me-1"></i> Xác nhận ĐÃ GIAO
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // --- DỮ LIỆU TỪ FLASK (CHO TAB 1) ---
+    const groupedTasks = {{ grouped_tasks_json | tojson }};
+    const ungroupedTasks = {{ ungrouped_tasks_json | tojson }}; // (Chứa phiếu 'Da Soan' + 'Da Giao')
+    const todayStr = '{{ current_date_str }}';
+    
+    // --- YÊU CẦU 4: BIẾN PHÂN QUYỀN ---
+    const canEditPlanner = {{ can_edit_planner | tojson }};
+    const canEditDispatch = {{ can_edit_dispatch | tojson }};
+    
+    // --- MODAL (YÊU CẦU 3) ---
+    const confirmModal = new bootstrap.Modal(document.getElementById('confirmDeliveryModal'));
+    
+    function openConfirmationModal(element) {
+        // (Yêu cầu 4) Nếu không có quyền sửa (VD: Thư ký)
+        if (!canEditDispatch && element.closest('#dispatch-view')) {
+             return;
+        }
+
+        const voucherId = element.dataset.voucherId;
+        const voucherNo = element.querySelector('.item-title').textContent.split('(')[0].trim();
+        const objectName = element.querySelector('.item-customer').textContent;
+        
+        document.getElementById('modalVoucherID').value = voucherId;
+        document.getElementById('modalVoucherNo').textContent = voucherNo;
+        document.getElementById('modalObjectName').textContent = objectName;
+        
+        const itemTableBody = document.getElementById('modalItemTableBody');
+        itemTableBody.innerHTML = '<tr><td colspan="3" class="text-center"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>';
+        
+        fetch(`/api/delivery/get_items/${voucherId}`)
+            .then(response => response.json())
+            .then(data => {
+                itemTableBody.innerHTML = ''; 
+                if (data && data.length > 0) {
+                    data.forEach(item => {
+                        itemTableBody.innerHTML += `
+                            <tr>
+                                <td>${item.InventoryID}</td>
+                                <td>${item.InventoryName}</td>
+                                <td class="text-end">${item.ActualQuantity}</td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    itemTableBody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Không tìm thấy chi tiết.</td></tr>';
+                }
+            })
+            .catch(e => {
+                itemTableBody.innerHTML = `<tr><td colspan="3" class="text-center text-danger">Lỗi: ${e.message}</td></tr>`;
+            });
+        
+        confirmModal.show();
+    }
+    
+    function updateStatus(newStatus) {
+        if (!canEditDispatch) {
+            alert('Bạn không có quyền thực hiện thao tác này.');
+            return;
+        }
+        
+        const voucherId = document.getElementById('modalVoucherID').value;
+        if (!voucherId) return;
+
+        fetch('/api/delivery/set_status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ voucher_id: voucherId, new_status: newStatus })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Đã cập nhật trạng thái: ${newStatus}`);
+                confirmModal.hide();
+                location.reload(); 
+            } else {
+                alert('Lỗi: ' + data.message);
+            }
+        })
+        .catch(e => alert('Lỗi kết nối: ' + e.message));
+    }
+
+    // --- LOGIC KÉO THẢ (DRAG & DROP) (CHO TAB 1) ---
+
+    function allowDrop(ev) {
+        if (!canEditPlanner) return; 
+        ev.preventDefault();
+        ev.currentTarget.classList.add('drag-over');
+    }
+    
+    document.querySelectorAll('#planner-board .kanban-column').forEach(col => {
+        col.addEventListener('dragleave', (ev) => {
+            ev.currentTarget.classList.remove('drag-over');
+        });
+    });
+
+    function drag(ev) {
+        if (!canEditPlanner) { 
+            ev.preventDefault();
+            return false;
+        }
+        ev.dataTransfer.setData("text/plain", ev.target.id);
+        ev.dataTransfer.setData("voucher-id", ev.target.dataset.voucherId || "");
+        ev.dataTransfer.setData("object-id", ev.target.dataset.objectId || "");
+        ev.dataTransfer.setData("original-day", ev.target.dataset.originalDay || "POOL");
+    }
+
+    function drop(ev) {
+        if (!canEditPlanner) return; 
+        ev.preventDefault();
+        ev.currentTarget.classList.remove('drag-over');
+        
+        const elementId = ev.dataTransfer.getData("text/plain");
+        const voucherId = ev.dataTransfer.getData("voucher-id");
+        const objectId = ev.dataTransfer.getData("object-id");
+        const oldDay = ev.dataTransfer.getData("original-day");
+        
+        const targetColumn = ev.currentTarget;
+        const newDay = targetColumn.id; 
+        
+        const draggedElement = document.getElementById(elementId);
+        if (!draggedElement) return;
+
+        savePlannedDay(voucherId, objectId, newDay, oldDay, draggedElement, targetColumn);
+    }
+    
+    function savePlannedDay(voucherId, objectId, newDay, oldDay, element, targetColumn) {
+        
+        if (!canEditPlanner) return; 
+        
+        let payload = { new_day: newDay, old_day: oldDay };
+        
+        if (objectId) {
+            payload.object_id = objectId;
+        } else {
+            payload.voucher_id = voucherId;
+        }
+
+        fetch('/api/delivery/set_day', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                targetColumn.querySelector('.task-list').appendChild(element);
+                element.dataset.originalDay = newDay;
+            } else {
+                alert('Lỗi khi lưu kế hoạch: ' + data.message);
+                location.reload(); 
+            }
+        })
+        .catch(error => {
+            alert('Lỗi kết nối API: ' + error.message);
+            location.reload(); 
+        });
+    }
+    
+    // --- HÀM TẠO THẺ (CARD) (CHO TAB 1) ---
+    
+    function formatCurrency(numStr) {
+        const num = parseFloat(numStr || 0);
+        return new Intl.NumberFormat('vi-VN').format(num);
+    }
+
+    // (Hàm tạo Thẻ LXH Lẻ - cho các phiếu Da Soan/Da Giao)
+    function createDeliveryCard(item) {
+        let status_class = `status-${item.DeliveryStatus.toLowerCase()}`;
+        const item_date_str = item.EarliestRequestDate_str || '9999-12-31';
+        
+        const is_overdue = (item_date_str != '—' && item_date_str < todayStr) && (item.DeliveryStatus == 'Open');
+        if (is_overdue) {
+            status_class += ' overdue';
+        }
+        
+        const draggable = canEditPlanner ? 'true' : 'false';
+        const card_class = canEditPlanner ? '' : 'no-drag';
+        
+        const is_completed = item.DeliveryStatus == 'Da Giao';
+        
+        const cardHTML = `
+            <div class="delivery-card ${status_class} ${card_class}" 
+                 draggable="${is_completed ? 'false' : draggable}" 
+                 ondragstart="drag(event)" 
+                 id="lxh-${item.VoucherID}"
+                 data-voucher-id="${item.VoucherID}"
+                 data-original-day="${item.Planned_Day || 'POOL'}">
+                
+                <div class="item-title">${item.VoucherNo} (${item.ItemCount} MH)</div>
+                <div class="item-customer">${item.ObjectName}</div>
+                <div class="item-details">
+                    Y/C Giao: ${item.EarliestRequestDate_str} | 
+                    Ngày LXH: ${item.VoucherDate_str} <br>
+                    RefNo02: ${item.RefNo02 || '—'}
+                    ${is_overdue ? `<br><strong class="text-danger">QUÁ HẠN (Y/C: ${item.EarliestRequestDate_str})</strong>` : ''}
+                </div>
+            </div>
+        `;
+        return cardHTML;
+    }
+    
+    // (Hàm tạo Thẻ KH Gộp nhóm - Yêu cầu 1)
+    function createGroupCard(group) {
+        let status_class = 'group-card'; // Thẻ gộp nhóm
+        
+        const item_date_str = group.EarliestRequestDate_str || '9999-12-31';
+        const is_overdue = (item_date_str != '—' && item_date_str < todayStr);
+        if (is_overdue) {
+            status_class += ' overdue';
+        }
+        
+        const draggable = canEditPlanner ? 'true' : 'false';
+        const card_class = canEditPlanner ? '' : 'no-drag';
+        
+        const refNoText = group.RefNo02_str || '—';
+        
+        const cardHTML = `
+            <div class="delivery-card ${status_class} ${card_class}" 
+                 draggable="${draggable}" 
+                 ondragstart="drag(event)" 
+                 id="group-${group.ObjectID}-${group.Planned_Day}"
+                 data-object-id="${group.ObjectID}"
+                 data-original-day="${group.Planned_Day || 'POOL'}">
+                
+                <div class="item-title">${group.ObjectName}</div>
+                <div class="item-customer">(${group.LXH_Count} Lệnh Xuất Hàng)</div>
+                <div class="item-details">
+                    Trạng thái: <strong>${group.Status_Summary}</strong><br>
+                    Giá trị: ${formatCurrency(group.TotalValue)} <br>
+                    Y/C Giao sớm nhất: ${group.EarliestRequestDate_str} <br>
+                    RefNo02: ${refNoText}
+                    ${is_overdue ? `<br><strong class="text-danger">CÓ PHIẾU QUÁ HẠN</strong>` : ''}
+                </div>
+            </div>
+        `;
+        return cardHTML;
+    }
+
+    // --- HÀM NẠP KANBAN 9 KHỐI (TAB 1) (SỬA LỖI 1) ---
+    function populatePlannerBoard() {
+        document.querySelectorAll('#planner-board .task-list').forEach(list => {
+            list.innerHTML = '';
+        });
+        
+        // 1. Render các Thẻ Gộp nhóm (Yêu cầu 1)
+        groupedTasks.forEach(group => {
+            const plannedDay = group.Planned_Day || 'POOL'; 
+            const column = document.getElementById(`task-list-${plannedDay}`);
+            if (column) {
+                column.innerHTML += createGroupCard(group);
+            }
+        });
+        
+        // 2. Render các Thẻ Lẻ (Đã Giao)
+        ungroupedTasks.forEach(item => {
+            let plannedDay;
+            if (item.DeliveryStatus == 'Da Giao') {
+                plannedDay = 'COMPLETED'; // Yêu cầu 2b
+            } else {
+                // Sửa lỗi: Nếu là Open/Da Soan, nó phải được gộp, KHÔNG render lẻ
+                // Chỉ render lẻ nếu nó là Da Soan (và không được gộp)
+                if (item.DeliveryStatus == 'Da Soan') {
+                     plannedDay = item.Planned_Day || 'POOL';
+                     const column = document.getElementById(`task-list-${plannedDay}`);
+                     if (column) {
+                        column.innerHTML += createDeliveryCard(item);
+                     }
+                }
+            }
+            
+            const column = document.getElementById(`task-list-${plannedDay}`);
+            if (column) {
+                column.innerHTML += createDeliveryCard(item);
+            }
+        });
+    }
+    
+    // --- HÀM NẠP KANBAN 4 KHỐI (TAB 2) ---
+    function populateDispatchBoard() {
+        // Gán sự kiện click cho các thẻ card (Yêu cầu 3)
+        document.querySelectorAll('#dispatch-view .delivery-card').forEach(card => {
+            card.addEventListener('click', function() {
+                // (Yêu cầu 4) Chỉ cho phép click nếu có quyền
+                if (canEditDispatch) {
+                    openConfirmationModal(this);
+                }
+            });
+            card.draggable = false; // Tắt kéo thả ở Tab 2
+        });
+    }
+
+    // --- KHỞI CHẠY ---
+    document.addEventListener('DOMContentLoaded', function() {
+        populatePlannerBoard(); // Nạp Tab 1
+        populateDispatchBoard(); // Gán sự kiện cho Tab 2
+        
+        // (Yêu cầu 3) Kích hoạt Lọc/Tìm kiếm cho Tab 2
+        $('#dispatchSearchInput').on('input', function() {
+            const searchTerm = $(this).val().toLowerCase();
+            $('#dispatch-view .delivery-card').each(function() {
+                // Tìm kiếm trong toàn bộ text của thẻ
+                const cardText = $(this).text().toLowerCase();
+                if (cardText.includes(searchTerm)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        });
+    });
+    
+    // --- (Yêu cầu 5) KHÓA CHỨC NĂNG IN (PRINT BLOCKING) ---
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+            e.preventDefault();
+            alert("Chức năng in đã bị khóa trên trang này.");
+        }
+    }, true); 
+    window.print = function() {
+        alert("Chức năng in đã bị khóa trên trang này.");
+    };
+    // Chặn chuột phải
+    document.addEventListener('contextmenu', e => e.preventDefault()); 
+
+</script>
+</body>
+</html>

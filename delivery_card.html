@@ -1,0 +1,32 @@
+{% set status_class = 'status-' + item.DeliveryStatus|lower %}
+
+{# --- SỬA LỖI 2: 'str object' has no attribute 'strftime' --- #}
+{# Lấy chuỗi ngày (VD: "2025-11-08 00:00:00") và tách lấy phần YYYY-MM-DD #}
+{% set item_iso_date = (item.EarliestRequestDate.split(' ')[0] if item.EarliestRequestDate else '9999-12-31') %}
+
+{# So sánh chuỗi (YYYY-MM-DD) với chuỗi (YYYY-MM-DD) #}
+{% set is_overdue = (item_iso_date < current_date_str) and (item.DeliveryStatus == 'Open') %}
+{# --- KẾT THÚC SỬA LỖI 2 --- #}
+
+
+{% if is_overdue %}
+    {% set status_class = status_class + ' overdue' %}
+{% endif %}
+
+<div class="delivery-card {{ status_class }} {% if not can_edit_dispatch %}no-edit{% endif %}" 
+     id="lxh-{{ item.VoucherID }}"
+     data-voucher-id="{{ item.VoucherID }}"
+     onclick="openConfirmationModal(this)">
+    
+    <div class="item-title">{{ item.VoucherNo }} ({{ item.ItemCount }} MH)</div>
+    <div class="item-customer">{{ item.ObjectName }}</div>
+    <div class="item-details">
+        Y/C Giao: {{ item.EarliestRequestDate_str }} | 
+        Ngày LXH: {{ item.VoucherDate_str }} <br>
+        RefNo02: {{ item.RefNo02 or '—' }}
+        
+        {% if is_overdue %}
+            <br><strong class="text-danger">QUÁ HẠN (Y/C: {{ item.EarliestRequestDate_str }})</strong>
+        {% endif %}
+    </div>
+</div>

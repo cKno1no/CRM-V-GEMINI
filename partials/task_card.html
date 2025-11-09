@@ -1,0 +1,26 @@
+{% set is_high_priority = task.Priority == 'HIGH' %}
+
+<div class="task-card" 
+     style="border-left: 5px solid {% if is_high_priority %}#DB4437{% else %}#4285F4{% endif %};"
+     onclick="openUpdateModal({{ task.TaskID }})">
+    
+    <span class="task-id-tag">#{{ task.TaskID }}</span>
+    <div class="task-title-small" title="{{ task.Title }}">
+        {{ task.Title | truncate(35, True) }}
+        {% if is_high_priority %}
+             <i class="fas fa-exclamation-circle text-danger ms-1"></i>
+        {% endif %}
+    </div>
+    
+    <div style="margin-top: 5px; font-size: 0.8rem;">
+        <span class="badge bg-secondary">{{ task.TaskType }}</span>
+        <span class="badge bg-light text-dark">{{ task.TaskDateDisplay }}</span>
+    </div>
+    
+    <p class="mt-2 mb-0 text-muted" style="font-size: 0.75rem;">
+        <i class="fas fa-user-tag me-1"></i> Đối tượng: {{ task.ObjectID or '—' }}
+        {% if task.NoteCapTren %}
+             <span class="text-primary float-end"><i class="fas fa-comment-dots"></i> Note</span>
+        {% endif %}
+    </p>
+</div>

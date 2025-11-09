@@ -1,239 +1,202 @@
+# services/sales_lookup_service.py
+# (Bản vá 8 - Đã sửa Yêu cầu 2: Logic tra cứu nhanh 'NSK 6210ZZ')
+
 from db_manager import DBManager, safe_float
-from datetime import datetime, timedelta
+from datetime import datetime
 import config
+import pandas as pd 
+import re 
 
 class SalesLookupService:
-    """Cung cấp các thông tin tra cứu quan trọng phục vụ bán hàng."""
     
     def __init__(self, db_manager: DBManager):
         self.db = db_manager
-        # Phạm vi thời gian cho lịch sử Khách hàng/Giá (3 năm)
-        self.three_years_ago = (datetime.now() - timedelta(days=365*3)).strftime('%Y-%m-%d')
-        self.today = datetime.now().strftime('%Y-%m-%d')
 
-    def get_sales_lookup_data(self, inventory_ids, object_id=None, is_admin=False):
-        """
-        Hàm tổng hợp, chạy các truy vấn con và hợp nhất kết quả cho một danh sách mặt hàng.
-        :param inventory_ids: Chuỗi các mã mặt hàng (ví dụ: 'MHA, MHB')
-        :param object_id: Mã khách hàng (tùy chọn)
-        :param is_admin: Quyền Admin để xem thông tin phức tạp
-        :return: Danh sách các dict chứa dữ liệu tổng hợp
-        """
+    # (Hàm get_sales_lookup_data không đổi, vẫn dùng SP)
+    def get_sales_lookup_data(self, item_search_term, object_id):
+        if not item_search_term: return {}
+        object_id_param = object_id if object_id else None
         
-        inv_list = [f"'{i.strip()}'" for i in inventory_ids.split(',') if i.strip()]
-        if not inv_list:
+        # Gửi chuỗi gốc (SP Bản vá 6 đã xử lý)
+        sp_item_search_param = item_search_term 
+        
+        block1_data = self._get_block1_data(sp_item_search_param, object_id_param)
+        
+        # Lấy like_param cho các khối lịch sử
+        like_param = f"%{item_search_term.split(',')[0].strip()}%" 
+        
+        block2_data = self._get_block2_history(like_param, object_id_param)
+        block3_data = self._get_block3_history(like_param)
+        
+        return {'block1': block1_data, 'block2': block2_data, 'block3': block3_data}
+
+    # --- HÀM TRA NHANH (SỬA YÊU CẦU 2) ---
+    def get_quick_lookup_data(self, item_search_term):
+        """
+        Tra cứu nhanh Tồn kho/BO/Giá QĐ.
+        (SỬA YÊU CẦU 2) Dùng logic AND LIKE (lọc nhiều lần bằng khoảng trắng)
+        Ví dụ: "NSK 6210ZZ" -> ...LIKE '%NSK%' AND (...LIKE '%6210ZZ%')
+        """
+        if not item_search_term:
             return []
-        inventory_list_str = ",".join(inv_list)
-        
-        # 1. Lấy dữ liệu cơ bản (Tồn kho và Giá quy định)
-        base_data = self._get_inventory_and_price01(inventory_list_str)
-        
-        # 2. Lấy Giá bán gần nhất (Hóa đơn)
-        recent_sale_prices = self._get_recent_sale_price(inventory_list_str, object_id)
 
-        # 3. Lấy Giá chào gần nhất (Báo giá)
-        recent_quote_prices = self._get_recent_quote_price(inventory_list_str, object_id)
+        # Tách các từ khóa tìm kiếm bằng KHOẢNG TRẮNG
+        search_terms_list = [term.strip() for term in item_search_term.split(' ') if term.strip()]
+        if not search_terms_list:
+            return []
         
-        results = []
-        for item in base_data:
-            inv_id = item['InventoryID']
-            
-            # Hợp nhất dữ liệu Giá
-            item['RecentSalePrice'] = recent_sale_prices.get(inv_id, {'SalePrice': 'Không có', 'InvoiceDate': ''})
-            item['RecentQuotePrice'] = recent_quote_prices.get(inv_id, {'QuotePrice': 'Không có', 'QuoteDate': ''})
-            
-            # Bổ sung khối dữ liệu CHỈ DÀNH CHO ADMIN
-            if is_admin:
-                # Khối 1: Lịch sử Báo giá thành công (Top 5 KH)
-                item['Top5SuccessfulQuotes'] = self._get_top5_successful_quotes(inv_id)
-                # Khối 2: Top 10 lần nhập kho gần nhất
-                item['Top10RecentReceipts'] = self._get_top10_recent_receipts(inv_id)
-            else:
-                item['Top5SuccessfulQuotes'] = []
-                item['Top10RecentReceipts'] = []
-            
-            results.append(item)
-            
-        return results
+        where_conditions = []
+        params = []
+        
+        # Xây dựng mệnh đề WHERE động (AND LIKE)
+        for term in search_terms_list:
+            like_val = f"%{term}%"
+            # Mỗi từ khóa phải khớp VỚI MÃ hoặc TÊN
+            where_conditions.append("(T1.InventoryID LIKE ? OR T1.InventoryName LIKE ?)")
+            params.extend([like_val, like_val])
 
-    # --- HÀM 1 & 3a: Tồn kho & Giá bán quy định (IT1302) ---
-    def _get_inventory_and_price01(self, inventory_list_str):
-        """Lấy tồn kho (Ton/Con) và Giá bán quy định (SalePrice01)."""
+        # Nối các điều kiện bằng 'AND'
+        where_clause = " AND ".join(where_conditions)
+
         query = f"""
             SELECT 
-                T1.InventoryID, T1.InventoryName, 
-                ISNULL(T2.Ton, 0) AS Ton, 
-                ISNULL(T2.con, 0) AS BackOrder,
-                ISNULL(T1.SalePrice01, 0) AS SalePrice01
-            FROM {config.ERP_ITEM_PRICING} AS T1
-            LEFT JOIN {config.CRM_BACK_ORDER_VIEW} AS T2 
-                ON T1.InventoryID = T2.InventoryID 
-            WHERE T1.InventoryID IN ({inventory_list_str})
-        """
-        return self.db.get_data(query)
-
-    # --- HÀM 3b: Giá bán gần nhất (GT9000) Dùng Tài khoản Kế toán ---
-    def _get_recent_sale_price(self, inventory_list_str, object_id):
-        """
-        Lấy Giá bán gần nhất trong 2 năm từ GT9000 (Sổ cái) bằng logic tài khoản kế toán.
-        NỢ (Debit) Like '5%' (Doanh thu) và CÓ (Credit) = '13111' (Phải thu KH).
-        """
-        
-        where_conditions = [
-            f"T1.InventoryID IN ({inventory_list_str})",
-            f"T1.VoucherDate BETWEEN '{self.three_years_ago}' AND '{self.today}'",
-            # Lọc theo logic Kế toán: Giá bán (Sale Price)
-            f"T1.DebitAccountID LIKE '5%'" ,
-            f"T1.CreditAccountID = '13111'"
-        ]
-        
-        # Lọc theo Khách hàng nếu có
-        if object_id:
-            # GT9000 sử dụng ObjectID cho đối tượng giao dịch
-            where_conditions.append(f"T1.ObjectID = '{object_id}'")
-            
-        where_clause = " AND ".join(where_conditions)
-
-        query = f"""
-            WITH RankedSales AS (
+                T1.InventoryID, 
+                T1.InventoryName,
+                ISNULL(T2_Sum.Ton, 0) AS Ton, 
+                ISNULL(T2_Sum.BackOrder, 0) AS BackOrder,
+                ISNULL(T1.SalePrice01, 0) AS GiaBanQuyDinh
+            FROM [OMEGA_STDD].[dbo].[IT1302] AS T1
+            LEFT JOIN (
                 SELECT 
-                    T1.InventoryID, 
-                    T1.UnitPrice AS SalePrice, 
-                    T1.VoucherDate,
-                    ROW_NUMBER() OVER(
-                        PARTITION BY T1.InventoryID 
-                        ORDER BY T1.VoucherDate DESC
-                    ) AS rn
-                FROM {config.ERP_GENERAL_LEDGER} AS T1 -- GT9000
-                WHERE {where_clause}
-            )
-            SELECT InventoryID, SalePrice, VoucherDate 
-            FROM RankedSales 
-            WHERE rn = 1
+                    InventoryID, 
+                    SUM(Ton) as Ton, 
+                    SUM(con) as BackOrder 
+                FROM [OMEGA_STDD].[dbo].[CRM_TON KHO BACK ORDER]
+                GROUP BY InventoryID
+            ) AS T2_Sum ON T1.InventoryID = T2_Sum.InventoryID
+            WHERE 
+                ({where_clause}) -- Áp dụng bộ lọc AND
+            ORDER BY
+                T1.InventoryID
         """
         
-        data = self.db.get_data(query)
-        # Chuyển đổi thành dictionary {InventoryID: {SalePrice, VoucherDate}}
-        return {d['InventoryID']: {'SalePrice': safe_float(d['SalePrice']), 'InvoiceDate': d['VoucherDate']} for d in data}
-
-    # --- HÀM 3c: Giá chào gần nhất (OT2102) trong 2 năm ---
-    def _get_recent_quote_price(self, inventory_list_str, object_id):
-        """Lấy Giá chào gần nhất trong 2 năm từ OT2102."""
+        data = self.db.get_data(query, tuple(params))
         
-        where_conditions = [
-            f"T1.InventoryID IN ({inventory_list_str})",
-            # Yêu cầu là 2 năm, mặc dù phạm vi dữ liệu lịch sử khách hàng là 3 năm
-            f"T2.QuotationDate BETWEEN DATEADD(year, -2, GETDATE()) AND GETDATE()"
-        ]
-        
-        if object_id:
-            where_conditions.append(f"T2.ObjectID = '{object_id}'")
+        if not data:
+            return []
             
-        where_clause = " AND ".join(where_conditions)
-
-        query = f"""
-            WITH RankedQuotes AS (
-                SELECT 
-                    T1.InventoryID, T1.UnitPrice AS QuotePrice, T2.QuotationDate,
-                    ROW_NUMBER() OVER(
-                        PARTITION BY T1.InventoryID 
-                        ORDER BY T2.QuotationDate DESC
-                    ) AS rn
-                FROM {config.ERP_QUOTE_DETAILS} AS T1
-                INNER JOIN {config.ERP_QUOTES} AS T2
-                    ON T1.QuotationID = T2.QuotationID
-                WHERE {where_clause}
-            )
-            SELECT InventoryID, QuotePrice, QuotationDate 
-            FROM RankedQuotes 
-            WHERE rn = 1
-        """
-        data = self.db.get_data(query)
-        return {d['InventoryID']: {'QuotePrice': safe_float(d['QuotePrice']), 'QuoteDate': d['QuotationDate']} for d in data}
-    
-    def _get_saleprice01(self, inventory_id):
-        query = f"""
-            SELECT TOP 1 SalePrice01
-            FROM {config.ERP_ITEM_PRICING}
-            WHERE InventoryID = ?
-        """
-        data = self.db.get_data(query, (inventory_id,))
-        return safe_float(data[0]['SalePrice01']) if data else 0
-
-    # --- KHỐI 1: Top 5 Khách hàng (Báo giá Thành công) trong 3 năm ---
-    def _get_top5_successful_quotes(self, inventory_id):
-        """
-        Truy vấn Top 5 khách hàng có số lượng báo giá thành công lớn nhất (trong 3 năm) 
-        và tính toán % GBQD (Giá bán thực tế / GBQD - 1).
-        """
-        
-        gbqd = self._get_saleprice01(inventory_id) # Lấy giá GBQD
-        
-        # Ngăn chặn lỗi chia cho 0 trong SQL
-        gbqd_safe = gbqd if gbqd > 0 else 1 
-
-        query = f"""
-            WITH SuccessfulQuotes AS (
-                SELECT
-                    T2.ObjectID AS ClientID, 
-                    T2.QuotationDate,
-                    T3.QuoQuantity, 
-                    T3.UnitPrice,
-                    T4.OrderQuantity AS InheritedQuantity
-                    
-                FROM {config.ERP_QUOTES} AS T2 -- OT2101
-                INNER JOIN {config.ERP_QUOTE_DETAILS} AS T3 -- OT2102 (Chi tiết báo giá)
-                    ON T2.QuotationID = T3.QuotationID
-                
-                LEFT JOIN {config.ERP_SALES_DETAIL} AS T4 -- OT2002
-                    ON T3.TransactionID = T4.ReTransactionID 
-                    
-                WHERE T3.InventoryID = '{inventory_id}' 
-                  AND T4.OrderQuantity IS NOT NULL
-                  AND T2.QuotationDate BETWEEN '{self.three_years_ago}' AND '{self.today}'
-            )
-            -- Tính tổng số lượng báo giá thành công và tìm Top 5 KH
-            SELECT TOP 5
-                T1.ClientID,
-                T5.ShortObjectName AS ClientName,
-                SUM(T1.QuoQuantity) AS TotalQuoteQuantity,
-                SUM(T1.InheritedQuantity) AS TotalSuccessQuantity,
-                AVG(T1.UnitPrice) AS AverageQuotePrice,
-                -- BỔ SUNG: Tính % GBQD (AVG(Price) / GBQD - 1) * 100
-                CAST( (AVG(T1.UnitPrice) / {gbqd_safe} - 1) AS DECIMAL(10, 4)) * 100 AS PercentGBQD 
-            FROM SuccessfulQuotes AS T1
-            LEFT JOIN {config.ERP_IT1202} AS T5 ON T1.ClientID = T5.ObjectID 
-            GROUP BY T1.ClientID, T5.ShortObjectName
-            ORDER BY TotalSuccessQuantity DESC;
-        """
-        data = self.db.get_data(query)
-        
-        # Định dạng dữ liệu (ví dụ: hiển thị % với 2 chữ số)
+        formatted_data = []
         for row in data:
-            percent = row.get('PercentGBQD', 0)
-            row['PercentGBQD'] = f"{percent:.2f}%"
+            row['Ton'] = safe_float(row.get('Ton'))
+            row['BackOrder'] = safe_float(row.get('BackOrder'))
+            row['GiaBanQuyDinh'] = safe_float(row.get('GiaBanQuyDinh'))
+            formatted_data.append(row)
+        return formatted_data
+    # --- KẾT THÚC CẬP NHẬT YÊU CẦU 2 ---
+
+    def _format_date_safe(self, date_val):
+        if pd.isna(date_val) or not isinstance(date_val, (datetime, pd.Timestamp)):
+            return '—'
+        return date_val.strftime('%d/%m/%Y')
+
+    def _get_block1_data(self, sp_item_search_param, object_id_param):
+        try:
+            sp_params = (sp_item_search_param, object_id_param) 
+            data = self.db.execute_sp_multi('dbo.sp_GetSalesLookup_Block1', sp_params)
             
+            if data and len(data) > 0:
+                formatted_data = []
+                for row in data[0]:
+                    row['Ton'] = safe_float(row.get('Ton'))
+                    row['BackOrder'] = safe_float(row.get('BackOrder'))
+                    row['GiaBanQuyDinh'] = safe_float(row.get('GiaBanQuyDinh'))
+                    row['GiaBanGanNhat_HD'] = safe_float(row.get('GiaBanGanNhat_HD'))
+                    row['GiaChaoGanNhat_BG'] = safe_float(row.get('GiaChaoGanNhat_BG'))
+                    row['NgayGanNhat_HD'] = self._format_date_safe(row.get('NgayGanNhat_HD'))
+                    row['NgayGanNhat_BG'] = self._format_date_safe(row.get('NgayGanNhat_BG'))
+                    formatted_data.append(row)
+                return formatted_data
+            else:
+                return []
+        except Exception as e:
+            print(f"LỖI SP sp_GetSalesLookup_Block1: {e}")
+            return []
+
+    def _get_block2_history(self, like_param, object_id_param):
+        
+        where_conditions = ["(InventoryID LIKE ? OR InventoryName LIKE ?)"]
+        params = [like_param, like_param]
+        
+        if object_id_param:
+            where_conditions.append("ObjectID = ?")
+            params.append(object_id_param)
+
+        where_clause = " AND ".join(where_conditions)
+        
+        query = f"""
+            SELECT TOP 20
+                VoucherNo, OrderDate, 
+                InventoryID, InventoryName, OrderQuantity, SalePrice,
+                Description AS SoPXK, VoucherDate AS NgayPXK, ActualQuantity AS SL_PXK, 
+                InvoiceNo AS SoHoaDon, InvoiceDate AS NgayHoaDon, Quantity AS SL_HoaDon
+            FROM [OMEGA_STDD].[dbo].[CRM_TV_THONG TIN DHB_FULL]
+            WHERE {where_clause}
+            ORDER BY OrderDate DESC
+        """
+        
+        data = self.db.get_data(query, tuple(params))
+        
+        if not data:
+            return []
+        
+        for row in data:
+            row['OrderDate'] = self._format_date_safe(row.get('OrderDate'))
+            row['NgayPXK'] = self._format_date_safe(row.get('NgayPXK'))
+            row['NgayHoaDon'] = self._format_date_safe(row.get('NgayHoaDon'))
+        
         return data
 
-    # --- KHỐI 2: Top 10 lần Nhập kho gần nhất (WT2006/WT2007) ---
-    def _get_top10_recent_receipts(self, inventory_id):
+    def _get_block3_history(self, like_param):
         
         query = f"""
-            SELECT TOP 10
-                T1.VoucherNo,
-                T1.VoucherDate,
-                T1.ObjectID AS CustomerID,
-                T2.ShortObjectName AS CustomerName,
-                T3.InventoryID,
-                T3.ActualQuantity AS ReceiptQuantity, -- ĐÃ SỬA TỪ Quantity SANG ActualQuantity
-                T3.UnitPrice AS ReceiptPrice
-            FROM {config.ERP_GOODS_RECEIPT_MASTER} AS T1 -- WT2006
-            INNER JOIN {config.ERP_IT1202} AS T2 ON T1.ObjectID = T2.ObjectID
-            INNER JOIN {config.ERP_GOODS_RECEIPT_DETAIL} AS T3 -- WT2007
-                ON T1.VoucherID = T3.VoucherID
-            WHERE T3.InventoryID = '{inventory_id}' 
-              AND T1.WarehouseID = 'Q4'
-              AND T1.WarehouseID2 IS NULL 
-            ORDER BY T1.VoucherDate DESC, T1.VoucherNo DESC;
+            SELECT TOP 20
+                VoucherNo, OrderDate, 
+                InventoryID, InventoryName, OrderQuantity, SalePrice,
+                PO AS SoPO, ShipDate AS NgayPO, [PO SL] AS SL_PO, 
+                Description AS SoPN, VoucherDate AS NgayPN, ActualQuantity AS SL_PN
+            FROM [OMEGA_STDD].[dbo].[CRM_TV_THONG TIN DHB_FULL 2]
+            WHERE 
+                (InventoryID LIKE ? OR InventoryName LIKE ?)
+            ORDER BY 
+                OrderDate DESC
         """
-        return self.db.get_data(query)
+        params = (like_param, like_param)
+        data = self.db.get_data(query, params)
+        
+        if not data:
+            return []
+
+        for row in data:
+            row['OrderDate'] = self._format_date_safe(row.get('OrderDate'))
+            row['NgayPO'] = self._format_date_safe(row.get('NgayPO'))
+            row['NgayPN'] = self._format_date_safe(row.get('NgayPN'))
+
+        return data
+
+    def check_purchase_history(self, customer_id, inventory_id):
+        query = f"""
+            SELECT TOP 1 InvoiceDate
+            FROM [OMEGA_STDD].[dbo].[CRM_TV_THONG TIN DHB_FULL]
+            WHERE 
+                ObjectID = ? 
+                AND InventoryID = ?
+                AND InvoiceNo IS NOT NULL
+            ORDER BY 
+                InvoiceDate DESC
+        """
+        params = (customer_id, inventory_id)
+        data = self.db.get_data(query, params)
+        
+        if not data:
+            return None
+        return self._format_date_safe(data[0].get('InvoiceDate'))
