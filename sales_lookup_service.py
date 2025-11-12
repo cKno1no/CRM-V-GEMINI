@@ -33,21 +33,21 @@ class SalesLookupService:
     # --- HÀM TRA NHANH (SỬA YÊU CẦU 2) ---
     def get_quick_lookup_data(self, item_search_term):
         """
-        Tra cứu nhanh Tồn kho/BO/Giá QĐ.
+        Tra cứu nhanh Tồn kho/BO/Giá QĐ. (CHO CHATBOT)
         (SỬA YÊU CẦU 2) Dùng logic AND LIKE (lọc nhiều lần bằng khoảng trắng)
         Ví dụ: "NSK 6210ZZ" -> ...LIKE '%NSK%' AND (...LIKE '%6210ZZ%')
         """
         if not item_search_term:
             return []
 
-        # Tách các từ khóa tìm kiếm bằng KHOẢNG TRẮNG
+        # Tách các từ khóa tìm kiếm bằng KHOẢNG TRẮNG (ĐÚNG CHO CHATBOT)
         search_terms_list = [term.strip() for term in item_search_term.split(' ') if term.strip()]
         if not search_terms_list:
             return []
-        
+
         where_conditions = []
         params = []
-        
+
         # Xây dựng mệnh đề WHERE động (AND LIKE)
         for term in search_terms_list:
             like_val = f"%{term}%"
@@ -55,7 +55,7 @@ class SalesLookupService:
             where_conditions.append("(T1.InventoryID LIKE ? OR T1.InventoryName LIKE ?)")
             params.extend([like_val, like_val])
 
-        # Nối các điều kiện bằng 'AND'
+        # Nối các điều kiện bằng 'AND' (ĐÚNG CHO CHATBOT)
         where_clause = " AND ".join(where_conditions)
 
         query = f"""
@@ -93,6 +93,69 @@ class SalesLookupService:
             formatted_data.append(row)
         return formatted_data
     # --- KẾT THÚC CẬP NHẬT YÊU CẦU 2 ---
+    # --- HÀM TRA CỨU NHIỀU MÃ (CHO DASHBOARD) ---
+    def get_multi_lookup_data(self, item_search_term):
+        """
+        Tra cứu nhiều mã hàng (ngăn cách bằng dấu phẩy)
+        (CHO DASHBOARD) Dùng logic OR LIKE.
+        Ví dụ: "22212,22220" -> ...LIKE '%22212%' OR ...LIKE '%22220%'
+        """
+        if not item_search_term:
+            return []
+
+        # Tách các từ khóa tìm kiếm bằng DẤU PHẨY
+        search_terms_list = [term.strip() for term in item_search_term.split(',') if term.strip()]
+        if not search_terms_list:
+            return []
+
+        or_conditions = []
+        params = []
+
+        # Xây dựng mệnh đề WHERE động (OR LIKE)
+        for term in search_terms_list:
+            like_val = f"%{term}%"
+            # Mỗi từ khóa phải khớp VỚI MÃ hoặc TÊN
+            or_conditions.append("(T1.InventoryID LIKE ? OR T1.InventoryName LIKE ?)")
+            params.extend([like_val, like_val])
+
+        # Nối các điều kiện bằng 'OR'
+        where_clause = " OR ".join(or_conditions)
+
+        query = f"""
+            SELECT 
+                T1.InventoryID, 
+                T1.InventoryName,
+                ISNULL(T2_Sum.Ton, 0) AS Ton, 
+                ISNULL(T2_Sum.BackOrder, 0) AS BackOrder,
+                ISNULL(T1.SalePrice01, 0) AS GiaBanQuyDinh
+            FROM [OMEGA_STDD].[dbo].[IT1302] AS T1
+            LEFT JOIN (
+                SELECT 
+                    InventoryID, 
+                    SUM(Ton) as Ton, 
+                    SUM(con) as BackOrder 
+                FROM [OMEGA_STDD].[dbo].[CRM_TON KHO BACK ORDER]
+                GROUP BY InventoryID
+            ) AS T2_Sum ON T1.InventoryID = T2_Sum.InventoryID
+            WHERE 
+                ({where_clause}) -- Áp dụng bộ lọc OR
+            ORDER BY
+                T1.InventoryID
+        """
+
+        data = self.db.get_data(query, tuple(params))
+
+        if not data:
+            return []
+
+        formatted_data = []
+        for row in data:
+            row['Ton'] = safe_float(row.get('Ton'))
+            row['BackOrder'] = safe_float(row.get('BackOrder'))
+            row['GiaBanQuyDinh'] = safe_float(row.get('GiaBanQuyDinh'))
+            formatted_data.append(row)
+        return formatted_data
+    # --- KẾT THÚC HÀM MỚI ---
 
     def _format_date_safe(self, date_val):
         if pd.isna(date_val) or not isinstance(date_val, (datetime, pd.Timestamp)):
@@ -200,3 +263,43 @@ class SalesLookupService:
         if not data:
             return None
         return self._format_date_safe(data[0].get('InvoiceDate'))
+    
+    def get_backorder_details(self, inventory_id):
+        """
+        Lấy chi tiết BackOrder (PO, Ngày PO, SL còn, Ngày về) cho 1 mã hàng.
+        Truy vấn từ view CRM_BACK ORDER (đã sửa theo yêu cầu)
+        """
+        if not inventory_id:
+            return []
+
+        # SỬA LỖI: Dùng đúng tên View là CRM_BACK ORDER (theo image_bea363.png)
+        query = f"""
+            SELECT 
+                VoucherNo,  -- PO
+                OrderDate,  -- Ngày PO
+                InventoryID,
+                con,        -- Số lượng còn
+                ShipDate    -- Ngày hàng dự kiến về
+            FROM 
+                {config.VIEW_BACK_ORDER_DETAIL}
+            WHERE 
+                InventoryID = ? 
+                AND con > 0  -- Chỉ lấy các PO còn hàng
+            ORDER BY 
+                ShipDate ASC, OrderDate ASC
+        """
+        
+        data = self.db.get_data(query, (inventory_id,))
+        
+        if not data:
+            return []
+            
+        formatted_data = []
+        for row in data:
+            # Định dạng lại ngày tháng cho dễ đọc
+            row['OrderDate'] = self._format_date_safe(row.get('OrderDate'))
+            row['ShipDate'] = self._format_date_safe(row.get('ShipDate'))
+            row['con'] = safe_float(row.get('con')) # Đảm bảo là số
+            formatted_data.append(row)
+            
+        return formatted_data

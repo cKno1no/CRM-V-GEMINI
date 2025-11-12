@@ -125,9 +125,13 @@ class SalesOrderApprovalService:
             if required_ratio > 0 and ratio < required_ratio:
                 approval_status['Passed'] = False
                 ratio_failed = True
-                approval_status['Reason'] = f'FAILED: Tỷ số duyệt ({round(ratio)}) thấp hơn yêu cầu ({required_ratio}) cho loại KH {customer_class}.'
+                # SỬA LỖI: Chuyển FAILED (lỗi cứng) thành PENDING (lỗi lợi nhuận)
+                approval_status['Reason'] = f'PENDING: Tỷ số ({round(ratio)}) < Y/C ({required_ratio}).'
+                # THÊM CỜ: Cho phép Ghi đè
+                approval_status['NeedsOverride'] = True
         else:
-             approval_status['Reason'] = 'ERROR: Không tính được Tỷ số Duyệt (Sale/Cost = 0).'
+             # Đây vẫn là lỗi cứng
+             approval_status['Reason'] = 'FAILED: Không tính được Tỷ số Duyệt (Sale/Cost = 0).'
              approval_status['Passed'] = False
              ratio_failed = True
 

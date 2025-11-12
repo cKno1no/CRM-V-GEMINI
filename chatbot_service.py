@@ -3,15 +3,18 @@
 
 import re
 import pandas as pd
+import json # <-- THÊM IMPORT
 from db_manager import safe_float
 from services.sales_lookup_service import SalesLookupService 
 
 class ChatbotService:
-    def __init__(self, sales_lookup_service, customer_service):
+    def __init__(self, sales_lookup_service, customer_service, redis_client):
         self.lookup_service = sales_lookup_service
         self.customer_service = customer_service
+        self.redis_client = redis_client # <-- THAY THẾ
         
-        self.user_context = {} 
+        # self.user_context = {} # <-- XÓA DÒNG NÀY
+        self.CONTEXT_TTL = 300 # Ngữ cảnh sẽ tự xóa sau 300 giây (5 phút)
         
         self.intents = {
             'CHECK_HISTORY': re.compile(r'(.+?)\s*(?:đã|có)?\s*mua\s+([\w\d\-,./]+)(?:\s*(?:chưa|không))?\??', re.IGNORECASE),
@@ -33,20 +36,56 @@ class ChatbotService:
             'QUICK_LOOKUP': re.compile(r'^(?!.*\b(giá|mua|cho|với|help|giúp|hỗ trợ)\b)([\w\d\-,./\s]+)$', re.IGNORECASE), 
         }
 
-    # --- HÀM QUẢN LÝ NGỮ CẢNH (Không đổi) ---
+    # --- HÀM QUẢN LÝ NGỮ CẢNH (SỬA LẠI HOÀN TOÀN) ---
     
+    def _get_context_key(self, user_code):
+        # Tạo một key (khóa) duy nhất cho Redis
+        return f"chatbot_context:{user_code}"
+
     def _get_user_context(self, user_code):
-        if user_code not in self.user_context:
-            self.user_context[user_code] = {'intent': None, 'data': {}}
-        return self.user_context[user_code]
+        if not self.redis_client: # Đề phòng Redis lỗi
+             return {'intent': None, 'data': {}}
+             
+        key = self._get_context_key(user_code)
+        try:
+            # Lấy dữ liệu dạng chuỗi JSON từ Redis
+            context_str = self.redis_client.get(key)
+            if context_str:
+                # Chuyển chuỗi JSON về lại Python dict
+                return json.loads(context_str)
+        except Exception as e:
+            print(f"LỖI ĐỌC CONTEXT REDIS: {e}")
+            # Nếu lỗi, xóa key hỏng
+            self.redis_client.delete(key)
+            
+        return {'intent': None, 'data': {}} # Trả về rỗng nếu không có key
 
     def _clear_user_context(self, user_code):
-        if user_code in self.user_context:
-            self.user_context[user_code] = {'intent': None, 'data': {}}
+        if not self.redis_client:
+            return
+            
+        key = self._get_context_key(user_code)
+        try:
+            self.redis_client.delete(key)
+        except Exception as e:
+            print(f"LỖI XÓA CONTEXT REDIS: {e}")
             
     def _set_user_context(self, user_code, intent, data):
-        self.user_context[user_code] = {'intent': intent, 'data': data}
+        if not self.redis_client:
+            return
+            
+        key = self._get_context_key(user_code)
+        context_data = {'intent': intent, 'data': data}
+        
+        try:
+            # Chuyển Python dict thành chuỗi JSON
+            context_str = json.dumps(context_data)
+            # Lưu vào Redis và tự động hết hạn sau 5 phút (self.CONTEXT_TTL)
+            self.redis_client.setex(key, self.CONTEXT_TTL, context_str)
+        except Exception as e:
+            print(f"LỖI GHI CONTEXT REDIS: {e}")
 
+    # --- HÀM XỬ LÝ CHÍNH (ĐÃ CẬP NHẬT LOGIC) ---
     # --- HÀM XỬ LÝ CHÍNH (ĐÃ CẬP NHẬT LOGIC) ---
 
     def process_message(self, message_text, user_code, user_role):

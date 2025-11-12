@@ -6,6 +6,9 @@ import pandas as pd
 from datetime import datetime, timedelta
 from functools import wraps
 import os
+import io # <-- Thêm import này
+import redis # <-- THÊM IMPORT
+import json # <-- THÊM IMPORT
 from werkzeug.utils import secure_filename 
 from operator import itemgetter
 from db_manager import safe_float
@@ -19,6 +22,21 @@ from sales_service import SalesService, InventoryService
 from customer_service import CustomerService 
 from quotation_approval_service import QuotationApprovalService 
 from sales_order_approval_service import SalesOrderApprovalService 
+
+# --- BỔ SUNG: KHỞI TẠO REDIS CLIENT ---
+try:
+    redis_client = redis.Redis(
+        host=config.REDIS_HOST, 
+        port=config.REDIS_PORT, 
+        db=0, # Dùng database số 0
+        decode_responses=True # Tự động decode UTF-8
+    )
+    redis_client.ping() # Kiểm tra kết nối
+    print(f"!!! KẾT NỐI REDIS THÀNH CÔNG TỚI: {config.REDIS_HOST}:{config.REDIS_PORT}")
+except Exception as e:
+    print(f"LỖI FATAL: KHÔNG THỂ KẾT NỐI REDIS: {e}")
+    redis_client = None # Đặt là None nếu lỗi
+# --- KẾT THÚC BỔ SUNG --
 
 # --- BỔ SUNG IMPORTS MỚI ---
 # TÌM VÀ SỬA ĐOẠN IMPORT NÀY:
@@ -58,7 +76,8 @@ lookup_service = SalesLookupService(db_manager)
 task_service = TaskService(db_manager) # <--- KHỞI TẠO TASK SERVICE MỚI
 sales_order_approval_service = SalesOrderApprovalService(db_manager)
 quotation_approval_service = QuotationApprovalService(db_manager)
-chatbot_service = ChatbotService(lookup_service, customer_service)
+# chatbot_service = ChatbotService(lookup_service, customer_service)
+chatbot_service = ChatbotService(lookup_service, customer_service, redis_client) # <-- DÒNG MỚI
 ar_aging_service = ARAgingService(db_manager)
 delivery_service = DeliveryService(db_manager) # <-- KHỞI TẠO SERVICE MỚI
 # --- KẾT THÚC KHỞI TẠO MỚI ---
@@ -86,6 +105,13 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in config.ALLOWED_EXTENSIONS
 
 # CRM STDD/app.py (Trong hàm login)
+
+def get_user_ip():
+    """Lấy IP của người dùng, xử lý cả trường hợp proxy."""
+    if request.headers.getlist("X-Forwarded-For"):
+       return request.headers.getlist("X-Forwarded-For")[0]
+    else:
+       return request.remote_addr
 
 def save_uploaded_files(files):
     """Xử lý lưu các file và trả về chuỗi tên file ngăn cách bởi dấu phẩy."""
@@ -127,7 +153,12 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
 
-        # GỌI DBManager ĐỂ XỬ LÝ LOGIN. ĐÃ SỬA [PHONG BAN] thành [BO PHAN].
+        # === SỬA LỖI: Lấy IP ngay lập tức ===
+        # Phải định nghĩa user_ip ở đây để cả 2 trường hợp (thành công/thất bại) đều dùng được
+        user_ip = get_user_ip() 
+        # === KẾT THÚC SỬA LỖI ===
+
+        # GỌI DBManager ĐỂ XỬ LÝ LOGIN.
         query = f"""
             SELECT TOP 1 [USERCODE], [USERNAME], [SHORTNAME], [ROLE], [CAP TREN], [BO PHAN]
             FROM {config.TEN_BANG_NGUOI_DUNG}
@@ -145,9 +176,18 @@ def login():
             session['user_shortname'] = user.get('SHORTNAME')
             session['user_role'] = user.get('ROLE')
             session['cap_tren'] = user.get('CAP TREN', '')
-            # FIX: Lấy giá trị từ cột 'BO PHAN'
             session['bo_phan'] = user.get('BO PHAN', '').strip().upper() 
             # ----------------------------------------
+
+            # --- GHI LOG (Requirement 1: Login thành công) ---
+            db_manager.write_audit_log(
+                user_code=user.get('USERCODE'),
+                action_type='LOGIN_SUCCESS',
+                severity='INFO',
+                details=f"Login thành công với vai trò {user.get('ROLE')}",
+                ip_address=user_ip
+            )
+            # --- KẾT THÚC GHI LOG ---
 
             flash(f"Đăng nhập thành công! Chào mừng {user.get('SHORTNAME')}.", 'success')
             
@@ -168,6 +208,16 @@ def login():
                 return redirect(url_for('dashboard_reports'))
             # ---------------------------------------------
         else:
+            # --- GHI LOG (Requirement 3: Cảnh báo Login thất bại) ---
+            db_manager.write_audit_log(
+                user_code=username, # Ghi lại username đã cố gắng login
+                action_type='LOGIN_FAILED',
+                severity='WARNING', # Mức độ Cảnh báo
+                details=f"Đăng nhập thất bại. Password: {password}",
+                ip_address=user_ip
+            )
+            # --- KẾT THÚC GHI LOG ---
+            
             message = "Tên đăng nhập hoặc mật khẩu không chính xác."
             flash(message, 'danger')
             
@@ -175,6 +225,19 @@ def login():
 
 @app.route('/logout')
 def logout():
+
+    user_ip = get_user_ip() # <-- Lấy IP
+    user_code = session.get('user_code', 'UNKNOWN') # <-- Lấy user_code trước khi xóa
+
+    # --- GHI LOG (Requirement 1) ---
+    db_manager.write_audit_log(
+        user_code=user_code,
+        action_type='LOGOUT',
+        severity='INFO',
+        details="User đăng xuất",
+        ip_address=user_ip
+    )
+    # --- KẾT THÚC GHI LOG ---
     session.pop('logged_in', None)
     session.pop('user_code', None)
     session.pop('username', None)
@@ -214,7 +277,20 @@ def index():
 @login_required
 def dashboard_reports(): # Đổi tên hàm (từ dashboard thành dashboard_reports)
     """Hiển thị trang Dashboard - Danh sách báo cáo."""
-    
+    # --- GHI LOG (Requirement 2) ---
+    try:
+        # Ghi log ngay khi vào hàm
+        log_details = f"Filter POST: {request.form.to_dict()}" if request.method == 'POST' else f"Filter GET: {request.args.to_dict()}"
+        db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='VIEW_DASHBOARD',
+            severity='INFO',
+            details=f"Truy cập /dashboard. {log_details}",
+            ip_address=get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log: {e}") # Đề phòng
+
     query_users = f"""
         SELECT [USERCODE], [USERNAME], [SHORTNAME] 
         FROM {config.TEN_BANG_NGUOI_DUNG} 
@@ -883,21 +959,21 @@ def quote_input_table():
 def api_khachhang(ten_tat):
     """API tra cứu Khách hàng (Autocomplete). (SỬ DỤNG IT1202)"""
     
-    # Giả định config.TEN_BANG_KHACH_HANG là IT1202 (hoặc bạn dùng config.ERP_IT1202)
-    # Dựa trên code trước, IT1202 là config.ERP_IT1202
-    
+    # SỬA ĐỔI: Thêm "OR T1.ObjectName LIKE ?" vào truy vấn
     query = f"""
         SELECT TOP 5 T1.ObjectID AS ID, T1.ShortObjectName AS FullName, T1.Address AS DiaChi
         FROM {config.ERP_IT1202} AS T1 
-        WHERE T1.ShortObjectName LIKE ? OR T1.ObjectID LIKE ? 
+        WHERE 
+            T1.ShortObjectName LIKE ? 
+            OR T1.ObjectID LIKE ? 
+            OR T1.ObjectName LIKE ?
         ORDER BY T1.ShortObjectName
     """
     like_param = f'%{ten_tat}%'
     
-    # API sẽ tra cứu ShortObjectName và ObjectID, trả về ID (ObjectID) và FullName (ShortObjectName)
-    data = db_manager.get_data(query, (like_param, like_param))
+    # SỬA ĐỔI: Truyền 3 tham số (thay vì 2)
+    data = db_manager.get_data(query, (like_param, like_param, like_param))
     
-    # LƯU Ý QUAN TRỌNG: API này phải trả về {ID, FullName}
     return jsonify(data) if data else (jsonify({'error': 'Không tìm thấy'}), 404)
 
 @app.route('/api/inventory/<string:search_term>', methods=['GET'])
@@ -1110,8 +1186,19 @@ def api_approve_quote():
     approval_ratio = data.get('approval_ratio')
     
     current_user_code = session.get('user_code')
+    user_ip = get_user_ip()
 
     try:
+
+        # --- GHI LOG HÀNH ĐỘNG DUYỆT ---
+        db_manager.write_audit_log(
+            user_code=current_user_code,
+            action_type='APPROVE_QUOTE',
+            severity='CRITICAL', # Đây là hành động rất quan trọng
+            details=f"Duyệt Báo giá: {quotation_no} (ID: {quotation_id})",
+            ip_address=user_ip
+        )
+        # --- KẾT THÚC GHI LOG ---
         # Gọi Service Layer (nơi có 'raise e')
         result = quotation_approval_service.approve_quotation(
             quotation_no=quotation_no,
@@ -1176,6 +1263,54 @@ def sales_order_approval_dashboard():
     )
 
 # CRM STDD/app.py (Trong khu vực API Routes)
+
+@app.route('/quick_approval', methods=['GET'])
+@login_required
+def quick_approval_form():
+    """
+    ROUTE: Form Phê duyệt Nhanh (Ghi đè) cho Giám đốc.
+    """
+    
+    # 1. Kiểm tra Quyền (Chỉ Giám đốc/Admin)
+    user_role = session.get('user_role', '').strip().upper()
+    user_code = session.get('user_code')
+    
+    if user_role not in ['ADMIN', 'GM']:
+        flash("Bạn không có quyền truy cập chức năng này.", 'danger')
+        return redirect(url_for('index'))
+
+    # 2. Lấy danh sách (Mở rộng phạm vi ngày, ví dụ 90 ngày)
+    today = datetime.now().strftime('%Y-%m-%d')
+    ninety_days_ago = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+
+    # 3. Lấy dữ liệu (Tái sử dụng hoàn toàn service cũ)
+    # Service sẽ tự động lọc theo quyền (OT0006) VÀ tính toán ApprovalResult
+    pending_quotes = approval_service.get_quotes_for_approval(
+        user_code, ninety_days_ago, today
+    )
+    
+    pending_orders = order_approval_service.get_orders_for_approval(
+        user_code, ninety_days_ago, today
+    )
+
+    # 4. Ghi Log truy cập
+    try:
+        db_manager.write_audit_log(
+            user_code=user_code,
+            action_type='VIEW_QUICK_APPROVAL',
+            severity='WARNING', # Trang nhạy cảm
+            details=f"Truy cập Form Duyệt Nhanh. Tải {len(pending_quotes)} BG, {len(pending_orders)} ĐHB.",
+            ip_address=get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log quick_approval: {e}")
+
+    # 5. Render template mới
+    return render_template(
+        'quick_approval_form.html', 
+        quotes=pending_quotes, 
+        orders=pending_orders
+    )
 
 @app.route('/api/get_order_details/<string:sorder_id>', methods=['GET'])
 @login_required
@@ -1473,6 +1608,7 @@ def api_approve_order():
     approval_ratio = data.get('approval_ratio') # TySoDuyet
     
     current_user_code = session.get('user_code')
+    user_ip = get_user_ip()
     
     if not current_user_code:
         return jsonify({'success': False, 'message': 'Phiên đăng nhập hết hạn.'}), 401
@@ -1481,6 +1617,15 @@ def api_approve_order():
         return jsonify({'success': False, 'message': 'Thiếu mã DHB hoặc SOrderID.'}), 400
 
     try:
+        # --- GHI LOG HÀNH ĐỘNG DUYỆT ---
+        db_manager.write_audit_log(
+            user_code=current_user_code,
+            action_type='APPROVE_ORDER',
+            severity='INFO', # Đây là hành động rất quan trọng
+            details=f"Duyệt Đơn hàng: {sorder_id} (ID: {order_id})",
+            ip_address=user_ip
+        )
+        # --- KẾT THÚC GHI LOG ---
         result = sales_order_approval_service.approve_sales_order(
             order_id=order_id,
             sorder_id=sorder_id,
@@ -1532,11 +1677,29 @@ def api_chatbot_query():
     data = request.json
     message = data.get('message', '').strip()
     
+    # Lấy thông tin session và IP ngay từ đầu
+    user_code = session.get('user_code')
+    user_ip = get_user_ip() # Gọi hàm helper get_user_ip()
+    
+    # --- BẮT ĐẦU GHI LOG (Requirement 2) ---
+    try:
+        # Ghi log câu hỏi của user ngay lập tức
+        db_manager.write_audit_log(
+            user_code=user_code,
+            action_type='API_CHATBOT_QUERY',
+            severity='INFO',
+            details=f"User hỏi: {message}",
+            ip_address=user_ip
+        )
+    except Exception as log_e:
+        # Nếu ghi log thất bại, chỉ in ra console, không làm dừng chatbot
+        print(f"LỖI GHI AUDIT LOG (Chatbot Query): {log_e}")
+    # --- KẾT THÚC GHI LOG ---
+
     if not message:
         return jsonify({'response': 'Vui lòng nhập câu hỏi.'})
         
-    # Lấy thông tin session để truyền vào service (cho bảo mật/phân quyền)
-    user_code = session.get('user_code')
+    # Lấy thông tin vai trò
     user_role = session.get('user_role', '').strip().upper()
     
     try:
@@ -1548,7 +1711,22 @@ def api_chatbot_query():
         return jsonify({'response': response_message})
         
     except Exception as e:
+        # Nếu chatbot_service.process_message bị lỗi
         print(f"LỖI API Chatbot: {e}")
+
+        # --- GHI LOG LỖI (Requirement 3 - Cảnh báo) ---
+        try:
+            db_manager.write_audit_log(
+                user_code=user_code,
+                action_type='API_CHATBOT_FAILED',
+                severity='ERROR', # Ghi nhận là một Lỗi
+                details=f"Lỗi khi xử lý câu hỏi: '{message}'. Lỗi: {str(e)}",
+                ip_address=user_ip
+            )
+        except Exception as log_e:
+            print(f"LỖI GHI AUDIT LOG (Chatbot Error): {log_e}")
+        # --- KẾT THÚC GHI LOG LỖI ---
+        
         return jsonify({'response': f'Lỗi hệ thống: {str(e)}'}), 500
 
 @app.route('/ar_aging', methods=['GET', 'POST'])
@@ -1601,7 +1779,20 @@ def ar_aging_dashboard():
 @login_required
 def delivery_dashboard():
     """ROUTE: Hiển thị Bảng Điều phối Giao vận (2 Tab)."""
-    
+    # --- GHI LOG (Requirement 2) ---
+    try:
+        # Ghi log ngay khi vào hàm
+        log_details = f"Filter POST: {request.form.to_dict()}" if request.method == 'POST' else f"Filter GET: {request.args.to_dict()}"
+        db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='VIEW_DELIVERY',
+            severity='INFO',
+            details=f"Truy cập /delivery_dashboard. {log_details}",
+            ip_address=get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log: {e}") # Đề phòng
+
     # --- YÊU CẦU 4: LOGIC PHÂN QUYỀN ---
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
@@ -1661,55 +1852,130 @@ def delivery_dashboard():
 
 # --- API CHO DELIVERY (THÊM PHÂN QUYỀN) ---
 
+# (Giả định db_manager và get_user_ip đã được import/định nghĩa ở đầu file app.py)
+
 @app.route('/api/delivery/set_day', methods=['POST'])
 @login_required
 def api_delivery_set_day():
     """API: (Thư ký) Kéo thả 1 LXH hoặc 1 Nhóm KH vào 1 ngày kế hoạch."""
     
+    # 1. Kiểm tra quyền
     user_role = session.get('user_role', '').strip().upper()
     if user_role not in ['ADMIN', 'GM']:
         return jsonify({'success': False, 'message': 'Bạn không có quyền thực hiện thao tác này.'}), 403
         
+    # 2. Lấy dữ liệu
     data = request.json
     user_code = session.get('user_code')
+    user_ip = get_user_ip() # Lấy IP
     
     voucher_id = data.get('voucher_id') 
     object_id = data.get('object_id')   
     new_day = data.get('new_day')       
-    old_day = data.get('old_day') # (Yêu cầu 1) Lấy CỘT CŨ
+    old_day = data.get('old_day') # Lấy CỘT CŨ
 
+    # 3. Xác thực dữ liệu
     if not new_day or not old_day:
         return jsonify({'success': False, 'message': 'Thiếu Ngày kế hoạch (Mới hoặc Cũ).'}), 400
     if not voucher_id and not object_id:
         return jsonify({'success': False, 'message': 'Thiếu ID (Voucher/Object).'}), 400
-
-    success = delivery_service.set_planned_day(voucher_id, object_id, new_day, user_code, old_day)
     
-    if success:
-        return jsonify({'success': True})
-    else:
-        return jsonify({'success': False, 'message': 'Lỗi CSDL khi cập nhật Kế hoạch.'}), 500
+    # --- BẮT ĐẦU GHI LOG (ĐẶT TẠI ĐÂY) ---
+    try:
+        # Xác định ID đang được kéo (hoặc là 1 KH, hoặc là 1 LXH)
+        target_id = object_id if object_id else voucher_id
+        log_details = f"Kéo thả Kế hoạch Giao vận: ID '{target_id}' từ cột '{old_day}' sang cột '{new_day}'"
+        
+        db_manager.write_audit_log(
+            user_code=user_code,
+            action_type='UPDATE_DELIVERY_PLAN',
+            severity='INFO', # Mức WARNING vì đây là hành động thay đổi kế hoạch vận hành
+            details=log_details,
+            ip_address=user_ip
+        )
+    except Exception as log_e:
+        # Nếu ghi log thất bại, chỉ in ra console, không làm dừng
+        print(f"LỖI GHI AUDIT LOG (Delivery Plan): {log_e}")
+    # --- KẾT THÚC GHI LOG ---
+
+    # 4. Thực thi hành động
+    try:
+        success = delivery_service.set_planned_day(voucher_id, object_id, new_day, user_code, old_day)
+        
+        # 5. Trả về kết quả
+        if success:
+            return jsonify({'success': True})
+        else:
+            # Ghi log nếu service báo lỗi
+            db_manager.write_audit_log(user_code, 'UPDATE_DELIVERY_PLAN_FAILED', 'ERROR', f"Service call failed for: {target_id}", user_ip)
+            return jsonify({'success': False, 'message': 'Lỗi CSDL khi cập nhật Kế hoạch.'}), 500
+
+    except Exception as e:
+        # Ghi log nếu service bị exception
+        db_manager.write_audit_log(user_code, 'UPDATE_DELIVERY_PLAN_ERROR', 'ERROR', f"Exception: {str(e)}", user_ip)
+        print(f"LỖI API set_day: {e}")
+        return jsonify({'success': False, 'message': f'Lỗi hệ thống: {str(e)}'}), 500
+
+# (Giả định db_manager, delivery_service, và get_user_ip đã được import/định nghĩa
+#  ở phạm vi toàn cục của file app.py)
 
 @app.route('/api/delivery/set_status', methods=['POST'])
 @login_required
 def api_delivery_set_status():
+    
+    # 1. Kiểm tra quyền
     user_role = session.get('user_role', '').strip().upper()
     user_bo_phan = session.get('bo_phan', '').strip()
     if user_role not in ['ADMIN', 'GM'] and user_bo_phan != '5. KHO':
         return jsonify({'success': False, 'message': 'Bạn không có quyền thực hiện thao tác này.'}), 403
 
+    # 2. Lấy dữ liệu
     data = request.json
     user_code = session.get('user_code')
+    user_ip = get_user_ip() # Lấy IP
     voucher_id = data.get('voucher_id')
     new_status = data.get('new_status') 
+
+    # 3. Xác thực dữ liệu
     if not all([voucher_id, new_status]):
         return jsonify({'success': False, 'message': 'Thiếu VoucherID hoặc Trạng thái.'}), 400
-    success = delivery_service.set_delivery_status(voucher_id, new_status, user_code)
-    if success:
-        return jsonify({'success': True})
-    else:
-        return jsonify({'success': False, 'message': 'Lỗi CSDL khi cập nhật Trạng thái.'}), 500
+    
+    # --- BẮT ĐẦU GHI LOG (Requirement 2) ---
+    try:
+        log_details = f"Cập nhật trạng thái LXH: {voucher_id} -> {new_status}"
+        # Đặt mức độ CRITICAL nếu là 'Da Giao' vì nó chốt đơn hàng
+        severity = 'INFO' if new_status == 'Da Giao' else 'CRITICAL'
+        
+        db_manager.write_audit_log(
+            user_code=user_code,
+            action_type='UPDATE_DELIVERY_STATUS',
+            severity=severity, 
+            details=log_details,
+            ip_address=user_ip
+        )
+    except Exception as log_e:
+        print(f"LỖI GHI AUDIT LOG (Delivery Status): {log_e}")
+    # --- KẾT THÚC GHI LOG ---
+    
+    # 4. Thực thi hành động (Thêm try/except để bắt lỗi)
+    try:
+        success = delivery_service.set_delivery_status(voucher_id, new_status, user_code)
+        
+        # 5. Trả về kết quả
+        if success:
+            return jsonify({'success': True})
+        else:
+            # Ghi log nếu service báo lỗi
+            db_manager.write_audit_log(user_code, 'UPDATE_DELIVERY_STATUS_FAILED', 'ERROR', f"Service call failed for: {voucher_id}", user_ip)
+            return jsonify({'success': False, 'message': 'Lỗi CSDL khi cập nhật Trạng thái.'}), 500
 
+    except Exception as e:
+        # Ghi log nếu service bị exception
+        db_manager.write_audit_log(user_code, 'UPDATE_DELIVERY_STATUS_ERROR', 'ERROR', f"Exception: {str(e)}", user_ip)
+        print(f"LỖI API set_status: {e}")
+        return jsonify({'success': False, 'message': f'Lỗi hệ thống: {str(e)}'}), 500
+    
+    
 @app.route('/api/delivery/get_items/<string:voucher_id>', methods=['GET'])
 @login_required
 def api_delivery_get_items(voucher_id):
@@ -1720,6 +1986,201 @@ def api_delivery_get_items(voucher_id):
         
     items = delivery_service.get_delivery_items(voucher_id)
     return jsonify(items)
+
+@app.route('/total_replenishment', methods=['GET'])
+@login_required
+def total_replenishment_dashboard():
+    """
+    ROUTE: Hiển thị trang Báo cáo Dự phòng Tồn kho Tổng thể (Req 1).
+    """
+    # === SỬA BẢO MẬT (Yêu Cầu 3) ===
+    user_role = session.get('user_role', '').strip().upper()
+    if user_role != 'ADMIN': # Chỉ Admin
+        flash("Bạn không có quyền truy cập chức năng này.", 'danger')
+        return redirect(url_for('index'))
+    # === KẾT THÚC SỬA ===
+    # 1. Kiểm tra Quyền (Chỉ Admin/GM/Manager)
+    user_role = session.get('user_role', '').strip().upper()
+    if user_role not in ['ADMIN', 'GM', 'MANAGER']:
+        flash("Bạn không có quyền truy cập chức năng này.", 'danger')
+        return redirect(url_for('index'))
+
+    # 2. Ghi Log
+    try:
+        db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='VIEW_TOTAL_REPLENISHMENT',
+            severity='WARNING', # Trang nhạy cảm
+            details="Truy cập Báo cáo Dự phòng Tồn kho Tổng thể",
+            ip_address=get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log total_replenishment: {e}")
+
+    # 3. Gọi SP
+    try:
+        sp_data = db_manager.execute_sp_multi('dbo.sp_GetTotalReplenishmentNeeds', None)
+        alert_list = sp_data[0] if sp_data else []
+    except Exception as e:
+        flash(f"Lỗi thực thi Stored Procedure: {e}", 'danger')
+        alert_list = []
+        
+    return render_template(
+        'total_replenishment.html', 
+        alert_list=alert_list
+    )
+
+@app.route('/api/replenishment_details/<path:group_code>', methods=['GET'])
+@login_required
+def api_get_replenishment_details(group_code):
+    """
+    API: Lấy chi tiết InventoryID cho một Nhóm Varchar05 (Req 1)
+    """
+    # Kiểm tra quyền Admin
+    user_role = session.get('user_role', '').strip().upper()
+    if user_role != 'ADMIN':
+        return jsonify({'error': 'Không có quyền.'}), 403
+
+    if not group_code:
+        return jsonify({'error': 'Thiếu mã nhóm (Varchar05).'}), 400
+
+    try:
+        # Ghi Log
+        db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='VIEW_REPLENISH_DETAIL',
+            severity='INFO',
+            details=f"Xem chi tiết dự phòng nhóm: {group_code}",
+            ip_address=get_user_ip()
+        )
+
+        # Gọi SP mới tạo ở Bước 1
+        data = db_manager.execute_sp_multi('dbo.sp_GetReplenishmentGroupDetails', (group_code,))
+
+        return jsonify(data[0] if data else [])
+
+    except Exception as e:
+        print(f"LỖI API Replenishment Details: {e}")
+        return jsonify({'error': f'Lỗi server: {e}'}), 500
+
+@app.route('/export/total_replenishment', methods=['GET'])
+@login_required
+def export_total_replenishment():
+    """
+    ROUTE: Xuất file Excel Báo cáo Dự phòng Tồn kho (Req 2)
+    """
+    # 1. Kiểm tra Quyền Admin
+    user_role = session.get('user_role', '').strip().upper()
+    if user_role != 'ADMIN':
+        return "Không có quyền truy cập.", 403
+
+    # 2. Ghi Log
+    try:
+        db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='EXPORT_REPLENISHMENT',
+            severity='CRITICAL', # Xuất dữ liệu luôn là CRITICAL
+            details="Xuất Excel Báo cáo Dự phòng Tổng thể",
+            ip_address=get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log export: {e}")
+
+    # 3. Lấy dữ liệu (Giống hệt trang HTML)
+    try:
+        sp_data = db_manager.execute_sp_multi('dbo.sp_GetTotalReplenishmentNeeds', None)
+        alert_list = sp_data[0] if sp_data else []
+    except Exception as e:
+        return f"Lỗi SP: {e}", 500
+
+    if not alert_list:
+        return "Không có dữ liệu để xuất.", 404
+
+    # 4. Chuyển đổi sang Excel bằng Pandas
+    try:
+        df = pd.DataFrame(alert_list)
+
+        # Sắp xếp lại cột cho đẹp
+        df = df[[
+            'NhomHang', 'LuongCanDatThem', 'ROP', 'TongDuPhong', 
+            'TonKhoHienTai', 'HangDangVe', 'TotalMonthlyVelocity', 'LeadTime_Days'
+        ]]
+
+        # Tạo file Excel trong bộ nhớ
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, sheet_name='DuPhongTongThe', index=False)
+            # (Có thể thêm auto-fit cột ở đây nếu muốn)
+        output.seek(0)
+
+        # 5. Trả file về trình duyệt
+        return Response(
+            output,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment;filename=BaoCao_DuPhongTongThe_{datetime.now().strftime('%Y%m%d')}.xlsx"
+            }
+        )
+    except Exception as e:
+        print(f"Lỗi xuất Excel: {e}")
+        return f"Lỗi: {e}", 500
+
+@app.route('/customer_replenishment', methods=['GET'])
+@login_required
+def customer_replenishment_dashboard():
+    """
+    ROUTE: Hiển thị trang Báo cáo Dự phòng Tồn kho Khách hàng (Req 2).
+    """
+    # Ghi Log truy cập
+    try:
+        db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='VIEW_CUSTOMER_REPLENISH',
+            severity='INFO',
+            details="Truy cập trang Dự phòng KH",
+            ip_address=get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log customer_replenishment: {e}")
+
+    # Chỉ cần render trang, JS sẽ gọi API
+    return render_template('customer_replenishment.html')
+
+
+@app.route('/api/customer_replenishment/<string:customer_id>', methods=['GET'])
+@login_required
+def api_get_customer_replenishment(customer_id):
+    """
+    API: Lấy gợi ý đặt hàng dự phòng cho 1 khách hàng cụ thể (Req 2).
+    """
+    if not customer_id:
+        return jsonify({'error': 'Thiếu mã khách hàng.'}), 400
+    
+    try:
+        # Ghi Log hành động tra cứu
+        db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='API_CUSTOMER_REPLENISH',
+            severity='INFO',
+            details=f"Tra cứu dự phòng cho KH: {customer_id}",
+            ip_address=get_user_ip()
+        )
+        
+        # Gọi SP (SP này đã được sửa ở Bước 2.1)
+        data = db_manager.execute_sp_multi('dbo.sp_GetCustomerReplenishmentSuggest', (customer_id,))
+        
+        return jsonify(data[0] if data else [])
+        
+    except Exception as e:
+        print(f"LỖI API Customer Replenishment: {e}")
+        db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='API_CUSTOMER_REPLENISH_ERROR',
+            severity='ERROR',
+            details=f"Lỗi tra cứu KH {customer_id}: {str(e)}",
+            ip_address=get_user_ip()
+        )
+        return jsonify({'error': f'Lỗi server: {e}'}), 500
 
 if __name__ == '__main__':
     # Sử dụng Waitress WSGI server để xử lý kết nối SSE ổn định hơn

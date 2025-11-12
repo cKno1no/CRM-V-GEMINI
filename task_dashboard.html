@@ -667,7 +667,7 @@
                              const option = `<option value="${kh.ID}" data-fullname="${kh.FullName}">${kh.FullName} (${kh.ID})</option>`;
                              resultsDropdown.append(option);
                          });
-                         resultsDropdown.attr('size', Math.min(data.length, 5));
+                         resultsDropdown.attr('size', Math.max(Math.min(data.length, 5), 2)); // Đảm bảo size tối thiểu là 2 (để hiển thị list box) và tối đa là 5
                      } else {
                          resultsDropdown.hide();
                      }

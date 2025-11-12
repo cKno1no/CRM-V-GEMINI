@@ -232,3 +232,30 @@ class DBManager:
             sqlstate = ex.args[0]
             print(f"LỖI SQL TRADING - CODE: {sqlstate}, QUERY: {query}")
             raise # Re-raise để Service Layer bắt và rollback
+        
+    def write_audit_log(self, user_code, action_type, severity, details, ip_address):
+        """
+        Ghi log kiểm toán (Audit Log) vào CSDL.
+        Hàm này chạy độc lập và sẽ không rollback nếu thất bại,
+        để không ảnh hưởng đến các giao dịch chính của ứng dụng.
+        """
+        query = """
+            INSERT INTO dbo.AUDIT_LOGS 
+                (UserCode, ActionType, Severity, Details, IPAddress)
+            VALUES (?, ?, ?, ?, ?)
+        """
+        conn = None
+        try:
+            # Tạo kết nối MỚI để đảm bảo nó chạy độc lập
+            conn = pyodbc.connect(self.conn_str)
+            cursor = conn.cursor()
+            cursor.execute(query, (user_code, action_type, severity, details, ip_address))
+            conn.commit()
+        except pyodbc.Error as ex:
+            # Nếu ghi log thất bại, chỉ in ra console, KHÔNG raise error
+            print(f"LỖI GHI AUDIT LOG (Bỏ qua): {ex}")
+        except Exception as e:
+            print(f"LỖI GHI AUDIT LOG (Bỏ qua): {e}")
+        finally:
+            if conn:
+                conn.close()
