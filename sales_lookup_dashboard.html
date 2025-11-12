@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
     
     <style>
-        /* (CSS Giữ nguyên, bao gồm cả CSS Căn chỉnh Nút và Chặn in) */
+        /* (CSS Giữ nguyên) */
         body { background-color: #F8F9FA; color: #3C4043; font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .container { max-width: 98%; margin-top: 30px; }
         .card-container { margin-bottom: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); padding: 15px; }
@@ -47,14 +47,14 @@
             background-color: #3f90e9 !important; 
             color: white; 
             font-weight: 600; 
-            height: 48px; /* Fix chiều cao */
+            height: 48px;
         }
         .btn-quick-lookup { 
             background-color: #ffc107 !important; 
             color: #212529; 
             font-weight: 600; 
             border-color: #ffc107; 
-            height: 48px; /* Fix chiều cao */
+            height: 48px;
         }
         .button-column-fix {
             padding-top: 28px; 
@@ -160,6 +160,11 @@
         <div class="card-container" id="block1-container" {% if not results.block1 %}style="display: none;"{% endif %}>
             <div class="panel-heading d-flex justify-content-between align-items-center">
                 <span>1. Tồn kho và Giá (Khớp với '{{ item_search }}' | KH: {{ object_id_display or 'Tất cả' }})</span>
+                
+                <div class="form-check form-switch" title="Chỉ hiển thị hàng có Tồn kho > 0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="toggleTonKho">
+                    <label class="form-check-label" for="toggleTonKho">Chỉ hiện Tồn > 0</label>
+                </div>
                 <div id="block1-filter-toolbar" class="ms-3"></div>
             </div>
             <div class="table-responsive">
@@ -177,7 +182,9 @@
                     </thead>
                     <tbody>
                         {% for item in results.block1 %}
-                        <tr>
+                        <tr style="cursor: pointer;" 
+                            onclick="showBackorderModal('{{ item.InventoryID }}', {{ item.InventoryName | tojson }})">
+                            
                             <td class="text-start">{{ item.InventoryID }}</td>
                             <td class="text-start">{{ item.InventoryName }}</td>
                             <td class="text-end">{{ "{:,.0f}".format(item.Ton | float) }}</td>
@@ -236,7 +243,6 @@
             </div>
         </div>
         {% endif %}
-
         {% if show_block_3 and results.block3 %}
         <div class="card-container" id="block3-container">
             <div class="panel-heading" style="background-color: #F4B400;">3. Lịch sử Đơn hàng Mua (PO) & Phiếu Nhập (Top 20)</div>
@@ -281,13 +287,25 @@
             </div>
         </div>
         {% endif %}
-
         {% if request.method == 'POST' and (not results.block1 and not results.block2 and not results.block3) %}
              <p class="alert alert-warning">Không tìm thấy mặt hàng nào phù hợp với điều kiện tra cứu (Khách hàng: {{ object_id_display or 'Tất cả' }}, Mặt hàng: '{{ item_search }}').</p>
         {% endif %}
 
     </div>
     
+<div class="modal fade" id="backorderModal" tabindex="-1" aria-labelledby="backorderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="backorderModalTitle">Chi tiết BackOrder</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="backorderModalBody">
+                <p class="text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải...</p>
+            </div>
+        </div>
+    </div>
+</div>
 <div id="watermark-user-id" data-user="{{ current_user.usercode }}">{{ current_user.usercode }}</div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -304,11 +322,7 @@
     let block1Table = null; // Biến global để giữ instance
     
     function initializeBlock1DataTable() {
-        // Hủy instance cũ nếu nó tồn tại
-        if (block1Table) {
-            block1Table.destroy();
-            $('#block1-filter-toolbar').empty(); // Xóa ô lọc cũ
-        }
+        // (Hàm này đã được sửa ở lần trước, chỉ làm nhiệm vụ khởi tạo)
         
         // Khởi tạo instance mới
         block1Table = $('#block1-table').DataTable({
@@ -319,10 +333,9 @@
             "ordering": true,
             "info": true,
             "order": [[0, 'asc']],
-            // SỬA LỖI 2: Đặt 't' (table) vào trong wrapper
             "dom": '<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"f>>' + 
-                   '<"row"<"col-sm-12"tr>>' + // 't' và 'r' (processing) phải ở trong wrapper
-                   '<"row"<"col-sm-12"p>>', // Bottom: Pagination(p)
+                   '<"row"<"col-sm-12"tr>>' + 
+                   '<"row"<"col-sm-12"p>>',
             "language": {
                 "search": "Lọc nhanh bảng này:",
                 "zeroRecords": "Không tìm thấy mặt hàng nào.",
@@ -354,6 +367,7 @@ $(document).ready(function() {
     }
     
     // --- LOGIC TÌM KIẾM & CHỌN KHÁCH HÀNG ---
+    // (Hàm timKhachHang và chonKhachHang giữ nguyên)
     function timKhachHang() {
         const term = $('#kh_search_input').val().trim();
         const statusMsg = $('#kh_status');
@@ -375,7 +389,7 @@ $(document).ready(function() {
             .then(data => {
                 if (data && data.length > 0) {
                     data.forEach(kh => {
-                        const option = `<option value="${kh.ID}" data-fullname="${kh.FullName}">${kh.FullName} (${kh.ID})</option>`;
+                        const option = `<option value="${kh.ID}" data-fullname="${kh.FullName}">${kh.ID} - ${kh.FullName}</option>`;
                         resultsDropdown.append(option);
                     });
                     resultsDropdown.show().attr('size', Math.min(data.length, 5)); 
@@ -395,7 +409,7 @@ $(document).ready(function() {
         if (selectedOption.length) {
             const id = selectedOption.val();
             const fullName = selectedOption.data('fullname');
-            const displayText = fullName + ' (' + id + ')';
+            const displayText = id + ' - ' + fullName;
             
             $('#kh_search_results').hide();
             $('#kh_ma_selected').val(id); 
@@ -424,6 +438,37 @@ $(document).ready(function() {
     }
 
     
+    // === YÊU CẦU 1: LOGIC LỌC TỒN > 0 ===
+    // 1. Đăng ký hàm lọc mới cho DataTables
+    $.fn.dataTable.ext.search.push(
+        function(settings, data, dataIndex) {
+            // Chỉ áp dụng cho bảng block1-table
+            if (settings.nTable.id !== 'block1-table') {
+                return true;
+            }
+            
+            const showOnlyStock = $('#toggleTonKho').is(':checked');
+            if (!showOnlyStock) {
+                return true; // Nếu không check, hiện tất cả
+            }
+
+            // Lấy dữ liệu cột Tồn kho (index = 2)
+            const tonKhoStr = data[2] || '0';
+            const tonKho = parseFloat(tonKhoStr.replace(/,/g, '')) || 0;
+
+            return tonKho > 0;
+        }
+    );
+
+    // 2. Gắn sự kiện cho nút toggle
+    $('#toggleTonKho').on('change', function() {
+        if (block1Table) {
+            block1Table.draw(); // Vẽ lại bảng (áp dụng bộ lọc)
+        }
+    });
+    // === KẾT THÚC LOGIC LỌC TỒN ===
+
+
     // --- YÊU CẦU 5: LOGIC NÚT TRA CỨU NHANH ---
     $('#quickLookupBtn').on('click', function() {
         const itemSearchTerm = $('#item_search_input').val().trim();
@@ -436,15 +481,14 @@ $(document).ready(function() {
 
         button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
         
-        // Ẩn các khối không liên quan
         $('#block2-container, #block3-container').hide();
-        // Hiện khối 1
         $('#block1-container').show(); 
         
         const formData = new FormData();
         formData.append('item_search', itemSearchTerm);
 
-        fetch('/sales/api/quick_lookup', {
+        // Đã sửa API (lần trước)
+        fetch('/sales/api/multi_lookup', {
             method: 'POST',
             body: formData
         })
@@ -454,10 +498,11 @@ $(document).ready(function() {
         })
         .then(data => {
             
-            // SỬA LỖI 2: Hủy DataTables cũ (nếu có)
+            // Logic Hủy bảng cũ (đã sửa lần trước)
             if (block1Table) {
                 block1Table.destroy();
                 $('#block1-filter-toolbar').empty(); 
+                block1Table = null; 
             }
             
             const tbody = $('#block1-table tbody');
@@ -467,7 +512,8 @@ $(document).ready(function() {
             
             if (data && data.length > 0) {
                 data.forEach(item => {
-                    const row = `<tr>
+                    // === SỬA LỖI ESCAPE: Tạo <tr> và gán data-* an toàn ===
+                    const row = $(`<tr style="cursor: pointer;">
                         <td class="text-start">${item.InventoryID}</td>
                         <td class="text-start">${item.InventoryName}</td>
                         <td class="text-end">${formatCurrency(item.Ton)}</td>
@@ -475,15 +521,26 @@ $(document).ready(function() {
                         <td class="text-end">${formatCurrency(item.GiaBanQuyDinh)}</td>
                         <td class="text-end">—</td>
                         <td class="text-end">—</td>
-                    </tr>`;
-                    tbody.append(row);
+                    </tr>`);
+
+                    // Gán sự kiện click bằng jQuery/JS để truyền dữ liệu an toàn
+                    row.on('click', function() {
+                        showBackorderModal(item.InventoryID, item.InventoryName);
+                    });
+                    
+                    tbody.append(row); // Thêm hàng (đã có sự kiện) vào bảng
                 });
             } else {
                 tbody.append('<tr><td colspan="7" class="text-center">Không tìm thấy dữ liệu tra cứu nhanh.</td></tr>');
             }
             
-            // SỬA LỖI 2: Khởi tạo lại DataTables
+            // Khởi tạo lại DataTables
             initializeBlock1DataTable();
+
+            // === YÊU CẦU 1: Kích hoạt lại bộ lọc Tồn > 0 sau khi tra nhanh ===
+            if (block1Table) {
+                block1Table.draw();
+            }
         })
         .catch(error => {
             alert('Lỗi Tra cứu nhanh: ' + error.message);
@@ -508,7 +565,64 @@ $(document).ready(function() {
     // Chặn chuột phải
     document.addEventListener('contextmenu', e => e.preventDefault()); 
 
-});
+}); // <-- Kết thúc document.ready
+
+
+// === YÊU CẦU 2: HÀM MỚI (Modal BackOrder) (bên ngoài document.ready) ===
+let backorderModalInstance = null; // Biến global cho modal
+
+function showBackorderModal(inventoryId, inventoryName) {
+    if (!backorderModalInstance) {
+        backorderModalInstance = new bootstrap.Modal(document.getElementById('backorderModal'));
+    }
+    
+    const modalTitle = document.getElementById('backorderModalTitle');
+    const modalBody = document.getElementById('backorderModalBody');
+    
+    modalTitle.innerText = `Chi tiết BackOrder: ${inventoryName} (${inventoryId})`;
+    modalBody.innerHTML = '<p class="text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết PO...</p>';
+    
+    backorderModalInstance.show();
+
+    // Gọi API (API này đã được tạo ở bước trước)
+    fetch(`/sales/api/backorder_details/${inventoryId}`)
+        .then(response => {
+            if (!response.ok) throw new Error('Không thể tải dữ liệu BackOrder.');
+            return response.json();
+        })
+        .then(data => {
+            if (!data || data.length === 0) {
+                modalBody.innerHTML = '<p class="alert alert-info text-center">Không có dữ liệu BackOrder (PO) nào cho mã hàng này.</p>';
+                return;
+            }
+
+            // Xây dựng bảng
+            let tableHtml = '<div class="table-responsive"><table class="table table-sm table-striped table-bordered small mb-0">';
+            tableHtml += '<thead class="table-primary"><tr>';
+            tableHtml += '<th>Mã PO (VoucherNo)</th>';
+            tableHtml += '<th>Ngày PO (OrderDate)</th>';
+            tableHtml += '<th class="text-end">SL Còn (con)</th>';
+            tableHtml += '<th>Ngày Dự kiến Về (ShipDate)</th>';
+            tableHtml += '</tr></thead><tbody>';
+
+            data.forEach(item => {
+                tableHtml += `<tr>
+                                <td>${item.VoucherNo}</td>
+                                <td>${item.OrderDate}</td>
+                                <td class="text-end fw-bold">${formatCurrency(item.con)}</td>
+                                <td class="fw-bold ${item.ShipDate === '—' ? 'text-danger' : 'text-success'}">${item.ShipDate}</td>
+                              </tr>`;
+            });
+
+            tableHtml += '</tbody></table></div>';
+            modalBody.innerHTML = tableHtml;
+        })
+        .catch(error => {
+            modalBody.innerHTML = `<p class="alert alert-danger text-center">Lỗi: ${error.message}</p>`;
+        });
+}
+// === KẾT THÚC HÀM MODAL ===
+
 </script>
 </body>
 </html>

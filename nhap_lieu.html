@@ -613,7 +613,7 @@
                         });
                         
                         resultsDropdown.style.display = 'block';
-                        resultsDropdown.size = Math.min(data.length, 5); 
+                        resultsDropdown.size = Math.max(Math.min(data.length, 5), 2);
                         status_msg.textContent = `Tìm thấy ${data.length} kết quả. Vui lòng chọn.`;
                         
                         if (data.length === 1) {

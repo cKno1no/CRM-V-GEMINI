@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Báo cáo Dự phòng Tồn kho Tổng thể</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
+    <style>
+        /* Bố cục và màu sắc chung */
+        body { background-color: #F8F9FA; color: #3C4043; font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .container-fluid { max-width: 98%; margin-top: 30px; }
+        h1 { font-weight: 700; color: #4285F4; margin-bottom: 0; }
+        .header-main-box {
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 10px; 
+            border-bottom: 3px solid #E8F0FE; 
+            padding-bottom: 10px;
+        }
+        .btn-header-action { font-weight: 600; padding: 8px 15px; border-radius: 6px; }
+
+        /* Khối Lọc (Giống sales_lookup) */
+        .filter-card { 
+            background-color: #ffffff; 
+            padding: 15px; 
+            margin-bottom: 25px; 
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        
+        /* Bố cục Master-Detail */
+        .master-panel, .detail-panel {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.1);
+            padding: 15px;
+            height: 80vh; /* Req 1: Bằng nhau */
+        }
+        .master-table-container, .detail-table-container {
+            height: calc(80vh - 100px); /* Chiều cao trừ đi header/padding */
+            overflow-y: auto;
+        }
+
+        /* Phong cách Bảng (Giống sales_lookup) */
+        .data-table { width: 100%; }
+        .data-table th { 
+            background-color: #d6e8ff; 
+            color: #333; 
+            padding: 10px; 
+            border-bottom: 2px solid #3f90e9; 
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            text-align: center; 
+        }
+        .data-table td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 0.9em; }
+        .data-table tbody tr:hover { background-color: #f8f9fa; }
+        .text-start { text-align: left !important; }
+        .text-end { text-align: right !important; }
+
+        /* Định dạng Bảng Chi tiết */
+        .detail-table th { background-color: #E8F0FE; color: #1A73E8; }
+        
+        /* Dòng được chọn (Master) */
+        tr.master-row { cursor: pointer; }
+        tr.master-row:hover { background-color: #f0f0f0; }
+        tr.master-row.selected { 
+            background-color: #E8F0FE !important; 
+            border-left: 4px solid #1A73E8;
+        }
+        
+        /* Màu sắc Cần/Dư */
+        .deficit-col { background-color: #FCE8E6; font-weight: 700; color: #DB4437; }
+        .surplus-col { background-color: #E6F4EA; color: #1E8E3E; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="header-main-box">
+            <h1><i class="fas fa-boxes me-2" style="color: #DB4437;"></i> Báo cáo Dự phòng Tồn kho Tổng thể</h1>
+            <div>
+                <a href="{{ url_for('export_total_replenishment') }}" class="btn btn-success btn-header-action me-2">
+                    <i class="fas fa-file-excel me-2"></i>Xuất Excel
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary btn-header-action">
+                    <i class="fas fa-arrow-left me-2"></i>Về Portal
+                </a>
+            </div>
+        </div>
+
+        <div class="filter-card">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Lọc nhanh (Nhóm hàng, Ngành...)</label>
+                    <input type="text" id="masterSearchInput" class="form-control" placeholder="Gõ để lọc bảng bên trái...">
+                </div>
+                <div class="col-md-6">
+                    <p class="text-muted small">Click vào một Nhóm hàng ở bảng bên trái để xem chi tiết Tồn kho (Ton) và Hàng về (BO).</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="master-panel">
+                    <h5 class="mb-3">Danh sách Nhóm hàng ({{ alert_list|length }})</h5>
+                    <div class="master-table-container">
+                        <table id="replenishmentTable" class="data-table table-hover table-sm">
+                            <thead class="text-center">
+                                <tr>
+                                    <th class="text-start">Nhóm Hàng</th>
+                                    <th class="text-end">Lượng Thiếu/Dư</th>
+                                    <th class="text-end">Điểm Tái Đặt (ROP)</th>
+                                    <th class="text-end">Tồn-BO</th>
+                                    <th class="text-end">Tiêu hao (Tháng)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in alert_list %}
+                                
+                                <tr class="master-row" 
+                                    onclick="loadGroupDetails(this, 
+                                        '{{ item.NhomHang }}', 
+                                        {{ item.LuongThieuDu|float|tojson }}, 
+                                        {{ item.DiemTaiDatROP|float|tojson }}, 
+                                        {{ item.TonBO|float|tojson }})">
+                                    
+                                    <td class="text-start fw-bold">{{ item.NhomHang }}</td>
+                                    
+                                    {% set deficit = item.LuongThieuDu|float %}
+                                    <td class="text-end fw-bold {% if deficit > 0 %}deficit-col{% else %}surplus-col{% endif %}">
+                                        {{ "%.0f"|format(deficit) }}
+                                    </td>
+                                    
+                                    <td class="text-end">{{ "%.0f"|format(item.DiemTaiDatROP|float) }}</td>
+                                    <td class="text-end">{{ "%.0f"|format(item.TonBO|float) }}</td>
+                                    <td class="text-end">{{ "%.2f"|format(item.TieuHaoThang|float) }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted p-4">Không có dữ liệu.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="detail-panel">
+                    <h5 class="mb-3" id="detailCardHeader">Chi tiết Nhóm hàng</h5>
+                    <div id="detail-summary" class="row g-3 mb-3"></div>
+                    <div id="detail-table" class="detail-table-container">
+                        <p class="text-center text-muted p-4">Vui lòng chọn một Nhóm hàng bên trái.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // === SỬA LỖI HÀM FORMATCURRENCY (LỖI 2) ===
+        function formatCurrency(num) {
+            // 1. Chuyển đổi an toàn về số (xử lý cả "35.00000000" và 45)
+            let numValue = parseFloat(num);
+            
+            // 2. Nếu không phải là số (NaN), gán là 0
+            if (isNaN(numValue)) {
+                numValue = 0;
+            }
+            
+            // 3. Định dạng
+            return new Intl.NumberFormat('vi-VN').format(numValue);
+        }
+        // === KẾT THÚC SỬA LỖI ===
+
+        let masterTable = null; 
+
+        $(document).ready(function() {
+            masterTable = $('#replenishmentTable').DataTable({
+                "paging": false, 
+                "ordering": false, 
+                "info": false, 
+                "scrollY": "calc(80vh - 150px)", 
+                "scrollCollapse": true,
+                "searching": true, 
+                "dom": 't'
+            });
+
+            $('#masterSearchInput').on('keyup', function() {
+                masterTable.search(this.value).draw();
+            });
+        });
+
+        let lastSelectedRow = null;
+        
+        // === SỬA LỖI Tên Biến (JavaScript) ===
+        function loadGroupDetails(selectedRow, groupCode, luongThieuDu, diemTaiDatROP, tonBO) {
+            if (lastSelectedRow) {
+                $(lastSelectedRow).removeClass('selected');
+            }
+            $(selectedRow).addClass('selected');
+            lastSelectedRow = selectedRow;
+
+            const header = $('#detailCardHeader');
+            const summaryDiv = $('#detail-summary');
+            const tableDiv = $('#detail-table');
+            
+            header.text(`Chi tiết Nhóm: ${groupCode}`);
+            
+            const deficitClass = luongThieuDu > 0 ? 'bg-danger text-white' : 'bg-success text-white';
+            summaryDiv.html(`
+                <div class="col-md-4">
+                    <div class="p-3 ${deficitClass} rounded shadow-sm">
+                        <div class="small">Lượng Thiếu/Dư</div>
+                        <h4 class="mb-0">${formatCurrency(luongThieuDu)}</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-warning-subtle text-dark rounded shadow-sm">
+                        <div class="small">Điểm Tái Đặt (ROP)</div>
+                        <h4 class="mb-0">${formatCurrency(diemTaiDatROP)}</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-light text-dark rounded shadow-sm">
+                        <div class="small">Tổng Dự Phòng (Tồn-BO)</div>
+                        <h4 class="mb-0">${formatCurrency(tonBO)}</h4>
+                    </div>
+                </div>
+            `);
+            
+            tableDiv.html('<p class="text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết...</p>');
+
+            fetch(`/api/replenishment_details/${encodeURIComponent(groupCode)}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Không thể tải dữ liệu chi tiết.');
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data || data.length === 0) {
+                        tableDiv.html('<p class="alert alert-info text-center">Không tìm thấy mã hàng chi tiết.</p>');
+                        return;
+                    }
+
+                    let tableHtml = '<table class="table table-sm table-striped table-bordered small mb-0 detail-table data-table">';
+                    tableHtml += '<thead><tr>';
+                    tableHtml += '<th>Mã Hàng (InventoryID)</th>';
+                    tableHtml += '<th>Tên Hàng</th>';
+                    tableHtml += '<th class="text-end">Tồn Kho (Ton)</th>';
+                    tableHtml += '<th class="text-end">Hàng Đang Về (BO)</th>';
+                    tableHtml += '</tr></thead><tbody>';
+
+                    data.forEach(item => {
+                        tableHtml += `<tr>
+                                        <td>${item.InventoryID}</td>
+                                        <td class="text-start">${item.InventoryName}</td>
+                                        <td class="text-end">${formatCurrency(item.TonKhoHienTai)}</td>
+                                        <td class="text-end">${formatCurrency(item.HangDangVe)}</td>
+                                      </tr>`;
+                    });
+
+                    tableHtml += '</tbody></table>';
+                    tableDiv.innerHTML = tableHtml;
+                })
+                .catch(error => {
+                    tableDiv.innerHTML = `<p class="alert alert-danger text-center">Lỗi: ${error.message}</p>`;
+                });
+        }
+    </script>
+</body>
+</html>

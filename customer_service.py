@@ -175,13 +175,19 @@ class CustomerService:
         """
         Tìm kiếm khách hàng (giống api/khachhang) nhưng trả về data cho service.
         """
+        
+        # SỬA ĐỔI: Thêm "OR T1.ObjectName LIKE ?" vào truy vấn
         query = f"""
             SELECT TOP 5 T1.ObjectID AS ID, T1.ShortObjectName AS FullName
             FROM {config.ERP_IT1202} AS T1 
-            WHERE T1.ShortObjectName LIKE ? OR T1.ObjectID LIKE ? 
+            WHERE 
+                T1.ShortObjectName LIKE ? 
+                OR T1.ObjectID LIKE ?
+                OR T1.ObjectName LIKE ?
             ORDER BY T1.ShortObjectName
         """
         like_param = f'%{name_fragment}%'
         
-        data = self.db.get_data(query, (like_param, like_param))
+        # SỬA ĐỔI: Truyền 3 tham số (thay vì 2)
+        data = self.db.get_data(query, (like_param, like_param, like_param))
         return data if data else []

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Dự báo Dự phòng Khách hàng</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        /* (Toàn bộ CSS giữ nguyên như lần trước) */
+        body { background-color: #F8F9FA; color: #3C4043; font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .container-fluid { max-width: 98%; margin-top: 30px; }
+        h1 { font-weight: 700; color: #4285F4; margin-bottom: 0; }
+        .header-main-box {
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 10px; 
+            border-bottom: 3px solid #E8F0FE; 
+            padding-bottom: 10px;
+        }
+        .btn-header-action { font-weight: 600; padding: 8px 15px; border-radius: 6px; }
+        .filter-card { 
+            background-color: #ffffff; 
+            padding: 15px; 
+            margin-bottom: 25px; 
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        .search-container { position: relative; }
+        .search-results-dropdown { 
+            width: 100%; border-radius: 8px; border: 1px solid #4285F4;
+            outline: none; display: none; position: absolute;
+            z-index: 1000; margin-top: 0px; 
+        }
+        .master-panel, .detail-panel {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.1);
+            padding: 15px;
+            height: 70vh; 
+        }
+        .master-table-container, .detail-table-container {
+            height: calc(70vh - 100px); 
+            overflow-y: auto;
+        }
+        .data-table { width: 100%; }
+        .data-table th { 
+            background-color: #d6e8ff; 
+            color: #333; 
+            padding: 10px; 
+            border-bottom: 2px solid #3f90e9; 
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            text-align: center;
+        }
+        .data-table td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 0.9em; }
+        .data-table tbody tr:hover { background-color: #f8f9fa; }
+        .text-start { text-align: left !important; }
+        .text-end { text-align: right !important; }
+        .detail-table th { background-color: #E8F0FE; color: #1A73E8; }
+        tr.master-row { cursor: pointer; }
+        tr.master-row:hover { background-color: #f0f0f0; }
+        tr.master-row.selected { 
+            background-color: #E8F0FE !important; 
+            border-left: 4px solid #1A73E8;
+        }
+        .deficit-col { background-color: #FCE8E6; font-weight: 700; color: #DB4437; }
+        .surplus-col { background-color: #E6F4EA; color: #1E8E3E; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="header-main-box">
+            <h1><i class="fas fa-user-clock me-2" style="color: #34A853;"></i> Báo cáo Dự phòng Khách hàng</h1>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary btn-header-action">
+                <i class="fas fa-arrow-left me-2"></i>Về Portal
+            </a>
+        </div>
+        
+        <div class="filter-card">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-8 search-container"> <label class="form-label fw-bold text-dark">Chọn Khách hàng (VMS, Acecook...)</label>
+                    <input type="text" id="kh_search_input" placeholder="Gõ Mã/Tên Khách hàng để chọn..." class="form-control form-control-lg">
+                    <small id="kh_status" class="form-text text-muted">Báo cáo sẽ hiển thị Top 20 mã hàng (Recurring) mà KH này cần đặt.</small>
+                    <input type="hidden" id="kh_ma_selected">
+                    <select id="kh_search_results" class="form-select search-results-dropdown" size="5"></select>
+                </div>
+                <div class="col-md-4"> <button class="btn btn-primary btn-lg w-100" id="searchBtn" style="height: 48px;">
+                        <i class="fas fa-search"></i> Tra cứu
+                    </button>
+                </div>
+            </div>
+            </div>
+
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="master-panel">
+                    <h5 class="mb-3" id="masterCardHeader">Danh sách Nhóm hàng</h5>
+                    <div class="master-table-container">
+                        <table class="data-table table-hover table-sm mb-0">
+                            <thead class="text-center">
+                                <tr>
+                                    <th class="text-start">Nhóm Hàng</th>
+                                    <th class="text-end">Lượng Thiếu/Dư (KH)</th>
+                                    <th class="text-end">Nhu cầu (LeadTime)</th>
+                                    <th class="text-end">Tồn-BO (Chung)</th>
+                                    <th class="text-end">SV KH (Tháng)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultBody">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted p-4">
+                                        Vui lòng chọn khách hàng và nhấn "Tra cứu".
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="detail-panel">
+                    <h5 class="mb-3" id="detailCardHeader">Chi tiết Nhóm hàng</h5>
+                    <div id="detail-summary" class="row g-3 mb-3"></div>
+                    <div id="detail-table" class="detail-table-container">
+                        <p class="text-center text-muted p-4">Vui lòng chọn một Nhóm hàng bên trái.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // === SỬA LỖI HÀM FORMATCURRENCY ===
+        function formatCurrency(num) {
+            let numValue = parseFloat(num);
+            if (isNaN(numValue)) {
+                numValue = 0;
+            }
+            return new Intl.NumberFormat('vi-VN').format(numValue);
+        }
+        // === KẾT THÚC SỬA LỖI ===
+    
+        // --- (Hàm debounce, timKhachHang giữ nguyên) ---
+        function debounce(func, timeout = 300) {
+            let timer;
+            return (...args) => {
+                clearTimeout(timer);
+                timer = setTimeout(() => { func.apply(this, args); }, timeout);
+            };
+        }
+
+        function timKhachHang() {
+            const term = $('#kh_search_input').val().trim();
+            const statusMsg = $('#kh_status');
+            const resultsDropdown = $('#kh_search_results');
+            
+            resultsDropdown.hide().empty();
+            $('#kh_ma_selected').val('');
+            
+            if (term.length < 2) { statusMsg.text('Nhập ít nhất 2 ký tự.'); return; }
+            statusMsg.text('Đang tìm kiếm...');
+            
+            fetch(`/api/khachhang/${term}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        data.forEach(kh => {
+                            const option = `<option value="${kh.ID}" data-fullname="${kh.FullName}">${kh.ID} - ${kh.FullName}</option>`;
+                            resultsDropdown.append(option);
+                        });
+                        resultsDropdown.show().attr('size', Math.max(Math.min(data.length, 5), 2)); 
+                        statusMsg.html(`Tìm thấy ${data.length} kết quả. Vui lòng chọn.`);
+                    } else {
+                        statusMsg.text('Không tìm thấy kết quả nào.');
+                    }
+                })
+                .catch(error => { statusMsg.text(`Lỗi tra cứu: ${error.message}`); });
+        }
+
+        // (Hàm chonKhachHang đã được sửa để tự động submit)
+        $('#kh_search_results').on('change', function() {
+            const selectedOption = $('#kh_search_results').find('option:selected');
+            if (selectedOption.length) {
+                const id = selectedOption.val();
+                const fullName = selectedOption.data('fullname');
+                const displayText = id + ' - ' + fullName;
+                
+                $('#kh_search_results').hide();
+                $('#kh_ma_selected').val(id); 
+                $('#kh_search_input').val(displayText); 
+                $('#kh_status').html('✅ Khách hàng đã được chọn và xác nhận.');
+                
+                $('#searchBtn').click(); // Tự động tra cứu
+            }
+        });
+    
+        $(document).ready(function() {
+            $('#kh_search_input').on('input', debounce(timKhachHang, 300));
+
+            // (Hàm sự kiện 'searchBtn' click giữ nguyên)
+            $('#searchBtn').on('click', function() {
+                const customerId = $('#kh_ma_selected').val();
+                if (!customerId) {
+                    alert('Vui lòng chọn một khách hàng hợp lệ.');
+                    return;
+                }
+
+                const button = $(this);
+                const resultBody = $('#resultBody');
+                const detailPanel = $('.detail-panel'); 
+
+                button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Đang tra cứu...');
+                resultBody.html('<tr><td colspan="5" class="text-center text-primary p-4">Đang tải dữ liệu...</td></tr>');
+                detailPanel.find('#detail-summary').empty();
+                detailPanel.find('#detail-table').html('<p class="text-center text-muted p-4">Vui lòng chọn một Nhóm hàng bên trái.</p>');
+                detailPanel.find('#detailCardHeader').text('Chi tiết Nhóm hàng');
+                lastSelectedRow_Cust = null; 
+
+                fetch(`/api/customer_replenishment/${customerId}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Lỗi khi tải dữ liệu từ server.');
+                        return response.json();
+                    })
+                    .then(data => {
+                        resultBody.empty();
+                        if (!data || data.length === 0) {
+                            resultBody.html('<tr><td colspan="5" class="text-center text-success p-4">Khách hàng này không có mã hàng nào cần dự phòng (Recurring).</td></tr>');
+                            return;
+                        }
+
+                        data.forEach(item => {
+                            const isAlert = item.LuongThieuDu > 0;
+                            const deficit = parseFloat(item.LuongThieuDu);
+                            const rop_kh = parseFloat(item.DiemTaiDatROP);
+                            const duphong = parseFloat(item.TonBO);
+                            const sv_kh = parseFloat(item.TieuHaoThang);
+                            const rop_goc = parseFloat(item.NhuCauTrongLeadTime_Goc);
+                            const tongduphong_goc = parseFloat(item.TongDuPhong);
+                            
+                            const rowHtml = `
+                                <tr class="master-row" onclick="loadCustomerReplenishmentDetails(this, '${item.NhomHang}', ${deficit}, ${rop_goc}, ${tongduphong_goc})">
+                                    <td class="text-start fw-bold">${item.NhomHang}</td>
+                                    <td class="text-end fw-bold ${isAlert ? 'deficit-col' : 'surplus-col'}">${deficit.toFixed(0)}</td>
+                                    <td class="text-end">${rop_kh.toFixed(0)}</td>
+                                    <td class="text-end">${duphong.toFixed(0)}</td>
+                                    <td class="text-end">${sv_kh.toFixed(2)}</td>
+                                </tr>
+                            `;
+                            resultBody.append(rowHtml);
+                        });
+                    })
+                    .catch(error => {
+                        resultBody.html(`<tr><td colspan="5" class="text-center text-danger p-4">Lỗi: ${error.message}</td></tr>`);
+                    })
+                    .finally(() => {
+                        button.prop('disabled', false).html('<i class="fas fa-search"></i> Tra cứu');
+                    });
+            });
+        });
+
+        // (Hàm loadCustomerReplenishmentDetails giữ nguyên)
+        let lastSelectedRow_Cust = null;
+
+        function loadCustomerReplenishmentDetails(selectedRow, groupCode, luongThieuDu, rop_kh_goc, tongDuPhong) {
+            if (lastSelectedRow_Cust) {
+                $(lastSelectedRow_Cust).removeClass('selected');
+            }
+            $(selectedRow).addClass('selected');
+            lastSelectedRow_Cust = selectedRow;
+
+            const header = $('#detailCardHeader');
+            const summaryDiv = $('#detail-summary');
+            const tableDiv = $('#detail-table');
+            
+            header.text(`Chi tiết Nhóm: ${groupCode}`);
+            
+            const deficitClass = luongThieuDu > 0 ? 'bg-danger text-white' : 'bg-success text-white';
+            summaryDiv.html(`
+                <div class="col-md-4">
+                    <div class="p-3 ${deficitClass} rounded shadow-sm">
+                        <div class="small">Lượng Thiếu/Dư (KH)</div>
+                        <h4 class="mb-0">${formatCurrency(luongThieuDu)}</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-warning-subtle text-dark rounded shadow-sm">
+                        <div class="small">Nhu cầu (LeadTime)</div>
+                        <h4 class="mb-0">${formatCurrency(rop_kh_goc)}</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-light text-dark rounded shadow-sm">
+                        <div class="small">Tổng Dự phòng (Chung)</div>
+                        <h4 class="mb-0">${formatCurrency(tongDuPhong)}</h4>
+                    </div>
+                </div>
+            `);
+            
+            tableDiv.html('<p class="text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết các mã hàng...</p>');
+
+            fetch(`/api/replenishment_details/${encodeURIComponent(groupCode)}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Không thể tải dữ liệu chi tiết.');
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data || data.length === 0) {
+                        tableDiv.html('<p class="alert alert-info text-center">Không tìm thấy mã hàng chi tiết.</p>');
+                        return;
+                    }
+
+                    let tableHtml = '<table class="table table-sm table-striped table-bordered small mb-0 detail-table data-table">';
+                    tableHtml += '<thead><tr>';
+                    tableHtml += '<th>Mã Hàng (InventoryID)</th>';
+                    tableHtml += '<th>Tên Hàng</th>';
+                    tableHtml += '<th class="text-end">Tồn Kho (Ton)</th>';
+                    tableHtml += '<th class="text-end">Hàng Đang Về (BO)</th>';
+                    tableHtml += '</tr></thead><tbody>';
+
+                    data.forEach(item => {
+                        tableHtml += `<tr>
+                                        <td>${item.InventoryID}</td>
+                                        <td class="text-start">${item.InventoryName}</td>
+                                        <td class="text-end">${formatCurrency(item.TonKhoHienTai)}</td>
+                                        <td class="text-end">${formatCurrency(item.HangDangVe)}</td>
+                                      </tr>`;
+                    });
+
+                    tableHtml += '</tbody></table>';
+                    tableDiv.innerHTML = tableHtml;
+                })
+                .catch(error => {
+                    tableDiv.innerHTML = `<p class="alert alert-danger text-center">Lỗi: ${error.message}</p>`;
+                });
+        }
+    </script>
+</body>
+</html>
