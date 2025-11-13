@@ -120,7 +120,7 @@
         <div class="card mb-4" id="lookup-card">
             <div class="card-header">Thông tin Tra cứu</div>
             <div class="card-body">
-                <form method="POST" action="{{ url_for('sales_bp.sales_lookup_dashboard') }}" class="row g-3">
+                <form method="POST" action="{{ url_for('lookup_bp.sales_lookup_dashboard') }}" class="row g-3">
                     
                     <div class="col-md-4">
                         <label class="form-label fw-bold text-dark">Tìm theo Mã/Tên Mặt hàng</label>
@@ -384,7 +384,7 @@ $(document).ready(function() {
 
         statusMsg.text('Đang tìm kiếm...');
         
-        fetch(`/api/khachhang/${term}`)
+        fetch(`/sales/api/khachhang/${term}`)
             .then(response => response.json())
             .then(data => {
                 if (data && data.length > 0) {

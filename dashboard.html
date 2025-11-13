@@ -128,7 +128,7 @@
             <h1><i class="fas fa-file-alt me-2"></i> DASHBOARD BÁO CÁO KHÁCH HÀNG</h1>
             <div class="d-flex gap-2">
                 
-                <a href="{{ url_for('nhap_lieu') }}" class="btn btn-header-action btn-create-report">
+                <a href="{{ url_for('crm_bp.nhap_lieu') }}" class="btn btn-header-action btn-create-report">
                     <i class="fas fa-plus-circle me-1"></i> Tạo Báo cáo
                 </a>
                 
@@ -150,7 +150,7 @@
         {% endwith %}
 
         <div class="filter-card">
-            <form method="POST" action="{{ url_for('dashboard_reports', page=1) }}" class="row g-3 align-items-end">
+            <form method="POST" action="{{ url_for('crm_bp.dashboard_reports', page=1) }}" class="row g-3 align-items-end">
                 
                 <div class="col-md-2">
                     <label for="date_from" class="form-label">Từ Ngày</label>
@@ -201,11 +201,11 @@
                         <i class="fas fa-list-alt me-2"></i> Danh sách Báo cáo (Trang {{ page }} / Tổng {{ total_reports|default(0) }} báo cáo)
                     </h3>
                     <div class="btn-group">
-                        <a href="{{ url_for('dashboard_reports', page=page - 1, nv_bao_cao=selected_user, date_from=date_from, date_to=date_to, kh_search=kh_search_term, text_search=text_search_term) }}" class="btn btn-sm btn-outline-primary {% if page <= 1 %}disabled{% endif %}">
+                        <a href="{{ url_for('crm_bp.dashboard_reports', page=page - 1, nv_bao_cao=selected_user, date_from=date_from, date_to=date_to, kh_search=kh_search_term, text_search=text_search_term) }}" class="btn btn-sm btn-outline-primary {% if page <= 1 %}disabled{% endif %}">
                             <i class="fas fa-arrow-left"></i> Trước
                         </a>
                         <button type="button" class="btn btn-sm btn-primary disabled">Trang {{ page }}</button>
-                        <a href="{{ url_for('dashboard_reports', page=page + 1, nv_bao_cao=selected_user, date_from=date_from, date_to=date_to, kh_search=kh_search_term, text_search=text_search_term) }}" class="btn btn-sm btn-outline-primary {% if page >= total_pages or total_reports == 0 %}disabled{% endif %}">
+                        <a href="{{ url_for('crm_bp.dashboard_reports', page=page + 1, nv_bao_cao=selected_user, date_from=date_from, date_to=date_to, kh_search=kh_search_term, text_search=text_search_term) }}" class="btn btn-sm btn-outline-primary {% if page >= total_pages or total_reports == 0 %}disabled{% endif %}">
                             Sau <i class="fas fa-arrow-right"></i>
                         </a>
                     </div>
@@ -228,7 +228,7 @@
                         <tbody id="report-master-body">
                             {% for row in reports %}
                             <tr class="report-row" 
-                                onclick="window.open('{{ url_for('report_detail_page', report_stt=row.ID_KEY) }}', '_blank')">
+                                onclick="window.open('{{ url_for('crm_bp.report_detail_page', report_stt=row.ID_KEY) }}', '_blank')">
                                 
                                 <td>{{ row.ID_KEY }}</td>
                                 <td>{{ row.NGAY }}</td>
@@ -266,29 +266,29 @@
                             
                             {# Previous Button #}
                             <li class="page-item {% if page == 1 %}disabled{% endif %}">
-                                <a class="page-link" href="{{ url_for('dashboard_reports', page=page - 1, **url_params) }}">&laquo;</a>
+                                <a class="page-link" href="{{ url_for('crm_bp.dashboard_reports', page=page - 1, **url_params) }}">&laquo;</a>
                             </li>
                             
                             {# Page Numbers #}
                             {% if start_page > 1 %}
-                                <li class="page-item"><a class="page-link" href="{{ url_for('dashboard_reports', page=1, **url_params) }}">1</a></li>
+                                <li class="page-item"><a class="page-link" href="{{ url_for('crm_bp.dashboard_reports', page=1, **url_params) }}">1</a></li>
                                 {% if start_page > 2 %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}
                             {% endif %}
         
                             {% for p in range(start_page, end_page + 1) %}
                                 <li class="page-item {% if p == page %}active{% endif %}">
-                                    <a class="page-link" href="{{ url_for('dashboard_reports', page=p, **url_params) }}">{{ p }}</a>
+                                    <a class="page-link" href="{{ url_for('crm_bp.dashboard_reports', page=p, **url_params) }}">{{ p }}</a>
                                 </li>
                             {% endfor %}
         
                             {% if end_page < total_pages %}
                                 {% if end_page < total_pages - 1 %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}
-                                <li class="page-item"><a class="page-link" href="{{ url_for('dashboard_reports', page=total_pages, **url_params) }}">{{ total_pages }}</a></li>
+                                <li class="page-item"><a class="page-link" href="{{ url_for('crm_bp.dashboard_reports', page=total_pages, **url_params) }}">{{ total_pages }}</a></li>
                             {% endif %}
                             
                             {# Next Button #}
                             <li class="page-item {% if page == total_pages or total_reports == 0 %}disabled{% endif %}">
-                                <a class="page-link" href="{{ url_for('dashboard_reports', page=page + 1, **url_params) }}">&raquo;</a>
+                                <a class="page-link" href="{{ url_for('crm_bp.dashboard_reports', page=page + 1, **url_params) }}">&raquo;</a>
                             </li>
                         </ul>
                     </nav>

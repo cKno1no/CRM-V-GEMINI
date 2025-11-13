@@ -6,7 +6,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
-        /* (Toàn bộ CSS giữ nguyên như lần trước) */
+        /* (CSS giữ nguyên) */
         body { background-color: #F8F9FA; color: #3C4043; font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .container-fluid { max-width: 98%; margin-top: 30px; }
         h1 { font-weight: 700; color: #4285F4; margin-bottom: 0; }
@@ -80,14 +80,14 @@
         </div>
         
         <div class="filter-card">
-            <div class="row g-3 align-items-end">
+            <div class="row g-3 align-items-center">
                 <div class="col-md-8 search-container"> <label class="form-label fw-bold text-dark">Chọn Khách hàng (VMS, Acecook...)</label>
                     <input type="text" id="kh_search_input" placeholder="Gõ Mã/Tên Khách hàng để chọn..." class="form-control form-control-lg">
                     <small id="kh_status" class="form-text text-muted">Báo cáo sẽ hiển thị Top 20 mã hàng (Recurring) mà KH này cần đặt.</small>
                     <input type="hidden" id="kh_ma_selected">
                     <select id="kh_search_results" class="form-select search-results-dropdown" size="5"></select>
                 </div>
-                <div class="col-md-4"> <button class="btn btn-primary btn-lg w-100" id="searchBtn" style="height: 48px;">
+                <div class="col-md-4 button-column-fix"> <button class="btn btn-primary btn-lg w-50" id="searchBtn" style="height: 48px;">
                         <i class="fas fa-search"></i> Tra cứu
                     </button>
                 </div>
@@ -104,9 +104,9 @@
                                 <tr>
                                     <th class="text-start">Nhóm Hàng</th>
                                     <th class="text-end">Lượng Thiếu/Dư (KH)</th>
-                                    <th class="text-end">Nhu cầu (LeadTime)</th>
+                                    <th class="text-end">Điểm tái đặt (ROP)</th>
                                     <th class="text-end">Tồn-BO (Chung)</th>
-                                    <th class="text-end">SV KH (Tháng)</th>
+                                    <th class="text-end">Tiêu hao (Tháng)</th>
                                 </tr>
                             </thead>
                             <tbody id="resultBody">
@@ -136,7 +136,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // === SỬA LỖI HÀM FORMATCURRENCY ===
+        // === HÀM FORMATCURRENCY ===
         function formatCurrency(num) {
             let numValue = parseFloat(num);
             if (isNaN(numValue)) {
@@ -144,9 +144,9 @@
             }
             return new Intl.NumberFormat('vi-VN').format(numValue);
         }
-        // === KẾT THÚC SỬA LỖI ===
-    
-        // --- (Hàm debounce, timKhachHang giữ nguyên) ---
+        // === KẾT THÚC HÀM FORMATCURRENCY ===
+
+        // --- (Hàm debounce và timKhachHang giữ nguyên) ---
         function debounce(func, timeout = 300) {
             let timer;
             return (...args) => {
@@ -166,7 +166,8 @@
             if (term.length < 2) { statusMsg.text('Nhập ít nhất 2 ký tự.'); return; }
             statusMsg.text('Đang tìm kiếm...');
             
-            fetch(`/api/khachhang/${term}`)
+            // FIX 1: Thêm tiền tố /sales vào API tra cứu khách hàng
+            fetch(`/sales/api/khachhang/${term}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data && data.length > 0) {
@@ -183,7 +184,6 @@
                 .catch(error => { statusMsg.text(`Lỗi tra cứu: ${error.message}`); });
         }
 
-        // (Hàm chonKhachHang đã được sửa để tự động submit)
         $('#kh_search_results').on('change', function() {
             const selectedOption = $('#kh_search_results').find('option:selected');
             if (selectedOption.length) {
@@ -199,7 +199,88 @@
                 $('#searchBtn').click(); // Tự động tra cứu
             }
         });
-    
+
+        // === HÀM TẢI CHI TIẾT ĐÃ GỠ LỖI ===
+        let lastSelectedRow_Cust = null;
+
+        function loadCustomerReplenishmentDetails(selectedRow, groupCode, luongThieuDu, rop_kh_goc, tongDuPhong) {
+            if (lastSelectedRow_Cust) {
+                $(lastSelectedRow_Cust).removeClass('selected');
+            }
+            $(selectedRow).addClass('selected');
+            lastSelectedRow_Cust = selectedRow;
+
+            const header = $('#detailCardHeader');
+            const summaryDiv = $('#detail-summary');
+            const tableDiv = $('#detail-table');
+            
+            header.text(`Chi tiết Nhóm: ${groupCode}`);
+
+            // 1. Render Summary KPIs
+            const deficitClass = luongThieuDu > 0 ? 'bg-danger text-white' : 'bg-success text-white';
+            summaryDiv.html(`
+                <div class="col-md-4">
+                    <div class="p-3 ${deficitClass} rounded shadow-sm">
+                        <div class="small">Lượng Thiếu/Dư (KH)</div>
+                        <h4 class="mb-0">${formatCurrency(luongThieuDu)}</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-warning-subtle text-dark rounded shadow-sm">
+                        <div class="small">Điểm tái đặt (ROP)</div>
+                        <h4 class="mb-0">${formatCurrency(rop_kh_goc)}</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-light text-dark rounded shadow-sm">
+                        <div class="small">Tổng Tồn-BO (Chung)</div>
+                        <h4 class="mb-0">${formatCurrency(tongDuPhong)}</h4>
+                    </div>
+                </div>
+            `);
+            
+            // 2. Show spinner and Fetch Details
+            tableDiv.html('<p class="text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết các mã hàng...</p>');
+
+            // FIX 2: Thêm tiền tố /sales vào API tra cứu chi tiết nhóm hàng
+            fetch(`/sales/api/replenishment_details/${encodeURIComponent(groupCode)}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Không thể tải dữ liệu chi tiết. (Status: ' + response.status + ')');
+                    return response.json();
+                })
+                .then(data => {
+                    // Kiểm tra an toàn dữ liệu
+                    if (!data || !Array.isArray(data) || data.length === 0) {
+                        tableDiv.html('<p class="alert alert-info text-center">Không tìm thấy mã hàng chi tiết.</p>');
+                        return;
+                    }
+
+                    // Render bảng chi tiết
+                    let tableHtml = '<table class="table table-sm table-striped table-bordered small mb-0 detail-table data-table">';
+                    tableHtml += '<thead><tr>';
+                    tableHtml += '<th>Mã Hàng (InventoryID)</th>';
+                    tableHtml += '<th>Tên Hàng</th>';
+                    tableHtml += '<th class="text-end">Tồn Kho</th>';
+                    tableHtml += '<th class="text-end">Hàng Đang Về (BO)</th>';
+                    tableHtml += '</tr></thead><tbody>';
+
+                    data.forEach(item => {
+                        tableHtml += `<tr>
+                                        <td>${item.InventoryID}</td>
+                                        <td class="text-start">${item.InventoryName}</td>
+                                        <td class="text-end">${formatCurrency(item.TonKhoHienTai)}</td>
+                                        <td class="text-end">${formatCurrency(item.HangDangVe)}</td>
+                                    </tr>`;
+                    });
+
+                    tableHtml += '</tbody></table>';
+                    tableDiv.html(tableHtml);
+                })
+                .catch(error => {
+                    tableDiv.html(`<p class="alert alert-danger text-center">Lỗi tải chi tiết: ${error.message}</p>`);
+                });
+        }
+
         $(document).ready(function() {
             $('#kh_search_input').on('input', debounce(timKhachHang, 300));
 
@@ -222,9 +303,11 @@
                 detailPanel.find('#detailCardHeader').text('Chi tiết Nhóm hàng');
                 lastSelectedRow_Cust = null; 
 
-                fetch(`/api/customer_replenishment/${customerId}`)
+                // FIX 3: Sửa API gọi data chính (nếu API này nằm trong lookup_bp, nó cũng cần tiền tố)
+                // Giả định API này là /api/customer_replenishment/<id>
+                fetch(`/sales/api/customer_replenishment/${customerId}`) 
                     .then(response => {
-                        if (!response.ok) throw new Error('Lỗi khi tải dữ liệu từ server.');
+                        if (!response.ok) throw new Error('Lỗi khi tải dữ liệu từ server. (Lỗi 404 có thể do thiếu tiền tố Blueprint)');
                         return response.json();
                     })
                     .then(data => {
@@ -236,12 +319,12 @@
 
                         data.forEach(item => {
                             const isAlert = item.LuongThieuDu > 0;
-                            const deficit = parseFloat(item.LuongThieuDu);
-                            const rop_kh = parseFloat(item.DiemTaiDatROP);
-                            const duphong = parseFloat(item.TonBO);
-                            const sv_kh = parseFloat(item.TieuHaoThang);
-                            const rop_goc = parseFloat(item.NhuCauTrongLeadTime_Goc);
-                            const tongduphong_goc = parseFloat(item.TongDuPhong);
+                            const deficit = parseFloat(item.LuongThieuDu) || 0;
+                            const rop_kh = parseFloat(item.DiemTaiDatROP) || 0;
+                            const duphong = parseFloat(item.TonBO) || 0;
+                            const sv_kh = parseFloat(item.TieuHaoThang) || 0;
+                            const rop_goc = parseFloat(item.NhuCauTrongLeadTime_Goc) || 0;
+                            const tongduphong_goc = parseFloat(item.TongDuPhong) || 0;
                             
                             const rowHtml = `
                                 <tr class="master-row" onclick="loadCustomerReplenishmentDetails(this, '${item.NhomHang}', ${deficit}, ${rop_goc}, ${tongduphong_goc})">
@@ -263,82 +346,7 @@
                     });
             });
         });
-
-        // (Hàm loadCustomerReplenishmentDetails giữ nguyên)
-        let lastSelectedRow_Cust = null;
-
-        function loadCustomerReplenishmentDetails(selectedRow, groupCode, luongThieuDu, rop_kh_goc, tongDuPhong) {
-            if (lastSelectedRow_Cust) {
-                $(lastSelectedRow_Cust).removeClass('selected');
-            }
-            $(selectedRow).addClass('selected');
-            lastSelectedRow_Cust = selectedRow;
-
-            const header = $('#detailCardHeader');
-            const summaryDiv = $('#detail-summary');
-            const tableDiv = $('#detail-table');
-            
-            header.text(`Chi tiết Nhóm: ${groupCode}`);
-            
-            const deficitClass = luongThieuDu > 0 ? 'bg-danger text-white' : 'bg-success text-white';
-            summaryDiv.html(`
-                <div class="col-md-4">
-                    <div class="p-3 ${deficitClass} rounded shadow-sm">
-                        <div class="small">Lượng Thiếu/Dư (KH)</div>
-                        <h4 class="mb-0">${formatCurrency(luongThieuDu)}</h4>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="p-3 bg-warning-subtle text-dark rounded shadow-sm">
-                        <div class="small">Nhu cầu (LeadTime)</div>
-                        <h4 class="mb-0">${formatCurrency(rop_kh_goc)}</h4>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="p-3 bg-light text-dark rounded shadow-sm">
-                        <div class="small">Tổng Dự phòng (Chung)</div>
-                        <h4 class="mb-0">${formatCurrency(tongDuPhong)}</h4>
-                    </div>
-                </div>
-            `);
-            
-            tableDiv.html('<p class="text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết các mã hàng...</p>');
-
-            fetch(`/api/replenishment_details/${encodeURIComponent(groupCode)}`)
-                .then(response => {
-                    if (!response.ok) throw new Error('Không thể tải dữ liệu chi tiết.');
-                    return response.json();
-                })
-                .then(data => {
-                    if (!data || data.length === 0) {
-                        tableDiv.html('<p class="alert alert-info text-center">Không tìm thấy mã hàng chi tiết.</p>');
-                        return;
-                    }
-
-                    let tableHtml = '<table class="table table-sm table-striped table-bordered small mb-0 detail-table data-table">';
-                    tableHtml += '<thead><tr>';
-                    tableHtml += '<th>Mã Hàng (InventoryID)</th>';
-                    tableHtml += '<th>Tên Hàng</th>';
-                    tableHtml += '<th class="text-end">Tồn Kho (Ton)</th>';
-                    tableHtml += '<th class="text-end">Hàng Đang Về (BO)</th>';
-                    tableHtml += '</tr></thead><tbody>';
-
-                    data.forEach(item => {
-                        tableHtml += `<tr>
-                                        <td>${item.InventoryID}</td>
-                                        <td class="text-start">${item.InventoryName}</td>
-                                        <td class="text-end">${formatCurrency(item.TonKhoHienTai)}</td>
-                                        <td class="text-end">${formatCurrency(item.HangDangVe)}</td>
-                                      </tr>`;
-                    });
-
-                    tableHtml += '</tbody></table>';
-                    tableDiv.innerHTML = tableHtml;
-                })
-                .catch(error => {
-                    tableDiv.innerHTML = `<p class="alert alert-danger text-center">Lỗi: ${error.message}</p>`;
-                });
-        }
+        // === KẾT THÚC HÀM TẢI CHI TIẾT ĐÃ GỠ LỖI ===
     </script>
 </body>
 </html>

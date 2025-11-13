@@ -303,3 +303,16 @@ class SalesLookupService:
             formatted_data.append(row)
             
         return formatted_data
+    # --- HÀM MỚI CHO REPLENISHMENT (Bước 1) ---
+    def get_replenishment_needs(self, customer_id):
+        """
+        Gọi SP để lấy nhu cầu dự phòng chi tiết theo Khách hàng.
+        """
+        if not customer_id:
+            return []
+            
+        # Giả định SP là 'dbo.sp_GetCustomerReplenishmentSuggest'
+        sp_results = self.db.execute_sp_multi('dbo.sp_GetCustomerReplenishmentSuggest', (customer_id,))
+        
+        # Chỉ trả về Result Set đầu tiên (danh sách nhóm hàng)
+        return sp_results[0] if sp_results and len(sp_results) > 0 else []

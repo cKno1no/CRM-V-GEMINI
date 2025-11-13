@@ -9,6 +9,19 @@ class QuotationApprovalService:
     def __init__(self, db_manager: DBManager):
         self.db = db_manager
 
+    # --- HÀM HELPER MỚI CHO SỰ CỐ NHÂN GIÁ TRỊ ---
+    def safe_numeric(self, value):
+        """Đảm bảo giá trị là số thập phân an toàn, không có lỗi định dạng."""
+        try:
+            # Nếu giá trị bị nhân 100000, chúng ta phải chia nó ở đây
+            val = safe_float(value)
+            # Kiểm tra lỗi nhân 100,000 lần
+            if val > 1000000 and val % 100000 == 0:
+                return val / 100000
+            return val
+        except:
+            return 0.0
+
     def is_user_admin(self, user_code):
         """Kiểm tra xem user_code có vai trò Admin hay không."""
         query = f"""
@@ -233,12 +246,11 @@ class QuotationApprovalService:
             
         return details
 
-    def get_quote_cost_details(self, quotation_id):
+    def get_quote_cost_override_details(self, quotation_id):
         """
         Truy vấn chi tiết mặt hàng cho Form bổ sung Cost.
-        JOIN OT2102, OT2101, IT1302, và BOSUNG_CHAOGIA.
+        Áp dụng hàm safe_numeric để xử lý lỗi giá trị bị nhân 100,000 lần.
         """
-        # QUAN TRỌNG: Chỉ lấy các trường cần thiết theo Yêu cầu 2
         query = f"""
             SELECT
                 T3.TransactionID,
@@ -246,29 +258,35 @@ class QuotationApprovalService:
                 T2.QuotationNo,
                 T3.InventoryID,
                 ISNULL(T3.InventoryCommonName, T5.InventoryName) AS InventoryName,
-                T3.QuoQuantity,
-                T3.UnitPrice,
-                T5.Recievedprice, -- Giá nhập quy định (IT1302)
-                T5.SalePrice01,   -- Giá bán quy định (IT1302)
-                T6.Cost,          -- Giá Cost đã nhập (BOSUNG_CHAOGIA)
-                T6.NOTE           -- Ghi chú đã nhập (BOSUNG_CHAOGIA)
-            FROM {config.ERP_QUOTES} AS T2 -- OT2101
-            INNER JOIN {config.ERP_QUOTE_DETAILS} AS T3 ON T2.QuotationID = T3.QuotationID -- OT2102
-            LEFT JOIN {config.ERP_ITEM_PRICING} AS T5 ON T3.InventoryID = T5.InventoryID -- IT1302
-            LEFT JOIN {config.BOSUNG_CHAOGIA_TABLE} AS T6 ON T3.TransactionID = T6.TransactionID -- Bảng bổ sung
+                T3.QuoQuantity,  -- Lấy giá trị thô
+                T3.UnitPrice,    -- Lấy giá trị thô
+                T5.Recievedprice, 
+                T5.SalePrice01,   
+                T6.Cost,          
+                T6.NOTE           
+            FROM {config.ERP_QUOTES} AS T2 
+            INNER JOIN {config.ERP_QUOTE_DETAILS} AS T3 ON T2.QuotationID = T3.QuotationID 
+            LEFT JOIN {config.ERP_ITEM_PRICING} AS T5 ON T3.InventoryID = T5.InventoryID 
+            LEFT JOIN {config.BOSUNG_CHAOGIA_TABLE} AS T6 ON T3.TransactionID = T6.TransactionID 
             WHERE 
                 T2.QuotationID = ?
-                -- LỌC: CHỈ HIỂN THỊ CÁC MẶT HÀNG BỊ THIẾU GIÁ HOẶC ĐÃ CÓ OVERRIDE
                 AND (
-                    T6.TransactionID IS NOT NULL OR -- Đã có override
-                    T5.SalePrice01 IS NULL OR T5.SalePrice01 <= 1 OR -- Thiếu SalePrice01
-                    T5.Recievedprice IS NULL OR T5.Recievedprice <= 2  -- Thiếu Recievedprice
+                    T6.TransactionID IS NOT NULL OR 
+                    T5.SalePrice01 IS NULL OR T5.SalePrice01 <= 1 OR 
+                    T5.Recievedprice IS NULL OR T5.Recievedprice <= 2  
                 )
             ORDER BY T3.Orders
         """
-        return self.db.get_data(query, (quotation_id,))
+        data = self.db.get_data(query, (quotation_id,))
+        
+        # FIX: Áp dụng clean data
+        for item in data:
+            item['QuoQuantity'] = self.safe_numeric(item.get('QuoQuantity'))
+            item['UnitPrice'] = self.safe_numeric(item.get('UnitPrice'))
+            
+        return data
 
-    def upsert_cost_override(self, updates, user_code):
+    def upsert_cost_override(self, quote_id, updates, user_code):
         """
         Xóa các bản ghi Cost Override cũ và INSERT dữ liệu mới trong một Transaction.
         """

@@ -593,7 +593,7 @@
                 return;
             }
 
-            fetch(`/api/khachhang/${ten_tat}`)
+            fetch(`/sales/api/khachhang/${ten_tat}`)
                 .then(response => {
                     if (response.status === 404) { throw new Error('Không tìm thấy khách hàng.'); }
                     if (!response.ok) { throw new Error('Lỗi Server.'); }

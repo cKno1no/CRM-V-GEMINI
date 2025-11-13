@@ -259,3 +259,47 @@ class DBManager:
         finally:
             if conn:
                 conn.close()
+    # --- PHẦN MỚI CHO TASK LOG ---
+    def log_progress_entry(self, task_id, user_code, progress_percent, content, log_type, helper_code=None):
+        """
+        Thực thi INSERT vào bảng Task_Progress_Log (TPL) và lấy LogID.
+        (SỬ DỤNG OUTPUT INSERTED.LogID)
+        """
+        query = f"""
+            INSERT INTO {config.TASK_LOG_TABLE} (
+                TaskID, UserCode, UpdateDate, ProgressPercentage, UpdateContent, TaskLogType, HelperRequestCode
+            )
+            OUTPUT INSERTED.LogID
+            VALUES (?, ?, GETDATE(), ?, ?, ?, ?);
+        """
+        conn = None
+        log_id = None
+        try:
+            conn = pyodbc.connect(self.conn_str)
+            cursor = conn.cursor()
+            
+            # Thực thi INSERT và lấy LogID
+            cursor.execute(query, (task_id, user_code, progress_percent, content, log_type, helper_code))
+            
+            # FIX: Lấy LogID trực tiếp từ lệnh OUTPUT
+            log_id = cursor.fetchone()[0] 
+            conn.commit()
+            return int(log_id)
+        except pyodbc.Error as ex:
+            sqlstate = ex.args[0]
+            print(f"LỖI SQL - TASK LOG: {sqlstate}, Query: {query}")
+            return None
+        finally:
+            if conn:
+                conn.close()
+                
+    def execute_update_log_feedback(self, log_id, supervisor_code, feedback):
+        """Cập nhật phản hồi Cấp trên vào bản ghi Log."""
+        query = f"""
+            UPDATE {config.TASK_LOG_TABLE}
+            SET SupervisorFeedback = ?,
+                SupervisorCode = ?,
+                FeedbackDate = GETDATE()
+            WHERE LogID = ?
+        """
+        return self.execute_non_query(query, (feedback, supervisor_code, log_id))  

@@ -3,13 +3,21 @@ import datetime as dt # Import thư viện gốc với alias
 from datetime import datetime, timedelta # Import các đối tượng phổ biến
 import config
 import math
-
+import pandas as pd # <-- FIX: THÊM DÒNG NÀY ĐỂ KHẮC PHỤC LỖI "pd is not defined"
 class TaskService:
     """Xử lý toàn bộ logic nghiệp vụ liên quan đến quản lý đầu việc (Task Management)."""
     
     def __init__(self, db_manager: DBManager):
         self.db = db_manager
         self.TASK_TABLE = config.TASK_TABLE if hasattr(config, 'TASK_TABLE') else 'dbo.Task_Master'
+        self.TASK_LOG_TABLE = config.TASK_LOG_TABLE # <-- Đảm bảo dòng này có
+        # FIX: Khai báo rõ ràng tất cả các constants là thuộc tính instance (self.)
+        self.STATUS_BLOCKED = 'BLOCKED'
+        self.LOG_TYPE_PROGRESS = 'PROGRESS'
+        self.LOG_TYPE_BLOCKED = 'BLOCKED'
+        self.LOG_TYPE_HELP_CALL = 'HELP_CALL'
+        self.LOG_TYPE_REQUEST_CLOSE = 'REQUEST_CLOSE'
+        self.LOG_TYPE_SUPERVISOR_NOTE = 'SUPERVISOR_NOTE'
 
     # SỬA LỖI: THÊM 'self' VÀO ĐỊNH NGHĨA PHƯƠNG THỨC
     def _standardize_task_data(self, tasks): 
@@ -132,8 +140,8 @@ class TaskService:
         """Tạo một Task mới, gán ngày hiện tại, CapTren và Attachments."""
         
         insert_query = f"""
-            INSERT INTO {self.TASK_TABLE} (UserCode, TaskDate, Status, Title, CapTren, Attachments, TaskType, ObjectID, LastUpdated)
-            VALUES (?, GETDATE(), 'OPEN', ?, ?, ?, ?, ?, GETDATE())
+            INSERT INTO {self.TASK_TABLE} (UserCode, TaskDate, Status, Title, CapTren, Attachments, TaskType, ObjectID, LastUpdated, ProgressPercentage)
+            VALUES (?, GETDATE(), 'OPEN', ?, ?, ?, ?, ?, GETDATE(), 0)
         """
         # Đảm bảo TaskType được truyền chính xác vào params
         params = (user_code, title, supervisor_code, attachments, task_type.upper(), object_id)
@@ -285,33 +293,41 @@ class TaskService:
         return data # Trả về dữ liệu đã được bổ sung field TaskDateDisplay
 
     def update_task_progress(self, task_id, object_id, content, status, helper_code=None, completed_date=None):
-        """Cập nhật tiến độ hoàn thành Task cuối ngày."""
+        """
+        [DEPRECATED WRAPPER] Hỗ trợ các API cũ. Chuyển hướng sang Log mới.
+        """
+        from flask import session # Đảm bảo session có sẵn nếu API cũ gọi
+
+        # 1. Xác định Log Type và Progress dựa trên Status cũ
+        if status.upper() == 'COMPLETED':
+            log_type = self.LOG_TYPE_REQUEST_CLOSE
+            progress_percent = 100
+        elif status.upper() == 'HELP_NEEDED':
+            log_type = self.LOG_TYPE_HELP_CALL
+            progress_percent = 50 # Giả định 50% khi kêu gọi giúp đỡ
+        else:
+            log_type = self.LOG_TYPE_PROGRESS
+            progress_percent = 50 
+
+        # 2. Ghi Log Tiến độ (Dùng user hiện tại)
+        log_id = self.log_task_progress(
+            task_id=task_id, 
+            user_code=session.get('user_code', 'SYSTEM'), 
+            progress_percent=progress_percent, 
+            content=content, 
+            log_type=log_type, 
+            helper_code=helper_code
+        )
         
-        # 1. Xây dựng Set Clauses
-        set_clauses = ["ObjectID = ?", "DetailContent = ?", "Status = ?", "LastUpdated = GETDATE()"]
-        params = [object_id, content, status.upper()]
-        
-        # 2. Xử lý trạng thái hoàn thành
-        if status.upper() == 'COMPLETED' and not completed_date:
-            set_clauses.append("CompletedDate = GETDATE()")
-        
-        # 3. Xử lý gán người hỗ trợ/giao việc (YÊU CẦU 3)
-        if status.upper() == 'HELP_NEEDED' and helper_code:
-            set_clauses.append("SupervisorCode = ?") # SupervisorCode = Assignee ID
-            params.append(helper_code) 
-            
-        update_query = f"""
-            UPDATE {self.TASK_TABLE} 
-            SET {', '.join(set_clauses)}
+        # 3. Cập nhật ObjectID trên Task Master (Log không làm điều này)
+        update_object_query = f"""
+            UPDATE {self.TASK_TABLE}
+            SET ObjectID = ?
             WHERE TaskID = ?
         """
-        params.append(task_id)
+        self.db.execute_non_query(update_object_query, (object_id, task_id))
         
-        try:
-            return self.db.execute_non_query(update_query, tuple(params))
-        except Exception as e:
-            print(f"LỖI CẬP NHẬT TASK: {e}")
-            return False
+        return log_id is not None
 
     def add_supervisor_note(self, task_id, supervisor_code, note):
         """Cấp trên note lên Task."""
@@ -332,10 +348,14 @@ class TaskService:
             return False
 
     def get_task_by_id(self, task_id):
-        """Hàm helper để lấy dữ liệu Task theo ID."""
+        """Hàm helper để lấy dữ liệu Task Master theo ID (bao gồm ProgressPercentage)."""
         query = f"SELECT * FROM {self.TASK_TABLE} WHERE TaskID = ?"
         data = self.db.get_data(query, (task_id,))
-        return self._standardize_task_data(data)[0] if data else None
+        
+        # Bổ sung ProgressPercentage vào chuẩn hóa nếu nó chưa có
+        standardized_data = self._standardize_task_data(data)
+        
+        return standardized_data[0] if standardized_data else None
 
     def update_task_priority(self, task_id, new_priority):
         """Cập nhật Priority Task."""
@@ -402,4 +422,82 @@ class TaskService:
         except Exception as e:
             print(f"LỖI TẠO TASK YÊU CẦU HỖ TRỢ/GIAO VIỆC: {e}")
             return False
+    # --- PHẦN MỚI: Lấy chi tiết Log History ---
+    def get_task_history_logs(self, task_id):
+        """Lấy tất cả Log tiến độ cho một Task."""
+        query = f"""
+            SELECT 
+                T1.LogID, T1.UpdateDate, T1.UserCode, T1.SupervisorCode,
+                T1.ProgressPercentage, T1.UpdateContent, T1.TaskLogType, 
+                T1.SupervisorFeedback, T1.FeedbackDate, T1.HelperRequestCode,
+                T2.SHORTNAME AS UserShortName
+            FROM {self.TASK_LOG_TABLE} AS T1
+            LEFT JOIN {config.TEN_BANG_NGUOI_DUNG} AS T2 ON T1.UserCode = T2.USERCODE
+            WHERE T1.TaskID = ?
+            ORDER BY T1.UpdateDate DESC
+        """
+        data = self.db.get_data(query, (task_id,))
+        # Cần chuẩn hóa Date/Time cho các cột LogID
+
+        if not data:
+            return []
+
+        # FIX NaTType: Chuyển đổi NaT/None thành None để JSON hóa an toàn
+        def safe_serialize_datetime(dt_obj):
+            if pd.isna(dt_obj) or dt_obj is None:
+                return None
+            try:
+                # Trả về chuỗi ISO format để JS dễ xử lý
+                return dt_obj.isoformat() 
+            except AttributeError:
+                return None
+
+        # Áp dụng serialization an toàn cho các cột DATETIME
+        for log in data:
+            log['UpdateDate'] = safe_serialize_datetime(log.get('UpdateDate'))
+            log['FeedbackDate'] = safe_serialize_datetime(log.get('FeedbackDate'))
+        return data
+    
+    # --- SỬA ĐỔI: CẬP NHẬT TIẾN ĐỘ THÀNH GHI LOG MỚI ---
+    def log_task_progress(self, task_id, user_code, progress_percent, content, log_type, helper_code=None):
+        """
+        Ghi Log Tiến độ mới vào TPL. Cập nhật Status và Progress trên Task_Master.
+        """
+        
+        # 1. Ghi Log vào TPL (Trả về LogID)
+        log_id = self.db.log_progress_entry(
+            task_id, user_code, progress_percent, content, log_type, helper_code
+        )
+        
+        if not log_id: return False
+        
+        # 2. Xác định Status mới cho Master
+        if log_type == self.LOG_TYPE_BLOCKED:
+             new_status = self.STATUS_BLOCKED
+        elif log_type == self.LOG_TYPE_REQUEST_CLOSE:
+             new_status = 'COMPLETED' if progress_percent == 100 else 'PENDING'
+        elif log_type == self.LOG_TYPE_HELP_CALL:
+             new_status = 'HELP_NEEDED'
+        else:
+             new_status = 'PENDING' # Cập nhật thông thường
+        
+        # 3. Cập nhật Master Task (Task_Master)
+        update_master_query = f"""
+            UPDATE {self.TASK_TABLE}
+            SET LastUpdated = GETDATE(),
+                ProgressPercentage = ?, -- Cập nhật % mới nhất
+                Status = ?
+            WHERE TaskID = ?
+        """
+        self.db.execute_non_query(update_master_query, (progress_percent, new_status, task_id))
+
+        return log_id
+
+        # --- SỬA ĐỔI: Phản hồi Cấp trên trên Log cụ thể ---
+    def add_supervisor_feedback(self, log_id, supervisor_code, feedback):
+        """Cấp trên note/feedback trên một LogID cụ thể."""
+        
+        # Đồng thời ghi một Log Type riêng cho phản hồi của cấp trên nếu cần
+        # Ở đây ta chỉ cập nhật vào LogID đang được phản hồi.
+        return self.db.execute_update_log_feedback(log_id, supervisor_code, feedback)
     

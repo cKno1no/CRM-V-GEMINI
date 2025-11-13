@@ -51,6 +51,7 @@ ERP_APPROVER_MASTER = '[OT0006]' # Master người duyệt
 
 # (Các biến này CÓ [dbo]. vì service/db_manager gọi trực tiếp)
 TASK_TABLE = 'dbo.Task_Master'
+TASK_LOG_TABLE = 'dbo.Task_Progress_Log' # <-- BẢNG MỚI CHO LỊCH SỬ TIẾN ĐỘ
 BOSUNG_CHAOGIA_TABLE = 'dbo.BOSUNG_CHAOGIA'
 CRM_DTCL = '[dbo].[DTCL]' # Bảng Đăng ký Doanh số
 LOG_DUYETCT_TABLE = 'DUYETCT' # (Không có dbo, theo code service)

@@ -36,10 +36,10 @@
             border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0,0,0,.1);
             padding: 15px;
-            height: 80vh; /* Req 1: Bằng nhau */
+            height: 80vh; 
         }
         .master-table-container, .detail-table-container {
-            height: calc(80vh - 100px); /* Chiều cao trừ đi header/padding */
+            height: calc(80vh - 100px); 
             overflow-y: auto;
         }
 
@@ -82,7 +82,7 @@
         <div class="header-main-box">
             <h1><i class="fas fa-boxes me-2" style="color: #DB4437;"></i> Báo cáo Dự phòng Tồn kho Tổng thể</h1>
             <div>
-                <a href="{{ url_for('export_total_replenishment') }}" class="btn btn-success btn-header-action me-2">
+                <a href="{{ url_for('lookup_bp.export_total_replenishment') }}" class="btn btn-success btn-header-action me-2">
                     <i class="fas fa-file-excel me-2"></i>Xuất Excel
                 </a>
                 <a href="{{ url_for('index') }}" class="btn btn-secondary btn-header-action">
@@ -166,20 +166,13 @@
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // === SỬA LỖI HÀM FORMATCURRENCY (LỖI 2) ===
         function formatCurrency(num) {
-            // 1. Chuyển đổi an toàn về số (xử lý cả "35.00000000" và 45)
             let numValue = parseFloat(num);
-            
-            // 2. Nếu không phải là số (NaN), gán là 0
             if (isNaN(numValue)) {
                 numValue = 0;
             }
-            
-            // 3. Định dạng
             return new Intl.NumberFormat('vi-VN').format(numValue);
         }
-        // === KẾT THÚC SỬA LỖI ===
 
         let masterTable = null; 
 
@@ -200,9 +193,9 @@
         });
 
         let lastSelectedRow = null;
-        
-        // === SỬA LỖI Tên Biến (JavaScript) ===
+
         function loadGroupDetails(selectedRow, groupCode, luongThieuDu, diemTaiDatROP, tonBO) {
+            // Logic tô sáng hàng được chọn
             if (lastSelectedRow) {
                 $(lastSelectedRow).removeClass('selected');
             }
@@ -215,6 +208,7 @@
             
             header.text(`Chi tiết Nhóm: ${groupCode}`);
             
+            // Tạo bảng tóm tắt 3 KPI bên trên
             const deficitClass = luongThieuDu > 0 ? 'bg-danger text-white' : 'bg-success text-white';
             summaryDiv.html(`
                 <div class="col-md-4">
@@ -237,20 +231,22 @@
                 </div>
             `);
             
-            tableDiv.html('<p class="text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết...</p>');
+            // Bắt đầu tải chi tiết và hiển thị spinner
+            tableDiv.html('<p class="text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết các mã hàng...</p>');
 
-            fetch(`/api/replenishment_details/${encodeURIComponent(groupCode)}`)
+            // FIX: SỬA LỖI ĐỊNH TUYẾN: Thêm tiền tố /sales vào URL API
+            fetch(`/sales/api/replenishment_details/${encodeURIComponent(groupCode)}`)
                 .then(response => {
-                    if (!response.ok) throw new Error('Không thể tải dữ liệu chi tiết.');
+                    if (!response.ok) throw new Error('Không thể tải dữ liệu chi tiết. (Status: ' + response.status + ')');
                     return response.json();
                 })
                 .then(data => {
-                    if (!data || data.length === 0) {
+                    if (!data || !Array.isArray(data) || data.length === 0) {
                         tableDiv.html('<p class="alert alert-info text-center">Không tìm thấy mã hàng chi tiết.</p>');
                         return;
                     }
 
-                    let tableHtml = '<table class="table table-sm table-striped table-bordered small mb-0 detail-table data-table">';
+                    let tableHtml = '<div class="detail-table-container"><table class="table table-sm table-striped table-bordered small mb-0 detail-table data-table">';
                     tableHtml += '<thead><tr>';
                     tableHtml += '<th>Mã Hàng (InventoryID)</th>';
                     tableHtml += '<th>Tên Hàng</th>';
@@ -264,14 +260,14 @@
                                         <td class="text-start">${item.InventoryName}</td>
                                         <td class="text-end">${formatCurrency(item.TonKhoHienTai)}</td>
                                         <td class="text-end">${formatCurrency(item.HangDangVe)}</td>
-                                      </tr>`;
+                                    </tr>`;
                     });
 
-                    tableHtml += '</tbody></table>';
-                    tableDiv.innerHTML = tableHtml;
+                    tableHtml += '</tbody></table></div>';
+                    tableDiv.html(tableHtml); 
                 })
                 .catch(error => {
-                    tableDiv.innerHTML = `<p class="alert alert-danger text-center">Lỗi: ${error.message}</p>`;
+                    tableDiv.html(`<p class="alert alert-danger text-center">Lỗi tải chi tiết: ${error.message}</p>`);
                 });
         }
     </script>

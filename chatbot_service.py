@@ -1,20 +1,19 @@
 # services/chatbot_service.py
-# (Bản vá 11 - Sửa Lỗi 1 (NoneType 'strip') khi Tra cứu nhanh)
+# (FIXED: Chuyển sang mẫu câu cố định cho Dự phòng tồn kho)
 
 import re
 import pandas as pd
-import json # <-- THÊM IMPORT
 from db_manager import safe_float
 from services.sales_lookup_service import SalesLookupService 
 
 class ChatbotService:
-    def __init__(self, sales_lookup_service, customer_service, redis_client):
+    # FIX: Thêm redis_client vào signature để khớp với app.py, và thêm giá trị mặc định để tránh lỗi 
+    def __init__(self, sales_lookup_service, customer_service, redis_client=None):
         self.lookup_service = sales_lookup_service
         self.customer_service = customer_service
-        self.redis_client = redis_client # <-- THAY THẾ
+        self.redis_client = redis_client
         
-        # self.user_context = {} # <-- XÓA DÒNG NÀY
-        self.CONTEXT_TTL = 300 # Ngữ cảnh sẽ tự xóa sau 300 giây (5 phút)
+        self.user_context = {} 
         
         self.intents = {
             'CHECK_HISTORY': re.compile(r'(.+?)\s*(?:đã|có)?\s*mua\s+([\w\d\-,./]+)(?:\s*(?:chưa|không))?\??', re.IGNORECASE),
@@ -32,61 +31,33 @@ class ChatbotService:
             
             'SELECT_OPTION': re.compile(r'^(?:số\s*)?([1-5])$'), 
             
-            # SỬA LỖI 1: Regex này có 2 group. Text nằm ở group(2)
             'QUICK_LOOKUP': re.compile(r'^(?!.*\b(giá|mua|cho|với|help|giúp|hỗ trợ)\b)([\w\d\-,./\s]+)$', re.IGNORECASE), 
+            
+            # Cấu trúc FIX mới: 3 mẫu câu cố định
+            'CHECK_REPLENISHMENT': re.compile(
+                # P1/P2: (Group 1: KH, Group 2: I02ID) - Dùng chung 2 mẫu
+                r'^(?:đặt|dự)\s*dự\s*phòng\s*cho\s*(.+?)\s*theo\s*mã\s*(.+?)\??$' + r'|' + 
+                r'^dự\s*phòng\s*cho\s*(.+?)\s*theo\s*mã\s*(.+?)\??$' + r'|' + 
+                # P3: (Group 5: KH, Group 6: I02ID)
+                r'^dự\s*phòng\s*(.+?)\s*mã\s*(.+?)\??$',
+                re.IGNORECASE
+            ),
         }
 
-    # --- HÀM QUẢN LÝ NGỮ CẢNH (SỬA LẠI HOÀN TOÀN) ---
-    
-    def _get_context_key(self, user_code):
-        # Tạo một key (khóa) duy nhất cho Redis
-        return f"chatbot_context:{user_code}"
-
+    # --- HÀM QUẢN LÝ NGỮ CẢNH (Giữ nguyên logic in-memory đơn giản) ---
     def _get_user_context(self, user_code):
-        if not self.redis_client: # Đề phòng Redis lỗi
-             return {'intent': None, 'data': {}}
-             
-        key = self._get_context_key(user_code)
-        try:
-            # Lấy dữ liệu dạng chuỗi JSON từ Redis
-            context_str = self.redis_client.get(key)
-            if context_str:
-                # Chuyển chuỗi JSON về lại Python dict
-                return json.loads(context_str)
-        except Exception as e:
-            print(f"LỖI ĐỌC CONTEXT REDIS: {e}")
-            # Nếu lỗi, xóa key hỏng
-            self.redis_client.delete(key)
-            
-        return {'intent': None, 'data': {}} # Trả về rỗng nếu không có key
+        if user_code not in self.user_context:
+            self.user_context[user_code] = {'intent': None, 'data': {}}
+        return self.user_context[user_code]
 
     def _clear_user_context(self, user_code):
-        if not self.redis_client:
-            return
-            
-        key = self._get_context_key(user_code)
-        try:
-            self.redis_client.delete(key)
-        except Exception as e:
-            print(f"LỖI XÓA CONTEXT REDIS: {e}")
+        if user_code in self.user_context:
+            self.user_context[user_code] = {'intent': None, 'data': {}}
             
     def _set_user_context(self, user_code, intent, data):
-        if not self.redis_client:
-            return
-            
-        key = self._get_context_key(user_code)
-        context_data = {'intent': intent, 'data': data}
-        
-        try:
-            # Chuyển Python dict thành chuỗi JSON
-            context_str = json.dumps(context_data)
-            # Lưu vào Redis và tự động hết hạn sau 5 phút (self.CONTEXT_TTL)
-            self.redis_client.setex(key, self.CONTEXT_TTL, context_str)
-        except Exception as e:
-            print(f"LỖI GHI CONTEXT REDIS: {e}")
+        self.user_context[user_code] = {'intent': intent, 'data': data}
 
-    # --- HÀM XỬ LÝ CHÍNH (ĐÃ CẬP NHẬT LOGIC) ---
-    # --- HÀM XỬ LÝ CHÍNH (ĐÃ CẬP NHẬT LOGIC) ---
+    # --- HÀM XỬ LÝ CHÍNH ---
 
     def process_message(self, message_text, user_code, user_role):
         message_text = message_text.strip() if message_text else "" 
@@ -97,20 +68,15 @@ class ChatbotService:
             cancel_match = self.intents['CANCEL_INTENT'].match(message_text)
             if cancel_match:
                 self._clear_user_context(user_code)
-                return "OK, đã hủy. Bạn muốn hỏi gì tiếp?"
+                return "OK, đã hủy. Bạn muốn hỏi gì tiếp."
 
             # --- 2. KIỂM TRA NGỮ CẢNH (NẾU CÓ) ---
             if context.get('intent'):
                 response = self._handle_clarification(message_text, user_code, context)
-                
                 if response is not None:
-                    # User đã trả lời đúng (ví dụ: "1" hoặc "Hoa Sen Nghe An")
                     self._clear_user_context(user_code)
                     return response
                 else:
-                    # User KHÔNG trả lời câu hỏi ngữ cảnh
-                    # (Họ gõ "22214" hoặc "abc")
-                    # -> Hủy ngữ cảnh cũ VÀ xử lý tin nhắn mới
                     self._clear_user_context(user_code)
                     pass 
             
@@ -119,8 +85,38 @@ class ChatbotService:
             # (Hỏi trợ giúp)
             help_match = self.intents['HELP'].search(message_text)
             if help_match:
-                return self._handle_help()
+                return self._handle_help() 
 
+            # (Kiểm tra nhu cầu Dự phòng)
+            replenishment_match = self.intents['CHECK_REPLENISHMENT'].match(message_text)
+            if replenishment_match:
+                
+                customer_name = None
+                i02id_filter = None
+
+                # Logic Phân tích Mẫu Cố Định
+                if replenishment_match.group(1): # Pattern 1: Đặt/Dự phòng cho X theo mã Y
+                    customer_name = replenishment_match.group(1).strip()
+                    i02id_filter = replenishment_match.group(2)
+                elif replenishment_match.group(3): # Pattern 2: Dự phòng cho X theo mã Y
+                    customer_name = replenishment_match.group(3).strip()
+                    i02id_filter = replenishment_match.group(4)
+                elif replenishment_match.group(5): # Pattern 3: Dự phòng X mã Y
+                    customer_name = replenishment_match.group(5).strip()
+                    i02id_filter = replenishment_match.group(6)
+                
+                # --- KIỂM TRA KHÁCH HÀNG ---
+                if not customer_name:
+                    return "Xin lỗi, tôi không thể trích xuất tên khách hàng theo mẫu câu chuẩn. (Thử: 'Dự phòng cho Vina Kraft theo mã AB')" 
+
+                context_data = {'i02id_filter': i02id_filter.upper() if i02id_filter else None}
+                
+                return self._process_multi_step_query(
+                    user_code, 'CHECK_REPLENISHMENT', 'REPLENISH', customer_name, context_data=context_data
+                )
+
+            # (Kiểm tra các intent còn lại)
+            
             # (Kiểm tra lịch sử)
             history_match = self.intents['CHECK_HISTORY'].match(message_text)
             if history_match:
@@ -146,15 +142,11 @@ class ChatbotService:
                 return self._process_multi_step_query(
                     user_code, 'PRICE_CHECK', item_term, customer_name
                 )
-
+            
             # (Tra cứu nhanh)
             lookup_match = self.intents['QUICK_LOOKUP'].match(message_text)
             if lookup_match:
-                # --- SỬA LỖI 1: 'NoneType' object has no attribute 'strip' ---
-                # Regex (?!...)(...) có 2 group. group(1) là None, group(2) là text.
                 item_codes = lookup_match.group(2).strip() if lookup_match.group(2) else None
-                # --- KẾT THÚC SỬA LỖI 1 ---
-                
                 if item_codes:
                     return self._handle_quick_lookup(item_codes)
             
@@ -172,27 +164,37 @@ class ChatbotService:
             print(f"LỖI CHATBOT PROCESS: {e}")
             return f"Lỗi hệ thống: {e}"
 
-    # (Hàm _process_multi_step_query không đổi)
-    def _process_multi_step_query(self, user_code, intent, item_term, customer_name):
+    # (Các hàm helper và xử lý context)
+
+    def _process_multi_step_query(self, user_code, intent, item_term, customer_name, context_data=None):
         customers_found = self._find_customer(customer_name)
         
         if isinstance(customers_found, str):
-            self._set_user_context(user_code, 'ASK_CUSTOMER', {
+            context_to_save = {
                 'original_intent': intent,
                 'item_term': item_term, 
                 'customer_list': self.customer_service.get_customer_by_name(customer_name),
                 'last_question': customers_found 
-            })
+            }
+            if context_data:
+                 context_to_save.update(context_data)
+                 
+            self._set_user_context(user_code, 'ASK_CUSTOMER', context_to_save)
             return customers_found 
         
         customer_obj = customers_found[0]
+        
+        if intent == 'CHECK_REPLENISHMENT' and context_data:
+             customer_obj.update(context_data)
         
         if intent == 'PRICE_CHECK':
             return self._handle_price_check_final(item_term, customer_obj)
         elif intent == 'CHECK_HISTORY':
             return self._handle_check_history_final(item_term, customer_obj)
+        elif intent == 'CHECK_REPLENISHMENT':
+            return self._handle_replenishment_check_final(customer_obj)
 
-    # (Hàm _handle_clarification không đổi)
+
     def _handle_clarification(self, message_text, user_code, context):
         intent = context.get('intent')
         data = context.get('data', {})
@@ -209,14 +211,18 @@ class ChatbotService:
             item_term = data.get('item_term') 
             original_intent = data.get('original_intent')
             
+            if data.get('i02id_filter'):
+                 chosen_customer['i02id_filter'] = data['i02id_filter']
+            
             if original_intent == 'PRICE_CHECK':
                 return self._handle_price_check_final(item_term, chosen_customer)
             elif original_intent == 'CHECK_HISTORY':
                 return self._handle_check_history_final(item_term, chosen_customer)
+            elif original_intent == 'CHECK_REPLENISHMENT':
+                return self._handle_replenishment_check_final(chosen_customer)
         
         return None 
             
-    # (Hàm _find_customer không đổi)
     def _find_customer(self, customer_name):
         try:
             customers = self.customer_service.get_customer_by_name(customer_name)
@@ -228,7 +234,6 @@ class ChatbotService:
         except Exception as e:
             return f"Lỗi khi tìm khách hàng: {e}"
 
-    # (Hàm _find_choice không đổi)
     def _find_choice(self, text, options_list, field_name_to_match):
         match_num = re.match(r'^(?:số\s*)?([1-5])$', text)
         if match_num:
@@ -254,33 +259,20 @@ class ChatbotService:
             
         return None
 
-
-    # --- HÀM ĐỊNH DẠNG PHẢN HỒI (FORMATTING) ---
-    
-    # (Hàm _format_customer_options không đổi)
     def _format_customer_options(self, customers, term, limit=5):
         response = f"Tôi tìm thấy **{len(customers)}** khách hàng khớp với '{term}'. Vui lòng gõ số hoặc tên để chọn 1:\n"
         for i, c in enumerate(customers[:limit]):
             response += f"**{i+1}**. {c['FullName']} ({c['ID']})\n"
         return response
-
-    # (Hàm _format_item_options không đổi)
-    def _format_item_options(self, items, term, limit=5):
-        response = f"Tôi tìm thấy **{len(items)}** mặt hàng khớp với '{term}'. Vui lòng gõ số hoặc tên/mã để chọn 1 (Hiển thị 5/{len(items)}):\n"
-        for i, item in enumerate(items[:limit]):
-            response += f"**{i+1}**. **{item.get('InventoryName', 'N/A')}** ({item.get('InventoryID')})\n"
-        return response
-
-    # (Hàm _handle_help không đổi)
+    
     def _handle_help(self):
-        response = "**Tôi có thể giúp bạn:**\n"
-        response += "1. **Tra cứu nhanh Tồn kho/Giá QĐ**\n   (Gõ: `6210zzc3` hoặc `nsk 6210zz`)\n"
-        response += "2. **Kiểm tra Giá bán & Lịch sử**\n   (Gõ: `giá 6214 cho Vina Kraft`)\n"
-        response += "3. **Kiểm tra Lịch sử mua hàng**\n   (Gõ: `Vina Kraft có mua 6214 không?`)\n"
-        response += "4. **Gợi ý Đặt hàng dự phòng**\n   (Tự động khi tra cứu nhanh nếu có BackOrder)"
+        response = "**Tôi có thể giúp bạn với các cú pháp chuẩn nhất sau:**\n"
+        response += "1. **Tra cứu Tồn kho/Giá QĐ**\n   (Cú pháp: `Mã_hàng` hoặc `Hãng Mã_hàng`)\n   (Ví dụ: `22214` hoặc `nsk 6210zz`)\n"
+        response += "2. **Kiểm tra Giá bán & Lịch sử**\n   (Cú pháp: `giá Mã_hàng cho Tên_KH`)\n   (Ví dụ: `giá 22214 cho Vina Kraft`)\n"
+        response += "3. **Kiểm tra Đặt hàng Dự phòng**\n   (Cú pháp chuẩn nhất: `Dự phòng cho Tên_KH theo mã AB`)\n   (Ví dụ: `Dự phòng cho Vina Kraft theo mã AB`)\n"
+        response += "4. **Kiểm tra Lịch sử mua hàng**\n   (Cú pháp: `Tên_KH có mua Mã_hàng chưa?`)\n"
         return response
 
-    # (Hàm _handle_check_history_final không đổi)
     def _handle_check_history_final(self, item_term, customer_object, limit=5):
         customer_id = customer_object['ID']
         customer_display_name = customer_object['FullName']
@@ -315,7 +307,6 @@ class ChatbotService:
             
         return "\n".join(response_lines)
 
-    # (Hàm _handle_price_check_final không đổi)
     def _handle_price_check_final(self, item_term, customer_object, limit=5):
         
         customer_id = customer_object['ID']
@@ -344,7 +335,7 @@ class ChatbotService:
             if gia_hd > 0 and ngay_hd != '—':
                 percent_diff = ((gia_hd / gbqd) - 1) * 100 if gbqd > 0 else 0
                 symbol = "+" if percent_diff >= 0 else ""
-                line += f"\n  Giá HĐ gần nhất: **{gia_hd:,.0f}** (Ngày: {ngay_hd}) ({symbol}{percent_diff:.1f}%)"
+                line += f"\n  Giá HĐ gần nhất: **{gia_hd:,.0f}** (Ngày: {ngay_hd}) ({symbol}{percent_diff:.1}%)"
             else:
                 line += "\n  *(Chưa có lịch sử HĐ cho KH này)*"
             
@@ -355,7 +346,6 @@ class ChatbotService:
             
         return "\n".join(response_lines)
 
-    # (Hàm _handle_quick_lookup không đổi)
     def _handle_quick_lookup(self, item_codes, limit=5):
         
         try:
@@ -391,3 +381,79 @@ class ChatbotService:
         except Exception as e:
             print(f"Lỗi _handle_quick_lookup: {e}")
             return f"Lỗi hệ thống khi tra cứu nhanh: {e}"
+            
+    # --- HÀM XỬ LÝ REPLENISHMENT MỚI VÀ ĐÃ SỬA ĐỔI ---
+    def _handle_replenishment_check_final(self, customer_object, limit=10):
+        customer_id = customer_object['ID']
+        customer_display_name = customer_object['FullName']
+        
+        # 1. Lấy I02ID Filter từ customer_object
+        i02id_filter = customer_object.get('i02id_filter')
+        
+        # 2. Gọi hàm mới từ SalesLookupService
+        data = self.lookup_service.get_replenishment_needs(customer_id)
+        
+        if not data:
+            return f"Khách hàng **{customer_display_name}** hiện không có dữ liệu nhu cầu dự phòng."
+
+        # 3. Lọc: Chỉ lấy các nhóm có Lượng Thiếu/Dư > 0 VÀ Lọc theo I02ID
+        deficit_items = [
+            item for item in data 
+            if safe_float(item.get('LuongThieuDu')) > 1 
+        ]
+        
+        # --- START FIX LOGIC LỌC I02ID ---
+        if i02id_filter:
+            target_code = i02id_filter.upper()
+            
+            # Nếu filter là 'AB', ta coi đó là chỉ dẫn chung và bỏ qua kiểm tra I02ID
+            if target_code == 'AB':
+                filtered_items = deficit_items
+                filter_note = f" theo mã **AB**"
+            else:
+                # Nếu filter là mã cụ thể khác 'AB', áp dụng kiểm tra nghiêm ngặt (I02ID) và dự phòng (NhomHang)
+                filtered_items = [
+                    item for item in deficit_items 
+                    if (item.get('I02ID') and item['I02ID'].upper() == target_code) or
+                       (item.get('NhomHang') and item['NhomHang'].upper().startswith(f'{target_code}_')) 
+                ]
+                filter_note = f" theo mã **{target_code}**"
+        else:
+            filtered_items = deficit_items
+            filter_note = ""
+        # --- END FIX LOGIC LỌC I02ID ---
+
+
+        if not filtered_items:
+            return f"Khách hàng **{customer_display_name}** hiện không có nhu cầu đặt hàng dự phòng nổi bật{filter_note}."
+            
+        # 4. Giới hạn Top 10 và Định dạng
+        top_items = filtered_items[:limit]
+        
+        response_lines = [
+            f"Khách hàng **{customer_display_name}** cần đặt dự phòng cho **{len(filtered_items)}** nhóm hàng{filter_note}."
+        ]
+        
+        if len(filtered_items) > limit:
+             response_lines[0] += f" (Top {limit} hiển thị):"
+        else:
+             response_lines[0] += ":"
+
+        for i, item in enumerate(top_items):
+            nhom_hang = item.get('NhomHang', 'N/A')
+            thieu_du = safe_float(item.get('LuongThieuDu', 0))
+            rop = safe_float(item.get('DiemTaiDatROP', 0)) 
+            ton_bo = safe_float(item.get('TonBO', 0))
+            
+            # FIX 2a: Bỏ phần (Mã AB: N/A)
+            line = f"**{i+1}. {nhom_hang}**\n" 
+            # FIX 2b: Đổi nhãn 'Dự phòng' thành 'Tồn-BO'
+            line += f"  - Thiếu: **{thieu_du:,.0f}** | ROP: {rop:,.0f} | Tồn-BO: {ton_bo:,.0f}" 
+            response_lines.append(line)
+            
+        if len(filtered_items) > limit:
+            response_lines.append(f"\n*(Và {len(filtered_items) - limit} nhóm khác...)*")
+            
+        response_lines.append("\n-> *Xem chi tiết tại Dashboard Dự phòng Khách hàng.*")
+        
+        return "\n".join(response_lines)

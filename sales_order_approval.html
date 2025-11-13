@@ -94,7 +94,7 @@
                 <a href="{{ url_for('index') }}" class="btn btn-secondary btn-header-action">
                     <i class="fas fa-home me-1"></i> Về Portal
                 </a>
-                <a href="{{ url_for('quote_approval_dashboard') }}" target="_blank" class="btn btn-primary btn-header-action">
+                <a href="{{ url_for('approval_bp.quote_approval_dashboard') }}" target="_blank" class="btn btn-primary btn-header-action">
                     <i class="fas fa-file-signature me-1"></i> Duyệt Chào Giá
                 </a>
             </div>
@@ -103,7 +103,7 @@
 
         <div class="card mb-3">
             <div class="card-body">
-                <form method="POST" action="{{ url_for('sales_order_approval_dashboard') }}" class="row g-3 align-items-end">
+                <form method="POST" action="{{ url_for('approval_bp.sales_order_approval_dashboard') }}" class="row g-3 align-items-end">
                     <div class="col-md-3">
                         <label for="date_from" class="form-label small text-muted">Từ Ngày DHB</label>
                         <input type="date" name="date_from" id="date_from" class="form-control" 
