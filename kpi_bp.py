@@ -323,3 +323,108 @@ def ar_aging_dashboard():
         kpi_total_overdue=kpi_total_overdue,
         kpi_over_180=kpi_over_180
     )
+
+
+@kpi_bp.route('/ar_aging_detail', methods=['GET', 'POST'])
+@login_required
+def ar_aging_detail_dashboard():
+    """ROUTE: Hiển thị báo cáo chi tiết công nợ quá hạn theo VoucherNo."""
+    
+    from app import ar_aging_service, db_manager, task_service # Thêm task_service
+    
+    user_code = session.get('user_code')
+    user_role = session.get('user_role', '').strip().upper()
+    is_admin_or_manager = user_role in ['ADMIN', 'GM', 'MANAGER']
+    
+    # Xử lý Filters
+    customer_name_filter = request.form.get('customer_name', '')
+    filter_salesman_id = request.form.get('salesman_filter')
+    customer_id_filter = request.args.get('customer_id') 
+
+    # Lấy danh sách NVKD (Cần cho form lọc)
+    salesman_list = task_service.get_eligible_helpers() 
+    
+    # Lọc data (Dùng hàm mới)
+    aging_details = ar_aging_service.get_ar_aging_details_by_voucher(
+        user_code, 
+        user_role, 
+        customer_id=customer_id_filter,
+        customer_name=customer_name_filter,
+        filter_salesman_id=filter_salesman_id # Truyền tham số NVKD được chọn
+    )
+    
+    # LOG VIEW_AR_AGING_DETAIL (BỔ SUNG)
+    try:
+        db_manager.write_audit_log(
+            user_code, 'VIEW_AR_AGING_DETAIL', 'WARNING', 
+            f"Truy cập Chi tiết Công nợ (KH: {customer_id_filter or customer_name_filter or 'ALL'})", 
+            get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log VIEW_AR_AGING_DETAIL: {e}")
+
+    # Tính Subtotal cho Nợ Quá hạn (Yêu cầu 1)
+    total_overdue = sum(row.get('Debt_Total_Overdue', 0) for row in aging_details)
+
+    return render_template(
+        'ar_aging_detail.html', 
+        aging_details=aging_details,
+        customer_name_filter=customer_name_filter,
+        filter_salesman_id=filter_salesman_id,
+        salesman_list=salesman_list,
+        total_overdue=total_overdue,
+        is_admin_or_manager=is_admin_or_manager
+    )
+
+    # Thêm vào file kpi_bp.py (sau các route hiện có)
+
+@kpi_bp.route('/ar_aging_detail_single', methods=['GET'])
+@login_required
+def ar_aging_detail_single_customer():
+    """ROUTE: Trang chi tiết công nợ cho MỘT KHÁCH HÀNG (Drill-down)."""
+    
+    from app import ar_aging_service, db_manager, get_user_ip 
+    
+    user_code = session.get('user_code')
+    user_role = session.get('user_role', '').strip().upper()
+    
+    customer_id = request.args.get('object_id') # Lấy ObjectID từ URL
+    if not customer_id:
+        flash("Thiếu Mã Khách hàng để xem chi tiết.", 'danger')
+        return redirect(url_for('kpi_bp.ar_aging_dashboard'))
+    
+    # 1. Fetch KPI Summary cho KH
+    kpi_summary = ar_aging_service.get_single_customer_aging_summary(
+        customer_id, user_code, user_role
+    )
+
+    if not kpi_summary:
+        flash(f"Không tìm thấy dữ liệu công nợ cho Mã KH {customer_id}.", 'warning')
+        return redirect(url_for('kpi_bp.ar_aging_dashboard'))
+
+    # 2. Fetch Detail Vouchers cho KH đó (sử dụng hàm cũ, chỉ lọc theo ID)
+    aging_details = ar_aging_service.get_ar_aging_details_by_voucher(
+        user_code, 
+        user_role, 
+        customer_id=customer_id,
+        filter_salesman_id=None # Không cần lọc NVKD nữa vì đã lọc theo KH
+    )
+    
+    total_overdue = kpi_summary['TotalOverdueDebt']
+
+    # 3. LOG VIEW_AR_AGING_DETAIL_SINGLE
+    try:
+        db_manager.write_audit_log(
+            user_code, 'VIEW_AR_AGING_DETAIL_SINGLE', 'INFO', 
+            f"Xem Chi tiết Công nợ KH: {customer_id}", 
+            get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log VIEW_AR_AGING_DETAIL_SINGLE: {e}")
+
+    return render_template(
+        'ar_aging_detail_single.html', 
+        kpi=kpi_summary,
+        aging_details=aging_details,
+        total_overdue=total_overdue
+    )
