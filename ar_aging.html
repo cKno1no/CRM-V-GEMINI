@@ -61,7 +61,7 @@
         
         <div class="card mb-4">
             <div class="card-body">
-                <form method="POST" action="{{ url_for('ar_aging_dashboard') }}" class="row g-3 align-items-end">
+                <form method="POST" action="{{ url_for('kpi_bp.ar_aging_dashboard') }}" class="row g-3 align-items-end">
                     <div class="col-md-4">
                         <label for="customer_name" class="form-label small text-muted">Lọc theo Tên Khách hàng</label>
                         <input type="text" name="customer_name" id="customer_name" class="form-control" 
@@ -99,7 +99,11 @@
                             {% for row in aging_data %}
                             <tr>
                                 <td class="text-start">{{ row.ObjectID }}</td>
-                                <td class="text-start">{{ row.ObjectName | default('N/A') }}</td>
+                                <td class="text-start">
+                                    <a href="{{ url_for('kpi_bp.ar_aging_detail_single_customer', object_id=row.ObjectID) }}" target="_blank">
+                                        {{ row.ObjectName | default('N/A') }}
+                                    </a>
+                                </td>
                                 <td class="text-start">{{ row.SalesManName | default('N/A') }}</td>
                                 
                                 <td class="text-center">{{ row.ReDueDays }}</td>
@@ -111,7 +115,7 @@
                                 <td>{{ "{:,.0f}".format(row.Debt_Range_31_90 | float) }}</td>
                                 <td class="debt-warn-91">{{ "{:,.0f}".format(row.Debt_Range_91_180 | float) }}</td>
                                 <td class="debt-over-180">{{ "{:,.0f}".format(row.Debt_Over_180 | float) }}</td>
-                            </tr>
+                                </tr>
                             {% else %}
                             <tr>
                                 <td colspan="11" class="text-center text-muted">Không tìm thấy dữ liệu công nợ theo tiêu chí lọc.</td>

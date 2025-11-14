@@ -190,6 +190,14 @@
                             <i class="fas fa-bullseye me-3"></i> Bám sát & Hành động
                         </a>
                         
+                        {% set is_finance_user = current_user.role|upper == 'ADMIN' or current_user.bo_phan|upper == '6. KTTC' %}
+
+                        <a href="{% if is_finance_user %}{{ url_for('kpi_bp.ar_aging_dashboard') }}{% else %}#{% endif %}" 
+                           class="menu-link module-kpi {% if not is_finance_user %}planned{% endif %}" 
+                           target="{% if is_finance_user %}_blank{% else %}_self{% endif %}">
+                            <i class="fas fa-hand-holding-usd me-3"></i> Nhắc nợ & Thu tiền
+                        </a>
+
                         <a href="/realtime_dashboard" class="menu-link module-kpi" target="_blank">
                             <i class="fas fa-tachometer-alt me-3"></i> Chỉ số kinh doanh - Realtime Dashboard
                         </a>
@@ -211,10 +219,12 @@
                 </h2>
                 <div id="collapseCEQ" class="accordion-collapse collapse" aria-labelledby="headingCEQ" data-bs-parent="#mainAccordion">
                     <div class="accordion-body p-0">
-                        <a href="/inventory_xagingx" class="menu-link module-ceq" target="_blank">
+                        <a href="/inventory_aging" class="menu-link module-ceq" target="_blank">
                             <i class="fas fa-warehouse me-3"></i> Phân tích Tuổi hàng Tồn kho (Aging)
                         </a>
-                        <a href="#" class="menu-link planned"><i class="fas fa-flask me-3"></i> Dự kiến: Công nợ</a>
+                        <a href="/ar_aging" class="menu-link module-ceq" target="_blank">
+                             <i class="fas fa-dollar-sign me-3"></i> Phân tích Công nợ (AR Aging)
+                        </a>
                         <a href="#" class="menu-link planned"><i class="fas fa-flask me-3"></i> Dự kiến: Chi phí</a>
                         <a href="#" class="menu-link planned"><i class="fas fa-flask me-3"></i> Dự kiến: Dòng tiền</a>
                     </div>
@@ -405,6 +415,7 @@
                     <br>2. <strong>Giá 22214 cho Vina Kraft</strong> (Tra giá KH)
                     <br>3. <strong>Takako mua spray nine chưa</strong> (Lịch sử mua hàng)
                     <br>4. <strong>Dự phòng Kiswire mã AB</strong> (Đặt Dự phòng)
+                    <br>5. <strong>Giao hàng cho Takako chưa</strong> (Tiến độ giao hàng)
                 </div>
             </div>
         </div>
