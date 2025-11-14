@@ -202,3 +202,33 @@ class DeliveryService:
             row['ActualQuantity'] = safe_float(row.get('ActualQuantity'))
             
         return data
+
+        # Thêm phương thức này vào class DeliveryService
+    def get_recent_delivery_status(self, object_id, days_ago=7):
+        """
+        Lấy chi tiết LXH và trạng thái giao hàng cho một khách hàng trong N ngày gần nhất.
+        """
+        date_limit = (datetime.now() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
+        
+        query = f"""
+            SELECT TOP 20
+                VoucherNo, VoucherDate, Planned_Day, DeliveryStatus, 
+                EarliestRequestDate, ActualDeliveryDate
+            FROM dbo.Delivery_Weekly
+            WHERE 
+                ObjectID = ? 
+                AND VoucherDate >= '{date_limit}'
+            ORDER BY VoucherDate DESC
+        """
+        data = self.db.get_data(query, (object_id,))
+        
+        if not data:
+            return []
+            
+        for row in data:
+            # Sử dụng hàm định dạng ngày tháng an toàn (từ self._format_date_safe)
+            row['VoucherDate'] = self._format_date_safe(row.get('VoucherDate'))
+            row['EarliestRequestDate'] = self._format_date_safe(row.get('EarliestRequestDate'))
+            row['ActualDeliveryDate'] = self._format_date_safe(row.get('ActualDeliveryDate'))
+            
+        return data

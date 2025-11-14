@@ -1,18 +1,16 @@
-# services/chatbot_service.py
-# (FIXED: Chuyển sang mẫu câu cố định cho Dự phòng tồn kho)
-
 import re
 import pandas as pd
 from db_manager import safe_float
 from services.sales_lookup_service import SalesLookupService 
+from services.delivery_service import DeliveryService # Cần import cho Type Hint/Best Practice
 
 class ChatbotService:
-    # FIX: Thêm redis_client vào signature để khớp với app.py, và thêm giá trị mặc định để tránh lỗi 
-    def __init__(self, sales_lookup_service, customer_service, redis_client=None):
+    # ĐÃ SỬA: Thêm delivery_service vào signature
+    def __init__(self, sales_lookup_service, customer_service, delivery_service, redis_client=None):
         self.lookup_service = sales_lookup_service
         self.customer_service = customer_service
+        self.delivery_service = delivery_service # Gán Delivery Service
         self.redis_client = redis_client
-        
         self.user_context = {} 
         
         self.intents = {
@@ -42,9 +40,16 @@ class ChatbotService:
                 r'^dự\s*phòng\s*(.+?)\s*mã\s*(.+?)\??$',
                 re.IGNORECASE
             ),
+            'CHECK_DELIVERY': re.compile(
+                # Mẫu cuối cùng: Dùng nhóm không trích xuất (?:...) để cố định phần đầu
+                r'^(?:tình trạng|tình hình)?\s*(giao hàng|vận chuyển)\s+cho\s+(.+?)\s*(chưa|không)?\??$', 
+                re.IGNORECASE
+            ),
+            
+        
         }
 
-    # --- HÀM QUẢN LÝ NGỮ CẢNH (Giữ nguyên logic in-memory đơn giản) ---
+    # --- HÀM QUẢN LÝ NGỮ CẢNH ---
     def _get_user_context(self, user_code):
         if user_code not in self.user_context:
             self.user_context[user_code] = {'intent': None, 'data': {}}
@@ -64,7 +69,7 @@ class ChatbotService:
         context = self._get_user_context(user_code)
         
         try:
-            # --- 1. KIỂM TRA LỆNH HỦY (ƯU TIÊN CAO NHẤT) ---
+            # --- 1. KIỂM TRA LỆNH HỦY ---
             cancel_match = self.intents['CANCEL_INTENT'].match(message_text)
             if cancel_match:
                 self._clear_user_context(user_code)
@@ -86,7 +91,24 @@ class ChatbotService:
             help_match = self.intents['HELP'].search(message_text)
             if help_match:
                 return self._handle_help() 
-
+            
+            # (Kiểm tra giao hàng)
+            delivery_match = self.intents['CHECK_DELIVERY'].search(message_text)
+            if delivery_match:
+                # Group 2 là Tên Khách hàng trong mẫu mới
+                if delivery_match.group(2): 
+                    customer_name = delivery_match.group(2).strip()
+                else:
+                    customer_name = None
+                
+                # Thêm kiểm tra chính xác tên KH
+                if not customer_name or len(customer_name) < 2:
+                    # Lỗi này có thể xảy ra nếu KH nhập cú pháp sai
+                    return "Xin lỗi, tôi không thể trích xuất tên khách hàng chính xác. (Cú pháp: 'Tình trạng giao hàng cho Tên_KH')"
+                
+                return self._process_multi_step_query(
+                    user_code, 'CHECK_DELIVERY', 'LXH_STATUS', customer_name
+                )
             # (Kiểm tra nhu cầu Dự phòng)
             replenishment_match = self.intents['CHECK_REPLENISHMENT'].match(message_text)
             if replenishment_match:
@@ -164,7 +186,7 @@ class ChatbotService:
             print(f"LỖI CHATBOT PROCESS: {e}")
             return f"Lỗi hệ thống: {e}"
 
-    # (Các hàm helper và xử lý context)
+    # --- CÁC HÀM XỬ LÝ MULTI-STEP VÀ CLARIFICATION ---
 
     def _process_multi_step_query(self, user_code, intent, item_term, customer_name, context_data=None):
         customers_found = self._find_customer(customer_name)
@@ -187,10 +209,13 @@ class ChatbotService:
         if intent == 'CHECK_REPLENISHMENT' and context_data:
              customer_obj.update(context_data)
         
+        # Xử lý các Intent sau khi xác định KH
         if intent == 'PRICE_CHECK':
             return self._handle_price_check_final(item_term, customer_obj)
         elif intent == 'CHECK_HISTORY':
             return self._handle_check_history_final(item_term, customer_obj)
+        elif intent == 'CHECK_DELIVERY':
+            return self._handle_check_delivery_final(customer_obj) # <-- HÀM MỚI
         elif intent == 'CHECK_REPLENISHMENT':
             return self._handle_replenishment_check_final(customer_obj)
 
@@ -218,6 +243,8 @@ class ChatbotService:
                 return self._handle_price_check_final(item_term, chosen_customer)
             elif original_intent == 'CHECK_HISTORY':
                 return self._handle_check_history_final(item_term, chosen_customer)
+            elif original_intent == 'CHECK_DELIVERY':
+                 return self._handle_check_delivery_final(chosen_customer) # <-- HÀM MỚI
             elif original_intent == 'CHECK_REPLENISHMENT':
                 return self._handle_replenishment_check_final(chosen_customer)
         
@@ -233,6 +260,62 @@ class ChatbotService:
             return customers 
         except Exception as e:
             return f"Lỗi khi tìm khách hàng: {e}"
+
+    # ... (Các hàm helper khác: _find_choice, _format_customer_options, _handle_help) ...
+
+    # --- HÀM XỬ LÝ GIAO HÀNG (DELIVERY) MỚI ---
+    def _handle_check_delivery_final(self, customer_object):
+        customer_id = customer_object['ID']
+        customer_display_name = customer_object['FullName']
+        
+        # Gọi hàm service với days_ago=7
+        recent_deliveries = self.delivery_service.get_recent_delivery_status(customer_id, days_ago=7)
+
+        if not recent_deliveries:
+            return f"Khách hàng **{customer_display_name}** không có Lệnh Xuất Hàng nào trong 7 ngày qua."
+
+        response_lines = [f"**Tình trạng giao hàng (7 ngày qua) cho {customer_display_name}:**"]
+        
+        all_delivered = True
+        
+        for item in recent_deliveries:
+            status = item.get('DeliveryStatus', 'CHỜ').strip().upper()
+            planned_day = item.get('Planned_Day', 'POOL').strip().upper()
+            
+            if status != 'DA GIAO':
+                 all_delivered = False
+            
+            # Xử lý màu sắc và hiển thị
+            line = f"- **LXH {item['VoucherNo']}** (Ngày: {item['VoucherDate']}):\n"
+            
+            # --- LOGIC DÙNG HTML/CSS CƠ BẢN ĐỂ TÔ MÀU ---
+            
+            # 1. Hiển thị Kế hoạch (Vàng cam/Orange)
+            if planned_day == 'POOL':
+                planned_display = f'<span style="color: #F9AA33;">Chưa xếp lịch giao</span>'
+            else:
+                planned_display = planned_day
+            
+            # 2. Tô màu Trạng thái (Xanh lá/Green)
+            if status == 'DA GIAO':
+                 status_display = f'<span style="color: #34A853;">✅ DA GIAO</span>' 
+            else:
+                 status_display = f'**{status}**' # Giữ nguyên xanh dương/đậm cho trạng thái khác
+            
+            line += f"  > Kế hoạch: {planned_display} | Tình trạng: {status_display}\n"
+            # --- END LOGIC DÙNG HTML/CSS CƠ BẢN ---
+
+            if status == 'DA GIAO':
+                 line += f"  > Ngày giao: {item['ActualDeliveryDate']}"
+            elif item['EarliestRequestDate'] != '—':
+                 line += f"  > Y/C sớm nhất: {item['EarliestRequestDate']}"
+                 
+            response_lines.append(line)
+        
+        if all_delivered and len(recent_deliveries) > 0:
+             response_lines.insert(0, f"✅ **ĐÃ XUẤT HÀNG/GIAO TẤT CẢ** ({len(recent_deliveries)} LXH) trong 7 ngày gần nhất.")
+            
+        return "\n".join(response_lines)
 
     def _find_choice(self, text, options_list, field_name_to_match):
         match_num = re.match(r'^(?:số\s*)?([1-5])$', text)
@@ -269,8 +352,9 @@ class ChatbotService:
         response = "**Tôi có thể giúp bạn với các cú pháp chuẩn nhất sau:**\n"
         response += "1. **Tra cứu Tồn kho/Giá QĐ**\n   (Cú pháp: `Mã_hàng` hoặc `Hãng Mã_hàng`)\n   (Ví dụ: `22214` hoặc `nsk 6210zz`)\n"
         response += "2. **Kiểm tra Giá bán & Lịch sử**\n   (Cú pháp: `giá Mã_hàng cho Tên_KH`)\n   (Ví dụ: `giá 22214 cho Vina Kraft`)\n"
-        response += "3. **Kiểm tra Đặt hàng Dự phòng**\n   (Cú pháp chuẩn nhất: `Dự phòng cho Tên_KH theo mã AB`)\n   (Ví dụ: `Dự phòng cho Vina Kraft theo mã AB`)\n"
-        response += "4. **Kiểm tra Lịch sử mua hàng**\n   (Cú pháp: `Tên_KH có mua Mã_hàng chưa?`)\n"
+        response += "3. **Kiểm tra Đặt hàng Dự phòng**\n   (Cú pháp: `Dự phòng cho Tên_KH theo mã AB`)\n   (Ví dụ: `Dự phòng cho Vina Kraft theo mã AB`)\n"
+        response += "4. **Kiểm tra Lịch sử mua hàng**\n   (Cú pháp: `Tên_KH có mua Mã_hàng chưa`)\n (Ví dụ: `Hoa Sen mua 6320 chưa`)\n"
+        response += "5. **Kiểm tra Tình trạng giao hàng**\n   (Cú pháp: `Giao hàng cho Tên_KH chưa`)\n (Ví dụ: `Giao hàng cho VMS chưa`)\n"
         return response
 
     def _handle_check_history_final(self, item_term, customer_object, limit=5):
