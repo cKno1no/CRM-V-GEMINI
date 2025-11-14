@@ -5,6 +5,14 @@ from datetime import datetime, timedelta
 
 delivery_bp = Blueprint('delivery_bp', __name__)
 
+# [HÀM HELPER CẦN THIẾT]
+def get_user_ip():
+    """Lấy địa chỉ IP của người dùng."""
+    if request.headers.getlist("X-Forwarded-For"):
+       return request.headers.getlist("X-Forwarded-For")[0]
+    else:
+       return request.remote_addr
+
 # [ROUTES]
 
 @delivery_bp.route('/delivery_dashboard', methods=['GET'])
@@ -13,7 +21,7 @@ def delivery_dashboard():
     """ROUTE: Hiển thị Bảng Điều phối Giao vận (2 Tab)."""
     
     # FIX: Import Delivery Service Cục bộ
-    from app import delivery_service
+    from app import delivery_service, db_manager # ADD db_manager
     
     # --- LOGIC PHÂN QUYỀN (TỪ APP.PY GỐC) ---
     user_role = session.get('user_role', '').strip().upper()
@@ -48,6 +56,16 @@ def delivery_dashboard():
     # Đã Giao
     kho_da_giao = [t for t in ungrouped_tasks_json if t['DeliveryStatus'] == 'Da Giao']
     # --------------------------------------------------------------------
+    
+    # LOG VIEW_DELIVERY_DASHBOARD (BỔ SUNG)
+    try:
+        db_manager.write_audit_log(
+            session.get('user_code'), 'VIEW_DELIVERY_DASHBOARD', 'INFO', 
+            "Truy cập Bảng Điều phối Giao vận", 
+            get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log VIEW_DELIVERY_DASHBOARD: {e}")
 
     return render_template(
         'delivery_dashboard.html',
@@ -72,14 +90,14 @@ def api_delivery_set_day():
     """API: (Thư ký) Kéo thả 1 LXH hoặc 1 Nhóm KH vào 1 ngày kế hoạch."""
     
     # FIX: Import Delivery Service Cục bộ
-    from app import delivery_service
+    from app import delivery_service, db_manager # ADD db_manager
     
     user_role = session.get('user_role', '').strip().upper()
+    user_code = session.get('user_code')
     if user_role not in ['ADMIN', 'GM']:
         return jsonify({'success': False, 'message': 'Bạn không có quyền thực hiện thao tác này.'}), 403
         
     data = request.json
-    user_code = session.get('user_code')
     
     voucher_id = data.get('voucher_id') 
     object_id = data.get('object_id')   
@@ -93,6 +111,12 @@ def api_delivery_set_day():
         success = delivery_service.set_planned_day(voucher_id, object_id, new_day, user_code, old_day)
         
         if success:
+            # LOG SET_DELIVERY_PLAN (BỔ SUNG)
+            db_manager.write_audit_log(
+                user_code, 'SET_DELIVERY_PLAN', 'INFO', 
+                f"Kéo thả plan: {voucher_id or object_id} từ {old_day} sang {new_day}", 
+                get_user_ip()
+            )
             return jsonify({'success': True})
         else:
             return jsonify({'success': False, 'message': 'Lỗi CSDL khi cập nhật Kế hoạch.'}), 500
@@ -107,15 +131,16 @@ def api_delivery_set_status():
     """API: (Kho) Cập nhật trạng thái Đã Soạn/Đã Giao."""
     
     # FIX: Import Delivery Service Cục bộ
-    from app import delivery_service
+    from app import delivery_service, db_manager # ADD db_manager
     
     user_role = session.get('user_role', '').strip().upper()
     user_bo_phan = session.get('bo_phan', '').strip()
+    user_code = session.get('user_code')
+
     if user_role not in ['ADMIN', 'GM'] and user_bo_phan != '5. KHO':
         return jsonify({'success': False, 'message': 'Bạn không có quyền thực hiện thao tác này.'}), 403
 
     data = request.json
-    user_code = session.get('user_code')
     voucher_id = data.get('voucher_id')
     new_status = data.get('new_status') 
 
@@ -125,6 +150,13 @@ def api_delivery_set_status():
     try:
         success = delivery_service.set_delivery_status(voucher_id, new_status, user_code)
         if success:
+            # LOG SET_DELIVERY_STATUS (BỔ SUNG)
+            severity = 'CRITICAL' if new_status == 'Da Giao' else 'WARNING'
+            db_manager.write_audit_log(
+                user_code, 'SET_DELIVERY_STATUS', severity, 
+                f"Cập nhật trạng thái LXH {voucher_id} thành {new_status}", 
+                get_user_ip()
+            )
             return jsonify({'success': True})
         else:
             return jsonify({'success': False, 'message': 'Lỗi CSDL khi cập nhật Trạng thái.'}), 500

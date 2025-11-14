@@ -158,27 +158,32 @@ class TaskService:
     def get_kanban_tasks(self, user_code, is_admin=False, days_ago=3, view_mode='USER'):
         """Lấy Task cho Kanban Board (3 ngày), hỗ trợ View Quản lý. (Yêu cầu 2)"""
         date_limit = (datetime.now() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
-        date_today = datetime.now().strftime('%Y-%m-%d')
         
-        where_conditions = [
-            f"TaskDate BETWEEN '{date_limit}' AND '{date_today}'",
-            f"Status IN ('OPEN', 'PENDING', 'HELP_NEEDED', 'COMPLETED')" 
-        ]
-        
+        # Lọc UserCode/CapTren (Base filter)
+        base_conditions = []
         if view_mode == 'SUPERVISOR':
-            where_conditions.append(f"CapTren = '{user_code}'") # Lọc theo người GIAO VIỆC
+            base_conditions.append(f"CapTren = '{user_code}'") 
         elif not is_admin: 
-            where_conditions.append(f"UserCode = '{user_code}'") # Lọc theo người NHẬN VIỆC
+            base_conditions.append(f"UserCode = '{user_code}'") 
         
+        user_filter = " AND ".join(base_conditions) if base_conditions else "1=1"
+
         query = f"""
             SELECT *
             FROM {self.TASK_TABLE}
-            WHERE {' AND '.join(where_conditions)}
-            ORDER BY TaskDate DESC, LastUpdated DESC
+            WHERE 
+                ({user_filter}) 
+                AND 
+                (
+                    (TaskDate >= '{date_limit}') -- (2a) Task tạo trong 3 ngày gần nhất (bao gồm cả COMPLETED)
+                    OR 
+                    (Status IN ('OPEN', 'PENDING', 'BLOCKED', 'HELP_NEEDED')) -- (2b) Task vẫn còn active (ALL TIME)
+                )
+            ORDER BY LastUpdated DESC, TaskDate DESC
         """
         data = self.db.get_data(query)
         data = self._enrich_tasks_with_client_name(data)
-        data = self._enrich_tasks_with_user_info(data) # Lấy Assignee ShortName
+        data = self._enrich_tasks_with_user_info(data) 
         return self._standardize_task_data(data)
     
     # --- KHỐI 2: TASK LỊCH SỬ VÀ RỦI RO (30 NGÀY) ---
@@ -485,11 +490,13 @@ class TaskService:
         update_master_query = f"""
             UPDATE {self.TASK_TABLE}
             SET LastUpdated = GETDATE(),
-                ProgressPercentage = ?, -- Cập nhật % mới nhất
-                Status = ?
+                ProgressPercentage = ?, 
+                Status = ?,
+                DetailContent = ?
             WHERE TaskID = ?
         """
-        self.db.execute_non_query(update_master_query, (progress_percent, new_status, task_id))
+        # Sử dụng nội dung log mới nhất cho DetailContent
+        self.db.execute_non_query(update_master_query, (progress_percent, new_status, content, task_id))
 
         return log_id
 
@@ -500,4 +507,30 @@ class TaskService:
         # Đồng thời ghi một Log Type riêng cho phản hồi của cấp trên nếu cần
         # Ở đây ta chỉ cập nhật vào LogID đang được phản hồi.
         return self.db.execute_update_log_feedback(log_id, supervisor_code, feedback)
+
+    def get_recently_updated_tasks(self, user_code, is_admin=False, view_mode='USER', minutes_ago=15):
+        """Lấy danh sách Task có cập nhật (LastUpdated) trong N phút gần nhất."""
+        
+        minutes_ago_str = (datetime.now() - timedelta(minutes=minutes_ago)).strftime('%Y-%m-%d %H:%M:%S')
+        
+        where_conditions = [
+            f"LastUpdated >= '{minutes_ago_str}'",
+            f"Status IN ('OPEN', 'PENDING', 'HELP_NEEDED', 'COMPLETED')" 
+        ]
+        
+        # Áp dụng bộ lọc quyền tương tự như get_kanban_tasks
+        if view_mode == 'SUPERVISOR':
+            where_conditions.append(f"CapTren = '{user_code}'") 
+        elif not is_admin: 
+            where_conditions.append(f"UserCode = '{user_code}'") 
+        
+        query = f"""
+            SELECT TaskID, LastUpdated
+            FROM {self.TASK_TABLE}
+            WHERE {' AND '.join(where_conditions)}
+            ORDER BY LastUpdated DESC
+        """
+        data = self.db.get_data(query)
+        # Chỉ trả về TaskID và LastUpdated để giảm tải
+        return [{'TaskID': task['TaskID'], 'LastUpdated': task['LastUpdated']} for task in data]
     

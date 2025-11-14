@@ -87,7 +87,7 @@ def quick_approval_form():
     """ROUTE: Form Phê duyệt Nhanh (Ghi đè) cho Giám đốc."""
     
     # FIX: Import Services Cần thiết Cục bộ
-    from app import approval_service, order_approval_service
+    from app import approval_service, order_approval_service, db_manager # ADD db_manager
     
     user_role = session.get('user_role', '').strip().upper()
     user_code = session.get('user_code')
@@ -106,6 +106,18 @@ def quick_approval_form():
     orders = order_approval_service.get_orders_for_approval(
         user_code, ninety_days_ago, today
     )
+    
+    # LOG VIEW_QUICK_APPROVAL (BỔ SUNG)
+    try:
+        db_manager.write_audit_log(
+            user_code=user_code,
+            action_type='VIEW_QUICK_APPROVAL',
+            severity='WARNING', 
+            details=f"Truy cập Form Duyệt Nhanh. Tải {len(pending_quotes)} BG, {len(orders)} ĐH.",
+            ip_address=get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log VIEW_QUICK_APPROVAL: {e}")
 
     return render_template(
         'quick_approval_form.html', 
@@ -121,7 +133,7 @@ def api_approve_quote():
     """API: Thực hiện duyệt Chào Giá."""
     
     # FIX: Import Services Cần thiết Cục bộ
-    from app import approval_service
+    from app import approval_service, db_manager # ADD db_manager
     
     data = request.json
     quotation_no = data.get('quotation_no')
@@ -144,6 +156,14 @@ def api_approve_quote():
         )
         
         if result['success']:
+            # GHI LOG APPROVE QUOTE (BỔ SUNG)
+            db_manager.write_audit_log(
+                user_code=current_user_code,
+                action_type='APPROVE_QUOTE',
+                severity='CRITICAL',
+                details=f"Duyệt Báo giá: {quotation_no} (ID: {quotation_id})",
+                ip_address=user_ip
+            )
             return jsonify({'success': True, 'message': result['message']})
         else:
             return jsonify({'success': False, 'message': result['message']}), 400
@@ -158,7 +178,7 @@ def api_approve_order():
     """API: Thực hiện duyệt Đơn hàng Bán."""
     
     # FIX: Import Services Cần thiết Cục bộ
-    from app import order_approval_service
+    from app import order_approval_service, db_manager # ADD db_manager
     
     data = request.json
     order_id = data.get('order_id')         
@@ -184,6 +204,14 @@ def api_approve_order():
         )
         
         if result['success']:
+            # GHI LOG APPROVE ORDER (BỔ SUNG)
+            db_manager.write_audit_log(
+                user_code=current_user_code,
+                action_type='APPROVE_ORDER',
+                severity='INFO',
+                details=f"Duyệt Đơn hàng: SO{sorder_id} (ID: {order_id})",
+                ip_address=user_ip
+            )
             return jsonify({'success': True, 'message': result['message']})
         else:
             return jsonify({'success': False, 'message': result['message']}), 400

@@ -6,6 +6,13 @@ from db_manager import safe_float # Cần cho format/validation
 
 task_bp = Blueprint('task_bp', __name__)
 
+# [HÀM HELPER CẦN THIẾT]
+def get_user_ip():
+    if request.headers.getlist("X-Forwarded-For"):
+       return request.headers.getlist("X-Forwarded-For")[0]
+    else:
+       return request.remote_addr
+
 # [ROUTES]
 
 @task_bp.route('/task_dashboard', methods=['GET', 'POST'])
@@ -44,6 +51,17 @@ def task_dashboard():
                 task_type=task_type, 
                 object_id=object_id
             ):
+                # LOG TASK CREATION (BỔ SUNG)
+                try:
+                    from app import db_manager
+                    db_manager.write_audit_log(
+                        user_code, 'TASK_CREATE', 'INFO', 
+                        f"Tạo Task mới: {title} (Type: {task_type}, Obj: {object_id})", 
+                        get_user_ip()
+                    )
+                except Exception as e:
+                    print(f"Lỗi ghi log TASK_CREATE: {e}")
+                    
                 flash("Task mới đã được tạo thành công!", 'success')
             else:
                 flash("Lỗi khi tạo Task. Vui lòng thử lại.", 'danger')
@@ -110,6 +128,13 @@ def api_log_task_progress():
         )
         
         if log_id:
+            # LOG TASK PROGRESS (BỔ SUNG)
+            from app import db_manager
+            db_manager.write_audit_log(
+                user_code, 'TASK_LOG_PROGRESS', 'INFO', 
+                f"Log tiến độ Task #{task_id} (Type: {log_type}, %: {progress_percent})", 
+                get_user_ip()
+            )
             return jsonify({'success': True, 'message': f'Đã ghi nhận Log #{log_id} thành công!'})
         else:
             return jsonify({'success': False, 'message': 'Lỗi CSDL khi ghi Log.'}), 500
@@ -180,6 +205,13 @@ def api_toggle_task_priority(task_id):
     success = task_service.update_task_priority(task_id, new_priority) 
     
     if success:
+        # LOG TASK PRIORITY TOGGLE (BỔ SUNG)
+        from app import db_manager
+        db_manager.write_audit_log(
+            session.get('user_code'), 'TASK_PRIORITY_TOGGLE', 'WARNING', 
+            f"Thay đổi ưu tiên Task #{task_id} thành {new_priority}", 
+            get_user_ip()
+        )
         return jsonify({'success': True, 'new_priority': new_priority}), 200
     return jsonify({'success': False, 'message': 'Lỗi CSDL khi cập nhật ưu tiên.'}), 500
 
@@ -230,3 +262,30 @@ def api_update_task():
     if success:
         return jsonify({'success': True, 'message': 'Tiến độ Task đã được cập nhật (qua wrapper).'})
     return jsonify({'success': False, 'message': 'Lỗi cập nhật CSDL.'}), 500
+
+@task_bp.route('/api/task/recent_updates', methods=['GET'])
+@login_required
+def api_task_recent_updates():
+    """API: Trả về danh sách TaskID có cập nhật trong 15 phút gần nhất."""
+    
+    from app import task_service
+    
+    user_code = session.get('user_code')
+    user_role = session.get('user_role', '').strip().upper()
+    is_admin = user_role == 'ADMIN'
+    # Lấy view_mode từ request.args để áp dụng bộ lọc quyền
+    view_mode = request.args.get('view', 'USER').upper()
+    minutes_ago = int(request.args.get('minutes', 15))
+    
+    try:
+        updated_tasks = task_service.get_recently_updated_tasks(
+            user_code, 
+            is_admin=is_admin, 
+            view_mode=view_mode,
+            minutes_ago=minutes_ago
+        )
+        # Trả về list objects chứa TaskID và LastUpdated
+        return jsonify(updated_tasks) 
+    except Exception as e:
+        print(f"LỖI API GET RECENT UPDATES: {e}")
+        return jsonify({'error': 'Lỗi khi tải cập nhật gần nhất.'}), 500

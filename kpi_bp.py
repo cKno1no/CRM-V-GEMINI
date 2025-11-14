@@ -10,6 +10,15 @@ import config
 # Khởi tạo Blueprint (Không cần url_prefix vì các route này là routes cấp cao)
 kpi_bp = Blueprint('kpi_bp', __name__)
 
+# [HÀM HELPER CẦN THIẾT]
+def get_user_ip():
+    """Lấy địa chỉ IP của người dùng."""
+    if request.headers.getlist("X-Forwarded-For"):
+       return request.headers.getlist("X-Forwarded-For")[0]
+    else:
+       return request.remote_addr
+
+
 # [ROUTES]
 
 @kpi_bp.route('/sales_dashboard', methods=['GET', 'POST'])
@@ -18,7 +27,7 @@ def sales_dashboard():
     """ROUTE: Bảng Tổng hợp Hiệu suất Sales."""
     
     # FIX: Import Sales Service Cục bộ
-    from app import sales_service
+    from app import sales_service, db_manager # ADD db_manager
     
     current_year = datetime.now().year
     DIVISOR = 1000000.0 # Để chuyển đổi từ tiền tệ sang triệu đồng
@@ -63,6 +72,16 @@ def sales_dashboard():
     total_orders = total_orders_raw
     total_pending_orders_amount = total_pending_orders_amount_raw / DIVISOR
     
+    # LOG VIEW_SALES_DASHBOARD (BỔ SUNG)
+    try:
+        db_manager.write_audit_log(
+            user_code, 'VIEW_SALES_DASHBOARD', 'INFO', 
+            "Truy cập Dashboard Tổng hợp Hiệu suất Sales", 
+            get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log VIEW_SALES_DASHBOARD: {e}")
+        
     return render_template(
         'sales_dashboard.html', 
         summary=summary_data,
@@ -101,6 +120,16 @@ def sales_detail(employee_id):
     
     total_registered_sales_display = total_registered_sales_raw / DIVISOR
     
+    # LOG VIEW_SALES_DETAIL (BỔ SUNG)
+    try:
+        db_manager.write_audit_log(
+            session.get('user_code'), 'VIEW_SALES_DETAIL', 'INFO', 
+            f"Xem chi tiết hiệu suất cho NV: {employee_id}", 
+            get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log VIEW_SALES_DETAIL: {e}")
+
     return render_template(
         'sales_details.html', 
         employee_id=employee_id,
@@ -174,6 +203,16 @@ def realtime_dashboard():
     top_quotes = all_results[3]
     upcoming_deliveries = all_results[4]
 
+    # LOG VIEW_REALTIME_DASHBOARD (BỔ SUNG)
+    try:
+        db_manager.write_audit_log(
+            user_code, 'VIEW_REALTIME_DASHBOARD', 'INFO', 
+            f"Truy cập Dashboard Realtime (Filter: {selected_salesman or 'ALL'})", 
+            get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log VIEW_REALTIME_DASHBOARD: {e}")
+        
     return render_template(
         'realtime_dashboard.html', 
         kpi_summary=kpi_summary, 
@@ -194,7 +233,7 @@ def inventory_aging_dashboard():
     """ROUTE: Phân tích Tuổi hàng Tồn kho."""
     
     # FIX: Import Inventory Service Cục bộ
-    from app import inventory_service
+    from app import inventory_service, db_manager # ADD db_manager
     
     DIVISOR = 1000000.0
     
@@ -213,6 +252,16 @@ def inventory_aging_dashboard():
         value_filter, 
         i05id_filter
     )
+    
+    # LOG VIEW_INVENTORY_AGING (BỔ SUNG)
+    try:
+        db_manager.write_audit_log(
+            session.get('user_code'), 'VIEW_INVENTORY_AGING', 'WARNING', 
+            f"Truy cập Phân tích Tuổi hàng Tồn kho (Filter: {item_filter_term})", 
+            get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log VIEW_INVENTORY_AGING: {e}")
 
     return render_template(
         'inventory_aging.html', 
@@ -237,7 +286,7 @@ def ar_aging_dashboard():
     """ROUTE: Hiển thị Dashboard Công nợ Quá hạn (AR Aging)."""
     
     # FIX: Import AR Aging Service Cục bộ
-    from app import ar_aging_service
+    from app import ar_aging_service, db_manager # ADD db_manager
     
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
@@ -256,6 +305,16 @@ def ar_aging_dashboard():
     kpi_total_overdue = sum(row.get('TotalOverdueDebt', 0) for row in aging_data)
     kpi_over_180 = sum(row.get('Debt_Over_180', 0) for row in aging_data)
     
+    # LOG VIEW_AR_AGING (BỔ SUNG)
+    try:
+        db_manager.write_audit_log(
+            user_code, 'VIEW_AR_AGING', 'WARNING', 
+            f"Truy cập Dashboard Công nợ (Filter: {customer_name_filter or 'ALL'})", 
+            get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log VIEW_AR_AGING: {e}")
+
     return render_template(
         'ar_aging.html', 
         aging_data=aging_data,

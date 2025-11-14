@@ -8,6 +8,13 @@ from config import TEN_BANG_NGUOI_DUNG, TEN_BANG_LOAI_BAO_CAO, TEN_BANG_BAO_CAO,
 
 crm_bp = Blueprint('crm_bp', __name__)
 
+# [HÀM HELPER CẦN THIẾT]
+def get_user_ip():
+    if request.headers.getlist("X-Forwarded-For"):
+       return request.headers.getlist("X-Forwarded-For")[0]
+    else:
+       return request.remote_addr
+
 # [ROUTES]
 
 @crm_bp.route('/dashboard', methods=['GET', 'POST'])
@@ -15,7 +22,7 @@ crm_bp = Blueprint('crm_bp', __name__)
 def dashboard_reports():
     """Hiển thị trang Dashboard - Danh sách báo cáo. (Đã chuyển logic)"""
     
-    # FIX: Import Services Cần thiết NGAY TẠI ĐÂY
+    # FIX: Import Services Cần thiết NGAY TẠY ĐÂY
     from app import db_manager 
 
     query_users = f"""
@@ -132,6 +139,16 @@ OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
             file_count = len([f for f in attachments.split(';') if f.strip()]) if attachments else 0
             row['FILE_COUNT'] = file_count
             row['ID_KEY'] = str(row['ID_KEY'])
+    
+    # LOG VIEW_REPORT_DASHBOARD (BỔ SUNG)
+    try:
+        from app import db_manager, get_user_ip
+        details = f"Xem Dashboard: User={selected_user}, KH={kh_search_term}, Text={text_search_term}, Page={page}"
+        db_manager.write_audit_log(
+            session.get('user_code'), 'VIEW_REPORT_DASHBOARD', 'INFO', details, get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log VIEW_REPORT_DASHBOARD: {e}")
 
     return render_template(
         'dashboard.html', 
@@ -152,7 +169,7 @@ OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
 def report_detail_page(report_stt):
     """ROUTE: Render trang chi tiết sau khi click. (Đã chuyển logic)"""
     
-    # FIX: Import Services Cần thiết NGAY TẠI ĐÂY
+    # FIX: Import Services Cần thiết NGAY TẠY ĐÂY
     from app import db_manager 
     
     current_user_id = session.get('user_code')
@@ -185,7 +202,7 @@ def report_detail_page(report_stt):
     # Lấy dữ liệu chi tiết
     query = f"""
         SELECT TOP 1
-            T1.STT, T1.NGAY, T1.LOAI, T1.[KHACH HANG],
+            T1.STT, T1.NGAY, T1.LOAI, T1.[KHACH HANG] AS KH_Ma,
             T1.[NOI DUNG 1], T1.[NOI DUNG 2], T1.[NOI DUNG 3], T1.[NOI DUNG 4], T1.[NOI DUNG 5],
             T1.[DANH GIA 1], T1.[DANH GIA 2], T1.[DANH GIA 3], T1.[DANH GIA 4], T1.[DANH GIA 5],
             T1.ATTACHMENTS, 
@@ -201,8 +218,18 @@ def report_detail_page(report_stt):
     report_data = db_manager.get_data(query, (report_stt,))
     
     if report_data:
+        # LOG VIEW_REPORT_DETAIL (BỔ SUNG)
+        try:
+            from app import db_manager, get_user_ip
+            db_manager.write_audit_log(
+                current_user_id, 'VIEW_REPORT_DETAIL', 'WARNING', 
+                f"Xem Chi tiết BC #{report_stt} của KH: {report_data[0].get('KH_FullName')}", 
+                get_user_ip()
+            )
+        except Exception as e:
+            print(f"Lỗi ghi log VIEW_REPORT_DETAIL: {e}")
+
         report = report_data[0]
-        report['KH_Ma'] = report.get('KHACH HANG')
         attachments_str = report.get('ATTACHMENTS')
         file_names = [f for f in attachments_str.split(';') if f.strip()] if attachments_str else []
         report['ATTACHMENT_LIST'] = file_names
@@ -232,7 +259,7 @@ def nhap_lieu():
     default_usercode = session.get('user_code')
     
     if request.method == 'POST':
-        attachments_str = save_uploaded_files(request.files.getlist('attachments'))
+        attachments_str = save_uploaded_files(request.files.getlist('attachment_file')) # FIX: Dùng đúng tên input file
         
         data = request.form
         
@@ -278,6 +305,13 @@ def nhap_lieu():
             )
             
             if db_manager.execute_non_query(insert_query, params):
+                # LOG REPORT CREATE (BỔ SUNG)
+                from app import db_manager, get_user_ip
+                db_manager.write_audit_log(
+                    nguoi_bao_cao_code, 'REPORT_CREATE', 'INFO', 
+                    f"Tạo báo cáo mới (Loại: {loai}, KH: {ma_khach_hang_value})", 
+                    get_user_ip()
+                )
                 return redirect(url_for('crm_bp.dashboard_reports', success_message='Lưu thành công!'))
             else:
                 message = "error: Thất bại khi thực thi INSERT SQL."
@@ -299,7 +333,7 @@ def nhap_lieu():
 def nhansu_nhaplieu():
     """Hàm xử lý form nhập liệu Nhân sự Liên hệ. (Đã chuyển logic)"""
     
-    # FIX: Import Services Cần thiết NGAY TẠI ĐÂY
+    # FIX: Import Services Cần thiết NGAY TẠY ĐÂY
     from app import db_manager
     
     message = None
@@ -332,7 +366,7 @@ def nhansu_nhaplieu():
 @login_required
 def api_get_reference_data(ma_doi_tuong):
     """API MỚI: Lấy thông tin tham chiếu (COUNT Nhân sự)."""
-    # FIX: Import Services Cần thiết NGAY TẠI ĐÂY
+    # FIX: Import Services Cần thiết NGAY TẠY ĐÂY
     from app import db_manager
     
     query_count = f"SELECT COUNT(T1.ID) AS CountNLH FROM dbo.{config.TEN_BANG_NHAN_SU_LH} AS T1 WHERE T1.[CONG TY] = ?"
@@ -344,7 +378,7 @@ def api_get_reference_data(ma_doi_tuong):
 @login_required
 def api_nhansu_ddl_by_khachhang(ma_doi_tuong):
     """API MỚI: Lấy danh sách Nhân sự cho Dropdown."""
-    # FIX: Import Services Cần thiết NGAY TẠI ĐÂY
+    # FIX: Import Services Cần thiết NGAY TẠY ĐÂY
     from app import db_manager
     
     query = f"SELECT MA, [TEN THUONG GOI], [CHUC VU], [TEN HO] FROM dbo.{config.TEN_BANG_NHAN_SU_LH} WHERE [CONG TY] = ? ORDER BY [TEN HO]"
@@ -363,7 +397,7 @@ def api_nhansu_ddl_by_khachhang(ma_doi_tuong):
 @login_required
 def api_defaults(loai_code):
     """API tra cứu DLOOKUP cho tiêu đề và nội dung mặc định."""
-    # FIX: Import Services Cần thiết NGAY TẠI ĐÂY
+    # FIX: Import Services Cần thiết NGAY TẠY ĐÂY
     from app import db_manager
     
     query = f"SELECT [LOAI], [MAC DINH], [TEN] FROM dbo.{config.TEN_BANG_NOI_DUNG_HD} WHERE [LOAI] LIKE ?"

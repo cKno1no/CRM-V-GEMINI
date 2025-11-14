@@ -84,6 +84,25 @@
             border-left: 5px solid #4285F4; 
             font-size: 0.85rem;
             line-height: 1.3;
+            position: relative;
+        }
+        .new-update-marker {
+            position: absolute;
+            top: -5px; 
+            right: -5px; 
+            width: 12px;
+            height: 12px;
+            background-color: #DB4437; /* Màu đỏ */
+            border-radius: 50%;
+            z-index: 10;
+            box-shadow: 0 0 5px rgba(219, 68, 55, 0.8);
+            animation: pulse 1.5s infinite; /* Hiệu ứng nhấp nháy nhẹ */
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.7; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.7; }
         }
         .task-card:hover {
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
@@ -227,7 +246,7 @@
         <div class="card p-3 mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="mb-0 text-dark">
-                    <i class="fas fa-columns me-2"></i> KANBAN BOARD (Task Rủi ro - 30 Ngày)
+                    <i class="fas fa-columns me-2"></i> KANBAN BOARD (3 ngày vừa qua)
                 </h5>
                 <button class="btn btn-primary" onclick="openCreateTaskModal()">
                     <i class="fas fa-plus me-1"></i> Tạo Task Mới
@@ -244,7 +263,7 @@
                                 <span class="task-id-tag">#{{ task.TaskID }}</span>
                                 <div class="task-title-small">{{ task.Title }}</div>
                                 <p class="mt-1 mb-0 text-muted" style="font-size: 0.75rem;">
-                                    <span class="badge bg-secondary">{{ task.TaskType }}</span> | {{ task.TaskDateDisplay }}
+                                    <span class="badge bg-secondary">{{ task.UserCode }}</span> | {{ task.TaskDateDisplay }}
                                     {% if task.ClientName %}
                                         <span class="float-end text-primary"><i class="fas fa-user-tag me-1"></i> {{ task.ClientName|default(task.ObjectID)|truncate(15, True) }}</span>
                                     {% endif %}
@@ -257,12 +276,12 @@
                 <div class="kanban-column" style="border-top: 5px solid #F9AA33;">
                     <div class="kanban-column-header text-warning">ĐANG XỬ LÝ (PENDING)</div>
                     <div class="task-list">
-                        {% for task in kanban_tasks if task.Status == 'PENDING' %}
+                        {% for task in kanban_tasks if task.Status == 'PENDING' or task.Status == 'BLOCKED' %}
                             <div class="task-card" onclick="openUpdateModal({{ task.TaskID }})"> 
                                 <span class="task-id-tag">#{{ task.TaskID }}</span>
                                 <div class="task-title-small">{{ task.Title }}</div>
                                 <p class="mt-1 mb-0 text-muted" style="font-size: 0.75rem;">
-                                    <span class="badge bg-secondary">{{ task.TaskType }}</span> | {{ task.TaskDateDisplay }}
+                                    <span class="badge bg-secondary">{{ task.UserCode }}</span> | {{ task.TaskDateDisplay }}
                                     {% if task.ClientName %}
                                         <span class="float-end text-primary"><i class="fas fa-user-tag me-1"></i> {{ task.ClientName|default(task.ObjectID)|truncate(15, True) }}</span>
                                     {% endif %}
@@ -287,7 +306,7 @@
                                 <span class="task-id-tag">#{{ task.TaskID }}</span>
                                 <div class="task-title-small">{{ task.Title }}</div>
                                 <p class="mt-1 mb-0 text-muted" style="font-size: 0.75rem;">
-                                    <span class="badge bg-secondary">{{ task.TaskType }}</span> | {{ task.TaskDateDisplay }}
+                                    <span class="badge bg-secondary">{{ task.UserCode }}</span> | {{ task.TaskDateDisplay }}
                                     {% if task.ClientName %}
                                         <span class="float-end text-primary"><i class="fas fa-user-tag me-1"></i> {{ task.ClientName|default(task.ObjectID)|truncate(15, True) }}</span>
                                     {% endif %}
@@ -312,7 +331,7 @@
                                 <span class="task-id-tag">#{{ task.TaskID }}</span>
                                 <div class="task-title-small">{{ task.Title }}</div>
                                 <p class="mt-1 mb-0 text-muted" style="font-size: 0.75rem;">
-                                    <span class="badge bg-secondary">{{ task.TaskType }}</span> | {{ task.TaskDateDisplay }}
+                                    <span class="badge bg-secondary">{{ task.UserCode }}</span> | {{ task.TaskDateDisplay }}
                                     {% if task.ClientName %}
                                         <span class="float-end text-primary"><i class="fas fa-user-tag me-1"></i> {{ task.ClientName|default(task.ObjectID)|truncate(15, True) }}</span>
                                     {% endif %}
@@ -350,7 +369,7 @@
                                 <th>Loại</th>
                                 <th>Tiêu đề</th>
                                 <th>Đối tượng</th>
-                                <th>Người Gán</th> 
+                                <th>Người tạo</th> 
                                 <th>Nội dung chi tiết</th>
                                 <th>Trạng thái</th>
                                 <th>Note Cấp trên</th>
@@ -901,6 +920,100 @@
             });
         });
         
+        // === LOGIC POLLING CẬP NHẬT GẦN NHẤT (MỚI) ===
+        function checkRecentUpdates() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const viewMode = urlParams.get('view') || 'USER';
+            const minutesAgo = 15;
+            
+            // Lấy TaskID từ các card trên Kanban và History (dùng TaskID làm ID duy nhất)
+            const allTaskCards = Array.from(document.querySelectorAll('.task-card, [data-task-id]'));
+            
+            fetch(`/api/task/recent_updates?view=${viewMode}&minutes=${minutesAgo}`)
+                .then(response => response.json())
+                .then(updatedTasks => {
+                    // 1. Xóa tất cả các dấu chấm đỏ cũ
+                    document.querySelectorAll('.new-update-marker').forEach(marker => marker.remove());
+
+                    if (updatedTasks && updatedTasks.length > 0) {
+                        
+                        updatedTasks.forEach(task => {
+                            const taskId = task.TaskID;
+                            
+                            // 2. Tìm thẻ Task
+                            // Task trên Kanban (không có data-task-id, dùng onclick)
+                            let taskCard = document.querySelector(`.kanban-container .task-card[onclick*="openUpdateModal(${taskId})"]`);
+                            // Task trên bảng lịch sử (có data-task-id)
+                            if (!taskCard) {
+                                taskCard = document.querySelector(`#task-history-table tr[data-task-id="${taskId}"]`);
+                            }
+
+                            if (taskCard) {
+                                // 3. Chèn dấu chấm đỏ
+                                const marker = document.createElement('div');
+                                marker.className = 'new-update-marker';
+                                
+                                // Chèn vào thẻ Task Card (cho Kanban)
+                                if (taskCard.classList.contains('task-card')) {
+                                    taskCard.appendChild(marker);
+                                } 
+                                // Chèn vào ô đầu tiên (TD) của hàng trong bảng lịch sử
+                                else if (taskCard.tagName === 'TR') {
+                                    const firstCell = taskCard.querySelector('td');
+                                    if (firstCell) {
+                                        firstCell.style.position = 'relative'; // Đặt relative cho cell chứa
+                                        firstCell.appendChild(marker);
+                                    }
+                                }
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('[Polling Error] Lỗi khi kiểm tra cập nhật:', error);
+                });
+        }
+
+        function startPolling() {
+            // Chạy lần đầu ngay khi tải trang
+            checkRecentUpdates(); 
+            
+            // Đặt lịch lặp lại mỗi 15 phút (900000 ms)
+            const intervalMinutes = 15;
+            const intervalMs = intervalMinutes * 60 * 1000; 
+            
+            setInterval(checkRecentUpdates, intervalMs);
+            console.log(`[Polling] Bắt đầu kiểm tra cập nhật Task mới sau mỗi ${intervalMinutes} phút.`);
+        }
+
+        // Chạy polling sau khi DOM đã sẵn sàng
+        $(document).ready(function() {
+            
+            // Khởi tạo DataTables cho bảng Lịch sử Task
+            if ($('#task-history-table').length) {
+                $('#task-history-table').DataTable({
+                    "paging": true,
+                    "pageLength": 15, // THIẾT LẬP 15 DÒNG MỖI TRANG
+                    "lengthChange": true,
+                    "searching": false, // Giữ cho form lọc tùy chỉnh hoạt động
+                    "ordering": true,
+                    "info": true,
+                    "order": [[1, 'desc']], // Sắp xếp mặc định theo cột Ngày
+                    "dom": 'lfrtip', // Cấu trúc hiển thị phân trang/tìm kiếm
+                    "language": {
+                        "lengthMenu": "Hiển thị _MENU_ mục",
+                        "zeroRecords": "Không tìm thấy dữ liệu.",
+                        "info": "Hiển thị từ _START_ đến _END_ trong tổng số _TOTAL_ mục",
+                        "infoEmpty": "Không có dữ liệu",
+                        "paginate": { "next": "Sau", "previous": "Trước" }
+                    }
+                });
+            }
+            
+            // Bắt đầu Polling cho Task Updates
+            startPolling();
+        });
+
     </script>
 </body>
 </html>

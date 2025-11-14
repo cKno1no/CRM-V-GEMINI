@@ -65,10 +65,10 @@ except Exception as e:
 db_manager = DBManager()
 
 print("="*50)
-print(f"!!! CHẨN ĐOÁN KẾT NỐI (PYTHON) !!!")
-print(f"!!! Đang kết nối tới SERVER: {config.DB_SERVER}")
-print(f"!!! Đang kết nối tới DATABASE: {config.DB_NAME}")
-print(f"!!! Đang sử dụng USER: {config.DB_UID}")
+print(f"!!! CHAN DOAN KET NOI (PYTHON) !!!")
+print(f"!!! SERVER: {config.DB_SERVER}")
+print(f"!!! DATABASE: {config.DB_NAME}")
+print(f"!!! USER: {config.DB_UID}")
 print("="*50)
 
 # Khởi tạo các Tầng Dịch vụ (Service Layer)
@@ -186,21 +186,7 @@ def login():
 
             flash(f"Đăng nhập thành công! Chào mừng {user.get('SHORTNAME')}.", 'success')
             
-            # --- LOGIC CHUYỂN HƯỚNG MỚI (YÊU CẦU A, B, C) ---
-            user_role = session.get('user_role', '').strip().upper()
-            department = session.get('bo_phan', '')
-
-            # a/ Nếu là admin, load index_redesign (index.html)
-            if user_role == 'ADMIN':
-                return redirect(url_for('index'))
-            
-            # b/ Nếu thuộc [GD - NGUOI DUNG].[BO PHAN] = 02. KINH DOANH, thì load realtime_dashboard
-            elif department == '2. KINH DOANH':
-                return redirect(url_for('realtime_dashboard'))
-                
-            # c/ Còn lại, load dashboard
-            else:
-                return redirect(url_for('dashboard_reports'))
+            return redirect(url_for('index'))
             # ---------------------------------------------
         else:
             # --- GHI LOG (Requirement 3: Cảnh báo Login thất bại) ---
@@ -221,6 +207,18 @@ def login():
 @app.route('/logout')
 def logout():
     """Logic Đăng xuất."""
+
+    user_code = session.get('user_code', 'GUEST')
+    user_ip = get_user_ip() 
+    
+    # 1. GHI LOG LOGOUT (BỔ SUNG)
+    db_manager.write_audit_log(
+        user_code=user_code,
+        action_type='LOGOUT',
+        severity='INFO',
+        details="User đăng xuất",
+        ip_address=user_ip
+    )
     # 1. Xóa tất cả các biến session
     session.clear() 
     

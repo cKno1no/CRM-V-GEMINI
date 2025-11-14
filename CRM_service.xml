@@ -1,0 +1,21 @@
+<service>
+    <id>CRM_SERVICE</id>
+    <name>CRM Portal Service (Waitress)</name>
+    <description>Service tự động giám sát và khởi động lại ứng dụng Flask CRM Portal.</description>
+    
+    <executable>C:\Users\administrator.STD.000\AppData\Local\Programs\Python\Python314\python.exe</executable>
+    
+    <argument>app.py</argument>
+    
+    <workingdirectory>D:\CRM STDD</workingdirectory>
+    
+    <log mode="roll-by-size">
+        <sizeThreshold>10240</sizeThreshold> <keepFiles>8</keepFiles>
+    </log>
+    
+    <onfailure action="restart" delay="10s"/>
+    <onfailure action="restart" delay="20s"/>
+    <onfailure action="restart" delay="60s"/>
+    <onfailure action="none" delay="60s"/>
+    
+</service>

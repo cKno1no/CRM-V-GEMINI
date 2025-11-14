@@ -392,7 +392,7 @@ $(document).ready(function() {
                         const option = `<option value="${kh.ID}" data-fullname="${kh.FullName}">${kh.ID} - ${kh.FullName}</option>`;
                         resultsDropdown.append(option);
                     });
-                    resultsDropdown.show().attr('size', Math.min(data.length, 5)); 
+                    resultsDropdown.show().attr('size', Math.max(Math.min(data.length, 5), 2)); 
                     statusMsg.html(`Tìm thấy ${data.length} kết quả. Vui lòng chọn.`);
                 } else {
                     statusMsg.text('Không tìm thấy kết quả nào.');

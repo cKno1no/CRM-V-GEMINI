@@ -4,8 +4,17 @@ from datetime import datetime
 import json
 import config 
 
+# [HÀM HELPER CẦN THIẾT] (ĐÃ BỔ SUNG)
+def get_user_ip():
+    """Lấy địa chỉ IP của người dùng."""
+    if request.headers.getlist("X-Forwarded-For"):
+       return request.headers.getlist("X-Forwarded-For")[0]
+    else:
+       return request.remote_addr
+
 # FIX: ĐỊNH NGHĨA BLUEPRINT VỚI URL PREFIX ĐỂ KHỚP VỚI CẤU TRÚC /sales/
 lookup_bp = Blueprint('lookup_bp', __name__, url_prefix='/sales')
+
 
 # [ROUTES]
 
@@ -15,7 +24,7 @@ def sales_lookup_dashboard():
     """ROUTE: Dashboard tra cứu thông tin bán hàng. (Phục vụ /sales/sales_lookup)"""
     
     # FIX: Import Services Cục bộ
-    from app import lookup_service
+    from app import lookup_service, db_manager # ADD db_manager
     
     user_role = session.get('user_role', '').strip().upper()
     is_admin_or_gm = user_role in ['ADMIN', 'GM']
@@ -40,6 +49,18 @@ def sales_lookup_dashboard():
             lookup_results = lookup_service.get_sales_lookup_data(
                 item_search, object_id 
             )
+        
+        # LOG API_SALES_LOOKUP (Tra cứu Form) (BỔ SUNG)
+        try:
+            db_manager.write_audit_log(
+                user_code=session.get('user_code'),
+                action_type='API_SALES_LOOKUP',
+                severity='INFO',
+                details=f"Tra cứu (Form): item='{item_search}', kh='{object_id}'",
+                ip_address=get_user_ip()
+            )
+        except Exception as e:
+            print(f"Lỗi ghi log API_SALES_LOOKUP: {e}")
 
     return render_template(
         'sales_lookup_dashboard.html', 
@@ -95,12 +116,24 @@ def total_replenishment_dashboard():
 @login_required
 def export_total_replenishment():
     """ROUTE: Xử lý xuất dữ liệu dự phòng tồn kho ra Excel."""
-    from app import db_manager 
+    from app import db_manager, get_user_ip # ADD get_user_ip
     
     user_role = session.get('user_role', '').strip().upper()
     if user_role not in ['ADMIN', 'GM', 'MANAGER']:
         flash("Bạn không có quyền truy cập chức năng này.", 'danger')
         return redirect(url_for('index'))
+    
+    # LOG EXPORT_REPLENISHMENT (BỔ SUNG)
+    try:
+        db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='EXPORT_REPLENISHMENT',
+            severity='CRITICAL', 
+            details="Xuất Excel Báo cáo Dự phòng Tổng thể",
+            ip_address=get_user_ip()
+        )
+    except Exception as e:
+        print(f"Lỗi ghi log EXPORT_REPLENISHMENT: {e}")
         
     flash("Chức năng Xuất Excel chưa được hoàn thành.", 'warning')
     return redirect(url_for('lookup_bp.total_replenishment_dashboard')) 
@@ -160,7 +193,7 @@ def api_multi_lookup():
     """API: Tra cứu Tồn kho/Giá QĐ/BO cho nhiều mã (Tra nhanh)."""
     
     # FIX: Import Services Cục bộ
-    from app import lookup_service
+    from app import lookup_service, db_manager # ADD db_manager
     
     item_search = request.form.get('item_search', '').strip()
     
@@ -169,6 +202,16 @@ def api_multi_lookup():
         
     try:
         data = lookup_service.get_multi_lookup_data(item_search)
+        
+        # LOG API_QUICK_LOOKUP (BỔ SUNG)
+        db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='API_QUICK_LOOKUP',
+            severity='INFO',
+            details=f"Tra nhanh (Multi): item='{item_search}'",
+            ip_address=get_user_ip()
+        )
+        
         return jsonify(data)
     except Exception as e:
         return jsonify({'error': f'Lỗi server: {e}'}), 500
@@ -198,13 +241,23 @@ def api_get_backorder_details(inventory_id):
     """API: Lấy chi tiết BackOrder (PO) cho một mã hàng."""
     
     # FIX: Import Services Cục bộ
-    from app import lookup_service
+    from app import lookup_service, db_manager # ADD db_manager
     
     if not inventory_id:
         return jsonify({'error': 'Vui lòng cung cấp Mã Mặt hàng.'}), 400
         
     try:
         data = lookup_service.get_backorder_details(inventory_id)
+        
+        # LOG API_BACKORDER_DETAIL (BỔ SUNG)
+        db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='API_BACKORDER_DETAIL',
+            severity='INFO',
+            details=f"Xem chi tiết BackOrder cho: {inventory_id}",
+            ip_address=get_user_ip()
+        )
+        
         return jsonify(data)
     except Exception as e:
         return jsonify({'error': f'Lỗi server: {e}'}), 500
@@ -226,6 +279,16 @@ def api_get_replenishment_details(group_code):
 
     try:
         data = db_manager.execute_sp_multi('dbo.sp_GetReplenishmentGroupDetails', (group_code,))
+        
+        # LOG VIEW_REPLENISH_DETAIL (BỔ SUNG)
+        db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='VIEW_REPLENISH_DETAIL',
+            severity='INFO',
+            details=f"Xem chi tiết dự phòng nhóm: {group_code}",
+            ip_address=get_user_ip()
+        )
+        
         return jsonify(data[0] if data else [])
     except Exception as e:
         return jsonify({'error': f'Lỗi server: {e}'}), 500
@@ -249,6 +312,16 @@ def api_get_customer_replenishment_data(customer_id):
     try:
         # Giả định SP là 'dbo.sp_GetCustomerReplenishmentNeeds'
         sp_data = db_manager.execute_sp_multi('dbo.sp_GetCustomerReplenishmentSuggest', (customer_id,))
+        
+        # LOG API_CUSTOMER_REPLENISH (BỔ SUNG)
+        db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='API_CUSTOMER_REPLENISH',
+            severity='INFO',
+            details=f"Tra cứu dự phòng cho KH: {customer_id}",
+            ip_address=get_user_ip()
+        )
+        
         # SP trả về kết quả trong tập hợp đầu tiên
         return jsonify(sp_data[0] if sp_data else [])
     except Exception as e:
