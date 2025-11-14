@@ -79,10 +79,11 @@ approval_service = QuotationApprovalService(db_manager)
 order_approval_service = SalesOrderApprovalService(db_manager)
 lookup_service = SalesLookupService(db_manager)
 task_service = TaskService(db_manager)
-chatbot_service = ChatbotService(lookup_service, customer_service, redis_client)
+
 ar_aging_service = ARAgingService(db_manager)
 delivery_service = DeliveryService(db_manager)
-
+# Khởi tạo ChatbotService (TRUYỀN THÊM delivery_service)
+chatbot_service = ChatbotService(lookup_service, customer_service, delivery_service, redis_client) # <-- THÊM delivery_service
 
 # =========================================================================
 # IV. HÀM AUTH & HELPER CỐT LÕI (Giữ lại ở Core)
