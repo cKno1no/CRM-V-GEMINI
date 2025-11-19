@@ -286,10 +286,11 @@ class ChatbotService:
                  all_delivered = False
             
             # Xử lý màu sắc và hiển thị
-            line = f"- **LXH {item['VoucherNo']}** (Ngày: {item['VoucherDate']}):\n"
-            
-            # --- LOGIC DÙNG HTML/CSS CƠ BẢN ĐỂ TÔ MÀU ---
-            
+            # <<< SỬA ĐỔI: THÊM ITEMCOUNT VÀO DÒNG ĐẦU TIÊN CỦA MỖI LXH >>>
+            item_count = item.get('ItemCount', 0)
+            line = f"- **LXH {item['VoucherNo']}** ({item_count} MH | Ngày: {item['VoucherDate']}):\n"
+            # <<< KẾT THÚC SỬA ĐỔI >>>
+
             # 1. Hiển thị Kế hoạch (Vàng cam/Orange)
             if planned_day == 'POOL':
                 planned_display = f'<span style="color: #F9AA33;">Chưa xếp lịch giao</span>'

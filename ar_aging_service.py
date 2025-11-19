@@ -9,46 +9,69 @@ class ARAgingService:
     def __init__(self, db_manager: DBManager):
         self.db = db_manager
 
-    def get_ar_aging_summary(self, user_code, user_role, customer_name=""):
+    # Chấp nhận tham số bo_phan (từ lần sửa trước)
+    def get_ar_aging_summary(self, user_code, user_role, user_bo_phan, customer_name=""):
         """
-        Lấy dữ liệu công nợ đã được tính toán trước từ Bảng Tổng hợp.
-        (ĐÃ CẬP NHẬT CÁC CỘT MỚI)
+        Lấy dữ liệu công nợ.
+        FIX: JOIN với DTCL để lấy NVKD phụ trách của NĂM HIỆN TẠI.
         """
         
+        # LẤY NĂM HIỆN TẠI (Yêu cầu nghiệp vụ)
+        current_year = datetime.now().year
+        
         where_conditions = []
-        params = []
+        # Tham số đầu tiên LUÔN LÀ NĂM HIỆN TẠI cho mệnh đề JOIN
+        params = [current_year]
 
-        if user_role.upper() not in ['ADMIN', 'GM', 'MANAGER']:
-            where_conditions.append("SalesManID = ?")
+        # --- LOGIC PHÂN QUYỀN (Đã sửa) ---
+        role_check = user_role.upper()
+        bo_phan_check = user_bo_phan.upper().replace(" ", "")
+        is_full_access_role = role_check in ['ADMIN', 'GM', 'MANAGER']
+        is_finance_dept = bo_phan_check == '6.KTTC'
+
+        # Nếu không phải (Admin HOẶC Kế toán) thì mới lọc theo SalesManID
+        if not (is_full_access_role or is_finance_dept):
+            # FIX: Lọc trên T2.[PHU TRACH DS] (Bảng DTCL)
+            where_conditions.append("T2.[PHU TRACH DS] = ?")
             params.append(user_code)
+        # --- KẾT THÚC SỬA LOGIC ---
             
         if customer_name:
-            where_conditions.append("ObjectName LIKE ?")
+            where_conditions.append("T1.ObjectName LIKE ?")
             params.append(f"%{customer_name}%")
             
         where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 
-        # --- SỬA CÂU SELECT ---
+        # --- SỬA CÂU SELECT (JOIN VÀ LẤY ĐÚNG NVKD) ---
         query = f"""
             SELECT 
-                ObjectID, ObjectName, SalesManName,
-                ReDueDays, TotalDebt, TotalOverdueDebt, -- <-- CỘT MỚI
-                Debt_Current, Debt_Range_1_30, Debt_Range_31_90, Debt_Range_91_180, Debt_Over_180
-            FROM dbo.CRM_AR_AGING_SUMMARY
+                T1.ObjectID, T1.ObjectName, 
+                T2.[PHU TRACH DS] AS SalesManID, -- Lấy NVKD từ DTCL
+                ISNULL(T3.SHORTNAME, T2.[PHU TRACH DS]) AS SalesManName, -- Lấy tên NVKD từ DTCL
+                T1.ReDueDays, T1.TotalDebt, T1.TotalOverdueDebt,
+                T1.Debt_Current, T1.Debt_Range_1_30, T1.Debt_Range_31_90, T1.Debt_Range_91_180, T1.Debt_Over_180
+            FROM 
+                dbo.CRM_AR_AGING_SUMMARY AS T1
+            -- JOIN VỚI BẢNG DTCL ĐỂ LẤY NVKD PHỤ TRÁCH HIỆN TẠI --
+            INNER JOIN 
+                {config.CRM_DTCL} AS T2 ON T1.ObjectID = T2.[MA KH]
+            LEFT JOIN
+                {config.TEN_BANG_NGUOI_DUNG} AS T3 ON T2.[PHU TRACH DS] = T3.USERCODE
             WHERE 
+                T2.[Nam] = ? AND -- Lọc DTCL theo năm hiện tại (param đầu tiên)
                 {where_clause}
-                AND TotalDebt > 1 
+                AND T1.TotalDebt > 1 
             ORDER BY 
-                TotalOverdueDebt DESC, TotalDebt DESC -- <-- SẮP XẾP THEO NỢ QUÁ HẠN
+                T1.TotalOverdueDebt DESC, T1.TotalDebt DESC
         """
-        # --- KẾT THÚC SỬA ---
+        # --- KẾT THÚC SỬA SELECT ---
         
         data = self.db.get_data(query, tuple(params))
         
         if not data:
             return []
             
-        # --- SỬA VÒNG LẶP SAFE_FLOAT ---
+        # --- (Vòng lặp safe_float giữ nguyên) ---
         for row in data:
             row['ReDueDays'] = int(safe_float(row.get('ReDueDays'))) # Hạn nợ là số nguyên
             row['TotalDebt'] = safe_float(row.get('TotalDebt'))
@@ -59,7 +82,6 @@ class ARAgingService:
             row['Debt_Range_31_90'] = safe_float(row.get('Debt_Range_31_90'))
             row['Debt_Range_91_180'] = safe_float(row.get('Debt_Range_91_180'))
             row['Debt_Over_180'] = safe_float(row.get('Debt_Over_180'))
-        # --- KẾT THÚC SỬA ---
             
         return data
     

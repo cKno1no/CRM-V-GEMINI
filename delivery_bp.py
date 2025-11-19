@@ -28,8 +28,8 @@ def delivery_dashboard():
     user_bo_phan = session.get('bo_phan', '').strip() 
     
     is_admin_or_gm = user_role in ['ADMIN', 'GM']
-    is_thu_ky = user_bo_phan == '3. THU KY'
-    is_kho = user_bo_phan == '5. KHO'
+    is_thu_ky = user_bo_phan == '3.THU KY'
+    is_kho = user_bo_phan == '5.KHO'
     
     can_edit_planner = is_admin_or_gm
     can_view_dispatch = is_admin_or_gm or is_kho or is_thu_ky
@@ -137,7 +137,7 @@ def api_delivery_set_status():
     user_bo_phan = session.get('bo_phan', '').strip()
     user_code = session.get('user_code')
 
-    if user_role not in ['ADMIN', 'GM'] and user_bo_phan != '5. KHO':
+    if user_role not in ['ADMIN', 'GM'] and user_bo_phan != '5.KHO':
         return jsonify({'success': False, 'message': 'Bạn không có quyền thực hiện thao tác này.'}), 403
 
     data = request.json
@@ -175,7 +175,7 @@ def api_delivery_get_items(voucher_id):
     
     user_role = session.get('user_role', '').strip().upper()
     user_bo_phan = session.get('bo_phan', '').strip()
-    if user_role not in ['ADMIN', 'GM'] and user_bo_phan not in ['5. KHO', '3. THU KY']:
+    if user_role not in ['ADMIN', 'GM'] and user_bo_phan not in ['5.KHO', '3.THU KY']:
         return jsonify({'error': 'Bạn không có quyền xem dữ liệu này.'}), 403
         
     items = delivery_service.get_delivery_items(voucher_id)

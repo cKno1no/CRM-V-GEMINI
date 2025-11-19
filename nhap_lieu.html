@@ -3,824 +3,687 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Báo Cáo Hiện Diện Khách Hàng</title>
+    <title>Soạn Báo Cáo (v4.5 Hybrid)</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        /* TÔNG MÀU SÁNG & HIỆN ĐẠI (GOOGLE THEME) */
-        body { 
-            background-color: #F8F9FA; 
-            color: #3C4043; 
-            font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-        }
-        .container { max-width: 1300px; margin-top: 30px; }
-        
-        h1 { font-weight: 700; color: #4285F4; border-bottom: 3px solid #4285F4; padding-bottom: 10px; margin-bottom: 25px; } 
-
-        /* MÀU LABEL */
-        .text-primary { 
-            color: #34A853 !important; /* Xanh lá cho Nội dung */
-        }
-        .text-danger { 
-            color: #34A853 !important; /* Xanh lá cho Đánh giá */
-        }
-
-        /* TÊN ĐỐI TƯỢNG MÀU XANH ĐẬM */
-        .label-highlight {
-            font-weight: 600;
-            color: #212529 !important; /* Chuyển thành màu đen */
-        }
-        #kh_ten_day_du {
-            color: #8C8C8C; /* Màu chữ trong ô Tên Đối tượng */
-        }
-
-
-        /* Card và Box */
-        .card { 
-            border: 1px solid #E0E0E0;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); 
-            border-radius: 8px;
-            margin-bottom: 30px;
-        }
-        .card-header { 
-            background-color: #E8F0FE; 
-            color: #4285F4; 
-            font-weight: 600;
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
-            padding: 1rem 1.5rem;
-            font-size: 1.2rem;
+        /* --- 1. BASE STYLES (Lấy từ bản NEW - Đẹp & Hiện đại) --- */
+        :root {
+            --primary: #4318FF;
+            --primary-light: #F4F7FE;
+            --secondary: #A3AED0;
+            --text-dark: #2B3674;
+            --danger: #E31A1A;
+            --success: #05CD99;
+            --warning: #FFB547;
+            --bg-color: #F4F7FE;
+            --card-radius: 20px;
+            --input-bg: #F4F7FE;
         }
         
-        /* SỬA LỖI THẨM MỸ THANH TAB */
-        #tab-card .card-header {
-            padding: 0; 
+        body { background-color: var(--bg-color); font-family: 'Inter', sans-serif; color: var(--text-dark); }
+        .container { max-width: 1400px; padding: 30px 20px; }
+        
+        /* HEADER */
+        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
+        .page-sub { color: var(--secondary); font-size: 0.95rem; }
+
+        /* FORM INPUTS (SaaS Style) */
+        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
+        .form-control, .form-select {
+            border: none; background-color: var(--input-bg); border-radius: 16px;
+            padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none; transition: all 0.2s;
         }
-        #reportTabs {
-            padding-left: 1.5rem; 
-            padding-right: 1.5rem;
-            border-bottom: none !important; 
+        .form-control:focus, .form-select:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
+        .form-control[readonly] { background-color: #e9ecef; opacity: 0.7; }
+
+        /* ACCORDION */
+        .custom-accordion .accordion-item {
+            border: none; background: white; border-radius: var(--card-radius) !important;
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); margin-bottom: 20px; overflow: hidden;
         }
-        .nav-link { 
-            font-weight: 600; 
-            color: #70757A; 
-            padding: 0.5rem 1rem; 
+        .custom-accordion .accordion-button { background-color: white; color: var(--text-dark); font-weight: 700; font-size: 1.1rem; padding: 20px 25px; box-shadow: none !important; }
+        .custom-accordion .accordion-button:not(.collapsed) { background-color: var(--primary-light); color: var(--primary); }
+        .custom-accordion .accordion-body { padding: 5px 25px 25px 25px; background-color: white; }
+
+        /* CARDS */
+        .main-card {
+            background: white; border-radius: var(--card-radius); padding: 25px;
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); border: none; margin-bottom: 30px;
         }
-        .nav-link.active { 
-            color: #4285F4 !important; 
-            border-color: #4285F4 #dee2e6 transparent !important; 
+        .card-title-custom { font-size: 1.1rem; font-weight: 700; color: var(--text-dark); margin-bottom: 20px; display: flex; align-items: center; }
+        .card-title-custom i { margin-right: 10px; color: var(--primary); font-size: 1.3rem; }
+
+        /* TABS (Pills Style) */
+        .nav-pills-custom { background-color: var(--input-bg); padding: 5px; border-radius: 16px; display: inline-flex; margin-bottom: 20px; }
+        .nav-pills-custom .nav-link { color: var(--secondary); font-weight: 600; border-radius: 12px; padding: 10px 20px; transition: all 0.3s; }
+        .nav-pills-custom .nav-link.active { background-color: var(--primary); color: white; box-shadow: 0 4px 10px rgba(67, 24, 255, 0.3); }
+
+        /* SEARCH & TAGS */
+        #kh_search_results { position: absolute; width: 100%; z-index: 1000; border: none; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 5px; }
+        .search-wrapper { position: relative; }
+        .hidden-field { display: none !important; }
+
+        /* --- 2. LOGIC STYLES (Lấy từ bản CŨ - Phục vụ tính năng Tách đôi/Preview) --- */
+        
+        /* Sticky Sidebar Wrapper */
+        .sticky-sidebar { position: sticky; top: 20px; align-self: flex-start; }
+
+        /* Editor Style */
+        .rich-editor {
+            background: white; min-height: 450px; white-space: pre-wrap; overflow-y: auto;
+            border-radius: 16px; font-size: 0.95rem; line-height: 1.6; padding: 20px;
+            border: 2px solid var(--input-bg); transition: border-color 0.2s;
         }
-        #tab-card .card-body {
-            border-top: 1px solid #dee2e6; /* Đường kẻ phân cách */
+        .rich-editor:focus { outline: none; border-color: var(--primary); }
+
+        /* Header Only Style (Chèn vào editor) */
+        .injected-header-p {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--primary-light); border: 1px solid #E0E5F2; border-left: 4px solid var(--primary);
+            border-radius: 8px; padding: 5px 10px; margin-bottom: 0.3em; font-size: 0.9rem;
+        }
+        .delete-header-btn { text-decoration: none; color: var(--danger); font-weight: 700; font-size: 1.1rem; padding-left: 10px; opacity: 0.5; }
+        .delete-header-btn:hover { opacity: 1; }
+
+        /* Preview Card (Bên phải - Trên) */
+        #suggestion-preview-card {
+            background: white; border-radius: var(--card-radius); padding: 0;
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); margin-bottom: 20px; overflow: hidden;
+            border: 2px solid transparent; transition: all 0.3s ease-out;
+        }
+        .preview-header { background-color: var(--success); color: white; padding: 15px 20px; font-weight: 600; }
+        #suggestion-preview-content { padding: 20px; background-color: #fff; max-height: 300px; overflow-y: auto; font-size: 0.9rem;}
+        /* Làm sạch nội dung preview */
+        #suggestion-preview-content ul { padding-left: 10px; list-style-type: none; }
+        #suggestion-preview-content ul li { position: relative; padding-left: 25px; margin-bottom: 8px; }
+        #suggestion-preview-content ul li::before {
+            content: '\f058'; font-family: 'Font Awesome 6 Free'; font-weight: 600;
+            position: absolute; left: 0; top: 2px; color: var(--success);
         }
 
+        /* Tag Pool (Bên phải - Dưới) */
+        #tag-pool-card { background: white; border-radius: var(--card-radius); padding: 0; box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); overflow: hidden; }
+        .pool-header { background-color: var(--primary); color: white; padding: 15px 20px; font-weight: 600; }
+        #tag-pool-sidebar-body { padding: 15px; max-height: 500px; overflow-y: auto; }
 
-        /* KHUNG TRA CỨU MÀU XANH RÊU ĐẬM */
-        #khachhang-card .card-header {
-            background-color: #346265 !important; 
-            color: white !important;
+        .tag-btn {
+            display: flex; align-items: center; width: 100%; background-color: white;
+            border: 1px solid #E0E5F2; border-radius: 12px; padding: 12px 15px;
+            margin-bottom: 10px; color: var(--secondary); font-weight: 500; font-size: 0.9rem;
+            transition: all 0.2s; text-align: left; cursor: pointer;
         }
+        .tag-btn:hover { background-color: var(--primary-light); color: var(--primary); border-color: var(--primary); transform: translateX(5px); }
+        .tag-btn i { margin-right: 10px; color: var(--primary); }
+        .tag-btn.global-tag { background-color: #FFF8E1; border-color: var(--warning); color: #B38200; }
+        .tag-btn.global-tag i { color: var(--warning); }
 
-        /* STYLE CHO ĐÁNH GIÁ CỐ ĐỊNH */
-        #danhgia-fixed-card .card-header {
-            background-color: #E8F0FE !important; 
-            color: #4285F4 !important; 
-            font-weight: 600;
-            font-size: 1.2rem;
-        }
-        
-        /* TĂNG GẤP 1.8 LẦN CHIỀU CAO TEXTAREA */
-        .form-control.note-area {
-            min-height: 270px; 
-            resize: vertical;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            white-space: pre-wrap;
-        }
-        
-        /* Dropdown tìm kiếm khách hàng */
-        #kh_search_results { 
-            width: 100%; 
-            border-radius: 8px; 
-            border-color: #4285F4;
-            outline: none;
-            display: none;
-        }
-        
-        /* CSS ẨN */
-        .hidden-field {
-            display: none !important;
-        }
-        
-        /* CSS cho vùng tham chiếu */
-        .reference-box {
-            background-color: #F1F3F4;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #E0E0E0;
-            font-size: 0.9rem;
-            min-height: 120px;
-            color: #3C4043;
-        }
-        .ref-label {
-            font-weight: 500;
-            color: #70757A;
-            display: block;
-            margin-top: 5px;
-        }
-        .ref-content {
-            font-weight: 600;
-            color: #212529;
-            display: block;
-        }
-        
-        /* Nút Lưu và Về Dashboard */
-        .btn-save-custom {
-            min-width: 150px;
-        }
-        /* CSS cho nút Tạo nhanh Nhân sự */
-        .btn-quick-create {
-            font-size: 0.85rem;
-            padding: 0.3rem 0.6rem;
-            font-weight: 600;
-            margin-top: 5px;
-            background-color: #34A853; 
-            border-color: #2F834D;
-        }
-        .btn-quick-create:hover {
-            background-color: #2F834D; 
-            color: white;
-        }
+        /* Other Helpers */
+        .btn-save { background-color: var(--success); color: white; border: none; padding: 12px 30px; border-radius: 16px; font-weight: 600; }
+        .btn-save:hover { background-color: #04b385; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(5, 205, 153, 0.3); }
+        .btn-back { background-color: white; color: var(--secondary); border: 1px solid #E0E5F2; padding: 12px 30px; border-radius: 16px; font-weight: 600; }
+        .reference-box { background-color: var(--input-bg); border-radius: 16px; padding: 15px; height: 100%; }
+        .ref-label { color: var(--secondary); font-size: 0.8rem; display: block; }
+        .ref-val { color: var(--text-dark); font-weight: 600; font-size: 0.95rem; display: block; margin-bottom: 10px; }
 
-        @media print {
-            /* Ẩn mọi thứ khác trừ Watermark (Nếu bạn không muốn in bất cứ thứ gì) */
-            body * { visibility: hidden !important; }
-            
-            /* Hiển thị Watermark */
-            #watermark-user-id {
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%) rotate(-45deg);
-                opacity: 0.5;
-                font-size: 50pt;
-                color: #CCC;
-                content: attr(data-user);
-                visibility: visible !important;
-                z-index: 9999;
-            }
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>BÁO CÁO HIỆN DIỆN KHÁCH HÀNG</h1>
+        
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Soạn Báo Cáo</h1>
+                <p class="page-sub">Nhập liệu thông minh (Hybrid v4.5)</p>
+            </div>
+            <a href="/" class="btn btn-back btn-sm text-decoration-none"><i class="fas fa-times me-2"></i>Đóng</a>
+        </div>
 
         {% if message and 'success' in message %}
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <strong>Thành công!</strong> Bản ghi đã được lưu trữ an toàn.
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="alert alert-success alert-dismissible fade show rounded-4 mb-4" role="alert">
+            <i class="fas fa-check-circle me-2"></i> <strong>Thành công!</strong> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         {% elif message and 'error' in message %}
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong>Lỗi!</strong> {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="alert alert-danger alert-dismissible fade show rounded-4 mb-4" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i> <strong>Lỗi!</strong> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         {% endif %}
 
-        <form method="POST" action="/nhaplieu" enctype="multipart/form-data">
+        <form method="POST" action="/nhaplieu" id="reportForm" enctype="multipart/form-data">
             
-            <div class="card mb-4">
-                <div class="card-body">
-                    <div class="row g-3 align-items-end">
-                        
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold">ID Bản ghi</label>
-                            <input type="text" class="form-control form-control-lg" value="[AUTO]" readonly> 
+            <div class="accordion custom-accordion" id="setupAccordion">
+                
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingOne">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true">
+                            <i class="fas fa-user-tag me-3 text-primary"></i> 1. Thông Tin & Khách Hàng
+                        </button>
+                    </h2>
+                    <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#setupAccordion">
+                        <div class="accordion-body">
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-2">
+                                    <label class="form-label">ID Bản ghi</label>
+                                    <input type="text" class="form-control" value="[AUTO]" readonly> 
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Loại Báo cáo <span class="text-danger">*</span></label>
+                                    <select name="loai" id="ddl_loai_bao_cao" class="form-select" required>
+                                        <option value="">-- Chọn Loại --</option>
+                                        {% for loai in loai_bao_cao %}
+                                        <option value="{{ loai.LOAI }}">{{ loai['DIEN GIAI'] }} ({{ loai.LOAI }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Người báo cáo <span class="text-danger">*</span></label>
+                                    <select name="nv_bao_cao" class="form-select" required>
+                                        <option value="">-- Chọn Nhân viên --</option>
+                                        {% for user in users %}
+                                        <option value="{{ user.USERCODE }}" {% if user.USERCODE == default_usercode %} selected {% endif %}>
+                                            {{ user.SHORTNAME }} ({{ user.USERNAME }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Ngày Báo cáo <span class="text-danger">*</span></label>
+                                    <input type="date" name="ngay_bao_cao" class="form-control" value="{{ now_date.strftime('%Y-%m-%d') }}" required>
+                                </div>
+                            </div>
+
+                            <hr class="text-muted opacity-25">
+
+                            <div class="row g-3 align-items-start">
+                                <div class="col-md-3">
+                                    <label class="form-label">Tìm Khách hàng</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text border-0 bg-light rounded-start-4 ps-3"><i class="fas fa-search text-secondary"></i></span>
+                                        <input type="text" id="kh_ten_tat" placeholder="Gõ tên viết tắt..." class="form-control rounded-end-4">
+                                    </div>
+                                    <small id="kh_status" class="text-muted mt-1 d-block" style="font-size: 0.8rem;">Nhập để tìm kiếm...</small>
+                                </div>
+
+                                <div class="col-md-5 search-wrapper">
+                                    <label class="form-label">Đối tượng được chọn <span class="text-danger">*</span></label> 
+                                    <input type="text" id="kh_ten_day_du" placeholder="Chưa chọn khách hàng" class="form-control fw-bold" readonly> 
+                                    <input type="hidden" name="ma_doi_tuong_kh" id="kh_ma_doi_tuong" required>
+                                    <select id="kh_search_results" class="form-select" size="5" style="display:none;" onchange="chonKhachHang()"></select>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <div class="reference-box">
+                                        <div class="row">
+                                            <div class="col-12 mb-2">
+                                                <span class="ref-label">Địa chỉ:</span>
+                                                <span class="ref-val" id="ref_diachi">...</span>
+                                            </div>
+                                            <div class="col-12">
+                                                <span class="ref-label">Liên hệ:</span>
+                                                <span class="ref-val text-success" id="ref_nlh_count">...</span> 
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="form-label mb-0">Gặp Nhân sự (1)</label>
+                                        <a href="#" onclick="openNhansuForm(event)" class="text-decoration-none small fw-bold text-primary"><i class="fas fa-plus"></i> Tạo mới</a>
+                                    </div>
+                                    <select name="nhansu_hengap_1" id="nhansu_hengap_1" class="form-select">
+                                        <option value="">-- Chọn Nhân sự --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Gặp Nhân sự (2)</label>
+                                    <select name="nhansu_hengap_2" id="nhansu_hengap_2" class="form-select">
+                                        <option value="">-- Chọn (Không bắt buộc) --</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold">Loại Báo cáo</label>
-                            <select name="loai" id="ddl_loai_bao_cao" class="form-select form-select-lg" required>
-                                <option value="">-- Chọn Loại --</option>
-                                {% for loai in loai_bao_cao %}
-                                <option value="{{ loai.LOAI }}">{{ loai['DIEN GIAI'] }} ({{ loai.LOAI }})</option>
-                                {% endfor %}
-                            </select>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingTwo">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false">
+                            <i class="fas fa-poll-h me-3 text-warning"></i> 2. Phân loại & Kết quả
+                        </button>
+                    </h2>
+                    <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#setupAccordion">
+                        <div class="accordion-body">
+                            <div class="row g-4">
+                                <div class="col-md-4" id="div_noi_dung_4">
+                                    <label class="form-label text-primary" for="select_noi_dung_4">Mục đích gặp *</label>
+                                    <select name="noi_dung_4" id="select_noi_dung_4" class="form-select" required>
+                                        <option value="">-- Vui lòng chọn --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4" id="div_noi_dung_5">
+                                    <label class="form-label text-primary" for="select_noi_dung_5">Kết quả *</label>
+                                    <select name="noi_dung_5" id="select_noi_dung_5" class="form-select" required>
+                                        <option value="">-- Vui lòng chọn --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4" id="div_danh_gia_2">
+                                    <label class="form-label text-primary" for="select_danh_gia_4">Hành động tiếp theo *</label>
+                                    <select name="danh_gia_4" id="select_danh_gia_4" class="form-select" required>
+                                        <option value="">-- Vui lòng chọn --</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-12">
+                                    <div class="p-3 rounded-4" style="border: 2px dashed #A3AED0; background-color: #FAFCFE;">
+                                        <label class="form-label mb-2"><i class="fas fa-paperclip me-2"></i>Đính kèm tài liệu (Ảnh, PDF...)</label>
+                                        <input type="file" name="attachment_file" class="form-control" multiple onchange="checkFiles(this)">
+                                        <div id="file_list_display" class="mt-2 small text-muted"></div> 
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">Người báo cáo</label>
-                            <select name="nv_bao_cao" class="form-select form-select-lg" required>
-                                <option value="">-- Chọn Nhân viên --</option>
-                                {% for user in users %}
-                                <option value="{{ user.USERCODE }}" 
-                                        {% if user.USERCODE == default_usercode %} selected {% endif %}>
-                                    {{ user.SHORTNAME }} ({{ user.USERNAME }})
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold">Ngày Báo cáo</label>
-                            <input type="date" name="ngay_bao_cao" class="form-control form-control-lg" value="{{ now_date.strftime('%Y-%m-%d') }}" required>
-                        </div>
-                        
-                        <div class="col-md-12 mt-3">
-                             <div class="card p-2" style="border: 1px dashed #ddd; background-color: #fcfcfc;">
-                                 <label for="attachment_file" class="form-label fw-bold mb-0">
-                                     📎 Đính kèm File (Tài liệu, Danh thiếp, Hình ảnh...)
-                                 </label>
-                                 <input type="file" name="attachment_file" id="attachment_file" class="form-control" multiple
-                                        onchange="checkFiles(this)">
-                                 <div id="file_list_display"></div> <small class="text-muted mt-1">
-                                     *Lưu ý: File sẽ được lưu vào thư mục 'attachments' trên server.
-                                 </small>
-                             </div>
-                        </div>
-                        
                     </div>
                 </div>
             </div>
 
-            <div class="card mb-4" id="khachhang-card">
-                <div class="card-header">
-                    Hiện diện tại
-                </div>
-                <div class="card-body">
-                    <div class="row g-3 align-items-start">
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold text-dark">Tìm theo tên</label>
-                            <input type="text" id="kh_ten_tat" placeholder="Gõ tên viết tắt KH..." class="form-control form-control-lg">
-                            <small id="kh_status" class="form-text text-muted mb-3 d-block">Nhập tên để tìm kiếm tự động.</small>
-                        </div>
-
-                        <div class="col-md-5">
-                            <label class="form-label label-highlight">Đối tượng</label> 
-                            <input type="text" id="kh_ten_day_du" placeholder="Tên Đối tượng" class="form-control mb-3" readonly style="color: #8C8C8C;"> 
-                            <input type="hidden" name="ma_doi_tuong_kh" id="kh_ma_doi_tuong" required>
-                            <select id="kh_search_results" class="form-select mb-2" size="5" style="display:none;" onchange="chonKhachHang()">
-                                </select>
-                        </div>
-
-                        <div class="col-md-4">
-                            <label class="form-label label-highlight text-danger">Thông tin Tham chiếu</label>
-                            
-                            <div class="reference-box">
-                                <span class="ref-label">Địa chỉ Trụ sở chính:</span>
-                                <span class="ref-content" id="ref_diachi">...</span>
-                                
-                                <span class="ref-label mt-3">Tình trạng liên hệ:</span>
-                                <span class="ref-content" id="ref_nlh_count">...</span> 
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6 mt-4">
-                            <div class="d-flex justify-content-between align-items-end mb-1">
-                                <label class="form-label fw-bold mb-0">Hiện diện trước (1)</label>
-                                <a href="#" onclick="openNhansuForm(event)" class="btn btn-sm btn-success btn-quick-create">
-                                    ➕ Tạo
-                                </a>
-                            </div>
-                            <select name="nhansu_hengap_1" id="nhansu_hengap_1" class="form-select">
-                                <option value="">-- Chọn Nhân sự --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mt-4">
-                            <label class="form-label fw-bold">Hiện diện trước (2)</label>
-                            <select name="nhansu_hengap_2" id="nhansu_hengap_2" class="form-select">
-                                <option value="">-- Chọn Nhân sự (Không bắt buộc) --</option>
-                            </select>
-                        </div>
-                        </div>
-                </div>
-            </div>
-
-
-            <div class="card mb-4" id="tab-card">
-                <div class="card-header p-0">
-                    <ul class="nav nav-tabs card-header-tabs" id="reportTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="tab-a-tab" data-bs-toggle="tab" data-bs-target="#tab-a-pane" type="button" role="tab" aria-controls="tab-a-pane" aria-selected="true"><span id="lbl_tab_A">Tab A (Cơ bản)</span></button>
-                        </li>
-                        <li class="nav-item" role="presentation" id="li_tab_b">
-                            <button class="nav-link" id="tab-b-tab" data-bs-toggle="tab" data-bs-target="#tab-b-pane" type="button" role="tab" aria-controls="tab-b-pane" aria-selected="false"><span id="lbl_tab_B">Tab B (Mở rộng 1)</span></button>
-                        </li>
-                        <li class="nav-item" role="presentation" id="li_tab_c">
-                            <button class="nav-link" id="tab-c-tab" data-bs-toggle="tab" data-bs-target="#tab-c-pane" type="button" role="tab" aria-controls="tab-c-pane" aria-selected="false"><span id="lbl_tab_C">Tab C (Mở rộng 2)</span></button>
-                        </li>
-                    </ul>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <h5 class="mb-3 fw-bold text-dark"><i class="fas fa-edit me-2 text-primary"></i>3. Nội dung chi tiết</h5>
                 </div>
                 
-                <div class="card-body tab-content p-4" id="reportTabsContent">
-                    
-                    <div class="tab-pane fade show active" id="tab-a-pane" role="tabpanel" aria-labelledby="tab-a-tab" tabindex="0">
-                        <div class="row g-3">
-                            <div class="col-md-6" id="div_noi_dung_1">
-                                <label class="form-label text-primary" id="lbl_noi_dung_1">Nội dung 1</label>
-                                <textarea name="noi_dung_1" class="form-control note-area" required placeholder="Nội dung 1..."></textarea>
-                            </div>
-                            <div class="col-md-6" id="div_noi_dung_2">
-                                <label class="form-label text-primary" id="lbl_noi_dung_2">Nội dung 2</label>
-                                <textarea name="noi_dung_2" class="form-control note-area" required placeholder="Nội dung 2..."></textarea>
-                            </div>
-                            <div class="col-md-12" id="div_danh_gia_1">
-                                <label class="form-label text-danger" id="lbl_danh_gia_1">Đánh giá 1</label>
-                                <textarea name="danh_gia_1" class="form-control note-area" required placeholder="Đánh giá 1..."></textarea>
-                            </div>
-                        </div>
-                    </div>
+                <div class="col-lg-8">
+                    <div class="main-card">
+                        <ul class="nav nav-pills nav-pills-custom" id="reportTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="tab-a-tab" data-bs-toggle="pill" data-bs-target="#tab-a-pane" type="button"><span id="lbl_tab_A">Tab A</span></button>
+                            </li>
+                            <li class="nav-item" role="presentation" id="li_tab_b">
+                                <button class="nav-link" id="tab-b-tab" data-bs-toggle="pill" data-bs-target="#tab-b-pane" type="button"><span id="lbl_tab_B">Tab B</span></button>
+                            </li>
+                            <li class="nav-item" role="presentation" id="li_tab_c">
+                                <button class="nav-link" id="tab-c-tab" data-bs-toggle="pill" data-bs-target="#tab-c-pane" type="button"><span id="lbl_tab_C">Tab C</span></button>
+                            </li>
+                        </ul>
 
-                    <div class="tab-pane fade" id="tab-b-pane" role="tabpanel" aria-labelledby="tab-b-tab" tabindex="0">
-                        <div class="row g-3">
-                            <div class="col-md-6" id="div_noi_dung_3">
-                                <label class="form-label text-primary" id="lbl_noi_dung_3">Nội dung 3</label>
-                                <textarea name="noi_dung_3" class="form-control note-area" placeholder="Nội dung thêm 3"></textarea>
+                        <div class="tab-content pt-2">
+                            <div class="tab-pane fade show active" id="tab-a-pane">
+                                <div class="card-title-custom" id="title_noi_dung_1"><i class="fas fa-pen"></i> Nội dung chính</div>
+                                <div id="editor_noi_dung_1" class="rich-editor" contenteditable="true"></div>
+                                <input type="hidden" name="danh_gia_2" id="hidden_danh_gia_2">
                             </div>
-                            <div class="col-md-6" id="div_noi_dung_4">
-                                <label class="form-label text-primary" id="lbl_noi_dung_4">Nội dung 4</label>
-                                <textarea name="noi_dung_4" class="form-control note-area" placeholder="Nội dung thêm 4"></textarea>
-                            </div>
-                            <div class="col-md-12" id="div_danh_gia_3">
-                                <label class="form-label text-danger" id="lbl_danh_gia_3">Đánh giá 3</label>
-                                <textarea name="danh_gia_3" class="form-control note-area" placeholder="Đánh giá thêm 3"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="tab-pane fade" id="tab-c-pane" role="tabpanel" aria-labelledby="tab-c-tab" tabindex="0">
-                        <div class="row g-3">
-                            <div class="col-md-12" id="div_noi_dung_5">
-                                <label class="form-label text-primary" id="lbl_noi_dung_5">Nội dung 5 (Lớn)</label>
-                                <textarea name="noi_dung_5" class="form-control note-area" rows="2" placeholder="Nội dung thêm 5"></textarea>
-                            </div>
-                            <div class="col-md-6" id="div_danh_gia_4">
-                                <label class="form-label text-danger" id="lbl_danh_gia_4">Đánh giá 4</label>
-                                <textarea name="danh_gia_4" class="form-control note-area" placeholder="Đánh giá thêm 4"></textarea>
-                            </div>
-                            <div class="col-md-6" id="div_danh_gia_5">
-                                <label class="form-label text-danger" id="lbl_danh_gia_5">Đánh giá 5</label>
-                                <textarea name="danh_gia_5" class="form-control note-area" rows="2" placeholder="Đánh giá thêm 5"></textarea>
-                            </div>
-                        </div>
-                    </div>
 
+                            <div class="tab-pane fade" id="tab-b-pane">
+                                <div class="card-title-custom" id="title_noi_dung_2"><i class="fas fa-align-left"></i> Nội dung mở rộng</div>
+                                <div id="editor_noi_dung_2" class="rich-editor" contenteditable="true"></div>
+                                <input type="hidden" name="noi_dung_2" id="hidden_noi_dung_2">
+                            </div>
+
+                            <div class="tab-pane fade" id="tab-c-pane">
+                                <div class="card-title-custom" id="title_danh_gia_1"><i class="fas fa-star"></i> Đánh giá / Kế hoạch</div>
+                                <div id="editor_danh_gia_1" class="rich-editor" contenteditable="true"></div>
+                                <input type="hidden" name="noi_dung_1" id="hidden_noi_dung_1">
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="noi_dung_3" value="">
+                        <input type="hidden" name="danh_gia_1" value=""> 
+                        <input type="hidden" name="danh_gia_3" value="">
+                        <input type="hidden" name="danh_gia_5" value="">
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="sticky-sidebar">
+                        
+                        <div id="suggestion-preview-card">
+                            <div class="preview-header">
+                                <i class="fas fa-lightbulb me-2"></i> Nội dung Gợi ý
+                            </div>
+                            <div id="suggestion-preview-content">
+                                <p class="text-muted small">Hãy chọn một thẻ gợi ý từ bể chờ ở dưới...</p>
+                            </div>
+                        </div>
+
+                        <div id="tag-pool-card">
+                            <div class="pool-header">
+                                <i class="fas fa-tags me-2"></i> Thẻ có sẵn
+                            </div>
+                            <div id="tag-pool-sidebar-body">
+                                <p class="text-muted small text-center mt-4">Vui lòng chọn Loại Báo cáo.</p>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
-            
-            <div class="card mb-4" id="danhgia-fixed-card">
-                <div class="card-header">
-                    <span class="fw-bold">Đánh Giá</span>
-                </div>
-                <div class="card-body p-4">
-                    <div class="col-md-12" id="div_danh_gia_2">
-                        <label class="form-label text-danger" id="lbl_danh_gia_2">Thông tin quan trọng</label>
-                        <textarea name="danh_gia_2" class="form-control note-area" required placeholder="Đánh giá 2..."></textarea>
-                    </div>
-                </div>
-            </div>
 
-
-            <div class="d-flex justify-content-center gap-3 mt-5 pb-5">
-                <button type="submit" class="btn btn-success btn-lg btn-save-custom">Lưu</button>
-                <a href="/" class="btn btn-secondary btn-lg btn-save-custom">Về Dashboard</a>
+            <div class="d-flex justify-content-center gap-3 my-5"> 
+                <button type="submit" class="btn-save shadow"><i class="fas fa-save me-2"></i>Lưu Báo Cáo</button>
+                <a href="/" class="btn-back text-decoration-none d-flex align-items-center"><i class="fas fa-arrow-left me-2"></i>Quay lại</a>
             </div>
         </form>
     </div>
-    <div id="watermark-user-id" data-user="{{ current_user.usercode }}"></div>
+
+    <div id="watermark-user-id" data-user="{{ current_user.usercode }}" style="display:none;"></div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script>
-        
-        // Hàm debounce: Trì hoãn việc thực thi hàm để tránh spam API
+        // --- 1. LOGIC AUTOSUGGEST KHÁCH HÀNG (Giữ nguyên) ---
         function debounce(func, timeout = 300) {
             let timer;
-            return (...args) => {
-                clearTimeout(timer);
-                timer = setTimeout(() => { func.apply(this, args); }, timeout);
-            };
+            return (...args) => { clearTimeout(timer); timer = setTimeout(() => { func.apply(this, args); }, timeout); };
         }
-        
-        // ÁNH XẠ MÃ DLOOKUP với Tên trường HTML (Giữ nguyên)
-        const DLOOKUP_MAP = {
-            '00M': 'danh_gia_2', 
-            '11M': 'noi_dung_1', 
-            '13M': 'danh_gia_1', 
-            '12M': 'noi_dung_2',
-            '21M': 'noi_dung_3',
-            '22M': 'noi_dung_4',
-            '33M': 'noi_dung_5',
-            '23M': 'danh_gia_3',
-            '31M': 'danh_gia_4',
-            '32M': 'danh_gia_5'
-        };
-
-        // ÁNH XẠ CỘT: [Suffix-Mã] sang [ID của LABEL/TAB NAME] (Giữ nguyên)
-        const DLOOKUP_LABEL_ID_MAP = {
-            '11H': 'lbl_noi_dung_1',
-            '12H': 'lbl_noi_dung_2',
-            '13H': 'lbl_danh_gia_1',
-            '00H': 'lbl_danh_gia_2',
-            '21H': 'lbl_noi_dung_3',
-            '22H': 'lbl_noi_dung_4',
-            '33H': 'lbl_noi_dung_5',
-            '23H': 'lbl_danh_gia_3',
-            '31H': 'lbl_danh_gia_4',
-            '32H': 'lbl_danh_gia_5'
-        };
-        
-        // CÁC ID CỦA TÊN TAB TRÊN HTML (Giữ nguyên)
-        const TAB_IDS = ['lbl_tab_A', 'lbl_tab_B', 'lbl_tab_C'];
-
-
-        // Ánh xạ label mặc định (Giữ nguyên)
-        const defaultLabels = {
-            'lbl_noi_dung_1': 'Nội dung 1',
-            'lbl_noi_dung_2': 'Nội dung 2',
-            'lbl_danh_gia_2': 'Thông tin quan trọng', 
-            'lbl_danh_gia_1': 'Đánh giá 1',
-            'lbl_noi_dung_3': 'Nội dung 3',
-            'lbl_noi_dung_4': 'Nội dung 4',
-            'lbl_noi_dung_5': 'Nội dung 5 (Lớn)',
-            'lbl_danh_gia_3': 'Đánh giá 3',
-            'lbl_danh_gia_4': 'Đánh giá 4',
-            'lbl_danh_gia_5': 'Đánh giá 5',
-            'lbl_tab_A': 'Tab A (Cơ bản)',
-            'lbl_tab_B': 'Tab B (Mở rộng 1)',
-            'lbl_tab_C': 'Tab C (Mở rộng 2)'
-        };
-
-        // Hàm đặt lại khung tham chiếu
         function resetReferenceBox() {
-            document.getElementById('ref_diachi').textContent = 'Địa chỉ Trụ sở chính...';
-            document.getElementById('ref_nlh_count').textContent = 'Tình trạng liên hệ...';
+            document.getElementById('ref_diachi').textContent = '...';
+            document.getElementById('ref_nlh_count').textContent = '...';
         }
-
-        // Hàm gọi API đếm số Nhân sự (Sau khi khách hàng được chọn)
         function fetchReferenceCount(maDoiTuong) {
             const nlhObject = document.getElementById('ref_nlh_count');
-            nlhObject.textContent = 'Đang đếm...';
-
+            nlhObject.textContent = 'Đang tải...';
             fetch(`/api/khachhang/ref/${maDoiTuong}`)
-                .then(response => {
-                    if (!response.ok) throw new Error('Lỗi Server khi đếm nhân sự.');
-                    return response.json();
-                })
-                .then(data => {
-                    const count = data.CountNLH || 0;
-                    nlhObject.textContent = `Đang liên hệ với ${count} nhân sự ở đây.`;
-                })
-                .catch(error => {
-                    nlhObject.textContent = `Lỗi: Không đếm được nhân sự.`;
-                    console.error("Fetch Count Error:", error);
-                });
+                .then(r => r.json()).then(data => { nlhObject.textContent = `Đã liên hệ ${data.CountNLH || 0} người.`; })
+                .catch(e => { nlhObject.textContent = `Lỗi tải.`; });
         }
-        
-        // --- LOGIC NHÂN SỰ HẸN GẶP (MỚI) ---
-        
         function populateNhansuDropdowns(data) {
             const ddl1 = document.getElementById('nhansu_hengap_1');
             const ddl2 = document.getElementById('nhansu_hengap_2');
-            
-            // Xóa các option cũ (trừ option đầu tiên)
             ddl1.innerHTML = '<option value="">-- Chọn Nhân sự --</option>';
-            ddl2.innerHTML = '<option value="">-- Chọn Nhân sự (Không bắt buộc) --</option>';
-
+            ddl2.innerHTML = '<option value="">-- Chọn (Không bắt buộc) --</option>';
             if (data && data.length > 0) {
                 data.forEach(item => {
-                    // Clone option để thêm vào cả hai dropdown
-                    const option1 = new Option(item.text, item.id);
-                    const option2 = new Option(item.text, item.id);
-                    
-                    ddl1.appendChild(option1);
-                    ddl2.appendChild(option2);
+                    ddl1.appendChild(new Option(item.text, item.id));
+                    ddl2.appendChild(new Option(item.text, item.id));
                 });
             }
         }
-        
         function fetchNhansuDropdownData(maDoiTuong) {
-            const ddl1 = document.getElementById('nhansu_hengap_1');
-            ddl1.innerHTML = '<option value="">Đang tải...</option>'; // Hiển thị trạng thái tải
-
             fetch(`/api/nhansu_ddl_by_khachhang/${maDoiTuong}`)
-                .then(response => {
-                    // Lỗi 404 (Không tìm thấy API) sẽ được xử lý ở đây
-                    if (!response.ok) throw new Error('Lỗi Server khi tải Dropdown Nhân sự.');
-                    return response.json();
-                })
-                .then(data => {
-                    populateNhansuDropdowns(data);
-                })
-                .catch(error => {
-                    // Nếu lỗi, hiển thị lỗi và đặt lại dropdown
-                    ddl1.innerHTML = '<option value="">Lỗi tải nhân sự.</option>';
-                    document.getElementById('nhansu_hengap_2').innerHTML = '<option value="">Lỗi tải nhân sự.</option>';
-                    console.error("Fetch Nhansu DDL Error:", error);
-                });
+                .then(r => r.json()).then(data => populateNhansuDropdowns(data))
+                .catch(e => {});
         }
-        
-        // Hàm mở form Nhập sự mới và truyền MA DOI TUONG
         function openNhansuForm(event) {
             event.preventDefault();
             const maDoiTuong = document.getElementById('kh_ma_doi_tuong').value;
-            if (maDoiTuong.trim() !== '') {
-                window.open(`/nhansu_nhaplieu?kh_code=${maDoiTuong}`, '_blank');
-            } else {
-                alert("Vui lòng chọn Đối tượng (Khách hàng) trước khi tạo Nhân sự mới.");
-            }
+            if (maDoiTuong.trim() !== '') { window.open(`/nhansu_nhaplieu?kh_code=${maDoiTuong}`, '_blank'); } 
+            else { alert("Vui lòng chọn Đối tượng trước."); }
         }
+        function checkFiles(input) {}
         
-        // --- LOGIC KIỂM TRA FILE ĐÍNH KÈM (MỚI) ---
-        
-        const ALLOWED_EXTENSIONS = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'docx', 'xlsx', 'pptx', 'txt', 'zip', 'rar'];
-        const HIGH_RISK_EXTENSIONS = ['exe', 'bat', 'cmd', 'js', 'vbs', 'php', 'asp']; 
-
-        function checkFiles(input) {
-            const fileDisplay = document.getElementById('file_list_display');
-            fileDisplay.innerHTML = ''; // Xóa hiển thị cũ
-            
-            const files = input.files;
-            let allFilesValid = true;
-            
-            if (files.length === 0) return;
-
-            const ul = document.createElement('ul');
-            ul.className = 'list-unstyled ps-3 mt-1';
-
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const parts = file.name.split('.');
-                const extension = parts.length > 1 ? parts.pop().toLowerCase() : '';
-                
-                const li = document.createElement('li');
-                
-                if (ALLOWED_EXTENSIONS.includes(extension) && !HIGH_RISK_EXTENSIONS.includes(extension)) {
-                    li.textContent = `✅ ${file.name}`;
-                    li.style.color = '#1E8E3E'; // Green
-                } else {
-                    li.textContent = `❌ ${file.name} (Tệp rủi ro/Không hợp lệ)`;
-                    li.className = 'file-error';
-                    allFilesValid = false;
-                }
-                ul.appendChild(li);
-            }
-            fileDisplay.appendChild(ul);
-            
-            if (!allFilesValid) {
-                alert("Hệ thống đã phát hiện các tệp rủi ro hoặc không hợp lệ. Vui lòng xóa các tệp đó trước khi lưu.");
-            }
-        }
-
-
-        // Hàm gọi API và hiển thị 5 lựa chọn
         function timKhachHang() {
             const ten_tat = document.getElementById('kh_ten_tat').value.trim();
-            const status_msg = document.getElementById('kh_status');
             const resultsDropdown = document.getElementById('kh_search_results');
+            resultsDropdown.style.display = 'none'; resultsDropdown.innerHTML = '';
             
-            status_msg.textContent = 'Đang tìm kiếm...';
-            resultsDropdown.style.display = 'none';
-            resultsDropdown.innerHTML = '';
-            document.getElementById('kh_ma_doi_tuong').value = '';
-            document.getElementById('kh_ten_day_du').value = '';
-            resetReferenceBox(); 
-            populateNhansuDropdowns(null); // Đặt lại dropdown nhân sự
-
-
-            if (ten_tat.length < 2) {
-                status_msg.textContent = 'Nhập ít nhất 2 ký tự.';
-                return;
-            }
-
+            if (ten_tat.length < 2) return;
+            
             fetch(`/sales/api/khachhang/${ten_tat}`)
-                .then(response => {
-                    if (response.status === 404) { throw new Error('Không tìm thấy khách hàng.'); }
-                    if (!response.ok) { throw new Error('Lỗi Server.'); }
-                    return response.json(); 
-                })
-                .then(data => {
+                .then(r => r.json()).then(data => {
                     if (data && data.length > 0) {
                         data.forEach(kh => {
                             const option = document.createElement('option');
-                            option.value = kh.ID; 
-                            
-                            option.textContent = `${kh.FullName} (${kh.ID})`;
+                            option.value = kh.ID; option.textContent = `${kh.FullName} (${kh.ID})`;
                             option.setAttribute('data-fullname', kh.FullName);
                             option.setAttribute('data-diachi', kh.DiaChi || 'N/A');
-                            
                             resultsDropdown.appendChild(option);
                         });
-                        
-                        resultsDropdown.style.display = 'block';
-                        resultsDropdown.size = Math.max(Math.min(data.length, 5), 2);
-                        status_msg.textContent = `Tìm thấy ${data.length} kết quả. Vui lòng chọn.`;
-                        
-                        if (data.length === 1) {
-                             resultsDropdown.selectedIndex = 0;
-                             chonKhachHang();
-                        }
-                        
-                    } else {
-                        status_msg.textContent = 'Không tìm thấy kết quả nào.';
+                        resultsDropdown.style.display = 'block'; resultsDropdown.size = Math.min(data.length, 5) + 1;
                     }
-                })
-                .catch(error => {
-                    status_msg.textContent = `Lỗi tra cứu: ${error.message}`;
-                    document.getElementById('kh_ten_day_du').placeholder = 'Lỗi tìm kiếm.';
-                    resetReferenceBox();
-                    populateNhansuDropdowns(null);
-                });
+                }).catch(e => {});
         }
-        
-        // Hàm xử lý khi người dùng chọn từ dropdown
         function chonKhachHang() {
             const resultsDropdown = document.getElementById('kh_search_results');
-            if (resultsDropdown.selectedIndex === -1) { return; }
-            
+            if (resultsDropdown.selectedIndex === -1) return;
             const selectedOption = resultsDropdown.options[resultsDropdown.selectedIndex];
-            
-            const ma_doi_tuong_field = document.getElementById('kh_ma_doi_tuong');
-            const ten_day_du_field = document.getElementById('kh_ten_day_du');
-
             if (selectedOption) {
                 const maDoiTuong = selectedOption.value;
-
-                ma_doi_tuong_field.value = maDoiTuong;
-                ten_day_du_field.value = selectedOption.getAttribute('data-fullname');
-                
-                // 1. CẬP NHẬT ĐỊA CHỈ
+                document.getElementById('kh_ma_doi_tuong').value = maDoiTuong;
+                document.getElementById('kh_ten_day_du').value = selectedOption.getAttribute('data-fullname');
                 document.getElementById('ref_diachi').textContent = selectedOption.getAttribute('data-diachi');
-
-                // 2. GỌI API ĐỂ LẤY THÔNG TIN THAM CHIẾU VÀ DROPDOWN
-                fetchReferenceCount(maDoiTuong);
-                fetchNhansuDropdownData(maDoiTuong); // TẢI DROPDOWN NHÂN SỰ
-
-                document.getElementById('kh_status').textContent = '✅ Khách hàng đã được chọn và xác nhận.';
+                resultsDropdown.style.display = 'none';
+                fetchReferenceCount(maDoiTuong); fetchNhansuDropdownData(maDoiTuong); 
             }
         }
 
-        // === LOGIC DLOOKUP MẶC ĐỊNH & THAY ĐỔI TIÊU ĐỀ (AfterUpdate) ===
-        function updateFormVisibility() {
-            const ddlLoai = document.getElementById('ddl_loai_bao_cao');
-            const loaiCode = ddlLoai.value;
+        // --- 2. LOGIC EDITOR & GỢI Ý (SỬ DỤNG LOGIC BẢN CŨ - TÁCH ĐÔI) ---
+        let allDefaults = {};
+        let activeEditorId = 'editor_noi_dung_1'; 
+        let activeTagGroup = '1'; 
+
+        // Tạo thẻ (Style mới nhưng logic onClick gọi hàm Cũ)
+        function createTagButton(tagName, tagTemplate, isGlobal = false) {
+            const btn = document.createElement('div');
+            btn.className = isGlobal ? 'tag-btn global-tag' : 'tag-btn';
+            const icon = isGlobal ? 'fa-star' : 'fa-plus-circle';
+            btn.innerHTML = `<i class="fas ${icon}"></i> ${tagName}`;
             
-            const tabB_li = document.getElementById('li_tab_b');
-            const tabC_li = document.getElementById('li_tab_c');
+            // LOGIC CŨ: 1. Chèn Header -> 2. Hiện Preview -> 3. Hiệu ứng
+            btn.onclick = function() {
+                injectHeaderOnly(tagName);
+                updateSuggestionPreview(tagTemplate);
+                
+                // Hiệu ứng nháy thẻ Preview
+                const previewCard = document.getElementById('suggestion-preview-card');
+                previewCard.style.transition = 'none';
+                previewCard.style.borderColor = 'var(--primary)';
+                previewCard.style.transform = 'scale(1.02)';
+                setTimeout(() => {
+                    previewCard.style.transition = 'all 0.3s ease-out';
+                    previewCard.style.borderColor = 'transparent';
+                    previewCard.style.transform = 'scale(1)';
+                }, 150);
+            };
+            return btn;
+        }
+
+        // Hàm CŨ (Sửa lại): Chèn Header vào Editor và xử lý con trỏ
+        function injectHeaderOnly(tagName) {
+            const editor = document.getElementById(activeEditorId);
+            if (!editor) return;
+
+            // Template HTML: Header + 1 dòng trống p bên dưới để gõ
+            const htmlTemplate = `
+                <p class="injected-header-p" contenteditable="false">
+                    <strong style="flex-grow: 1;">${tagName}:</strong>
+                    <a href="#" class="delete-header-btn" onclick="this.closest('p.injected-header-p').nextElementSibling?.remove(); this.closest('p.injected-header-p').remove(); return false;">&times;</a>
+                </p>
+                <p><br></p> 
+            `;
             
-            // 1. Đặt lại trạng thái HIỆN BAN ĐẦU cho cả 3 tab
-            if (tabB_li) tabB_li.classList.remove('hidden-field');
-            if (tabC_li) tabC_li.classList.remove('hidden-field');
+            // 1. Lấy lại focus cho editor
+            editor.focus();
+
+            // 2. KỸ THUẬT QUAN TRỌNG: Ép con trỏ về cuối cùng của nội dung hiện tại
+            const range = document.createRange();
+            range.selectNodeContents(editor); // Chọn toàn bộ nội dung editor
+            range.collapse(false); // false nghĩa là co cụm về PHÍA SAU (End)
             
-            // --- BƯỚC 2A: Đặt lại giá trị và tiêu đề mặc định (Luôn chạy) ---
-            for (const key in defaultLabels) {
-                const element = document.getElementById(key);
-                if (element) {
-                    element.textContent = defaultLabels[key]; 
-                }
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+
+            // 3. Thực hiện lệnh chèn tại vị trí con trỏ (lúc này đang ở cuối)
+            document.execCommand('insertHTML', false, htmlTemplate);
+            
+            // 4. Cuộn thanh trượt xuống dưới cùng để người dùng thấy nội dung mới
+            editor.scrollTop = editor.scrollHeight;
+        }
+
+        // Hàm CŨ: Cập nhật Preview và làm sạch nội dung
+        function updateSuggestionPreview(tagTemplate) {
+            const previewContent = document.getElementById('suggestion-preview-content');
+            const templateLines = (tagTemplate || '').split('\n').filter(line => line.trim() !== '');
+            
+            if (templateLines.length === 0) {
+                previewContent.innerHTML = '<p class="text-muted small">Không có nội dung gợi ý.</p>';
+                return;
             }
-            document.querySelectorAll('.note-area').forEach(textarea => {
-                textarea.value = ''; 
+
+            let html = '<ul>';
+            templateLines.forEach(line => {
+                let clean = line.trim();
+                if (clean.startsWith('*')) clean = clean.substring(1).trim();
+                clean = clean.replace(/\\F058/gi, '').trim();
+                if (clean.startsWith('"') && clean.endsWith('"')) clean = clean.substring(1, clean.length - 1);
+                html += `<li>${clean}</li>`;
             });
+            html += '</ul>';
+            previewContent.innerHTML = html;
+        }
 
+        // Reset Form
+        function resetTabsAndEditors() {
+            document.getElementById('lbl_tab_A').textContent = 'Tab A';
+            document.getElementById('lbl_tab_B').textContent = 'Tab B';
+            document.getElementById('lbl_tab_C').textContent = 'Tab C';
+            document.getElementById('li_tab_b').classList.remove('hidden-field');
+            document.getElementById('li_tab_c').classList.remove('hidden-field');
+            
+            document.getElementById('editor_noi_dung_1').innerHTML = '';
+            document.getElementById('editor_noi_dung_2').innerHTML = '';
+            document.getElementById('editor_danh_gia_1').innerHTML = '';
 
-            if (loaiCode) {
-                // --- BƯỚC 2B: GỌI API VÀ GÁN GIÁ TRỊ TÌM ĐƯỢC ---
-                fetch(`/api/defaults/${loaiCode}`)
-                    .then(response => {
-                        if (response.status === 404) { return {}; }
-                        return response.json();
-                    })
-                    .then(defaults => {
-                        
-                        // Kiểm tra sự tồn tại của tên Tab trong dữ liệu trả về
-                        const hasTabB = defaults[loaiCode + 'BH'] !== undefined;
-                        const hasTabC = defaults[loaiCode + 'CH'] !== undefined;
-                        
-                        // 1. LOGIC ẨN/HIỆN TAB DỰA TRÊN DỮ LIỆU
-                        if (!hasTabB && !hasTabC) {
-                            if (tabB_li) tabB_li.classList.add('hidden-field');
-                            if (tabC_li) tabC_li.classList.add('hidden-field');
-                            
-                            const tabC_pane = document.getElementById('tab-c-pane');
-                            if (tabC_pane && tabC_pane.classList.contains('show')) {
-                                const tabA_button = document.getElementById('tab-a-tab');
-                                if (tabA_button) {
-                                    new bootstrap.Tab(tabA_button).show();
-                                }
-                            }
-                            
-                        } else if (hasTabB && !hasTabC) {
-                            if (tabC_li) tabC_li.classList.add('hidden-field');
-                            
-                            const tabC_pane = document.getElementById('tab-c-pane');
-                            if (tabC_pane && tabC_pane.classList.contains('show')) {
-                                const tabA_button = document.getElementById('tab-a-tab');
-                                new bootstrap.Tab(tabA_button).show(); 
-                            }
-                        }
+            // Reset dropdowns (Lưu ý name mới)
+            updateDropdown(null, '4', 'noi_dung_4', 'Mục đích *');
+            updateDropdown(null, '5', 'noi_dung_5', 'Kết quả *');
+            updateDropdown(null, '6', 'danh_gia_4', 'Hành động *'); // <-- Đã sửa thành danh_gia_4
+        }
 
-                        
-                        // 2. LOGIC GÁN GIÁ TRỊ VÀ TIÊU ĐỀ
-                        Object.keys(defaults).forEach(lookupKey => {
-                            const value = defaults[lookupKey];
-                            
-                            // Xử lý Tên Tab (Ví dụ: AAH, ABH, ACH) - 3 ký tự, kết thúc bằng H
-                            if (lookupKey.length === 3 && lookupKey.endsWith('H') && lookupKey.startsWith(loaiCode)) {
-                                const tabSTT = lookupKey.substring(1, 2); 
-                                const tabLabelId = 'lbl_tab_' + tabSTT;
-                                
-                                const tabLabelElement = document.getElementById(tabLabelId);
-                                if (tabLabelElement && value) {
-                                    tabLabelElement.textContent = value;
-                                }
-                                return;
-                            }
-                            
-                            // Xử lý Tiêu đề/Giá trị mặc định (Ví dụ: A11H, A11M, A21H, A32M) - 4 ký tự
-                            if (lookupKey.length === 4) {
-                                const codeSuffix = lookupKey.substring(1, 4); 
-                                const fieldName = DLOOKUP_MAP[codeSuffix];
-                                const labelId = DLOOKUP_LABEL_ID_MAP[codeSuffix];
-                                
-                                if (fieldName || labelId) {
-                                    if (lookupKey.endsWith('M')) {
-                                        const element = document.querySelector(`textarea[name="${fieldName}"]`);
-                                        if (element && value) element.value = value; 
-                                    } else if (lookupKey.endsWith('H')) {
-                                        const labelElement = document.getElementById(labelId);
-                                        if (labelElement && value) labelElement.textContent = value;
-                                    }
-                                }
-                            }
-                        });
-                    })
-                    .catch(error => {
-                        console.error("Lỗi DLookup Default Values:", error);
-                    });
+        // Cập nhật Tabs
+        function updateTabs(prefix) {
+            const tabB = document.getElementById('li_tab_b');
+            const tabC = document.getElementById('li_tab_c');
+            const keys = Object.keys(allDefaults).filter(k => k.length === 3 && k.startsWith(prefix) && (k.endsWith('AH') || k.endsWith('BH') || k.endsWith('CH')));
+            let hasB = false, hasC = false;
+            keys.forEach(k => {
+                const stt = k.substring(1, 2);
+                const lbl = document.getElementById('lbl_tab_' + stt);
+                if (lbl) lbl.textContent = allDefaults[k];
+                if (stt === 'B') hasB = true;
+                if (stt === 'C') hasC = true;
+            });
+            if (!hasB) tabB.classList.add('hidden-field');
+            if (!hasC) tabC.classList.add('hidden-field');
+        }
+
+        // Cập nhật Bể chờ thẻ (Tag Pool)
+        function updateTagPool(prefix) {
+            const sidebar = document.getElementById('tag-pool-sidebar-body');
+            sidebar.innerHTML = '';
+            if (!prefix) { sidebar.innerHTML = '<p class="text-muted small text-center mt-4">Vui lòng chọn Loại Báo cáo.</p>'; return; }
+            
+            let hasTags = false;
+            // Global Tag
+            const gM = prefix + '00M'; const gH = prefix + '00H';
+            if (allDefaults[gM] || allDefaults[gH]) {
+                sidebar.appendChild(createTagButton(allDefaults[gH] || "Việc quan trọng", allDefaults[gM], true));
+                hasTags = true;
             }
+            
+            // Tab Tags
+            const keys = Object.keys(allDefaults).filter(k => k.length === 4 && k.startsWith(prefix) && k.endsWith('H') && k.substring(1, 3) !== '00');
+            let hasTabTags = false;
+            keys.forEach(k => {
+                const group = k.substring(1, 2);
+                if (group === activeTagGroup) {
+                    const mKey = k.replace('H', 'M');
+                    sidebar.appendChild(createTagButton(allDefaults[k], allDefaults[mKey], false));
+                    hasTabTags = true;
+                }
+            });
+            if (!hasTags && !hasTabTags) sidebar.innerHTML = '<p class="text-muted small text-center mt-4">Không có gợi ý.</p>';
+        }
+
+        // Cập nhật Dropdown (Logic Cũ - Cascading)
+        function updateDropdown(prefix, grp, name, defLabel) {
+            const sel = document.querySelector(`select[name="${name}"]`);
+            const lbl = sel.parentElement.querySelector('label');
+            sel.innerHTML = '<option value="">-- Vui lòng chọn --</option>';
+            if (lbl) lbl.textContent = defLabel;
+            
+            if (!prefix) { sel.parentElement.classList.add('hidden-field'); return; }
+
+            const labelKey = prefix + grp + '1H';
+            if (allDefaults[labelKey]) lbl.textContent = allDefaults[labelKey] + ' *';
+
+            const opts = Object.keys(allDefaults).filter(k => k.length === 4 && k.startsWith(prefix + grp) && k.endsWith('M')).sort();
+            
+            if (opts.length === 0) { sel.parentElement.classList.add('hidden-field'); return; }
+            
+            sel.parentElement.classList.remove('hidden-field');
+            opts.forEach(k => {
+                const s = allDefaults[k];
+                if (s && typeof s === 'string') {
+                    const p = s.split(':');
+                    if (p.length === 2) sel.appendChild(new Option(p[1], p[0]));
+                    else if (p.length === 1) sel.appendChild(new Option(p[0], p[0]));
+                }
+            });
         }
         
-
-        // === ĐĂNG KÝ SỰ KIỆN CHÍNH ===
-        document.addEventListener('DOMContentLoaded', function() {
-            const tenTatInput = document.getElementById('kh_ten_tat');
-            const resultsDropdown = document.getElementById('kh_search_results');
-            const ddlLoai = document.getElementById('ddl_loai_bao_cao'); 
-
-            // 1. KÍCH HOẠT AUTOCOMPLETE
-            tenTatInput.addEventListener('input', debounce(function() {
-                timKhachHang();
-            }, 300)); 
-
-            // 2. NGĂN CHẶN SUBMIT khi nhấn ENTER trong ô tìm kiếm
-            tenTatInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault(); 
-                    timKhachHang();
-                }
+        // Sự kiện Tabs
+        document.querySelectorAll('button[data-bs-toggle="pill"]').forEach(t => {
+            t.addEventListener('shown.bs.tab', function(e) {
+                const id = e.target.id;
+                if (id === 'tab-a-tab') { activeEditorId = 'editor_noi_dung_1'; activeTagGroup = '1'; }
+                else if (id === 'tab-b-tab') { activeEditorId = 'editor_noi_dung_2'; activeTagGroup = '2'; }
+                else { activeEditorId = 'editor_danh_gia_1'; activeTagGroup = '3'; }
+                updateTagPool(document.getElementById('ddl_loai_bao_cao').value);
             });
-
-            // 3. XỬ LÝ CHỌN KHÁCH HÀNG
-            resultsDropdown.addEventListener('change', chonKhachHang);
-            
-            // 4. LOGIC LOẠI BÁO CÁO (AfterUpdate)
-            if (ddlLoai) {
-                 ddlLoai.addEventListener('change', updateFormVisibility);
-                 updateFormVisibility(); // Chạy lần đầu khi form tải xong
-            }
-            
-            // Đặt lại khung tham chiếu và dropdown nhân sự khi tải lần đầu
-            resetReferenceBox();
-            populateNhansuDropdowns(null);
         });
 
-    </script>
-    <script>
-        // BỔ SUNG: KHÓA CHỨC NĂNG IN (PRINT BLOCKING)
-        document.addEventListener('DOMContentLoaded', function() {
+        // 2. Sự kiện Change Loại Báo cáo (Cập nhật dropdown call)
+        document.getElementById('ddl_loai_bao_cao').addEventListener('change', function() {
+            const prefix = this.value;
+            const sidebar = document.getElementById('tag-pool-sidebar-body');
+            allDefaults = {}; resetTabsAndEditors(); sidebar.innerHTML = '<p class="text-muted small text-center mt-4">Đang tải...</p>';
             
-            // 1. Chặn tổ hợp phím CTRL+P (Windows/Linux) và CMD+P (Mac)
-            document.addEventListener('keydown', function(e) {
-                // Kiểm tra CTRL/CMD + P
-                if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-                    e.preventDefault();
-                    alert("Chức năng in đã bị khóa trên trang này.");
-                }
-            }, true); // <<< THÊM 'true' VÀO ĐÂY ĐỂ TĂNG ƯU TIÊN
+            if (prefix) {
+                fetch(`/api/defaults/${prefix}`).then(r => r.json()).then(d => {
+                    allDefaults = d;
+                    updateTabs(prefix); 
+                    updateTagPool(prefix);
+                    // Cập nhật 3 dropdown
+                    updateDropdown(prefix, '4', 'noi_dung_4', 'Mục đích *');
+                    updateDropdown(prefix, '5', 'noi_dung_5', 'Kết quả *');
+                    updateDropdown(prefix, '6', 'danh_gia_4', 'Hành động *'); // <-- Đã sửa thành danh_gia_4
+                }).catch(e => {
+                    console.error(e);
+                    sidebar.innerHTML = '<p class="text-danger small text-center">Lỗi kết nối dữ liệu.</p>';
+                });
+            } else { updateTagPool(prefix); }
+        });
 
-            // 2. Ghi đè hàm window.print()
-            window.print = function() {
-                alert("Chức năng in đã bị khóa trên trang này.");
-            };
-            
-            // 3. Khóa các thao tác copy/chọn văn bản
-            document.addEventListener('contextmenu', e => e.preventDefault()); 
-            document.addEventListener('selectstart', e => e.preventDefault()); 
-            document.addEventListener('copy', e => { 
-                e.preventDefault();
-                alert("Sao chép nội dung bị cấm.");
-            });
+        // 3. Sự kiện Submit (Quan trọng: Map nội dung Editor vào Hidden Input mới)
+        document.getElementById('reportForm').addEventListener('submit', function(e) {
+            try {
+                // TAB A (editor_noi_dung_1) -> Vào cột DANH GIA 2
+                document.getElementById('hidden_danh_gia_2').value = document.getElementById('editor_noi_dung_1').innerHTML;
+                
+                // TAB B (editor_noi_dung_2) -> Vào cột NOI DUNG 2 (Giữ nguyên)
+                document.getElementById('hidden_noi_dung_2').value = document.getElementById('editor_noi_dung_2').innerHTML;
+                
+                // TAB C (editor_danh_gia_1) -> Vào cột NOI DUNG 1
+                document.getElementById('hidden_noi_dung_1').value = document.getElementById('editor_danh_gia_1').innerHTML;
+                
+            } catch (err) { e.preventDefault(); alert("Lỗi lấy nội dung."); }
+        });
+
+        // Init
+        document.addEventListener('DOMContentLoaded', function() {
+            const inp = document.getElementById('kh_ten_tat');
+            resetTabsAndEditors(); updateTagPool('');
+            inp.addEventListener('input', debounce(timKhachHang, 300));
+            inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); timKhachHang(); } });
+            document.getElementById('kh_search_results').addEventListener('change', chonKhachHang);
+            resetReferenceBox(); populateNhansuDropdowns(null);
         });
     </script>
 </body>

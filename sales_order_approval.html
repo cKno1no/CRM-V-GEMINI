@@ -7,115 +7,202 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        /* CSS tương tự như quote_approval, điều chỉnh màu sắc và bố cục cột */
-        body { font-family: 'Roboto', sans-serif; background-color: #F7F9FC; color: #3C4043; overflow-x: hidden; }
+        /* --- 1. CORE STYLES (Đồng bộ nhaplieu_new) --- */
+        :root {
+            --primary: #4318FF;
+            --primary-light: #F4F7FE;
+            --secondary: #A3AED0;
+            --text-dark: #2B3674;
+            --danger: #E31A1A;
+            --success: #05CD99;
+            --warning: #FFB547;
+            --bg-color: #F4F7FE;
+            --card-radius: 20px;
+            --input-bg: #F4F7FE;
+        }
+        
+        body { 
+            background-color: var(--bg-color); 
+            font-family: 'Inter', sans-serif; 
+            color: var(--text-dark); 
+            overflow-x: hidden;
+        }
         .container-fluid { max-width: 98%; margin-top: 30px; }
-        h1 { font-weight: 700; color: #34A853; border-bottom: 3px solid #E6F4EA; padding-bottom: 10px; margin-bottom: 25px; } /* Xanh lá cho DHB */
+
+        /* --- 2. HEADER & LAYOUT (Style mới) --- */
+        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
         
-        /* Layout Master-Detail */
-        .master-panel { 
-            position: sticky; 
-            max-height: 85vh; 
-            overflow-y: auto; 
-            padding-right: 15px;
-            padding-left: 15px;
-            padding-top: 15px;
+        .btn-action {
+            padding: 10px 20px; border-radius: 14px; font-weight: 600; border: none;
+            text-decoration: none; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         }
-        .detail-panel {
+        .btn-back { background-color: white; color: var(--secondary); border: 1px solid #E0E5F2; }
+        .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
+        .btn-portal { background-color: var(--primary); color: white; }
+        .btn-so-approve { background-color: var(--success); color: white; } /* Giữ màu xanh cho nút này */
+
+        /* --- 3. MAIN CARDS (Style mới) --- */
+        .main-card {
+            border: none;
+            background: white;
+            border-radius: var(--card-radius);
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+        .card-header-custom {
+            background-color: white;
+            color: var(--text-dark);
+            font-weight: 700;
+            font-size: 1.1rem;
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--primary-light);
+            display: flex;
+            align-items: center;
+        }
+        .card-header-custom i {
+            font-size: 1.1rem;
+            margin-right: 12px;
+            color: var(--success); /* Màu xanh lá cho duyệt DHB */
+        }
+        .card-header-custom.detail-header i {
+            color: var(--primary); /* Màu tím cho chi tiết */
+        }
+        .card-body-custom {
+            padding: 25px;
+            background-color: white;
+        }
+        .card-body-custom.p-0 { padding: 0; }
+
+        /* --- 4. FORMS (Style mới) --- */
+        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
+        .form-control, .form-select {
+            border: none; background-color: var(--input-bg); border-radius: 16px;
+            padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none;
+        }
+        .form-control:focus, .form-select:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
+        .btn-primary { background-color: var(--primary); border: none; border-radius: 12px; font-weight: 600; padding: 12px; }
+        .btn-primary:hover { background-color: #3a14db; }
+
+        /* --- 5. BỐ CỤC MASTER-DETAIL (Giữ nguyên) --- */
+        .master-panel, .detail-panel {
             position: sticky; 
-            top: 15px; 
+            top: 20px; /* Thêm khoảng cách */
             max-height: 85vh;
-            overflow-y: auto;
         }
-        
-        /* Thẩm mỹ Bảng */
+        .master-table-scroll, .detail-table-scroll {
+            max-height: 65vh;
+            overflow-y: auto;
+            padding: 10px 15px;
+        }
+
+        /* --- 6. DATA TABLES (Style mới) --- */
+        .table-approval { border: 1px solid var(--primary-light); width: 100%; }
         .table-approval th { 
-            background-color: #34A853 !important; /* MÀU HEADER: Xanh lá đậm */
-            color: white; 
-            font-weight: 600; 
-            font-size: 0.9rem; 
-            position: sticky; top: 0; z-index: 10; 
-            white-space: nowrap; vertical-align: middle; border: 1px solid #dee2e6;
-            text-align: center; 
+            position: sticky !important; top: 0; z-index: 10; 
+            background-color: #FAFCFE !important; 
+            color: var(--secondary) !important; 
+            font-weight: 600; font-size: 0.85rem; text-transform: uppercase;
+            white-space: nowrap; vertical-align: middle; 
+            border: 1px solid var(--primary-light);
+            text-align: center; padding: 10px 5px;
         }
         .table-approval td { 
-            vertical-align: middle; font-size: 0.85rem; border: 1px solid #dee2e6;
-            font-weight: normal; 
+            vertical-align: middle; font-size: 0.9rem; border: 1px solid var(--primary-light);
+            font-weight: normal; padding: 8px 5px;
+            color: var(--text-dark);
         }
-        .quote-row:hover { cursor: pointer; background-color: #E6F4EA !important; } /* Xanh lá nhạt khi hover */
-        .row-selected { background-color: #A8DCD2 !important; font-weight: bold; } /* Xanh lá đậm hơn khi chọn */
         
-        /* Màu và Căn chỉnh */
-        .status-pass { background-color: #E6F4EA; color: #1E8E3E; font-weight: 600; } 
-        .status-fail { background-color: #FCE8E6 !important; color: #DB4437 !important; font-weight: 600; } /* Đỏ nhạt cho lỗi cứng */
-        .status-pending { background-color: #FFF7E6; color: #F4B400; font-weight: 600; } /* Vàng nhạt cho chờ duyệt */
-        .ratio-alert { color: #DB4437; font-weight: 700; }
+        /* GIỮ NGUYÊN LOGIC TÔ MÀU (Style mới) */
+        .quote-row:hover td { cursor: pointer; background-color: var(--primary-light) !important; }
+        .row-selected td { 
+            background-color: var(--primary-light) !important; 
+            font-weight: bold; 
+            border-top: 2px solid var(--primary);
+            border-bottom: 2px solid var(--primary);
+        }
+        .ratio-alert { color: var(--danger) !important; font-weight: 700; }
+        .status-fail { background-color: #FFF1F1 !important; } /* Đỏ nhạt */
+        .status-pass { background-color: #F0FFF9 !important; } /* Xanh nhạt */
+        .status-pending { background-color: #FFF8E1 !important; } /* Vàng nhạt */
         
-        /* CỘT CĂN CHỈNH */
+        /* CỘT CĂN CHỈNH (Giữ nguyên) */
         .col-ratio { width: 5%; }
         .col-nvkd { width: 5%; text-align: center; } 
-        .col-vtype { width: 5%; text-align: center; } /* Cột loại chứng từ */
+        .col-vtype { width: 5%; text-align: center; }
         .col-gt { width: 10%; }
         .col-result { width: 25%; }
         .col-client { width: 20%; text-align: left !important; }
         
-        /* CSS cho bảng DETAIL */
+        /* Bảng Chi tiết (Style mới) */
         .table-detail th {
-            background-color: #4285F4 !important; /* Xanh Google cho Detail */
+            background-color: var(--primary) !important; 
             color: white;
-            font-size: 0.8rem;
-            text-align: center;
-            border: 1px solid #dee2e6;
+            font-size: 0.8rem; text-align: center;
+            border: 1px solid var(--primary);
             white-space: nowrap;
         }
         .table-detail td {
             font-size: 0.8rem;
             text-align: center;
         }
-
-        /* Nút Header */
-        .btn-header-action {
-            font-weight: 600;
-            padding: 8px 15px; 
-            border-radius: 6px;
-            transition: background-color 0.2s;
+        .text-danger { color: var(--danger) !important; }
+        
+        /* DataTables (Style mới) */
+        .dataTables_wrapper .dataTables_paginate .paginate_button { 
+            padding: 0.3em 0.6em; border-radius: 10px !important; border: none; margin: 0 3px;
+            font-weight: 600; color: var(--secondary) !important;
         }
-        .dataTables_wrapper .dataTables_filter {
-            margin-bottom: 10px;
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            background: var(--primary) !important; color: white !important;
         }
+        .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_info { 
+            font-size: 0.9rem; color: var(--secondary); padding: 0.5em 0.75em;
+        }
+        .dataTables_wrapper .dataTables_length select {
+             background-color: var(--input-bg); border: none; border-radius: 8px;
+        }
+        .dataTables_wrapper .dataTables_filter input {
+            background-color: var(--input-bg); border: none; border-radius: 12px;
+            padding: 5px 10px; margin-left: 5px;
+        }
+        
     </style>
 </head>
 <body>
     <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
-            <h1><i class="fas fa-shipping-fast me-2"></i> PHÊ DUYỆT ĐƠN HÀNG BÁN CẦN KIỂM SOÁT</h1>
+        <!-- HEADER (Style mới) -->
+        <div class="page-header">
+            <h1 class="page-title"><i class="fas fa-shipping-fast me-2"></i> PHÊ DUYỆT ĐƠN HÀNG BÁN</h1>
             <div class="d-flex gap-2">
-                <a href="{{ url_for('index') }}" class="btn btn-secondary btn-header-action">
+                <a href="{{ url_for('index') }}" class="btn-action btn-back">
                     <i class="fas fa-home me-1"></i> Về Portal
                 </a>
-                <a href="{{ url_for('approval_bp.quote_approval_dashboard') }}" target="_blank" class="btn btn-primary btn-header-action">
+                <a href="{{ url_for('approval_bp.quote_approval_dashboard') }}" target="_blank" class="btn-action btn-portal">
                     <i class="fas fa-file-signature me-1"></i> Duyệt Chào Giá
                 </a>
             </div>
         </div>
-        <p class="text-muted">Mặc định hiển thị **Đơn hàng chưa duyệt trong 7 ngày gần nhất**. Click vào Mã DHB để xem chi tiết mặt hàng.</p>
+        <p class="text-muted small mb-3">Mặc định hiển thị Đơn hàng chưa duyệt trong 7 ngày. Click Mã DHB để xem chi tiết.</p>
 
-        <div class="card mb-3">
-            <div class="card-body">
+        <!-- FILTER CARD (Style mới) -->
+        <div class="main-card mb-3">
+            <div class="card-body-custom" style="padding: 20px 25px;">
                 <form method="POST" action="{{ url_for('approval_bp.sales_order_approval_dashboard') }}" class="row g-3 align-items-end">
                     <div class="col-md-3">
-                        <label for="date_from" class="form-label small text-muted">Từ Ngày DHB</label>
+                        <label for="date_from" class="form-label">Từ Ngày DHB</label>
                         <input type="date" name="date_from" id="date_from" class="form-control" 
                                 value="{{ date_from }}">
                     </div>
-
                     <div class="col-md-3">
-                        <label for="date_to" class="form-label small text-muted">Đến Ngày DHB</label>
+                        <label for="date_to" class="form-label">Đến Ngày DHB</label>
                         <input type="date" name="date_to" id="date_to" class="form-control" 
                                 value="{{ date_to }}">
                     </div>
-                    
                     <div class="col-md-2">
                         <button type="submit" class="btn btn-primary w-100">
                             <i class="fas fa-search me-1"></i> Lọc Ngày
@@ -124,14 +211,18 @@
                 </form>
             </div>
         </div>
+        
+        <!-- MASTER-DETAIL LAYOUT (Giữ nguyên) -->
         <div class="row g-3">
+            <!-- MASTER (Style mới) -->
             <div class="col-lg-7">
-                <div class="card master-panel">
-                    <div class="card-header bg-white border-bottom">
-                        <h5 class="mb-0 text-success"><i class="fas fa-list-ul me-2"></i> DANH SÁCH ĐƠN HÀNG BÁN</h5>
+                <div class="main-card master-panel">
+                    <div class="card-header-custom">
+                        <i class="fas fa-list-ul"></i> DANH SÁCH ĐƠN HÀNG BÁN
                     </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
+                    <div class="card-body-custom p-0">
+                        <div class="table-responsive master-table-scroll">
+                            <!-- BẢNG (Giữ nguyên HTML/Logic) -->
                             <table id="approval-dhb-table" class="table table-hover mb-3 table-approval">
                                 <thead>
                                     <tr>
@@ -216,19 +307,23 @@
                 </div>
             </div>
 
+            <!-- DETAIL (Style mới) -->
             <div class="col-lg-5">
-                <div class="card detail-panel">
-                    <div class="card-header bg-white border-bottom">
-                        <h5 class="mb-0 text-primary"><i class="fas fa-info-circle me-2"></i> CHI TIẾT MẶT HÀNG</h5>
+                <div class="main-card detail-panel">
+                    <div class="card-header-custom detail-header">
+                        <i class="fas fa-info-circle"></i> CHI TIẾT MẶT HÀNG
                     </div>
-                    <div class="card-body p-0" id="detail-container">
-                        <p class="p-3 text-muted text-center">Click vào một Đơn hàng Bán trong bảng bên trái để xem chi tiết mặt hàng.</p>
+                    <div class="card-body-custom p-0 detail-table-scroll" id="detail-container">
+                        <p class="p-3 text-muted text-center">Click vào một Đơn hàng Bán để xem chi tiết.</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     
+    <!-- ======================================================== -->
+    <!-- TOÀN BỘ JAVASCRIPT ĐƯỢC GIỮ NGUYÊN 100% -->
+    <!-- ======================================================== -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
@@ -249,7 +344,8 @@
 
         function renderDetailTable(details, container) {
             let tableHtml = '<div class="table-responsive p-3"><table class="table table-sm table-striped table-bordered small mb-0 table-detail">';
-            tableHtml += '<thead style="background-color: #34A853; color: white;"><tr>'; // Xanh lá cho header detail
+            // STYLE MỚI CHO HEADER DETAIL
+            tableHtml += '<thead><tr>'; 
             
             // Header chi tiết DHB
             tableHtml += '<th class="text-center">Mã hàng</th><th>Tên hàng</th><th class="text-end">SL</th>';
@@ -288,7 +384,7 @@
 
             if (currentOrderId === orderId) {
                 currentOrderId = null;
-                document.getElementById('detail-container').innerHTML = '<p class="p-3 text-muted text-center">Click vào một Đơn hàng Bán trong bảng bên trái để xem chi tiết mặt hàng.</p>';
+                document.getElementById('detail-container').innerHTML = '<p class="p-3 text-muted text-center">Click vào một Đơn hàng Bán để xem chi tiết.</p>';
                 return;
             }
 

@@ -2,199 +2,324 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Chi Tiết Báo Cáo - STT {{ report.STT | default('...') }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi Tiết Báo Cáo - ID {{ report['STT'] }}</title>
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        /* TÔNG MÀU SÁNG & HIỆN ĐẠI (GOOGLE THEME) */
+        /* --- 1. CORE STYLES (Đồng bộ nhaplieu_new) --- */
+        :root {
+            --primary: #4318FF;
+            --primary-light: #F4F7FE;
+            --secondary: #A3AED0;
+            --text-dark: #2B3674;
+            --danger: #E31A1A;
+            --success: #05CD99;
+            --warning: #FFB547;
+            --bg-color: #F4F7FE;
+            --card-radius: 20px;
+            --input-bg: #F4F7FE;
+        }
+        
         body { 
-            background-color: #F8F9FA; 
-            color: #3C4043; 
-            font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: var(--bg-color); 
+            font-family: 'Inter', sans-serif; 
+            color: var(--text-dark); 
         }
-        .container { max-width: 950px; margin-top: 30px; }
+        .container { max-width: 1100px; padding: 30px 20px; }
         
-        /* TIÊU ĐỀ (Đỏ cam) */
-        h2 { 
-            font-family: 'Georgia', serif; 
-            font-weight: 700; 
-            color: #FF5722; 
-            border-bottom: 3px solid #FFAB91;
-            padding-bottom: 10px; 
-            margin-bottom: 30px; 
+        /* --- 2. HEADER --- */
+        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
+        .page-title span { color: var(--primary); font-size: 1.5rem; }
+        
+        .btn-back {
+            background-color: white; color: var(--secondary); border: 1px solid #E0E5F2;
+            padding: 10px 20px; border-radius: 14px; font-weight: 600; text-decoration: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: all 0.2s;
         }
-        
-        /* Card và Box */
-        .card { border: 1px solid #E0E0E0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); border-radius: 12px; margin-bottom: 30px; }
-        .card-header { 
-            background-color: #E8F0FE; 
-            color: #4285F4; 
-            font-weight: 600;
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
-            padding: 1rem 1.5rem;
-            font-size: 1.2rem;
-        }
-        .card-body { padding: 1.5rem; }
-        .detail-item { margin-bottom: 1rem; border-left: 3px solid #DADCE0; padding-left: 10px; }
-        .detail-label { font-weight: 500; color: #70757A; display: block; margin-bottom: 3px; }
-        .detail-content { font-size: 1.1rem; }
-        
-        /* VÙNG NỘI DUNG LỚN */
-        .content-box { 
-            font-size: 1.05rem; 
-            line-height: 1.6; 
-            background-color: #F1F3F4; 
-            padding: 15px; 
-            border-radius: 8px; 
-            border: 1px solid #E0E0E0;
-            white-space: pre-wrap; /* FIX lỗi xuống dòng */
-            min-height: 120px;
-        }
-        .section-header { color: #34A853; border-bottom: 2px solid #34A853; padding-bottom: 5px; margin-top: 10px; margin-bottom: 15px; font-weight: 600; font-size: 1.1rem; }
-        
-        /* GHI ĐÈ CSS KHI IN ẤN (BUỘC CHIA 2 CỘT) */
-        @media print {
-            body { background-color: white !important; color: black !important; }
-            .btn, .card-header { display: none !important; }
-            .card { border: none !important; box-shadow: none !important; }
+        .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
 
-            .row { display: flex; flex-wrap: wrap; width: 100%; }
-
-            /* Chia 2 cột chính 50% */
-            .card-body .col-md-6 {
-                flex: 0 0 50%; 
-                max-width: 50%;
-            }
-            /* Giữ 4 cột cho phần thông tin chung */
-            .card:first-child .col-md-3 {
-                flex: 0 0 25%;
-                max-width: 25%;
-            }
-            .content-box { background-color: white !important; border: 1px solid #ccc !important; }
+        /* --- 3. LAYOUT CARD (Bỏ Accordion) --- */
+        .main-card {
+            border: none;
+            background: white;
+            border-radius: var(--card-radius);
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
+            margin-bottom: 20px;
+            overflow: hidden; /* Bắt buộc để bo góc */
         }
+        
+        .card-header-custom {
+            background-color: white;
+            color: var(--text-dark);
+            font-weight: 700;
+            font-size: 1.1rem;
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--primary-light);
+            display: flex;
+            align-items: center;
+        }
+        
+        .card-header-custom i {
+            font-size: 1.1rem;
+            margin-right: 12px;
+            color: var(--primary);
+        }
+        
+        /* Header cho các mục nội dung */
+        .card-header-custom.content-header {
+            background-color: var(--primary-light);
+            color: var(--primary);
+        }
+        .card-header-custom.content-header i {
+            color: var(--primary);
+        }
+        /* Header cho mục phân loại */
+        .card-header-custom.result-header i {
+             color: var(--warning);
+        }
+
+        .card-body-custom {
+            padding: 25px;
+            background-color: white;
+        }
+
+        /* --- 4. STYLES CHO NỘI DUNG BÊN TRONG --- */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .info-grid-item dt {
+            font-size: 0.85rem; font-weight: 500; color: var(--secondary);
+            margin-bottom: 5px; text-transform: uppercase;
+        }
+        .info-grid-item dd {
+            font-size: 1rem; font-weight: 600; color: var(--text-dark); margin: 0;
+        }
+
+        .result-box {
+            padding: 15px; background-color: var(--input-bg);
+            border-radius: 12px; margin-bottom: 10px;
+        }
+        .result-box:last-child { margin-bottom: 0; }
+        .result-box h6 {
+            font-weight: 600; color: var(--primary);
+            font-size: 0.9rem; margin-bottom: 5px;
+        }
+        .result-box p {
+            font-weight: 500; font-size: 1rem; color: var(--text-dark);
+            margin-bottom: 0; white-space: pre-wrap;
+        }
+
+        /* --- 5. RICH TEXT STYLING --- */
+        .report-content-flow {
+            line-height: 1.7; font-size: 1rem; color: #4A5568;
+        }
+        
+        .report-content-flow .injected-header-p {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--primary-light); border: 1px solid #E0E5F2; border-left: 4px solid var(--primary);
+            border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; margin-top: 8px;
+            font-size: 0.95rem; font-weight: 600; color: var(--text-dark);
+        }
+        .report-content-flow .delete-header-btn { display: none !important; }
+        
+        .report-content-flow .report-callout {
+            background-color: #FFF8E1; border-left: 4px solid var(--warning);
+            padding: 12px 15px; border-radius: 8px; margin: 10px 0; font-size: 0.95rem;
+        }
+        .report-content-flow .report-callout h6 {
+            font-weight: 700; color: var(--warning); margin-bottom: 5px;
+        }
+
         .attachment-link {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 0.95rem;
-            word-break: break-all;
+            display: block; padding: 12px 15px; border-radius: 12px;
+            background-color: var(--input-bg); color: var(--primary);
+            font-weight: 600; text-decoration: none; transition: all 0.2s;
         }
+        .attachment-link:hover {
+            background-color: var(--primary-light); color: var(--primary); transform: translateX(5px);
+        }
+
     </style>
 </head>
 <body>
-    <div class="container" id="report-container">
+    <div class="container">
         
-        {% if error_message %}
-            <div class="alert alert-danger" role="alert">
-                <h4 class="alert-heading">Lỗi!</h4>
-                <p>{{ error_message }}</p>
+        <!-- HEADER -->
+        <div class="page-header">
+            <div>
+                <!-- SỬA ID_KEY THÀNH STT -->
+                <h1 class="page-title">Chi Tiết Báo Cáo <span>#{{ report['STT'] }}</span></h1>
             </div>
+            <a href="javascript:history.back()" class="btn-back">
+                <i class="fas fa-arrow-left me-2"></i> Quay lại
+            </a>
+        </div>
+
+        <!-- 1. THÔNG TIN CHUNG (Luôn hiển thị) -->
+        <div class="main-card">
+            <div class="card-header-custom">
+                <i class="fas fa-user-tag"></i> 1. Thông Tin Chung
+            </div>
+            <div class="card-body-custom">
+                <div class="info-grid">
+                    <div class="info-grid-item">
+                        <dt>Ngày Báo Cáo</dt>
+                        <dd>{{ report['NGAY'] }}</dd>
+                    </div>
+                    <div class="info-grid-item">
+                        <dt>Người Báo Cáo</dt>
+                        <dd>{{ report['HO TEN'] | default(report['NGUOI']) }}</dd>
+                    </div>
+                    <div class="info-grid-item">
+                        <dt>Loại Báo Cáo</dt>
+                        <dd>{{ report['DIEN GIAI'] | default(report['LOAI']) }}</dd>
+                    </div>
+                    <div class="info-grid-item" style="grid-column: 1 / -1;">
+                        <dt>Khách Hàng</dt>
+                        <dd>{{ report['TEN DOI TUONG'] | default(report['KHACH HANG']) }} (Mã: {{ report['KHACH HANG'] }})</dd>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 
+        =============================================================
+        PHẦN HIỂN THỊ CÓ ĐIỀU KIỆN (Báo cáo Cũ / Mới)
+        =============================================================
+        -->
+        
+        <!-- SỬA ĐIỀU KIỆN TỪ ID_KEY -> STT -->
+        {% if report['STT'] is defined and report['STT'] < 51799 %}
+            <!--
+            =================================
+            LAYOUT BÁO CÁO CŨ (STT < 51799)
+            Hiển thị 8 cột nếu có dữ liệu
+            =================================
+            -->
+            {% set legacy_names = {
+                'NOI DUNG 1': 'Nội Dung 1 (Cũ)', 'NOI DUNG 2': 'Nội Dung 2 (Cũ)', 'NOI DUNG 3': 'Nội Dung 3 (Cũ)', 'NOI DUNG 4': 'Nội Dung 4 (Cũ)',
+                'DANH GIA 1': 'Đánh Giá 1 (Cũ)', 'DANH GIA 2': 'Đánh Giá 2 (Cũ)', 'DANH GIA 3': 'Đánh Giá 3 (Cũ)', 'DANH GIA 4': 'Đánh Giá 4 (Cũ)'
+            } %}
+            
+            {% for field in ['NOI DUNG 1', 'NOI DUNG 2', 'NOI DUNG 3', 'NOI DUNG 4', 'DANH GIA 1', 'DANH GIA 2', 'DANH GIA 3', 'DANH GIA 4'] %}
+                {% if report[field] and report[field]|striptags|trim %}
+                    <div class="main-card">
+                        <div class="card-header-custom content-header">
+                            <i class="fas fa-folder-open"></i> {{ legacy_names[field] }}
+                        </div>
+                        <div class="card-body-custom report-content-flow">
+                            {{ report[field] | safe }}
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+
         {% else %}
-            <h2>BÁO CÁO HIỆN DIỆN #{{ report.STT | default('...') }}</h2>
+            <!--
+            =================================
+            LAYOUT BÁO CÁO MỚI (STT >= 51799)
+            Hiển thị theo cấu trúc Nhập liệu
+            =================================
+            -->
 
-            <div class="card">
-                <div class="card-header">Thông Tin Chung</div>
-                <div class="card-body row">
-                    <div class="col-md-3 detail-item">
-                        <span class="detail-label">Ngày Báo Cáo:</span>
-                        <span class="detail-content">{{ report.NGAY | default('N/A') }}</span>
+            <!-- 2. PHÂN LOẠI & KẾT QUẢ (Dropdowns) -->
+            <div class="main-card">
+                <div class="card-header-custom result-header">
+                    <i class="fas fa-poll-h"></i> 2. Phân Loại & Kết Quả
+                </div>
+                <div class="card-body-custom">
+                    
+                    {% if report['TEN_ND4'] or report['NOI DUNG 4'] %}
+                    <div class="result-box">
+                        <h6>{{ report['TEN_ND4'] | default('Mục đích gặp') }}</h6>
+                        <p>{{ report['NOI DUNG 4'] | default('—') }}</p>
                     </div>
-                    <div class="col-md-3 detail-item">
-                        <span class="detail-label">Loại Báo Cáo:</span>
-                        <span class="detail-content">{{ report.Loai_DienGiai | default('N/A') }} ({{ report.LOAI | default('') }})</span>
+                    {% endif %}
+                    
+                    {% if report['TEN_ND5'] or report['NOI DUNG 5'] %}
+                    <div class="result-box">
+                        <h6>{{ report['TEN_ND5'] | default('Kết quả') }}</h6>
+                        <p>{{ report['NOI DUNG 5'] | default('—') }}</p>
                     </div>
-                    <div class="col-md-3 detail-item">
-                        <span class="detail-label">Nhân Viên Báo Cáo:</span>
-                        <span class="detail-content">{{ report.NV_Fullname | default('N/A') }}</span>
+                    {% endif %}
+                    
+                    <!-- Lưu ý: Đã đổi sang DANH GIA 4 theo yêu cầu mới nhất -->
+                    {% if report['TEN_DG4'] or report['DANH GIA 4'] %}
+                    <div class="result-box">
+                        <h6>{{ report['TEN_DG4'] | default('Hành động tiếp theo') }}</h6>
+                        <p>{{ report['DANH GIA 4'] | default('—') }}</p>
                     </div>
-                    <div class="col-md-3 detail-item">
-                        <span class="detail-label">Khách Hàng:</span>
-                        <span class="detail-content">{{ report.KH_FullName | default('N/A') }}</span>
-                    </div>
-                    <div class="col-md-6 detail-item mt-3">
-                        <span class="detail-label">Mã Khách Hàng:</span>
-                        <span class="detail-content">{{ report.KH_Ma | default('N/A') }}</span>
-                    </div>
-                    <div class="col-md-6 detail-item mt-3">
-                        <span class="detail-label">Người Nhập Hệ Thống:</span>
-                        <span class="detail-content">{{ report.NguoiNhap | default('Hệ thống') }}</span>
-                    </div>
+                    {% endif %}
                 </div>
             </div>
 
-            {% if report.ATTACHMENT_LIST and report.ATTACHMENT_LIST|length > 0 %}
-            <div class="card mt-4">
-                <div class="card-header" style="background-color: #E6F4EA; color: #1E8E3E;">
-                    📎 Tệp Đính Kèm ({{ report.ATTACHMENT_LIST|length }} file)
+            <!-- 3. NỘI DUNG CHI TIẾT (Rich Text) -->
+            
+            <!-- TAB A (Lưu ở DANH GIA 2) -->
+            {% if report['DANH GIA 2'] and report['DANH GIA 2']|striptags|trim %}
+            <div class="main-card">
+                <div class="card-header-custom content-header">
+                    <i class="fas fa-pen"></i> {{ report['TEN_TAB_A'] | default('Nội dung chính') }}
                 </div>
-                <div class="card-body row">
-                    {% for file_name in report.ATTACHMENT_LIST %}
-                    <div class="col-md-4">
-                        <a href="/attachments/{{ file_name }}" target="_blank" class="attachment-link">
-                            <i class="fas fa-file-alt me-2"></i> {{ file_name }}
-                        </a>
-                    </div>
-                    {% endfor %}
-                    <small class="text-muted mt-3">
-                        *Lưu ý: Các tệp được truy cập từ thư mục 'attachments' của máy chủ LAN.
-                    </small>
+                <div class="card-body-custom report-content-flow">
+                    {{ report['DANH GIA 2'] | safe }}
                 </div>
             </div>
             {% endif %}
 
-            <div class="card mt-4">
-                <div class="card-header">Nội Dung Chi Tiết và Đánh Giá</div>
-                <div class="card-body">
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h5 class="section-header">1. Nội dung 1</h5>
-                            <div class="content-box mb-4">{{ report['NOI DUNG 1'] | default('—') }}</div>
-
-                            <h5 class="section-header">3. Nội dung 3</h5>
-                            <div class="content-box mb-4">{{ report['NOI DUNG 3'] | default('—') }}</div>
-                            
-                            <h5 class="section-header">5. Nội dung 5</h5>
-                            <div class="content-box mb-4">{{ report['NOI DUNG 5'] | default('—') }}</div>
-                        </div>
-                        <div class="col-md-6">
-                            <h5 class="section-header">2. Nội dung 2</h5>
-                            <div class="content-box mb-4">{{ report['NOI DUNG 2'] | default('—') }}</div>
-
-                            <h5 class="section-header">4. Nội dung 4</h5>
-                            <div class="content-box mb-4">{{ report['NOI DUNG 4'] | default('—') }}</div>
-                        </div>
-                    </div>
-                    
-                    <h4 class="section-header mt-4">Đánh Giá và Kết Quả</h4>
-                    <div class="row">
-                        
-                        <div class="col-md-6">
-                            <h5 class="section-header" style="color: #4285F4;">Đánh Giá 1</h5>
-                            <div class="content-box mb-4">{{ report['DANH GIA 1'] | default('—') }}</div>
-                            <h5 class="section-header" style="color: #4285F4;">Đánh Giá 3</h5>
-                            <div class="content-box mb-4">{{ report['DANH GIA 3'] | default('—') }}</div>
-                            <h5 class="section-header" style="color: #4285F4;">Đánh Giá 5</h5>
-                            <div class="content-box mb-4">{{ report['DANH GIA 5'] | default('—') }}</div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <h5 class="section-header" style="color: #4285F4;">Đánh Giá 2</h5>
-                            <div class="content-box mb-4">{{ report['DANH GIA 2'] | default('—') }}</div>
-                            <h5 class="section-header" style="color: #4285F4;">Đánh Giá 4</h5>
-                            <div class="content-box mb-4">{{ report['DANH GIA 4'] | default('—') }}</div>
-                        </div>
-                    </div>
-                    
+            <!-- TAB B (Lưu ở NOI DUNG 2) -->
+            {% if report['NOI DUNG 2'] and report['NOI DUNG 2']|striptags|trim %}
+            <div class="main-card">
+                <div class="card-header-custom content-header">
+                    <i class="fas fa-align-left"></i> {{ report['TEN_TAB_B'] | default('Nội dung mở rộng') }}
+                </div>
+                <div class="card-body-custom report-content-flow">
+                    {{ report['NOI DUNG 2'] | safe }}
                 </div>
             </div>
+            {% endif %}
 
-            <div class="text-center mt-4">
-                <button onclick="window.print()" class="btn btn-primary btn-lg" style="background-color: #4285F4; border-color: #4285F4;">
-                    Xuất File PDF (In)
-                </button>
-                <button onclick="window.close()" class="btn btn-secondary btn-lg">Đóng cửa sổ</button>
+            <!-- TAB C (Lưu ở NOI DUNG 1) -->
+            {% if report['NOI DUNG 1'] and report['NOI DUNG 1']|striptags|trim %}
+            <div class="main-card">
+                <div class="card-header-custom content-header">
+                    <i class="fas fa-star"></i> {{ report['TEN_TAB_C'] | default('Đánh giá / Kế hoạch') }}
+                </div>
+                <div class="card-body-custom report-content-flow">
+                    {{ report['NOI DUNG 1'] | safe }}
+                </div>
             </div>
+            {% endif %}
 
+        {% endif %}
+        <!-- ==================================
+        KẾT THÚC LOGIC CŨ/MỚI
+        ================================== -->
+
+        <!-- 4. TỆP ĐÍNH KÈM (Chung cho cả hai) -->
+        {% if report.attachments and report.attachments|length > 0 %}
+        <div class="main-card">
+            <div class="card-header-custom">
+                <i class="fas fa-paperclip"></i> Tệp Đính Kèm ({{ report.attachments|length }})
+            </div>
+            <div class="card-body-custom">
+                <div class="d-grid gap-2">
+                {% for file_path in report.attachments %}
+                    {% set file_name = file_path.split('/')[-1] %}
+                    <a href="{{ url_for('static', filename='attachments/' + file_name) }}" target="_blank" class="attachment-link">
+                        <i class="fas fa-file-arrow-down me-2"></i> {{ file_name }}
+                    </a>
+                {% endfor %}
+                </div>
+            </div>
+        </div>
         {% endif %}
 
     </div>

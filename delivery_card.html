@@ -1,27 +1,40 @@
 {% set status_class = 'status-' + item.DeliveryStatus|lower %}
 
-{# --- SỬA LỖI 2: 'str object' has no attribute 'strftime' --- #}
-{# Lấy chuỗi ngày (VD: "2025-11-08 00:00:00") và tách lấy phần YYYY-MM-DD #}
+{# Lấy chuỗi ngày Y/C Giao (Dùng cho logic Quá hạn) #}
 {% set item_iso_date = (item.EarliestRequestDate.split(' ')[0] if item.EarliestRequestDate else '9999-12-31') %}
-
-{# So sánh chuỗi (YYYY-MM-DD) với chuỗi (YYYY-MM-DD) #}
 {% set is_overdue = (item_iso_date < current_date_str) and (item.DeliveryStatus == 'Open') %}
-{# --- KẾT THÚC SỬA LỖI 2 --- #}
-
 
 {% if is_overdue %}
     {% set status_class = status_class + ' overdue' %}
 {% endif %}
 
+<!--
+YÊU CẦU MỚI:
+1. Thêm data-planned-date: Dùng để sort (sắp xếp)
+2. Thêm data-actual-delivery-date: Dùng để sort cột "Đã Giao"
+-->
 <div class="delivery-card {{ status_class }} {% if not can_edit_dispatch %}no-edit{% endif %}" 
      id="lxh-{{ item.VoucherID }}"
      data-voucher-id="{{ item.VoucherID }}"
+     data-planned-date="{{ item.Planned_Date_ISO | default('9999-12-31') }}"
+     data-actual-delivery-date="{{ item.ActualDeliveryDate_ISO | default('1900-01-01') }}"
      onclick="openConfirmationModal(this)">
     
     <div class="item-title">{{ item.VoucherNo }} ({{ item.ItemCount }} MH)</div>
     <div class="item-customer">{{ item.ObjectName }}</div>
     <div class="item-details">
-        Y/C Giao: {{ item.EarliestRequestDate_str }} | 
+        <!-- 
+        YÊU CẦU MỚI:
+        1. Hiển thị "Đã Giao" (nếu đã giao) HOẶC "Giao" (nếu có kế hoạch)
+        2. Bỏ dòng "Y/C Giao"
+        -->
+        {% if item.DeliveryStatus == 'Da Giao' %}
+            <strong class="text-success" style="font-size: 0.85rem;"><i class="fas fa-check-circle me-1"></i> Đã Giao: {{ item.ActualDeliveryDate_str }}</strong><br>
+        {% elif item.Planned_Day_Display %}
+            <strong class="text-primary" style="font-size: 0.85rem;"><i class="fas fa-calendar-check me-1"></i> Giao: {{ item.Planned_Day_Display }}</strong><br>
+        {% endif %}
+        
+        {# ĐÃ BỎ: Y/C Giao: {{ item.EarliestRequestDate_str }} | #}
         Ngày LXH: {{ item.VoucherDate_str }} <br>
         RefNo02: {{ item.RefNo02 or '—' }}
         

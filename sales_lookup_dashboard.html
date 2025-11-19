@@ -2,102 +2,172 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Tra Cứu Thông Tin Bán Hàng (v2)</title>
+    <title>Tra Cứu Thông Tin Bán Hàng (v3 - Giao diện mới)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        /* (CSS Giữ nguyên) */
-        body { background-color: #F8F9FA; color: #3C4043; font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .container { max-width: 98%; margin-top: 30px; }
-        .card-container { margin-bottom: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); padding: 15px; }
-        h1 { font-weight: 700; color: #4285F4; margin-bottom: 0; }
-        .header-main-box {
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 10px; 
-            border-bottom: 3px solid #E8F0FE; 
-            padding-bottom: 10px;
+        /* --- 1. CORE STYLES (Đồng bộ nhaplieu_new) --- */
+        :root {
+            --primary: #4318FF;
+            --primary-light: #F4F7FE;
+            --secondary: #A3AED0;
+            --text-dark: #2B3674;
+            --danger: #E31A1A;
+            --success: #05CD99;
+            --warning: #FFB547;
+            --bg-color: #F4F7FE;
+            --card-radius: 20px;
+            --input-bg: #F4F7FE;
         }
-        .btn-header-action {
-            font-weight: 600;
-            padding: 8px 15px; 
-            border-radius: 6px;
-            background-color: #6c757d; 
-            color: white; 
-            border: none;
-            transition: background-color 0.2s;
-        }
-        .btn-header-action:hover {
-            background-color: #5a6268;
-            color: white;
-        }
-        .panel-heading { background-color: #3f90e9; color: white; padding: 10px 15px; margin: -15px -15px 15px -15px; border-top-left-radius: 8px; border-top-right-radius: 8px; font-size: 1.1em; font-weight: 600; }
-        #lookup-card .card-header { background-color: #346265 !important; color: white !important; font-size: 1.2rem; font-weight: 600; }
-        .search-container { position: relative; }
-        .form-control-lg { height: 48px; }
-        .search-results-dropdown { 
-            width: 100%; border-radius: 8px; border: 1px solid #4285F4;
-            outline: none; display: none; position: absolute;
-            z-index: 1000; margin-top: 0px; 
-        }
-        .btn-lookup-custom { 
-            background-color: #3f90e9 !important; 
-            color: white; 
-            font-weight: 600; 
-            height: 48px;
-        }
-        .btn-quick-lookup { 
-            background-color: #ffc107 !important; 
-            color: #212529; 
-            font-weight: 600; 
-            border-color: #ffc107; 
-            height: 48px;
-        }
-        .button-column-fix {
-            padding-top: 28px; 
-        }
-        .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .data-table th { background-color: #d6e8ff; color: #333; padding: 10px; text-align: left; border-bottom: 2px solid #3f90e9; font-weight: 600; }
-        .data-table td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 0.9em; }
-        .data-table tbody tr:hover { background-color: #f8f9fa; }
-        .history-table { width: 100%; margin-top: 10px; font-size: 0.8rem; }
-        .history-table th { background-color: #E8F0FE; color: #1A73E8; padding: 6px; text-align: center; border-bottom: 2px solid #1A73E8; white-space: nowrap; }
-        .history-table td { padding: 5px; border-bottom: 1px solid #eee; text-align: center; white-space: nowrap; }
-        .text-end { text-align: right !important; }
-        .text-start { text-align: left !important; }
-        .text-nowrap { white-space: nowrap; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 0.3em 0.6em; }
-        .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_info { font-size: 0.9rem; }
-        #block1-filter-toolbar label { font-weight: 600; font-size: 0.9rem; }
-        #block1-filter-toolbar input { margin-left: 5px; border-radius: 4px; padding: 4px 8px; border: 1px solid #ccc; }
         
-        @media print {
-            body * { visibility: hidden !important; }
-            #watermark-user-id, #watermark-user-id * { visibility: visible !important; }
-            #watermark-user-id {
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%) rotate(-45deg);
-                opacity: 0.3 !important;
-                font-size: 50pt;
-                color: #CCC !important;
-                content: attr(data-user);
-                z-index: 9999;
-                visibility: visible !important;
-            }
+        body { 
+            background-color: var(--bg-color); 
+            font-family: 'Inter', sans-serif; 
+            color: var(--text-dark); 
         }
+        .container { max-width: 95%; padding: 30px 20px; }
+        
+        /* --- 2. HEADER --- */
+        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
+        
+        .btn-back {
+            background-color: white; color: var(--secondary); border: 1px solid #E0E5F2;
+            padding: 10px 20px; border-radius: 14px; font-weight: 600; text-decoration: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: all 0.2s;
+        }
+        .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
+
+        /* --- 3. LAYOUT CARD (Phong cách mới) --- */
+        .main-card {
+            border: none;
+            background: white;
+            border-radius: var(--card-radius);
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .card-header-custom {
+            background-color: white;
+            color: var(--text-dark);
+            font-weight: 700;
+            font-size: 1.1rem;
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--primary-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-header-custom i {
+            font-size: 1.1rem;
+            margin-right: 12px;
+            color: var(--primary);
+        }
+        
+        /* Header cho các mục kết quả */
+        .card-header-custom.result-header {
+            background-color: var(--primary-light);
+            color: var(--primary);
+        }
+        .card-header-custom.result-header i { color: var(--primary); }
+        .card-header-custom.result-header-2 i { color: var(--success); }
+        .card-header-custom.result-header-3 i { color: var(--warning); }
+
+
+        .card-body-custom {
+            padding: 25px;
+            background-color: white;
+        }
+
+        /* --- 4. FORM INPUTS (Style mới) --- */
+        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
+        .form-control, .form-select {
+            border: none; background-color: var(--input-bg); border-radius: 16px;
+            padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none; transition: all 0.2s;
+            height: 48px; /* Giữ chiều cao cũ */
+        }
+        .form-control:focus, .form-select:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
+
+        /* Nút bấm */
+        .btn-action {
+            padding: 12px 20px; border-radius: 16px; font-weight: 600; border: none;
+            height: 48px; transition: all 0.2s;
+        }
+        .btn-lookup-custom { background-color: var(--primary); color: white; }
+        .btn-lookup-custom:hover { background-color: #3a14db; }
+        .btn-quick-lookup { background-color: var(--warning); color: var(--text-dark); }
+        .btn-quick-lookup:hover { background-color: #ffc44f; }
+        
+        .button-column-fix { padding-top: 32px; } /* Căn chỉnh cho khớp label */
+
+        /* Dropdown tìm kiếm (Giữ nguyên) */
+        .search-container { position: relative; }
+        .search-results-dropdown { 
+            width: 100%; border-radius: 12px; border: 1px solid var(--primary);
+            outline: none; display: none; position: absolute;
+            z-index: 1000; margin-top: 5px; 
+            background: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+
+        /* --- 5. DATA TABLES (Style mới) --- */
+        .data-table { width: 100% !important; border-collapse: collapse !important; margin-top: 10px; }
+        .data-table th { 
+            background-color: #FAFCFE !important; color: var(--secondary) !important;
+            padding: 12px 10px; text-align: left; border-bottom: 1px solid #E0E5F2; 
+            font-weight: 600; font-size: 0.85rem; text-transform: uppercase;
+        }
+        .data-table td { 
+            padding: 12px 10px; border-bottom: 1px solid var(--primary-light); 
+            font-size: 0.95rem; color: var(--text-dark);
+        }
+        .data-table tbody tr:hover { background-color: var(--primary-light); }
+        
+        /* Bảng Lịch sử (Giữ nguyên logic, đổi màu) */
+        .history-table { width: 100%; margin-top: 10px; font-size: 0.8rem; }
+        .history-table th { 
+            background-color: var(--primary-light); color: var(--primary); 
+            padding: 8px; text-align: center; border-bottom: 2px solid var(--primary); 
+            white-space: nowrap; font-size: 0.8rem;
+        }
+        .history-table td { padding: 6px; border-bottom: 1px solid #eee; text-align: center; white-space: nowrap; }
+        
+        /* CSS cho DataTables Toolbar */
+        .dataTables_wrapper .dataTables_paginate .paginate_button { 
+            padding: 0.3em 0.6em; border-radius: 10px !important; border: none; margin: 0 3px;
+            font-weight: 600; color: var(--secondary) !important;
+        }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            background: var(--primary) !important; color: white !important;
+        }
+        .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_info { 
+            font-size: 0.9rem; color: var(--secondary); padding-top: 0 !important;
+        }
+        .dataTables_wrapper .dataTables_filter { margin-bottom: 10px; }
+        .dataTables_wrapper .dataTables_filter input {
+            background-color: var(--input-bg); border: none; border-radius: 12px;
+            padding: 5px 10px;
+        }
+        #block1-filter-toolbar .form-check-label { color: var(--secondary); font-weight: 500; }
+        #block1-filter-toolbar .form-check-input { border-color: var(--secondary); }
+        
+        /* Print block */
+        @media print { body * { visibility: hidden !important; } #watermark-user-id, #watermark-user-id * { visibility: visible !important; } }
     </style>
 </head>
 <body>
     <div class="container">
         
-        <div class="header-main-box">
-            <h1>Tra Cứu Thông Tin Bán Hàng (v2)</h1>
-            <a href="{{ url_for('index') }}" class="btn btn-header-action">
+        <!-- HEADER (Style mới) -->
+        <div class="page-header">
+            <h1 class="page-title">Tra Cứu Thông Tin Bán Hàng</h1>
+            <a href="{{ url_for('index') }}" class="btn-back">
                 <i class="fas fa-home me-1"></i> Về Portal
             </a>
         </div>
@@ -109,46 +179,49 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                <div class="alert alert-{{ category }} alert-dismissible fade show rounded-4 mb-4" role="alert">
                     {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
-        <div class="card mb-4" id="lookup-card">
-            <div class="card-header">Thông tin Tra cứu</div>
-            <div class="card-body">
+        <!-- LOOKUP CARD (Style mới) -->
+        <div class="main-card" id="lookup-card">
+            <div class="card-header-custom">
+                <span><i class="fas fa-search"></i> Thông tin Tra cứu</span>
+            </div>
+            <div class="card-body-custom">
                 <form method="POST" action="{{ url_for('lookup_bp.sales_lookup_dashboard') }}" class="row g-3">
                     
                     <div class="col-md-4">
-                        <label class="form-label fw-bold text-dark">Tìm theo Mã/Tên Mặt hàng</label>
+                        <label class="form-label">Tìm theo Mã/Tên Mặt hàng</label>
                         <input type="text" id="item_search_input" name="item_search" 
-                               placeholder="Gõ Mã/Tên (VD: 23152, 6220)" class="form-control form-control-lg"
+                               placeholder="Gõ Mã/Tên (VD: 23152, 6220)" class="form-control"
                                value="{{ item_search | default('') }}">
-                        <small class="form-text text-muted mb-1 d-block">Nhập nhiều mã/tên, ngăn cách bằng dấu phẩy (,).</small>
+                        <small class="form-text text-muted mt-2 d-block">Ngăn cách bằng dấu phẩy (,).</small>
                     </div>
 
                     <div class="col-md-5 search-container">
-                        <label class="form-label fw-bold text-dark">Tìm theo Mã/Tên Khách hàng (Tùy chọn)</label>
+                        <label class="form-label">Tìm theo Mã/Tên Khách hàng (Tùy chọn)</label>
                         <input type="text" id="kh_search_input" 
-                               placeholder="Gõ Mã/Tên Khách hàng để chọn..." class="form-control form-control-lg"
+                               placeholder="Gõ Mã/Tên Khách hàng..." class="form-control"
                                value="{{ object_id_display | default('') }}">
-                        <small id="kh_status" class="form-text text-muted mb-1 d-block">Để trống nếu muốn xem giá chung.</small>
+                        <small id="kh_status" class="form-text text-muted mt-2 d-block">Để trống nếu muốn xem giá chung.</small>
 
+                        <!-- Các input hidden (Giữ nguyên) -->
                         <input type="hidden" name="object_id" id="kh_ma_selected" value="{{ object_id | default('') }}">
                         <input type="hidden" name="object_id_display" id="kh_display_selected" value="{{ object_id_display | default('') }}">
-
                         <select id="kh_search_results" class="form-select search-results-dropdown" size="5" onchange="chonKhachHang()"></select>
                     </div>
                     
                     <div class="col-md-3 button-column-fix">
                         <div class="d-flex w-100 gap-2">
-                            <button type="button" class="btn btn-quick-lookup btn-lg w-50" id="quickLookupBtn" title="Tra cứu nhanh Tồn kho và Giá QĐ (Không lọc KH)">
+                            <button type="button" class="btn-action btn-quick-lookup w-50" id="quickLookupBtn" title="Tra cứu nhanh Tồn kho và Giá QĐ (Không lọc KH)">
                                 <i class="fas fa-bolt"></i> Tra nhanh Tồn
                             </button>
-                            <button type="submit" class="btn btn-primary btn-lg btn-lookup-custom w-50">
+                            <button type="submit" class="btn-action btn-lookup-custom w-50">
                                 <i class="fas fa-search"></i> Tra cứu
                             </button>
                         </div>
@@ -157,146 +230,166 @@
             </div>
         </div>
         
-        <div class="card-container" id="block1-container" {% if not results.block1 %}style="display: none;"{% endif %}>
-            <div class="panel-heading d-flex justify-content-between align-items-center">
-                <span>1. Tồn kho và Giá (Khớp với '{{ item_search }}' | KH: {{ object_id_display or 'Tất cả' }})</span>
-                
+        <!-- BLOCK 1 (Style mới) -->
+        <div class="main-card" id="block1-container" {% if not results.block1 %}style="display: none;"{% endif %}>
+            <div class="card-header-custom result-header">
+                <div>
+                    <i class="fas fa-warehouse"></i>
+                    <span>1. Tồn kho và Giá (Khớp với '{{ item_search }}' | KH: {{ object_id_display or 'Tất cả' }})</span>
+                </div>
                 <div class="form-check form-switch" title="Chỉ hiển thị hàng có Tồn kho > 0">
                     <input class="form-check-input" type="checkbox" role="switch" id="toggleTonKho">
                     <label class="form-check-label" for="toggleTonKho">Chỉ hiện Tồn > 0</label>
                 </div>
-                <div id="block1-filter-toolbar" class="ms-3"></div>
             </div>
-            <div class="table-responsive">
-                <table id="block1-table" class="data-table table table-hover">
-                    <thead>
-                        <tr>
-                            <th class="text-start">Mã hàng</th>
-                            <th class="text-start">Tên hàng</th>
-                            <th class="text-end">Tồn kho (Ton)</th>
-                            <th class="text-end">Back Order (Con)</th>
-                            <th class="text-end">Giá Bán QĐ</th>
-                            <th class="text-end">Giá Bán Gần nhất (HĐ)</th>
-                            <th class="text-end">Giá Chào Gần nhất (BG)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in results.block1 %}
-                        <tr style="cursor: pointer;" 
-                            onclick="showBackorderModal('{{ item.InventoryID }}', {{ item.InventoryName | tojson }})">
-                            
-                            <td class="text-start">{{ item.InventoryID }}</td>
-                            <td class="text-start">{{ item.InventoryName }}</td>
-                            <td class="text-end">{{ "{:,.0f}".format(item.Ton | float) }}</td>
-                            <td class="text-end">{{ "{:,.0f}".format(item.BackOrder | float) }}</td>
-                            <td class="text-end">{{ "{:,.0f}".format(item.GiaBanQuyDinh | float) }}</td>
-                            <td class="text-end">{{ "{:,.0f}".format(item.GiaBanGanNhat_HD | float) }}</td>
-                            <td class="text-end">{{ "{:,.0f}".format(item.GiaChaoGanNhat_BG | float) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="card-body-custom">
+                <!-- Toolbar DataTables (Sẽ được JS dời vào đây) -->
+                <div id="block1-filter-toolbar" class="mb-3"></div>
+                
+                <div class="table-responsive">
+                    <table id="block1-table" class="data-table table table-hover">
+                        <thead>
+                            <tr>
+                                <th class="text-start">Mã hàng</th>
+                                <th class="text-start">Tên hàng</th>
+                                <th class="text-end">Tồn kho (Ton)</th>
+                                <th class="text-end">Back Order (Con)</th>
+                                <th class="text-end">Giá Bán QĐ</th>
+                                <th class="text-end">Giá Bán Gần nhất (HĐ)</th>
+                                <th class="text-end">Giá Chào Gần nhất (BG)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in results.block1 %}
+                            <tr style="cursor: pointer;" 
+                                onclick="showBackorderModal('{{ item.InventoryID }}', {{ item.InventoryName | tojson }})">
+                                <td class="text-start">{{ item.InventoryID }}</td>
+                                <td class="text-start">{{ item.InventoryName }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(item.Ton | float) }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(item.BackOrder | float) }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(item.GiaBanQuyDinh | float) }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(item.GiaBanGanNhat_HD | float) }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(item.GiaChaoGanNhat_BG | float) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
             
+        <!-- BLOCK 2 (Style mới) -->
         {% if show_block_2 and results.block2 %}
-        <div class="card-container" id="block2-container">
-            <div class="panel-heading" style="background-color: #34A853;">2. Lịch sử ĐH Bán, Xuất kho (PXK) & Hóa đơn (Top 20)</div>
-            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                <table class="history-table table table-sm table-bordered">
-                    <thead>
-                        <tr style="background-color: #E8F0FE; color: #1A73E8;">
-                            <th colspan="4" class="text-center">Đơn Hàng Bán</th>
-                            <th colspan="3" class="text-center" style="background-color: #E6F4EA; color: #1E8E3E;">Phiếu Xuất Kho</th>
-                            <th colspan="3" class="text-center" style="background-color: #FFF7E6; color: #C28B00;">Hóa Đơn</th>
-                        </tr>
-                        <tr>
-                            <th>Số ĐH Bán</th>
-                            <th>Ngày ĐH</th>
-                            <th class="text-end">SL Đặt</th>
-                            <th class="text-end">Đơn giá</th>
-                            <th style="background-color: #E6F4EA;">Số PXK</th>
-                            <th style="background-color: #E6F4EA;">Ngày PXK</th>
-                            <th class="text-end" style="background-color: #E6F4EA;">SL Xuất</th>
-                            <th style="background-color: #FFF7E6;">Số Hóa Đơn</th>
-                            <th style="background-color: #FFF7E6;">Ngày HĐ</th>
-                            <th class="text-end" style="background-color: #FFF7E6;">SL Xuất</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for history in results.block2 %}
-                        <tr>
-                            <td class="text-nowrap">{{ history.VoucherNo | default('—') }}</td>
-                            <td>{{ history.OrderDate | default('—') }}</td>
-                            <td class="text-end">{{ "{:,.0f}".format(history.OrderQuantity | float) }}</td>
-                            <td class="text-end">{{ "{:,.0f}".format(history.SalePrice | float) }}</td>
-                            <td class="text-start" style="background-color: #F8F9FA;">{{ history.SoPXK | default('—') }}</td>
-                            <td style="background-color: #F8F9FA;">{{ history.NgayPXK | default('—') }}</td>
-                            <td class="text-end" style="background-color: #F8F9FA;">{{ "{:,.0f}".format(history.SL_PXK | float) }}</td>
-                            <td class="text-start" style="background-color: #FDFBF5;">{{ history.SoHoaDon | default('—') }}</td>
-                            <td style="background-color: #FDFBF5;">{{ history.NgayHĐ | default('—') }}</td>
-                            <td class="text-end" style="background-color: #FDFBF5;">{{ "{:,.0f}".format(history.SL_HoaDon | float) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="main-card" id="block2-container">
+            <div class="card-header-custom result-header result-header-2">
+                <span><i class="fas fa-shipping-fast"></i> 2. Lịch sử ĐH Bán, Xuất kho (PXK) & Hóa đơn (Top 20)</span>
+            </div>
+            <div class="card-body-custom" style="padding: 10px 15px;">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="history-table table table-sm table-bordered">
+                        <thead>
+                            <tr style="background-color: var(--primary-light); color: var(--primary);">
+                                <th colspan="4" class="text-center">Đơn Hàng Bán</th>
+                                <th colspan="3" class="text-center" style="background-color: #E6FFFA; color: #04A38A;">Phiếu Xuất Kho</th>
+                                <th colspan="3" class="text-center" style="background-color: #FFF8E1; color: #B38200;">Hóa Đơn</th>
+                            </tr>
+                            <tr>
+                                <th>Số ĐH Bán</th>
+                                <th>Ngày ĐH</th>
+                                <th class="text-end">SL Đặt</th>
+                                <th class="text-end">Đơn giá</th>
+                                <th style="background-color: #E6FFFA;">Số PXK</th>
+                                <th style="background-color: #E6FFFA;">Ngày PXK</th>
+                                <th class="text-end" style="background-color: #E6FFFA;">SL Xuất</th>
+                                <th style="background-color: #FFF8E1;">Số Hóa Đơn</th>
+                                <th style="background-color: #FFF8E1;">Ngày HĐ</th>
+                                <th class="text-end" style="background-color: #FFF8E1;">SL Xuất</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for history in results.block2 %}
+                            <tr>
+                                <td class="text-nowrap">{{ history.VoucherNo | default('—') }}</td>
+                                <td>{{ history.OrderDate | default('—') }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(history.OrderQuantity | float) }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(history.SalePrice | float) }}</td>
+                                <td class="text-start" style="background-color: #F8F9FA;">{{ history.SoPXK | default('—') }}</td>
+                                <td style="background-color: #F8F9FA;">{{ history.NgayPXK | default('—') }}</td>
+                                <td class="text-end" style="background-color: #F8F9FA;">{{ "{:,.0f}".format(history.SL_PXK | float) }}</td>
+                                <td class="text-start" style="background-color: #FDFBF5;">{{ history.SoHoaDon | default('—') }}</td>
+                                <td style="background-color: #FDFBF5;">{{ history.NgayHĐ | default('—') }}</td>
+                                <td class="text-end" style="background-color: #FDFBF5;">{{ "{:,.0f}".format(history.SL_HoaDon | float) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
         {% endif %}
+        
+        <!-- BLOCK 3 (Style mới) -->
         {% if show_block_3 and results.block3 %}
-        <div class="card-container" id="block3-container">
-            <div class="panel-heading" style="background-color: #F4B400;">3. Lịch sử Đơn hàng Mua (PO) & Phiếu Nhập (Top 20)</div>
-            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                <table class="history-table table table-sm table-bordered">
-                     <thead>
-                        <tr style="background-color: #E8F0FE; color: #1A73E8;">
-                            <th colspan="4" class="text-center">Đơn Hàng Bán (Tham chiếu)</th>
-                            <th colspan="3" class="text-center" style="background-color: #FFF7E6; color: #C28B00;">Đơn Hàng Mua (PO)</th>
-                            <th colspan="3" class="text-center" style="background-color: #E6F4EA; color: #1E8E3E;">Phiếu Nhập Kho</th>
-                        </tr>
-                        <tr>
-                            <th>Số ĐH Bán</th>
-                            <th>Ngày ĐH</th>
-                            <th class="text-end">SL Đặt</th>
-                            <th class="text-end">Đơn giá</th>
-                            <th style="background-color: #FFF7E6;">Số PO</th>
-                            <th style="background-color: #FFF7E6;">Ngày PO</th>
-                            <th class="text-end" style="background-color: #FFF7E6;">SL PO</th>
-                            <th style="background-color: #E6F4EA;">Số PN</th>
-                            <th style="background-color: #E6F4EA;">Ngày Nhập</th>
-                            <th class="text-end" style="background-color: #E6F4EA;">SL Nhập</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for history in results.block3 %}
-                        <tr>
-                            <td class="text-nowrap">{{ history.VoucherNo | default('—') }}</td>
-                            <td>{{ history.OrderDate | default('—') }}</td>
-                            <td class="text-end">{{ "{:,.0f}".format(history.OrderQuantity | float) }}</td>
-                            <td class="text-end">{{ "{:,.0f}".format(history.SalePrice | float) }}</td>
-                            <td class="text-start" style="background-color: #FDFBF5;">{{ history.SoPO | default('—') }}</td>
-                            <td style="background-color: #FDFBF5;">{{ history.NgayPO | default('—') }}</td>
-                            <td class="text-end" style="background-color: #FDFBF5;">{{ "{:,.0f}".format(history.SL_PO | float) }}</td>
-                            <td class="text-start" style="background-color: #F8F9FA;">{{ history.SoPN | default('—') }}</td>
-                            <td style="background-color: #F8F9FA;">{{ history.NgayPN | default('—') }}</td>
-                            <td class="text-end" style="background-color: #F8F9FA;">{{ "{:,.0f}".format(history.SL_PN | float) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="main-card" id="block3-container">
+            <div class="card-header-custom result-header result-header-3">
+                <span><i class="fas fa-truck-loading"></i> 3. Lịch sử Đơn hàng Mua (PO) & Phiếu Nhập (Top 20)</span>
+            </div>
+            <div class="card-body-custom" style="padding: 10px 15px;">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="history-table table table-sm table-bordered">
+                        <thead>
+                            <tr style="background-color: var(--primary-light); color: var(--primary);">
+                                <th colspan="4" class="text-center">Đơn Hàng Bán (Tham chiếu)</th>
+                                <th colspan="3" class="text-center" style="background-color: #FFF8E1; color: #B38200;">Đơn Hàng Mua (PO)</th>
+                                <th colspan="3" class="text-center" style="background-color: #E6FFFA; color: #04A38A;">Phiếu Nhập Kho</th>
+                            </tr>
+                            <tr>
+                                <th>Số ĐH Bán</th>
+                                <th>Ngày ĐH</th>
+                                <th class="text-end">SL Đặt</th>
+                                <th class="text-end">Đơn giá</th>
+                                <th style="background-color: #FFF8E1;">Số PO</th>
+                                <th style="background-color: #FFF8E1;">Ngày PO</th>
+                                <th class="text-end" style="background-color: #FFF8E1;">SL PO</th>
+                                <th style="background-color: #E6FFFA;">Số PN</th>
+                                <th style="background-color: #E6FFFA;">Ngày Nhập</th>
+                                <th class="text-end" style="background-color: #E6FFFA;">SL Nhập</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for history in results.block3 %}
+                            <tr>
+                                <td class="text-nowrap">{{ history.VoucherNo | default('—') }}</td>
+                                <td>{{ history.OrderDate | default('—') }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(history.OrderQuantity | float) }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(history.SalePrice | float) }}</td>
+                                <td class="text-start" style="background-color: #FDFBF5;">{{ history.SoPO | default('—') }}</td>
+                                <td style="background-color: #FDFBF5;">{{ history.NgayPO | default('—') }}</td>
+                                <td class="text-end" style="background-color: #FDFBF5;">{{ "{:,.0f}".format(history.SL_PO | float) }}</td>
+                                <td class="text-start" style="background-color: #F8F9FA;">{{ history.SoPN | default('—') }}</td>
+                                <td style="background-color: #F8F9FA;">{{ history.NgayPN | default('—') }}</td>
+                                <td class="text-end" style="background-color: #F8F9FA;">{{ "{:,.0f}".format(history.SL_PN | float) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
         {% endif %}
+        
+        <!-- Thông báo không tìm thấy -->
         {% if request.method == 'POST' and (not results.block1 and not results.block2 and not results.block3) %}
-             <p class="alert alert-warning">Không tìm thấy mặt hàng nào phù hợp với điều kiện tra cứu (Khách hàng: {{ object_id_display or 'Tất cả' }}, Mặt hàng: '{{ item_search }}').</p>
+             <p class="alert alert-warning rounded-4">Không tìm thấy mặt hàng nào phù hợp với điều kiện tra cứu (Khách hàng: {{ object_id_display or 'Tất cả' }}, Mặt hàng: '{{ item_search }}').</p>
         {% endif %}
 
     </div>
     
+<!-- MODAL (Giữ nguyên) -->
 <div class="modal fade" id="backorderModal" tabindex="-1" aria-labelledby="backorderModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+        <div class="modal-content" style="border-radius: 16px;">
+            <div class="modal-header bg-primary text-white" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
                 <h5 class="modal-title" id="backorderModalTitle">Chi tiết BackOrder</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -306,8 +399,10 @@
         </div>
     </div>
 </div>
+<!-- WATERMARK (Giữ nguyên) -->
 <div id="watermark-user-id" data-user="{{ current_user.usercode }}">{{ current_user.usercode }}</div>
 
+<!-- JAVASCRIPT (Toàn bộ được giữ nguyên, chỉ sửa lại logic khởi tạo DataTable) -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -322,24 +417,23 @@
     let block1Table = null; // Biến global để giữ instance
     
     function initializeBlock1DataTable() {
-        // (Hàm này đã được sửa ở lần trước, chỉ làm nhiệm vụ khởi tạo)
-        
         // Khởi tạo instance mới
         block1Table = $('#block1-table').DataTable({
             "paging": true,
             "pageLength": 15,
-            "lengthChange": false,
+            "lengthChange": false, // Ẩn "Show X entries"
             "searching": true, 
             "ordering": true,
             "info": true,
             "order": [[0, 'asc']],
+            // DOM MỚI: Chỉ hiển thị Info, Lọc, Bảng, Phân trang
             "dom": '<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"f>>' + 
                    '<"row"<"col-sm-12"tr>>' + 
                    '<"row"<"col-sm-12"p>>',
             "language": {
                 "search": "Lọc nhanh bảng này:",
                 "zeroRecords": "Không tìm thấy mặt hàng nào.",
-                "info": "Hiển thị trang _PAGE_ / _PAGES_ (Tổng _TOTAL_ mặt hàng)",
+                "info": "Trang _PAGE_/_PAGES_ (Tổng _TOTAL_ mặt hàng)",
                 "infoEmpty": "Không có dữ liệu",
                 "infoFiltered": "", 
                 "paginate": { "next": "Sau", "previous": "Trước" },
@@ -347,12 +441,17 @@
             }
         });
 
-        // Di chuyển ô lọc vào vị trí tùy chỉnh
+        // Di chuyển ô lọc vào vị trí tùy chỉnh (ID mới)
         const searchInput = $('#block1-table_filter');
         $('#block1-filter-toolbar').html(searchInput);
+        
+        // Căn chỉnh lại cho đẹp
+        $('#block1-table_filter input').addClass('form-control-sm');
     }
 
 $(document).ready(function() {
+    
+    // (Toàn bộ logic JS từ đây trở xuống được giữ nguyên)
     
     if ($('#kh_display_selected').val()) {
          $('#kh_status').html('✅ Khách hàng đã được chọn và xác nhận.');
@@ -366,8 +465,6 @@ $(document).ready(function() {
         };
     }
     
-    // --- LOGIC TÌM KIẾM & CHỌN KHÁCH HÀNG ---
-    // (Hàm timKhachHang và chonKhachHang giữ nguyên)
     function timKhachHang() {
         const term = $('#kh_search_input').val().trim();
         const statusMsg = $('#kh_status');
@@ -419,7 +516,6 @@ $(document).ready(function() {
         }
     };
     
-    // --- ĐĂNG KÝ SỰ KIỆN CHÍNH ---
     $('#kh_search_input').on('input', debounce(timKhachHang, 300));
     
     $('#item_search_input, #kh_search_input').on('keydown', function(e) {
@@ -437,39 +533,27 @@ $(document).ready(function() {
         initializeBlock1DataTable();
     }
 
-    
-    // === YÊU CẦU 1: LOGIC LỌC TỒN > 0 ===
-    // 1. Đăng ký hàm lọc mới cho DataTables
     $.fn.dataTable.ext.search.push(
         function(settings, data, dataIndex) {
-            // Chỉ áp dụng cho bảng block1-table
             if (settings.nTable.id !== 'block1-table') {
                 return true;
             }
-            
             const showOnlyStock = $('#toggleTonKho').is(':checked');
             if (!showOnlyStock) {
-                return true; // Nếu không check, hiện tất cả
+                return true; 
             }
-
-            // Lấy dữ liệu cột Tồn kho (index = 2)
             const tonKhoStr = data[2] || '0';
             const tonKho = parseFloat(tonKhoStr.replace(/,/g, '')) || 0;
-
             return tonKho > 0;
         }
     );
 
-    // 2. Gắn sự kiện cho nút toggle
     $('#toggleTonKho').on('change', function() {
         if (block1Table) {
-            block1Table.draw(); // Vẽ lại bảng (áp dụng bộ lọc)
+            block1Table.draw(); 
         }
     });
-    // === KẾT THÚC LOGIC LỌC TỒN ===
 
-
-    // --- YÊU CẦU 5: LOGIC NÚT TRA CỨU NHANH ---
     $('#quickLookupBtn').on('click', function() {
         const itemSearchTerm = $('#item_search_input').val().trim();
         const button = $(this);
@@ -487,7 +571,6 @@ $(document).ready(function() {
         const formData = new FormData();
         formData.append('item_search', itemSearchTerm);
 
-        // Đã sửa API (lần trước)
         fetch('/sales/api/multi_lookup', {
             method: 'POST',
             body: formData
@@ -498,7 +581,6 @@ $(document).ready(function() {
         })
         .then(data => {
             
-            // Logic Hủy bảng cũ (đã sửa lần trước)
             if (block1Table) {
                 block1Table.destroy();
                 $('#block1-filter-toolbar').empty(); 
@@ -508,11 +590,10 @@ $(document).ready(function() {
             const tbody = $('#block1-table tbody');
             tbody.empty(); 
             
-            $('#block1-container .panel-heading span').text(`1. Tra cứu Tồn kho Nhanh (Khớp với '${itemSearchTerm}')`);
+            $('#block1-container .card-header-custom span').text(`1. Tra cứu Tồn kho Nhanh (Khớp với '${itemSearchTerm}')`);
             
             if (data && data.length > 0) {
                 data.forEach(item => {
-                    // === SỬA LỖI ESCAPE: Tạo <tr> và gán data-* an toàn ===
                     const row = $(`<tr style="cursor: pointer;">
                         <td class="text-start">${item.InventoryID}</td>
                         <td class="text-start">${item.InventoryName}</td>
@@ -523,21 +604,18 @@ $(document).ready(function() {
                         <td class="text-end">—</td>
                     </tr>`);
 
-                    // Gán sự kiện click bằng jQuery/JS để truyền dữ liệu an toàn
                     row.on('click', function() {
                         showBackorderModal(item.InventoryID, item.InventoryName);
                     });
                     
-                    tbody.append(row); // Thêm hàng (đã có sự kiện) vào bảng
+                    tbody.append(row); 
                 });
             } else {
                 tbody.append('<tr><td colspan="7" class="text-center">Không tìm thấy dữ liệu tra cứu nhanh.</td></tr>');
             }
             
-            // Khởi tạo lại DataTables
             initializeBlock1DataTable();
 
-            // === YÊU CẦU 1: Kích hoạt lại bộ lọc Tồn > 0 sau khi tra nhanh ===
             if (block1Table) {
                 block1Table.draw();
             }
@@ -550,7 +628,6 @@ $(document).ready(function() {
         });
     });
     
-    // --- YÊU CẦU 2: BỔ SUNG KHÓA CHỨC NĂNG IN (PRINT BLOCKING) ---
     document.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
             e.preventDefault();
@@ -562,14 +639,11 @@ $(document).ready(function() {
         alert("Chức năng in đã bị khóa trên trang này.");
     };
     
-    // Chặn chuột phải
     document.addEventListener('contextmenu', e => e.preventDefault()); 
 
-}); // <-- Kết thúc document.ready
+}); 
 
-
-// === YÊU CẦU 2: HÀM MỚI (Modal BackOrder) (bên ngoài document.ready) ===
-let backorderModalInstance = null; // Biến global cho modal
+let backorderModalInstance = null; 
 
 function showBackorderModal(inventoryId, inventoryName) {
     if (!backorderModalInstance) {
@@ -584,7 +658,6 @@ function showBackorderModal(inventoryId, inventoryName) {
     
     backorderModalInstance.show();
 
-    // Gọi API (API này đã được tạo ở bước trước)
     fetch(`/sales/api/backorder_details/${inventoryId}`)
         .then(response => {
             if (!response.ok) throw new Error('Không thể tải dữ liệu BackOrder.');
@@ -596,7 +669,6 @@ function showBackorderModal(inventoryId, inventoryName) {
                 return;
             }
 
-            // Xây dựng bảng
             let tableHtml = '<div class="table-responsive"><table class="table table-sm table-striped table-bordered small mb-0">';
             tableHtml += '<thead class="table-primary"><tr>';
             tableHtml += '<th>Mã PO (VoucherNo)</th>';
@@ -621,8 +693,6 @@ function showBackorderModal(inventoryId, inventoryName) {
             modalBody.innerHTML = `<p class="alert alert-danger text-center">Lỗi: ${error.message}</p>`;
         });
 }
-// === KẾT THÚC HÀM MODAL ===
-
 </script>
 </body>
 </html>

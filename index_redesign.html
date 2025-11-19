@@ -189,9 +189,9 @@
                         <a href="/quote_input_table" class="menu-link module-kpi" target="_blank">
                             <i class="fas fa-bullseye me-3"></i> Bám sát & Hành động
                         </a>
+                        {# Dữ liệu đã được chuẩn hóa trong app.py, chỉ cần so sánh trực tiếp #}
+                        {% set is_finance_user = current_user.role|upper == 'ADMIN' or current_user.bo_phan == '6.KTTC' %}
                         
-                        {% set is_finance_user = current_user.role|upper == 'ADMIN' or current_user.bo_phan|upper == '6. KTTC' %}
-
                         <a href="{% if is_finance_user %}{{ url_for('kpi_bp.ar_aging_dashboard') }}{% else %}#{% endif %}" 
                            class="menu-link module-kpi {% if not is_finance_user %}planned{% endif %}" 
                            target="{% if is_finance_user %}_blank{% else %}_self{% endif %}">

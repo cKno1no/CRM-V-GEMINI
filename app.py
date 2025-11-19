@@ -8,6 +8,7 @@ from functools import wraps # <--- CẦN CÓ WRAPS
 from operator import itemgetter
 from db_manager import safe_float, DBManager 
 from config import TEN_BANG_NGUOI_DUNG # Cần cho logic login
+
 import os
 import io 
 import redis 
@@ -38,7 +39,7 @@ from services.delivery_service import DeliveryService
 # Import các Blueprints mới
 from blueprints.crm_bp import crm_bp
 from blueprints.kpi_bp import kpi_bp
-
+from blueprints.portal_bp import portal_bp # Import mới
 from blueprints.approval_bp import approval_bp
 from blueprints.delivery_bp import delivery_bp
 from blueprints.task_bp import task_bp
@@ -63,6 +64,9 @@ except Exception as e:
 
 # Khởi tạo DB Manager
 db_manager = DBManager()
+# === THÊM DÒNG NÀY ===
+# Gắn db_manager vào app để các blueprint có thể truy cập qua current_app
+app.db_manager = db_manager
 
 print("="*50)
 print(f"!!! CHAN DOAN KET NOI (PYTHON) !!!")
@@ -136,13 +140,14 @@ def inject_user():
                              'username': session.get('username'),
                              'shortname': session.get('user_shortname'),
                              'role': session.get('user_role'),
-                             'cap_tren': session.get('cap_tren')})
+                             'cap_tren': session.get('cap_tren'),
+                             'bo_phan': session.get('bo_phan')})
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if session.get('logged_in'):
         # Đã đăng nhập, chuyển đến trang chủ (index_redesign.html)
-        return redirect(url_for('index')) 
+        return redirect(url_for('portal_bp.portal_dashboard')) 
 
     message = None
     if request.method == 'POST':
@@ -172,7 +177,14 @@ def login():
             session['user_shortname'] = user.get('SHORTNAME')
             session['user_role'] = user.get('ROLE')
             session['cap_tren'] = user.get('CAP TREN', '')
-            session['bo_phan'] = user.get('BO PHAN', '').strip().upper() 
+
+            bo_phan_raw = user.get('BO PHAN', '')
+            # 2. .split() sẽ cắt chuỗi dựa trên BẤT KỲ ký tự trắng nào (space, tab, nbsp...)
+            #    VD: ['6.', 'KTTC']
+            # 3. .join() ghép chúng lại không có khoảng trắng
+            #    VD: "6.KTTC"
+            normalized_bo_phan = "".join(bo_phan_raw.split()).upper()
+            session['bo_phan'] = normalized_bo_phan
             # ----------------------------------------
 
             # --- GHI LOG (Requirement 1: Login thành công) ---
@@ -180,14 +192,14 @@ def login():
                 user_code=user.get('USERCODE'),
                 action_type='LOGIN_SUCCESS',
                 severity='INFO',
-                details=f"Login thành công với vai trò {user.get('ROLE')}",
+                details=f"Login thành công với vai trò: {user.get('ROLE')}, {normalized_bo_phan}",
                 ip_address=user_ip
             )
             # --- KẾT THÚC GHI LOG ---
 
             flash(f"Đăng nhập thành công! Chào mừng {user.get('SHORTNAME')}.", 'success')
             
-            return redirect(url_for('index'))
+            return redirect(url_for('portal_bp.portal_dashboard'))
             # ---------------------------------------------
         else:
             # --- GHI LOG (Requirement 3: Cảnh báo Login thất bại) ---
@@ -248,7 +260,14 @@ app.register_blueprint(delivery_bp)
 app.register_blueprint(task_bp)
 app.register_blueprint(lookup_bp)
 app.register_blueprint(chat_bp)
+app.register_blueprint(portal_bp) # Đăng ký
 
 if __name__ == '__main__':
     from waitress import serve
     serve(app, host='0.0.0.0', port=5000)
+
+    # app.py
+# ...
+
+
+

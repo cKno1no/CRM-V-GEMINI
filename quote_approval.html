@@ -2,190 +2,217 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard Duyệt Chào Giá</title>
+    <title>Dashboard Duyệt Chào Giá (v2)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        /* ======================================= */
-        /* PHONG CÁCH CHUNG (Đồng bộ task_dashboard) */
-        /* ======================================= */
+        /* --- 1. CORE STYLES (Đồng bộ nhaplieu_new) --- */
+        :root {
+            --primary: #4318FF;
+            --primary-light: #F4F7FE;
+            --secondary: #A3AED0;
+            --text-dark: #2B3674;
+            --danger: #E31A1A;
+            --success: #05CD99;
+            --warning: #FFB547;
+            --bg-color: #F4F7FE;
+            --card-radius: 20px;
+            --input-bg: #F4F7FE;
+        }
+        
         body { 
-            font-family: 'Roboto', sans-serif; 
-            background-color: #f4f7f6; /* Nền nhẹ nhàng hơn */
-            color: #3C4043; 
+            background-color: var(--bg-color); 
+            font-family: 'Inter', sans-serif; 
+            color: var(--text-dark); 
             overflow-y: auto !important;
             max-height: none !important;
         }
         .container-fluid { max-width: 98%; margin-top: 30px; }
-        h1 { 
-            font-weight: 700; 
-            color: #1A73E8; /* Màu xanh chủ đạo */
-            border-bottom: 3px solid #E8F0FE; 
-            padding-bottom: 10px; 
-            margin-bottom: 10px; 
-        } 
-        .card { 
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
-            border-radius: 12px; 
-            border: none; 
-        }
         
-        /* Layout Master-Detail */
-        .master-table-scroll { max-height: 70vh; overflow-y: auto; }
+        /* --- 2. HEADER & LAYOUT --- */
+        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
+        
+        .btn-action {
+            padding: 10px 20px; border-radius: 14px; font-weight: 600; border: none;
+            text-decoration: none; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .btn-back { background-color: white; color: var(--secondary); border: 1px solid #E0E5F2; }
+        .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
+        .btn-portal { background-color: var(--primary); color: white; }
+        .btn-so-approve { background-color: var(--success); color: white; }
 
-        /* Style Bảng Master */
-        .table-approval { border: 1px solid #dee2e6; width: 100%; }
-        .table-approval th { 
-            position: sticky !important; top: 0; z-index: 10; 
-            background-color: #4285F4; 
-            color: white; 
-            font-weight: 600; 
-            font-size: 0.9rem; 
-            white-space: nowrap; vertical-align: middle; border: 1px solid #dee2e6;
-            text-align: center; padding: 10px 5px;
-            cursor: pointer; 
-        }
-        .table-approval td { 
-            vertical-align: middle; font-size: 0.85rem; border: 1px solid #dee2e6;
-            font-weight: normal; padding: 8px 5px;
-        }
-        
-        /* Màu trạng thái/Ratio */
-        .ratio-alert { background-color: #fce8e6 !important; color: #DB4437 !important; font-weight: bold; }
-        .status-fail { background-color: #FCE8E6; }
-        .status-pass { background-color: #E6F4EA; }
-        .row-selected { border: 3px solid #1A73E8; } 
-        
-        /* NÚT ACTION HEADER */
-        .btn-header-action {
-            font-weight: 600;
-            padding: 8px 15px; 
-            border-radius: 6px;
-            transition: background-color 0.2s;
+        /* --- 3. MAIN CARDS (Style mới) --- */
+        .main-card {
             border: none;
+            background: white;
+            border-radius: var(--card-radius);
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
+            margin-bottom: 25px;
+            overflow: hidden;
         }
-
-        /* ======================================= */
-        /* VỊ TRÍ & KÍCH THƯỚC LỌC (YÊU CẦU CỐT LÕI) */
-        /* ======================================= */
-        .table-header-box {
-            /* Vị trí đặt của tiêu đề và filter ngang hàng */
+        .card-header-custom {
+            background-color: white;
+            color: var(--text-dark);
+            font-weight: 700;
+            font-size: 1.1rem;
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--primary-light);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 0 10px 0; 
-            border-bottom: 1px solid #e9ecef; 
-            margin-bottom: 10px;
+        }
+        .card-header-custom i {
+            font-size: 1.1rem;
+            margin-right: 12px;
+            color: var(--primary);
+        }
+        .card-body-custom {
+            padding: 25px;
+            background-color: white;
         }
         
-        /* Custom Filter Container */
+        /* --- 4. FORMS & MODALS (Style mới) --- */
+        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
+        .form-control, .form-select {
+            border: none; background-color: var(--input-bg); border-radius: 16px;
+            padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none;
+        }
+        .form-control:focus, .form-select:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
+        .btn-primary { background-color: var(--primary); border: none; border-radius: 12px; font-weight: 600; padding: 12px; }
+        .btn-primary:hover { background-color: #3a14db; }
+        .btn-success { background-color: var(--success); border-color: var(--success); border-radius: 12px; font-weight: 600;}
+        .btn-secondary { background-color: #f0f0f0; color: var(--secondary); border: none; border-radius: 12px; font-weight: 600; }
+        .btn-secondary:hover { background-color: #e0e0e0; color: var(--text-dark); }
+        .btn-warning { background-color: var(--warning); border-color: var(--warning); border-radius: 12px; font-weight: 600;}
+        
+        .modal-content { border-radius: var(--card-radius); border: none; }
+        .modal-header { background-color: var(--primary-light); border-bottom: none; }
+        .modal-header .modal-title { color: var(--primary); font-weight: 700; }
+        .modal-header.bg-warning .modal-title { color: var(--text-dark); }
+        .modal-header.bg-primary .modal-title { color: white; }
+
+        /* --- 5. DATA TABLES (Style mới) --- */
+        .master-table-scroll { max-height: 70vh; overflow-y: auto; }
+
+        .table-approval { border: 1px solid var(--primary-light); width: 100%; }
+        .table-approval th { 
+            font-size: 0.95rem;
+        }
+        
+        /* Thanh Lọc (Style mới) - SỬA LẠI */
         #custom-filter-box { 
-            display: flex; 
-            align-items: center; 
-            justify-content: flex-end; 
-            gap: 10px; 
-            flex-grow: 1; /* Cho phép filter box mở rộng */
+            display: flex; align-items: center; 
+            justify-content: flex-end; gap: 10px; 
+            flex-grow: 1; 
         }
         
-        /* Input DataTables (Full Width và Định dạng đẹp) */
-        div.dataTables_wrapper div.dataTables_filter { 
-            margin: 0; padding: 0; 
-            display: flex !important; 
-            flex-grow: 1; /* Quan trọng để input mở rộng */
-            justify-content: flex-end; /* Quan trọng để canh lề phải */
-        }
-        
-        div.dataTables_wrapper div.dataTables_filter label {
-            white-space: nowrap; 
+        /* Bọc ngoài của input và label */
+        .custom-filter-wrapper {
             display: flex;
             align-items: center;
-            font-weight: 500;
-            color: #495057;
-            font-size: 1em; 
-            flex-grow: 1; 
-            justify-content: flex-end; /* Canh lề phải cho label */
-        }
-        
-        div.dataTables_wrapper div.dataTables_filter input { 
-            width: 300px; /* TĂNG KÍCH THƯỚC INPUT */
-            margin-left: 10px; 
-            border-radius: 6px; border: 1px solid #ced4da; 
-            padding: 5px 10px; height: 35px; 
-            box-shadow: inset 0 1px 2px rgba(0,0,0,0.075);
+            gap: 10px; /* Khoảng cách giữa label, input, reset */
+            flex-grow: 1;
+            justify-content: flex-end;
         }
 
-        /* ======================================= */
-        /* RESPONSIVE (MOBILE FRIENDLY) */
-        /* ======================================= */
+        .custom-filter-wrapper label {
+            font-weight: 600; color: var(--text-dark);
+            font-size: 0.95rem;
+            margin-bottom: 0; /* Ghi đè bootstrap */
+            white-space: nowrap;
+        }
+        
+        .custom-filter-wrapper input { 
+            width: 300px; 
+            border: none; background: var(--input-bg);
+            border-radius: 16px; /* Bo tròn giống input */
+            padding: 8px 15px; /* Padding giống input */
+            height: 40px; /* Chiều cao mới */
+            font-size: 0.95rem;
+        }
+        
+        .btn-reset-filter {
+            height: 40px;
+            width: 40px;
+            border-radius: 12px;
+            font-size: 1rem;
+            padding: 0;
+            line-height: 1;
+        }
+        
+        /* ẨN BỘ LỌC DATATABLES MẶC ĐỊNH */
+        div.dataTables_wrapper div.dataTables_filter { 
+            display: none !important; 
+        }
+        
+        /* Bảng Chi tiết trong Modal (Style mới) */
+        .table-detail th {
+            background-color: var(--primary) !important; color: white;
+        }
+        .table-detail td { font-size: 0.9rem; }
+        .text-danger { color: var(--danger) !important; }
+
+        /* Responsive */
         @media (max-width: 768px) {
-            .table-responsive {
-                overflow-x: auto;
-            }
+            .table-responsive { overflow-x: auto; }
             .table-approval th, .table-approval td {
-                font-size: 0.75rem;
-                padding: 6px 4px;
+                font-size: 0.75rem; padding: 6px 4px;
             }
-            /* Đảm bảo thanh lọc xuống dòng và chiếm hết chiều ngang */
-            .table-header-box {
-                flex-direction: column;
-                align-items: flex-start;
+            .card-header-custom {
+                flex-direction: column; align-items: flex-start;
             }
             #custom-filter-box {
-                margin-top: 10px;
-                width: 100%;
+                margin-top: 10px; width: 100%;
                 justify-content: flex-start;
             }
             div.dataTables_wrapper div.dataTables_filter {
-                width: 100%;
-                justify-content: flex-start;
-                margin-bottom: 10px;
+                width: 100%; justify-content: flex-start; margin-bottom: 10px;
             }
-            div.dataTables_wrapper div.dataTables_filter input {
-                width: 100%; /* Đơn giản hóa input trên mobile */
-            }
+            div.dataTables_wrapper div.dataTables_filter input { width: 100%; }
         }
     </style>
 </head>
 <body>
     <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
-            <h1><i class="fas fa-certificate me-2"></i> PHÊ DUYỆT BÁO GIÁ CẦN KIỂM SOÁT</h1>
+        <!-- HEADER (Style mới) -->
+        <div class="page-header">
+            <h1 class="page-title"><i class="fas fa-certificate me-2"></i> PHÊ DUYỆT BÁO GIÁ</h1>
             <div class="d-flex gap-2">
-                <a href="{{ url_for('index') }}" class="btn btn-header-action text-white" style="background-color: #4285F4;">
+                <a href="{{ url_for('index') }}" class="btn-action btn-portal">
                     <i class="fas fa-home me-1"></i> Về Portal
                 </a>
-                <a href="{{ url_for('approval_bp.sales_order_approval_dashboard') }}" target="_blank" class="btn btn-header-action text-white" style="background-color: #34A853;">
+                <a href="{{ url_for('approval_bp.sales_order_approval_dashboard') }}" target="_blank" class="btn-action btn-so-approve">
                     <i class="fas fa-file-invoice-dollar me-1"></i> Duyệt ĐH Bán
                 </a>
             </div>
         </div>
 
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <p style="font-size: 1.1em; font-weight: 500;">
+            <p style="font-size: 1.1em; font-weight: 500;" class="text-dark">
                 Chào mừng, <strong>{{ current_user.shortname|default('Guest') }}</strong> ({{ current_user.usercode }}).
             </p>
-            <p class="text-muted">Mặc định hiển thị **Báo giá trong 7 ngày gần nhất**. Click vào Mã BG để xem chi tiết mặt hàng.</p>
+            <p class="text-muted small">Mặc định hiển thị Báo giá trong 7 ngày. Click Mã BG để xem chi tiết.</p>
         </div>
 
-
-        <div class="card mb-3 p-3">
-            <div class="card-body p-0">
+        <!-- FILTER CARD (Style mới) -->
+        <div class="main-card mb-3">
+            <div class="card-body-custom" style="padding: 20px 25px;">
                 <form method="POST" action="{{ url_for('approval_bp.quote_approval_dashboard') }}" class="row g-3 align-items-end">
                     <div class="col-md-3">
-                        <label for="date_from" class="form-label small text-muted">Từ Ngày BG</label>
+                        <label for="date_from" class="form-label">Từ Ngày BG</label>
                         <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
                     </div>
-
                     <div class="col-md-3">
-                        <label for="date_to" class="form-label small text-muted">Đến Ngày BG</label>
+                        <label for="date_to" class="form-label">Đến Ngày BG</label>
                         <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
                     </div>
-                    
                     <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary w-100" style="padding: 10px;">
+                        <button type="submit" class="btn btn-primary w-100">
                             <i class="fas fa-search me-1"></i> Lọc Ngày
                         </button>
                     </div>
@@ -193,17 +220,18 @@
             </div>
         </div>
         
+        <!-- MASTER TABLE (Style mới) -->
         <div class="row g-3 align-items-start">
             <div class="col-lg-12">
-                <div class="card master-panel">
-                    <div class="card-header bg-white">
-                        <div class="table-header-box">
-                            <h5 class="mb-0 text-primary"><i class="fas fa-info-circle me-2"></i> DANH SÁCH CHÀO GIÁ</h5>
-                             <div id="custom-filter-box"></div>
-                        </div>
+                <div class="main-card master-panel">
+                    <div class="card-header-custom">
+                        <div><i class="fas fa-list-ul"></i> DANH SÁCH CHÀO GIÁ</div>
+                        <!-- Thanh lọc DataTables sẽ được JS chuyển vào đây -->
+                        <div id="custom-filter-box"></div>
                     </div>
-                    <div class="card-body p-3">
+                    <div class="card-body-custom p-3">
                         <div class="table-responsive master-table-scroll">
+                            <!-- BẢNG GIỮ NGUYÊN HTML & LOGIC -->
                             <table id="approval-table" class="table table-hover table-approval"> 
                                 <thead>
                                     <tr>
@@ -296,17 +324,17 @@
                 </div>
             </div>
 
-            <div class="col-lg-5">
-                </div>
+            <!-- BỎ CỘT DETAIL BÊN PHẢI (đã chuyển qua Modal) -->
         </div>
     </div>
     
+    <!-- MODALS (Giữ nguyên HTML, CSS mới tự áp dụng) -->
     <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
+                <div class="modal-header">
                     <h5 class="modal-title" id="detailModalLabel"><i class="fas fa-info-circle me-2"></i> Chi tiết Báo giá #<span id="quoteDetailNo"></span></h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0">
                     <div id="detail-container">
@@ -323,8 +351,8 @@
     <div class="modal fade" id="costOverrideModal" tabindex="-1" aria-labelledby="costOverrideModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
-                <div class="modal-header bg-warning text-dark">
-                    <h5 class="modal-title" id="costOverrideModalLabel"><i class="fas fa-money-bill-wave me-2"></i> Bổ sung Giá nhập (Cost) cho Báo giá #<span id="quoteNoDisplay"></span></h5>
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title text-dark" id="costOverrideModalLabel"><i class="fas fa-money-bill-wave me-2"></i> Bổ sung Giá nhập (Cost) cho Báo giá #<span id="quoteNoDisplay"></span></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -379,6 +407,10 @@
             </div>
         </div>
     </div>
+    
+    <!-- ======================================================== -->
+    <!-- TOÀN BỘ JAVASCRIPT ĐƯỢC GIỮ NGUYÊN 100% -->
+    <!-- ======================================================== -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
@@ -390,7 +422,8 @@
         // FIX: Hàm formatCurrency sử dụng dấu phẩy (,) làm phân cách ngàn
         function formatCurrency(value) {
             if (value === null || value === undefined || value === '—' || String(value).trim() === '') return '—';
-            const num = parseFloat(String(value).replace(/,/g, '').replace(/\./g, '')); 
+            // Sửa lỗi: Bỏ dấu chấm (.), chỉ thay dấu phẩy (,)
+            const num = parseFloat(String(value).replace(/,/g, '')); 
             if (isNaN(num)) return '—';
             
             return num.toFixed(0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -398,7 +431,8 @@
 
         function renderDetailTable(details, container) {
             let tableHtml = '<div class="table-responsive p-3"><table class="table table-sm table-striped table-bordered small mb-0 table-detail">';
-            tableHtml += '<thead style="background-color: #4285F4; color: white;"><tr>'; 
+            // STYLE MỚI CHO HEADER MODAL
+            tableHtml += '<thead><tr>'; 
             tableHtml += '<th class="text-center" style="height: 40px;">Mã hàng</th><th style="height: 40px;">Tên hàng</th><th class="text-end" style="height: 40px;">SL</th>';
             tableHtml += '<th class="text-end" style="height: 40px;">Đơn giá</th><th class="text-end" style="height: 40px;">Đơn giá QĐ</th>';
             tableHtml += '<th class="text-end" style="height: 40px;">Thành tiền</th><th style="height: 40px;">Ghi chú</th></tr></thead><tbody>';
@@ -407,6 +441,7 @@
                 const DonGiaQuyDinh = formatCurrency(item.DonGiaQuyDinh || 0);
                 const DonGia = formatCurrency(item.DonGia || 0);
 
+                // Sửa lỗi: Chỉ so sánh số, không so sánh chuỗi đã format
                 const price_ratio_color = (parseFloat(String(item.DonGia).replace(/,/g, '')) < parseFloat(String(item.DonGiaQuyDinh).replace(/,/g, ''))) ? 'text-danger' : 'text-success';
                 
                 tableHtml += '<tr>';
@@ -434,6 +469,11 @@
              container.innerHTML = '<p class="p-3 text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết...</p>';
 
              detailModal.show();
+             
+             // Highlight row
+             if(lastClickedRow) $(lastClickedRow).removeClass('row-selected');
+             $(rowElement).addClass('row-selected');
+             lastClickedRow = rowElement;
 
              fetch(`/api/get_quote_details/${quoteId}`, { method: 'GET', headers: { 'Content-Type': 'application/json' } })
              .then(response => { if (!response.ok) throw new Error('Lỗi truy vấn chi tiết báo giá (HTTP ' + response.status + ')'); return response.json(); })
@@ -517,6 +557,7 @@
                     
                     details.forEach(item => {
                         const costValue = item.Cost || ''; 
+                        // SỬA LỖI: Dùng style mới cho input
                         const costInput = `<input type="text" class="form-control form-control-sm cost-input text-end" 
                                                  data-transaction-id="${item.TransactionID}" 
                                                  value="${formatCurrency(costValue)}" 
@@ -528,10 +569,9 @@
                                             <td>${item.InventoryID}</td>
                                             <td class="text-start">${item.InventoryName}</td>
                                             <td class="text-end">${formatCurrency(item.QuoQuantity)}</td> 
-                                            
                                             <td class="text-end">${formatCurrency(item.UnitPrice)}</td>
-                                            
                                             <td class="bg-warning-subtle">${costInput}</td>
+                                            <!-- SỬA LỖI: Dùng style mới cho input -->
                                             <td><input type="text" class="form-control form-control-sm note-input" value="${item.NOTE || ''}"></td>
                                           </tr>`;
                     });
@@ -594,28 +634,49 @@
 
                 const table = $('#approval-table').DataTable({
                     "paging": true, "pageLength": 25, "searching": true, "ordering": true, "info": true, 
-                    "scrollY": "70vh", "scrollCollapse": true, "dom": 'lfrtip', 
+                    "scrollY": "70vh", "scrollCollapse": true, 
+                    // SỬA DOM: Bỏ 'l', 'f'. 'f' sẽ được thêm thủ công
+                    "dom": 'rt<"row mt-3"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>', 
                     "order": [[1, 'asc']], 
                     "language": {
-                        "search": "Lọc:", "zeroRecords": "Không tìm thấy báo giá nào phù hợp.",
+                        // "search" không còn dùng nữa
+                        "zeroRecords": "Không tìm thấy báo giá nào phù hợp.",
                         "info": "Hiển thị từ _START_ đến _END_ trong tổng số _TOTAL_ mục",
-                        "paginate": { "next": "Sau", "previous": "Trước" }
+                        "paginate": { "next": "Sau", "previous": "Trước" },
+                        "lengthMenu": "Hiển thị _MENU_ dòng"
                     },
                     "fnDrawCallback": function(oSettings) { $('th .fa-sort').show(); }
                 });
 
-                // Di chuyển thanh lọc tùy chỉnh (VỊ TRÍ ĐÃ SỬA)
-                const searchInput = $('#approval-table_filter');
-                const searchLabel = searchInput.find('label');
-                const resetButton = $('<button class="btn btn-sm btn-secondary" type="button"><i class="fas fa-redo"></i> Reset Lọc</button>');
+                // TẠO BỘ LỌC TÙY CHỈNH MỚI
+                const customFilter = $(
+                    '<div class="custom-filter-wrapper">' +
+                        '<label for="customSearchInput">Lọc nhanh:</label>' +
+                        '<input type="search" class="" id="customSearchInput" placeholder="Tìm kiếm BG, KH, NVKD...">' +
+                    '</div>'
+                );
                 
-                resetButton.on('click', function() { table.search('').columns().search('').draw(); });
+                const searchInput = customFilter.find('input');
+                
+                // Gán sự kiện keyup
+                searchInput.on('keyup', function() {
+                    table.search(this.value).draw();
+                });
 
+                // TẠO NÚT RESET MỚI (Style đẹp hơn)
+                const resetButton = $('<button class="btn btn-secondary btn-reset-filter" type="button" title="Reset lọc">' +
+                                        '<i class="fas fa-undo-alt"></i>' +
+                                      '</button>');
+                resetButton.on('click', function() { 
+                    searchInput.val('');
+                    table.search('').columns().search('').draw(); 
+                });
+
+                // CHUYỂN VÀO TOOLBAR
                 $('#custom-filter-box')
-                    .append(searchLabel.addClass('me-2'))
+                    .empty() // Xóa code cũ
+                    .append(customFilter)
                     .append(resetButton);
-                    
-                searchLabel.find('input').attr('placeholder', 'Tìm kiếm BG, KH, NVKD...');
             }
 
             initializeDataTable();

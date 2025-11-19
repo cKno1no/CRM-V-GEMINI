@@ -2,9 +2,20 @@
 # (Bản vá 13 - Logic CUỐI: Tab 1 GỘP TOÀN BỘ, Tab 2 DÙNG LẺ)
 
 from db_manager import DBManager, safe_float
+import datetime as dt # Import thư viện gốc với alias
 from datetime import datetime, timedelta
 import pandas as pd
 from collections import defaultdict 
+import locale # <-- THÊM THƯ VIỆN LOCALE
+
+# Cài đặt locale Tiếng Việt để lấy đúng tên Thứ
+try:
+    locale.setlocale(locale.LC_TIME, 'vi_VN.UTF-8')
+except locale.Error:
+    try:
+        locale.setlocale(locale.LC_TIME, 'Vietnamese_Vietnam.1258')
+    except locale.Error:
+        print("Warning: Locale 'vi_VN' or 'Vietnamese' not found. Day names might be in English.")
 
 class DeliveryService:
     def __init__(self, db_manager: DBManager):
@@ -28,6 +39,58 @@ class DeliveryService:
             return date_val.strftime('%d/%m/%Y')
         except AttributeError: 
              return str(date_val) 
+        
+    # --- HÀM MỚI: TÍNH TOÁN NGÀY GIAO HÀNG ---
+    def _get_planned_date_info(self, planned_day_str):
+        """
+        Tính toán ngày ISO và ngày hiển thị (Thứ, dd/mm) cho tuần này/tuần sau.
+        """
+        if not planned_day_str or planned_day_str in ['POOL', 'URGENT', 'WITHIN_WEEK', 'COMPLETED']:
+            return '9999-12-31', None # Sort về cuối, không hiển thị
+
+        weekdays_map = {
+            'MONDAY': 0, 'TUESDAY': 1, 'WEDNESDAY': 2, 
+            'THURSDAY': 3, 'FRIDAY': 4, 'SATURDAY': 5
+        }
+        
+        target_weekday = weekdays_map.get(planned_day_str.upper())
+        if target_weekday is None:
+            return '9999-12-31', None # Không phải ngày trong tuần
+
+        today = datetime.now()
+        today_weekday = today.weekday() # Monday is 0, Sunday is 6
+        
+        # Tính toán ngày mục tiêu
+        days_ahead = target_weekday - today_weekday
+        
+        # Nếu ngày mục tiêu đã qua trong tuần này (hoặc là hôm nay nhưng đã qua giờ),
+        # thì dời sang tuần sau. (Giả định Thứ 7 (5) là ngày cuối tuần làm việc)
+        if days_ahead < 0:
+             days_ahead += 7 # Lấy ngày đó của tuần sau
+
+        target_date = today + timedelta(days=days_ahead)
+        
+        iso_date = target_date.strftime('%Y-%m-%d')
+        
+        # Thử lấy tên Thứ theo locale
+        try:
+            day_name = target_date.strftime('%A')
+            # Chuẩn hóa nếu locale không trả về đúng "Thứ X"
+            if "Monday" in day_name: day_name = "Thứ 2"
+            elif "Tuesday" in day_name: day_name = "Thứ 3"
+            elif "Wednesday" in day_name: day_name = "Thứ 4"
+            elif "Thursday" in day_name: day_name = "Thứ 5"
+            elif "Friday" in day_name: day_name = "Thứ 6"
+            elif "Saturday" in day_name: day_name = "Thứ 7"
+            
+            display_str = f"{day_name}, {target_date.strftime('%d/%m')}"
+        except Exception:
+            # Fallback nếu locale lỗi
+            day_names_vn = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"]
+            display_str = f"{day_names_vn[target_date.weekday()]}, {target_date.strftime('%d/%m')}"
+
+        return iso_date, display_str
+    # --- KẾT THÚC HÀM MỚI ---
 
     def get_planning_board_data(self):
         """
@@ -78,6 +141,25 @@ class DeliveryService:
             row['VoucherDate_str'] = self._format_date_safe(voucher_date_obj)
             row['EarliestRequestDate_str'] = self._format_date_safe(earliest_date_obj)
 
+            row['VoucherDate_str'] = self._format_date_safe(voucher_date_obj)
+            row['EarliestRequestDate_str'] = self._format_date_safe(earliest_date_obj)
+
+             # === BỔ SUNG LOGIC NGÀY GIAO THỰC TẾ ===
+            actual_delivery_date_obj = row.get('ActualDeliveryDate')
+            row['ActualDeliveryDate_str'] = self._format_date_safe(actual_delivery_date_obj)
+            if isinstance(actual_delivery_date_obj, (dt.datetime, dt.date)):
+                row['ActualDeliveryDate_ISO'] = actual_delivery_date_obj.strftime('%Y-%m-%d')
+            else:
+                row['ActualDeliveryDate_ISO'] = '1900-01-01'
+            # === KẾT THÚC BỔ SUNG ===
+
+            # === YÊU CẦU MỚI: BỔ SUNG THÔNG TIN NGÀY GIAO ===
+            planned_day = row.get('Planned_Day', 'POOL')
+            iso_date, display_day = self._get_planned_date_info(planned_day)
+            row['Planned_Date_ISO'] = iso_date
+            row['Planned_Day_Display'] = display_day
+            # === KẾT THÚC BỔ SUNG ===
+
             # Thêm vào list lẻ (cho Tab 2)
             ungrouped_tasks_list.append(row)
 
@@ -100,7 +182,10 @@ class DeliveryService:
             # Logic: Gán Planned_Day của NHÓM = Cột được gán GẦN NHẤT
             if row['Planned_Day'] != 'POOL':
                  group['Planned_Day'] = row['Planned_Day'] 
-            
+                 # Gán luôn ngày đã tính toán cho nhóm
+                 group['Planned_Date_ISO'] = iso_date
+                 group['Planned_Day_Display'] = display_day
+
             # Logic lấy RefNo02 gần nhất
             if isinstance(voucher_date_obj, str): 
                 try: voucher_date_obj = datetime.strptime(voucher_date_obj, '%Y-%m-%d').date()
@@ -128,6 +213,14 @@ class DeliveryService:
             group['Status_Summary'] = ", ".join(summary)
             if not group['Status_Summary']:
                 group['Status_Summary'] = "N/A"
+            
+            # --- YÊU CẦU MỚI: Đảm bảo các nhóm POOL/URGENT cũng có key để sort ---
+            if 'Planned_Date_ISO' not in group:
+                group['Planned_Date_ISO'] = '9999-12-31'
+                group['Planned_Day_Display'] = None
+            # --- KẾT THÚC BỔ SUNG ---
+
+        
             
             # Xóa các key tạm thời trước khi trả về JSON
             del group['StatusCounts']
@@ -213,7 +306,8 @@ class DeliveryService:
         query = f"""
             SELECT TOP 20
                 VoucherNo, VoucherDate, Planned_Day, DeliveryStatus, 
-                EarliestRequestDate, ActualDeliveryDate
+                EarliestRequestDate, ActualDeliveryDate,
+                ItemCount  -- <<< BỔ SUNG ITEMCOUNT
             FROM dbo.Delivery_Weekly
             WHERE 
                 ObjectID = ? 
@@ -230,5 +324,6 @@ class DeliveryService:
             row['VoucherDate'] = self._format_date_safe(row.get('VoucherDate'))
             row['EarliestRequestDate'] = self._format_date_safe(row.get('EarliestRequestDate'))
             row['ActualDeliveryDate'] = self._format_date_safe(row.get('ActualDeliveryDate'))
+            row['ItemCount'] = int(safe_float(row.get('ItemCount', 0))) # <<< ĐẢM BẢO LÀ SỐ NGUYÊN
             
         return data

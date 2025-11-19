@@ -169,11 +169,12 @@ class TaskService:
         user_filter = " AND ".join(base_conditions) if base_conditions else "1=1"
 
         query = f"""
-            SELECT *
-            FROM {self.TASK_TABLE}
+            SELECT T1.*,
+                   (SELECT COUNT(LogID) FROM {self.TASK_LOG_TABLE} T2 WHERE T2.TaskID = T1.TaskID) AS LogCount
+            FROM {self.TASK_TABLE} AS T1
             WHERE 
                 ({user_filter}) 
-                AND 
+                AND  
                 (
                     (TaskDate >= '{date_limit}') -- (2a) Task tạo trong 3 ngày gần nhất (bao gồm cả COMPLETED)
                     OR 
@@ -224,8 +225,9 @@ class TaskService:
                 where_conditions.append("(" + " OR ".join(search_conditions) + ")")
 
         query = f"""
-            SELECT *
-            FROM {self.TASK_TABLE}
+            SELECT T1.*,
+                   (SELECT COUNT(LogID) FROM {self.TASK_LOG_TABLE} T2 WHERE T2.TaskID = T1.TaskID) AS LogCount
+            FROM {self.TASK_TABLE} AS T1
             WHERE {' AND '.join(where_conditions)}
             ORDER BY TaskDate DESC, LastUpdated DESC
         """

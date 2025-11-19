@@ -290,13 +290,14 @@ def ar_aging_dashboard():
     
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
-    
+    user_bo_phan = session.get('bo_phan', '').strip().upper() # <-- THÊM DÒNG NÀY
     customer_name_filter = request.form.get('customer_name', '')
     
     # Gọi AR Aging Service
     aging_data = ar_aging_service.get_ar_aging_summary(
         user_code, 
         user_role, 
+        user_bo_phan, # <-- TRUYỀN THAM SỐ MỚI
         customer_name_filter
     )
     
