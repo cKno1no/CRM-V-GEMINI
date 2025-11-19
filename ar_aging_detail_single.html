@@ -6,100 +6,198 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        /* Thẩm mỹ đồng bộ */
-        body { font-family: 'Roboto', sans-serif; background-color: #F7F9FC; color: #3C4043; }
+        /* --- 1. CORE STYLES (Đồng bộ) --- */
+        :root {
+            --primary: #4318FF;
+            --primary-light: #F4F7FE;
+            --secondary: #A3AED0;
+            --text-dark: #2B3674;
+            --danger: #E31A1A;
+            --success: #05CD99;
+            --warning: #FFB547;
+            --bg-color: #F4F7FE;
+            --card-radius: 20px;
+            --input-bg: #F4F7FE;
+        }
         
-        /* FIX YÊU CẦU 1: CĂN GIỮA TRANG */
+        body { 
+            background-color: var(--bg-color); 
+            font-family: 'Inter', sans-serif; 
+            color: var(--text-dark); 
+        }
+        
+        /* CĂN GIỮA (Giữ nguyên yêu cầu của bạn) */
         .container-main { 
-            max-width: 1200px; 
-            margin-top: 30px; 
-            margin-left: auto; /* Căn giữa */
-            margin-right: auto; /* Căn giữa */
+            max-width: 1200px; margin-top: 30px; margin-left: auto; margin-right: auto; 
+            padding: 0 20px;
         }
         
-        h1 { font-weight: 700; color: #DB4437; border-bottom: 3px solid #F4B400; padding-bottom: 10px; margin-bottom: 25px; }
-        .card { box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 12px; border: none; }
-        .kpi-tile { padding: 20px; border-radius: 10px; color: white; text-align: center; }
-        .kpi-label { font-size: 0.9rem; font-weight: 500; opacity: 0.9; margin-bottom: 5px; }
-        .kpi-value { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+        /* --- 2. HEADER --- */
+        .page-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
+        .customer-title { font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: 25px; }
+        .customer-id { color: var(--secondary); font-size: 1.1rem; font-weight: 500; }
+
+        .btn-back {
+            background-color: white; color: var(--secondary); border: 1px solid #E0E5F2;
+            padding: 10px 20px; border-radius: 14px; font-weight: 600; text-decoration: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: all 0.2s;
+        }
+        .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
+
+        /* --- 3. KPI CARDS (Đồng bộ) --- */
+        .kpi-card {
+            background: white; border-radius: var(--card-radius); padding: 20px;
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); border: none;
+            height: 100%; text-align: center; transition: transform 0.2s;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .kpi-card:hover { transform: translateY(-5px); }
         
-        .bg-debt-total { background-color: #6c757d; }
-        .bg-debt-risk { background-color: #DB4437; } /* Đỏ */
-        .bg-debt-warn { background-color: #E67A26; } /* Cam */
-        .debt-overdue { color: #DB4437; font-weight: 700; }
+        .kpi-label { color: var(--secondary); font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; }
+        .kpi-value { color: var(--text-dark); font-size: 1.8rem; font-weight: 700; line-height: 1; }
         
-        /* Bảng */
+        .val-total { color: var(--text-dark); }
+        .val-risk { color: var(--danger); }
+        .val-warn { color: #E65100; }
+
+        /* --- 4. TABLE CARD & CONTROLS --- */
+        .main-card {
+            border: none; background: white; border-radius: var(--card-radius);
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); margin-bottom: 25px; overflow: hidden;
+        }
+        .card-body-custom { padding: 25px; }
+        
+        .card-header-custom {
+            padding: 20px 25px; border-bottom: 1px solid var(--primary-light);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header-label { font-size: 1.1rem; font-weight: 700; color: var(--danger); display: flex; align-items: center; }
+        
+        /* Switch Toggle Style */
+        .form-check-input { 
+            width: 3em; height: 1.5em; cursor: pointer; 
+            background-color: var(--input-bg); border-color: #ccc;
+        }
+        .form-check-input:checked { background-color: var(--danger); border-color: var(--danger); }
+        .toggle-label { font-weight: 600; margin-left: 10px; cursor: pointer; color: var(--text-dark); }
+
+        /* Table Style */
+        .table-detail { width: 100%; border-collapse: collapse; }
         .table-detail th { 
-            background-color: #DB4437 !important; color: white !important; 
-            font-weight: 600; text-align: center !important; font-size: 0.8rem;
+            background-color: #FAFCFE !important; /* Nền nhạt */
+            color: var(--danger) !important; /* Chữ đỏ */
+            font-weight: 700; font-size: 0.85rem; text-transform: uppercase;
+            text-align: center; padding: 15px; border-bottom: 2px solid var(--primary-light);
         }
-        .table-detail td { vertical-align: middle; text-align: right; font-size: 0.85rem; }
+        .table-detail td { 
+            vertical-align: middle; font-size: 0.95rem; padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0; color: var(--text-dark);
+        }
+        .table-detail tbody tr:hover td { background-color: var(--primary-light); }
+        
+        .text-end { text-align: right !important; }
+        .text-center { text-align: center !important; }
+        
+        /* Highlight */
+        .debt-overdue { 
+            color: white; background-color: var(--danger); 
+            padding: 4px 8px; border-radius: 8px; font-weight: 700; font-size: 0.85rem;
+        }
+        
+        /* DataTables Override */
+        .dataTables_wrapper .dataTables_filter { margin-bottom: 15px; }
+        .dataTables_wrapper .dataTables_filter input { 
+            border: none; background: var(--input-bg); border-radius: 12px; padding: 5px 10px; 
+        }
+        .dataTables_wrapper .dataTables_paginate .paginate_button { 
+            padding: 0.3em 0.6em; border-radius: 10px !important; border: none; margin: 0 3px;
+            font-weight: 600; color: var(--secondary) !important;
+        }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            background: var(--primary) !important; color: white !important;
+        }
     </style>
 </head>
 <body>
     <div class="container-main">
-        <div class="d-flex justify-content-between align-items-center">
-            <h1><i class="fas fa-file-invoice-dollar me-2"></i> CHI TIẾT CÔNG NỢ KHÁCH HÀNG</h1>
-            <a href="{{ url_for('kpi_bp.ar_aging_dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i>Về Dashboard Tổng hợp</a>
+        <!-- HEADER -->
+        <div class="page-header">
+            <h1 class="page-title"><i class="fas fa-file-invoice-dollar me-2 text-primary"></i> CHI TIẾT CÔNG NỢ</h1>
+            <a href="{{ url_for('kpi_bp.ar_aging_dashboard') }}" class="btn-back"><i class="fas fa-arrow-left me-2"></i>Quay lại</a>
         </div>
 
-        <h2 class="text-primary mb-4">{{ kpi.ObjectName | default('N/A') }} ({{ kpi.ObjectID }})</h2>
+        <!-- CUSTOMER TITLE -->
+        <div class="customer-title">
+            {{ kpi.ObjectName | default('N/A') }} <span class="customer-id">({{ kpi.ObjectID }})</span>
+        </div>
 
+        <!-- KPI TILES -->
         <div class="row g-4 mb-4">
             <div class="col-lg-4 col-md-6">
-                <div class="kpi-tile bg-debt-total">
+                <div class="kpi-card">
                     <div class="kpi-label">TỔNG CÔNG NỢ</div>
-                    <div class="kpi-value">{{ "{:,.0f}".format(kpi.TotalDebt | float) }}</div>
+                    <div class="kpi-value val-total">{{ "{:,.0f}".format(kpi.TotalDebt | float) }}</div>
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">
-                <div class="kpi-tile bg-debt-risk">
-                    <div class="kpi-label">TỔNG NỢ QUÁ HẠN</div>
-                    <div class="kpi-value">{{ "{:,.0f}".format(kpi.TotalOverdueDebt | float) }}</div>
+                <div class="kpi-card">
+                    <div class="kpi-label text-danger">TỔNG NỢ QUÁ HẠN</div>
+                    <div class="kpi-value val-risk">{{ "{:,.0f}".format(kpi.TotalOverdueDebt | float) }}</div>
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">
-                <div class="kpi-tile bg-debt-warn" style="background-color: #b71c1c;">
-                    <div class="kpi-label">NỢ RỦI RO (> 180 NGÀY)</div>
-                    <div class="kpi-value">{{ "{:,.0f}".format(kpi.Debt_Over_180 | float) }}</div>
+                <div class="kpi-card">
+                    <div class="kpi-label" style="color: #E65100;">NỢ RỦI RO (> 180 NGÀY)</div>
+                    <div class="kpi-value val-warn">{{ "{:,.0f}".format(kpi.Debt_Over_180 | float) }}</div>
                 </div>
             </div>
         </div>
 
-        <div class="card" style="background-color: white;">
-            <div class="card-body p-3">
-                <h4 class="card-title text-start text-danger mb-3"><i class="fas fa-table me-2"></i> Chi tiết Hóa đơn Còn nợ</h4>
+        <!-- DETAIL TABLE CARD -->
+        <div class="main-card">
+            <div class="card-header-custom">
+                <div class="header-label"><i class="fas fa-list-ul me-2"></i> Danh sách Hóa đơn Còn nợ</div>
                 
-                <div class="d-flex justify-content-end mb-3">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" role="switch" id="toggleOverdue">
-                        <label class="form-check-label toggle-label" for="toggleOverdue">Chỉ hiện Nợ Quá Hạn</label>
-                    </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="toggleOverdue">
+                    <label class="form-check-label toggle-label" for="toggleOverdue">Chỉ hiện Nợ Quá Hạn</label>
                 </div>
-
+            </div>
+            
+            <div class="card-body-custom p-0">
                 <div class="table-responsive">
-                    <table id="ar-aging-detail-table" class="table table-sm table-bordered table-hover mb-0 table-detail">
+                    <table id="ar-aging-detail-table" class="table table-hover mb-0 table-detail">
                         <thead>
                             <tr>
                                 <th>STT</th>
                                 <th>Số Hóa Đơn</th>
                                 <th>Ngày Hóa Đơn</th>
-                                <th>Số ngày Nợ (Tổng)</th> <th>Giá trị Nợ (Còn lại)</th>
+                                <th>Số ngày Nợ (Tổng)</th> 
+                                <th class="text-end">Giá trị Nợ (Còn lại)</th>
                             </tr>
                         </thead>
                         <tbody id="aging-detail-body">
                             {% for row in aging_details %}
                             <tr data-is-overdue="{{ 'true' if row.OverdueDays > 0 else 'false' }}">
-                                <td class="text-center"></td>
-                                <td>{{ row.InvoiceNo }}</td>
-                                <td>{{ row.VoucherDate | default('N/A') }}</td>
-                                <td class="text-center {% if row.OverdueDays > 0 %}debt-overdue{% endif %}">{{ row.TotalDebtDays | default(row.OverdueDays) }}</td>
-                                <td class="fw-bold">{{ "{:,.0f}".format(row.RemainingBalance | float) }}</td>
+                                <td class="text-center text-muted"></td>
+                                <td class="text-center fw-bold text-primary">{{ row.InvoiceNo }}</td>
+                                <td class="text-center">{{ row.VoucherDate | default('N/A') }}</td>
+                                <td class="text-center">
+                                    {% if row.OverdueDays > 0 %}
+                                        <span class="debt-overdue">{{ row.TotalDebtDays | default(row.OverdueDays) }}</span>
+                                    {% else %}
+                                        <span class="text-success fw-bold">{{ row.TotalDebtDays | default(row.OverdueDays) }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end fw-bold" style="font-size: 1rem;">{{ "{:,.0f}".format(row.RemainingBalance | float) }}</td>
                             </tr>
                             {% else %}
                             <tr class="data-table-empty">
-                                <td colspan="5" class="text-center text-muted">Không tìm thấy chi tiết công nợ cho khách hàng này.</td>
+                                <td colspan="5" class="text-center text-muted py-4">Không tìm thấy chi tiết công nợ cho khách hàng này.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -109,6 +207,7 @@
         </div>
     </div>
     
+    <!-- SCRIPTS (Giữ nguyên) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
@@ -129,15 +228,15 @@
                     "info": true,
                     "order": [[3, 'desc']], // Cột 3 là 'Số ngày Nợ'
                     "language": {
-                        "search": "Lọc Hóa Đơn:",
+                        "search": "Lọc nhanh:",
                         "lengthMenu": "Hiển thị _MENU_ mục",
                         "zeroRecords": "Không tìm thấy dữ liệu.",
-                        "info": "Hiển thị từ _START_ đến _END_ / Tổng _TOTAL_ Hóa đơn",
+                        "info": "Hiển thị trang _PAGE_ / _PAGES_",
                         "infoEmpty": "Không có dữ liệu",
                         "paginate": { "next": "Sau", "previous": "Trước" }
                     },
                     "columnDefs": [
-                        { "width": "4%", "targets": 0,
+                        { "width": "5%", "targets": 0,
                           "orderable": false, 
                           "className": "text-center",
                           "render": function (data, type, row, meta) {
@@ -147,7 +246,7 @@
                     ]
                 });
             
-                // LOGIC LỌC CHỈ NỢ QUÁ HẠN
+                // LOGIC LỌC CHỈ NỢ QUÁ HẠN (Giữ nguyên)
                 $.fn.dataTable.ext.search.push(
                     function(settings, data, dataIndex) {
                         if (settings.nTable.id !== 'ar-aging-detail-table') {
@@ -159,11 +258,12 @@
                             return true; 
                         }
 
-                        // Lấy Số ngày Nợ (Cột index 3) và kiểm tra nếu nó > Số ngày hạn nợ của công ty (0 ngày trong code này)
-                        const overdueDays = arAgingTable.cell(dataIndex, 3).data();
+                        // Lấy Số ngày Nợ (Cột index 3 - HTML stripped)
+                        // Cần lấy text thuần vì có thể có thẻ span
+                        const overdueDaysCell = arAgingTable.cell(dataIndex, 3).node();
+                        const overdueDaysText = $(overdueDaysCell).text();
                         
-                        // Kiểm tra nếu Số ngày nợ vượt quá 0 (là số ngày quá hạn)
-                        return parseFloat(overdueDays) > 0;
+                        return parseFloat(overdueDaysText) > 0;
                     }
                 );
 

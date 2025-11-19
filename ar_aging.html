@@ -2,123 +2,231 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard Phân tích Công nợ Quá hạn</title>
+    <title>Dashboard Phân tích Công nợ (v2)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: 'Roboto', sans-serif; background-color: #F7F9FC; color: #3C4043; }
+        /* --- 1. CORE STYLES (Đồng bộ nhaplieu_new) --- */
+        :root {
+            --primary: #4318FF;
+            --primary-light: #F4F7FE;
+            --secondary: #A3AED0;
+            --text-dark: #2B3674;
+            --danger: #E31A1A;
+            --success: #05CD99;
+            --warning: #FFB547;
+            --bg-color: #F4F7FE;
+            --card-radius: 20px;
+            --input-bg: #F4F7FE;
+        }
+        
+        body { 
+            background-color: var(--bg-color); 
+            font-family: 'Inter', sans-serif; 
+            color: var(--text-dark); 
+        }
         .container-fluid { max-width: 98%; margin-top: 30px; }
-        h1 { font-weight: 700; color: #DB4437; border-bottom: 3px solid #F4B400; padding-bottom: 10px; margin-bottom: 25px; }
-        .card { box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 12px; border: none; }
-        .kpi-tile { padding: 20px; border-radius: 10px; color: white; text-align: center; }
-        .kpi-label { font-size: 0.9rem; font-weight: 500; opacity: 0.9; }
-        .kpi-value { font-size: 2rem; font-weight: 700; }
-        .bg-debt-total { background-color: #6c757d; }
-        .bg-debt-risk { background-color: #DB4437; }
-        .bg-debt-warn { background-color: #F4B400; }
+
+        /* --- 2. HEADER --- */
+        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
+        
+        .btn-back {
+            background-color: white; color: var(--secondary); border: 1px solid #E0E5F2;
+            padding: 10px 20px; border-radius: 14px; font-weight: 600; text-decoration: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: all 0.2s;
+        }
+        .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
+
+        /* --- 3. KPI CARDS (Style Mới - Card trắng + Icon) --- */
+        .kpi-card {
+            background: white; border-radius: var(--card-radius); padding: 20px;
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); border: none;
+            height: 100%; display: flex; align-items: center; transition: transform 0.2s;
+        }
+        .kpi-card:hover { transform: translateY(-5px); }
+        
+        .kpi-icon-box {
+            width: 56px; height: 56px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin-right: 18px; font-size: 1.5rem; flex-shrink: 0;
+        }
+        
+        .icon-total { background-color: var(--primary-light); color: var(--primary); }
+        .icon-overdue { background-color: #FFF1F1; color: var(--danger); } /* Đỏ nhạt */
+        .icon-risk { background-color: #FFF8E1; color: #B71C1C; } /* Vàng/Đỏ đậm */
+
+        .kpi-content { flex-grow: 1; }
+        .kpi-label { color: var(--secondary); font-size: 0.85rem; font-weight: 500; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .kpi-value { color: var(--text-dark); font-size: 1.6rem; font-weight: 700; line-height: 1; }
+        .text-danger-custom { color: var(--danger); }
+        
+        /* --- 4. MAIN CARDS & FORMS --- */
+        .main-card {
+            border: none; background: white; border-radius: var(--card-radius);
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); margin-bottom: 25px; overflow: hidden;
+        }
+        .card-body-custom { padding: 25px; }
+
+        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
+        .form-control {
+            border: none; background-color: var(--input-bg); border-radius: 16px;
+            padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none;
+        }
+        .form-control:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
+        .btn-primary { background-color: var(--primary); border: none; border-radius: 12px; font-weight: 600; padding: 12px; }
+        .btn-primary:hover { background-color: #3a14db; }
+
+        /* --- 5. TABLE STYLES --- */
+        .table-aging { width: 100%; border-collapse: separate; border-spacing: 0; }
         .table-aging th { 
             position: sticky !important; top: 0; z-index: 10; 
-            background-color: #DB4437 !important; color: white !important; 
-            font-weight: 600; text-align: center !important; font-size: 0.8rem;
+            background-color: #FAFCFE !important; /* Nền nhạt */
+            color: var(--secondary) !important; /* Chữ xám */
+            font-weight: 700; font-size: 0.85rem; text-transform: uppercase;
+            text-align: center; padding: 15px 10px;
+            border-bottom: 1px solid var(--primary-light);
         }
-        .table-aging td { vertical-align: middle; text-align: right; font-size: 0.85rem; }
+        .table-aging td { 
+            vertical-align: middle; font-size: 0.9rem; 
+            padding: 12px 10px; border-bottom: 1px solid #f0f0f0;
+            color: var(--text-dark);
+        }
+        .table-aging tbody tr:hover td { background-color: var(--primary-light); }
+
+        /* Cột text */
         .text-start { text-align: left !important; }
         .text-center { text-align: center !important; }
+        .text-end { text-align: right !important; }
         
-        .debt-overdue { color: #DB4437; font-weight: 700; background-color: #FCE8E6; }
-        .debt-over-180 { color: #DB4437; font-weight: 700; }
-        .debt-warn-91 { color: #E65100; font-weight: 600; }
+        /* Highlight Nợ */
+        .debt-overdue { color: var(--danger); font-weight: 700; background-color: #FFF1F1; border-radius: 8px; }
+        .debt-over-180 { color: #B71C1C; font-weight: 800; }
+        .debt-warn-91 { color: #E65100; font-weight: 700; }
+        
+        /* Link */
+        .customer-link { color: var(--primary); text-decoration: none; font-weight: 600; }
+        .customer-link:hover { text-decoration: underline; color: #3a14db; }
+
+        /* DataTables Override */
+        .dataTables_wrapper .dataTables_filter { display: none; } /* Ẩn search mặc định */
+        .dataTables_wrapper .dataTables_paginate .paginate_button { 
+            padding: 0.3em 0.6em; border-radius: 10px !important; border: none; margin: 0 3px;
+            font-weight: 600; color: var(--secondary) !important;
+        }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            background: var(--primary) !important; color: white !important;
+        }
+        .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_info { 
+            font-size: 0.9rem; color: var(--secondary); padding: 15px;
+        }
     </style>
 </head>
 <body>
     <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
-            <h1><i class="fas fa-dollar-sign me-2"></i> PHÂN TÍCH CÔNG NỢ QUÁ HẠN (AR AGING)</h1>
-            <a href="{{ url_for('index') }}" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i>Về Portal</a>
+        <!-- HEADER -->
+        <div class="page-header">
+            <h1 class="page-title"><i class="fas fa-chart-pie me-2"></i> PHÂN TÍCH CÔNG NỢ QUÁ HẠN (AR AGING)</h1>
+            <a href="{{ url_for('index') }}" class="btn-back"><i class="fas fa-home me-2"></i>Về Portal</a>
         </div>
 
+        <!-- KPI TILES -->
         <div class="row g-4 mb-4">
             <div class="col-lg-4 col-md-6">
-                <div class="kpi-tile bg-debt-total">
-                    <div class="kpi-label">TỔNG CÔNG NỢ</div>
-                    <div class="kpi-value">{{ "{:,.0f}".format(kpi_total_debt | float) }}</div>
+                <div class="kpi-card">
+                    <div class="kpi-icon-box icon-total"><i class="fas fa-coins"></i></div>
+                    <div class="kpi-content">
+                        <div class="kpi-label">Tổng Công Nợ</div>
+                        <div class="kpi-value">{{ "{:,.0f}".format(kpi_total_debt | float) }}</div>
+                    </div>
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">
-                <div class="kpi-tile bg-debt-risk">
-                    <div class="kpi-label">TỔNG NỢ QUÁ HẠN (ALL)</div>
-                    <div class="kpi-value">{{ "{:,.0f}".format(kpi_total_overdue | float) }}</div>
+                <div class="kpi-card">
+                    <div class="kpi-icon-box icon-overdue"><i class="fas fa-exclamation-circle"></i></div>
+                    <div class="kpi-content">
+                        <div class="kpi-label text-danger">Tổng Nợ Quá Hạn (All)</div>
+                        <div class="kpi-value text-danger-custom">{{ "{:,.0f}".format(kpi_total_overdue | float) }}</div>
+                    </div>
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">
-                <div class="kpi-tile bg-debt-warn" style="background-color: #b71c1c;">
-                    <div class="kpi-label">NỢ RỦI RO (> 180 NGÀY)</div>
-                    <div class="kpi-value">{{ "{:,.0f}".format(kpi_over_180 | float) }}</div>
+                <div class="kpi-card">
+                    <div class="kpi-icon-box icon-risk"><i class="fas fa-skull-crossbones"></i></div>
+                    <div class="kpi-content">
+                        <div class="kpi-label" style="color: #B71C1C;">Nợ Rủi Ro (> 180 Ngày)</div>
+                        <div class="kpi-value" style="color: #B71C1C;">{{ "{:,.0f}".format(kpi_over_180 | float) }}</div>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div class="card mb-4">
-            <div class="card-body">
+        <!-- FILTER -->
+        <div class="main-card">
+            <div class="card-body-custom">
                 <form method="POST" action="{{ url_for('kpi_bp.ar_aging_dashboard') }}" class="row g-3 align-items-end">
                     <div class="col-md-4">
-                        <label for="customer_name" class="form-label small text-muted">Lọc theo Tên Khách hàng</label>
+                        <label for="customer_name" class="form-label">Lọc theo Tên Khách hàng</label>
                         <input type="text" name="customer_name" id="customer_name" class="form-control" 
-                                value="{{ customer_name_filter | default('') }}" placeholder="Tên KH (ví dụ: Vina Kraft)">
+                                value="{{ customer_name_filter | default('') }}" placeholder="Nhập tên KH (ví dụ: Vina Kraft)...">
                     </div>
                     <div class="col-md-2">
-                        <button type="submit" class="btn btn-danger w-100">
-                            <i class="fas fa-search me-1"></i> Lọc
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search me-2"></i> Lọc
                         </button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <div class="card" style="background-color: white;">
-            <div class="card-body p-0">
+        <!-- TABLE CARD -->
+        <div class="main-card">
+            <div class="card-body-custom p-0">
                 <div class="table-responsive">
-                    <table id="ar-aging-table" class="table table-sm table-bordered table-hover mb-0 table-aging">
+                    <table id="ar-aging-table" class="table table-hover mb-0 table-aging">
                         <thead>
                             <tr>
                                 <th class="text-start">Mã KH</th>
                                 <th class="text-start">Tên Khách hàng</th>
                                 <th class="text-start">NVKD</th>
-                                <th>Hạn nợ (ngày)</th>
-                                <th>Tổng Nợ</th>
-                                <th>Tổng Nợ Quá Hạn</th>
-                                <th>Trong hạn</th>
-                                <th>Nợ 1-30 ngày</th>
-                                <th>Nợ 31-90 ngày</th>
-                                <th>Nợ 91-180 ngày</th>
-                                <th>Nợ > 180 ngày</th>
+                                <th class="text-center">Hạn nợ</th>
+                                <th class="text-end">Tổng Nợ</th>
+                                <th class="text-end">Quá Hạn</th>
+                                <th class="text-end">Trong hạn</th>
+                                <th class="text-end">1-30 ngày</th>
+                                <th class="text-end">31-90 ngày</th>
+                                <th class="text-end">91-180 ngày</th>
+                                <th class="text-end">> 180 ngày</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for row in aging_data %}
                             <tr>
-                                <td class="text-start">{{ row.ObjectID }}</td>
+                                <td class="text-start text-muted font-monospace small">{{ row.ObjectID }}</td>
                                 <td class="text-start">
-                                    <a href="{{ url_for('kpi_bp.ar_aging_detail_single_customer', object_id=row.ObjectID) }}" target="_blank">
+                                    <a href="{{ url_for('kpi_bp.ar_aging_detail_single_customer', object_id=row.ObjectID) }}" target="_blank" class="customer-link">
                                         {{ row.ObjectName | default('N/A') }}
                                     </a>
                                 </td>
-                                <td class="text-start">{{ row.SalesManName | default('N/A') }}</td>
+                                <td class="text-start small">{{ row.SalesManName | default('N/A') }}</td>
                                 
-                                <td class="text-center">{{ row.ReDueDays }}</td>
-                                <td class="fw-bold">{{ "{:,.0f}".format(row.TotalDebt | float) }}</td>
-                                <td class="debt-overdue">{{ "{:,.0f}".format(row.TotalOverdueDebt | float) }}</td>
+                                <td class="text-center small text-muted">{{ row.ReDueDays }}</td>
+                                <td class="text-end fw-bold">{{ "{:,.0f}".format(row.TotalDebt | float) }}</td>
+                                <td class="text-end debt-overdue">{{ "{:,.0f}".format(row.TotalOverdueDebt | float) }}</td>
                                 
-                                <td>{{ "{:,.0f}".format(row.Debt_Current | float) }}</td>
-                                <td>{{ "{:,.0f}".format(row.Debt_Range_1_30 | float) }}</td>
-                                <td>{{ "{:,.0f}".format(row.Debt_Range_31_90 | float) }}</td>
-                                <td class="debt-warn-91">{{ "{:,.0f}".format(row.Debt_Range_91_180 | float) }}</td>
-                                <td class="debt-over-180">{{ "{:,.0f}".format(row.Debt_Over_180 | float) }}</td>
-                                </tr>
+                                <td class="text-end text-success">{{ "{:,.0f}".format(row.Debt_Current | float) }}</td>
+                                <td class="text-end text-secondary">{{ "{:,.0f}".format(row.Debt_Range_1_30 | float) }}</td>
+                                <td class="text-end text-secondary">{{ "{:,.0f}".format(row.Debt_Range_31_90 | float) }}</td>
+                                <td class="text-end debt-warn-91">{{ "{:,.0f}".format(row.Debt_Range_91_180 | float) }}</td>
+                                <td class="text-end debt-over-180">{{ "{:,.0f}".format(row.Debt_Over_180 | float) }}</td>
+                            </tr>
                             {% else %}
                             <tr>
-                                <td colspan="11" class="text-center text-muted">Không tìm thấy dữ liệu công nợ theo tiêu chí lọc.</td>
+                                <td colspan="11" class="text-center text-muted py-4">Không tìm thấy dữ liệu công nợ theo tiêu chí lọc.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -128,6 +236,7 @@
         </div>
     </div>
     
+    <!-- SCRIPTS (Giữ nguyên) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
@@ -146,7 +255,7 @@
                 "language": {
                     "lengthMenu": "Hiển thị _MENU_ mục",
                     "zeroRecords": "Không tìm thấy dữ liệu.",
-                    "info": "Hiển thị từ _START_ đến _END_ / Tổng _TOTAL_ KH",
+                    "info": "Hiển thị trang _PAGE_ / _PAGES_",
                     "infoEmpty": "Không có dữ liệu",
                     "paginate": { "next": "Sau", "previous": "Trước" }
                 }

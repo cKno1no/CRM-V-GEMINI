@@ -2,120 +2,162 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Báo cáo Dự phòng Tồn kho Tổng thể</title>
+    <title>Báo cáo Dự phòng Tồn kho Tổng thể (v2)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
-    <style>
-        /* Bố cục và màu sắc chung */
-        body { background-color: #F8F9FA; color: #3C4043; font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .container-fluid { max-width: 98%; margin-top: 30px; }
-        h1 { font-weight: 700; color: #4285F4; margin-bottom: 0; }
-        .header-main-box {
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 10px; 
-            border-bottom: 3px solid #E8F0FE; 
-            padding-bottom: 10px;
-        }
-        .btn-header-action { font-weight: 600; padding: 8px 15px; border-radius: 6px; }
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-        /* Khối Lọc (Giống sales_lookup) */
-        .filter-card { 
-            background-color: #ffffff; 
-            padding: 15px; 
-            margin-bottom: 25px; 
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    <style>
+        /* --- 1. CORE STYLES --- */
+        :root {
+            --primary: #4318FF;
+            --primary-light: #F4F7FE;
+            --secondary: #A3AED0;
+            --text-dark: #2B3674;
+            --danger: #E31A1A;
+            --success: #05CD99;
+            --warning: #FFB547;
+            --bg-color: #F4F7FE;
+            --card-radius: 20px;
+            --input-bg: #F4F7FE;
         }
         
-        /* Bố cục Master-Detail */
-        .master-panel, .detail-panel {
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,.1);
-            padding: 15px;
-            height: 80vh; 
+        body { 
+            background-color: var(--bg-color); 
+            font-family: 'Inter', sans-serif; 
+            color: var(--text-dark); 
         }
-        .master-table-container, .detail-table-container {
-            height: calc(80vh - 100px); 
-            overflow-y: auto;
+        .container-fluid { max-width: 98%; margin-top: 30px; }
+        
+        /* --- 2. HEADER --- */
+        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
+        
+        .btn-action {
+            padding: 10px 20px; border-radius: 14px; font-weight: 600; border: none;
+            text-decoration: none; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .btn-back { background-color: white; color: var(--secondary); border: 1px solid #E0E5F2; }
+        .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
+        .btn-excel { background-color: var(--success); color: white; }
+        .btn-excel:hover { background-color: #04b385; transform: translateY(-2px); }
+
+        /* --- 3. MAIN CARDS --- */
+        .main-card {
+            border: none; background: white; border-radius: var(--card-radius);
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
+            margin-bottom: 20px; overflow: hidden;
+        }
+        .card-body-custom { padding: 25px; }
+        .card-header-custom {
+            padding: 20px 25px; border-bottom: 1px solid var(--primary-light);
+            display: flex; justify-content: space-between; align-items: center;
+            font-weight: 700; font-size: 1.1rem; color: var(--text-dark);
+        }
+        .card-header-custom i { color: var(--primary); margin-right: 10px; }
+
+        /* --- 4. FORMS --- */
+        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
+        .form-control {
+            border: none; background-color: var(--input-bg); border-radius: 16px;
+            padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none; height: 48px;
+        }
+        .form-control:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
+
+        /* --- 5. TABLES & PANELS --- */
+        .master-panel, .detail-panel { height: 75vh; display: flex; flex-direction: column; }
+        .master-table-container, .detail-table-container { flex-grow: 1; overflow-y: auto; }
+
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th { 
+            background-color: #FAFCFE !important; color: var(--secondary) !important;
+            padding: 15px 10px; font-weight: 600; font-size: 0.85rem; text-transform: uppercase;
+            border-bottom: 1px solid var(--primary-light); position: sticky; top: 0; z-index: 5;
+            text-align: center;
+        }
+        .data-table td { 
+            padding: 12px 10px; border-bottom: 1px solid var(--primary-light); 
+            font-size: 0.9rem; color: var(--text-dark); vertical-align: middle;
+        }
+        .data-table tbody tr:hover { background-color: var(--primary-light); cursor: pointer; }
+        
+        /* Selected Row */
+        tr.master-row.selected td { 
+            background-color: var(--primary-light) !important; 
+            font-weight: 700; color: var(--primary);
+            border-top: 1px solid var(--primary);
+            border-bottom: 1px solid var(--primary);
         }
 
-        /* Phong cách Bảng (Giống sales_lookup) */
-        .data-table { width: 100%; }
-        .data-table th { 
-            background-color: #d6e8ff; 
-            color: #333; 
-            padding: 10px; 
-            border-bottom: 2px solid #3f90e9; 
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-            z-index: 5;
-            text-align: center; 
-        }
-        .data-table td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 0.9em; }
-        .data-table tbody tr:hover { background-color: #f8f9fa; }
+        /* Custom Colors */
+        .deficit-col { color: var(--danger); font-weight: 700; }
+        .surplus-col { color: var(--success); font-weight: 600; }
+        
         .text-start { text-align: left !important; }
         .text-end { text-align: right !important; }
-
-        /* Định dạng Bảng Chi tiết */
-        .detail-table th { background-color: #E8F0FE; color: #1A73E8; }
         
-        /* Dòng được chọn (Master) */
-        tr.master-row { cursor: pointer; }
-        tr.master-row:hover { background-color: #f0f0f0; }
-        tr.master-row.selected { 
-            background-color: #E8F0FE !important; 
-            border-left: 4px solid #1A73E8;
+        /* Detail KPI Boxes */
+        .kpi-box {
+            border-radius: 16px; padding: 15px; text-align: center; height: 100%;
+            display: flex; flex-direction: column; justify-content: center;
         }
-        
-        /* Màu sắc Cần/Dư */
-        .deficit-col { background-color: #FCE8E6; font-weight: 700; color: #DB4437; }
-        .surplus-col { background-color: #E6F4EA; color: #1E8E3E; }
+        .kpi-box .small { text-transform: uppercase; font-size: 0.75rem; margin-bottom: 5px; opacity: 0.8; }
+        .kpi-box h4 { font-weight: 700; margin: 0; }
+        .bg-danger-custom { background-color: #FFF1F1; color: var(--danger); }
+        .bg-success-custom { background-color: #F0FFF9; color: var(--success); }
+        .bg-warning-custom { background-color: #FFF8E1; color: #B71C1C; }
+        .bg-light-custom { background-color: var(--input-bg); color: var(--text-dark); }
+
+        /* DataTables Override */
+        .dataTables_wrapper .dataTables_filter { display: none; } /* Ẩn search mặc định */
     </style>
 </head>
 <body>
     <div class="container-fluid">
-        <div class="header-main-box">
-            <h1><i class="fas fa-boxes me-2" style="color: #DB4437;"></i> Báo cáo Dự phòng Tồn kho Tổng thể</h1>
-            <div>
-                <a href="{{ url_for('lookup_bp.export_total_replenishment') }}" class="btn btn-success btn-header-action me-2">
+        <!-- HEADER -->
+        <div class="page-header">
+            <h1 class="page-title"><i class="fas fa-boxes me-2 text-danger"></i> DỰ BÁO TỒN KHO TỔNG THỂ</h1>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('lookup_bp.export_total_replenishment') }}" class="btn-action btn-excel">
                     <i class="fas fa-file-excel me-2"></i>Xuất Excel
                 </a>
-                <a href="{{ url_for('index') }}" class="btn btn-secondary btn-header-action">
-                    <i class="fas fa-arrow-left me-2"></i>Về Portal
-                </a>
+                <a href="{{ url_for('index') }}" class="btn-action btn-back"><i class="fas fa-home me-2"></i>Về Portal</a>
             </div>
         </div>
 
-        <div class="filter-card">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">Lọc nhanh (Nhóm hàng, Ngành...)</label>
-                    <input type="text" id="masterSearchInput" class="form-control" placeholder="Gõ để lọc bảng bên trái...">
-                </div>
-                <div class="col-md-6">
-                    <p class="text-muted small">Click vào một Nhóm hàng ở bảng bên trái để xem chi tiết Tồn kho (Ton) và Hàng về (BO).</p>
+        <!-- FILTER -->
+        <div class="main-card">
+            <div class="card-body-custom">
+                <div class="row align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label">Lọc nhanh (Nhóm hàng, Ngành...)</label>
+                        <input type="text" id="masterSearchInput" class="form-control" placeholder="Nhập từ khóa để lọc bảng bên dưới...">
+                    </div>
+                    <div class="col-md-6">
+                        <p class="text-muted small mb-2 ms-2">Click vào một Nhóm hàng để xem chi tiết các mã con.</p>
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- MASTER-DETAIL -->
         <div class="row g-4">
             <div class="col-lg-7">
-                <div class="master-panel">
-                    <h5 class="mb-3">Danh sách Nhóm hàng ({{ alert_list|length }})</h5>
+                <div class="main-card master-panel">
+                    <div class="card-header-custom">
+                        <span><i class="fas fa-list-ul"></i> Danh sách Nhóm hàng ({{ alert_list|length }})</span>
+                    </div>
                     <div class="master-table-container">
-                        <table id="replenishmentTable" class="data-table table-hover table-sm">
+                        <table id="replenishmentTable" class="data-table">
                             <thead class="text-center">
                                 <tr>
                                     <th class="text-start">Nhóm Hàng</th>
-                                    <th class="text-end">Lượng Thiếu/Dư</th>
-                                    <th class="text-end">Điểm Tái Đặt (ROP)</th>
+                                    <th class="text-end">Thiếu/Dư</th>
+                                    <th class="text-end">ROP</th>
                                     <th class="text-end">Tồn-BO</th>
-                                    <th class="text-end">Tiêu hao (Tháng)</th>
+                                    <th class="text-end">Tiêu hao</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -128,20 +170,20 @@
                                         {{ item.DiemTaiDatROP|float|tojson }}, 
                                         {{ item.TonBO|float|tojson }})">
                                     
-                                    <td class="text-start fw-bold">{{ item.NhomHang }}</td>
+                                    <td class="text-start fw-bold text-primary">{{ item.NhomHang }}</td>
                                     
                                     {% set deficit = item.LuongThieuDu|float %}
-                                    <td class="text-end fw-bold {% if deficit > 0 %}deficit-col{% else %}surplus-col{% endif %}">
+                                    <td class="text-end {% if deficit > 0 %}deficit-col{% else %}surplus-col{% endif %}">
                                         {{ "%.0f"|format(deficit) }}
                                     </td>
                                     
                                     <td class="text-end">{{ "%.0f"|format(item.DiemTaiDatROP|float) }}</td>
-                                    <td class="text-end">{{ "%.0f"|format(item.TonBO|float) }}</td>
-                                    <td class="text-end">{{ "%.2f"|format(item.TieuHaoThang|float) }}</td>
+                                    <td class="text-end text-secondary">{{ "%.0f"|format(item.TonBO|float) }}</td>
+                                    <td class="text-end small">{{ "%.2f"|format(item.TieuHaoThang|float) }}</td>
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted p-4">Không có dữ liệu.</td>
+                                    <td colspan="5" class="text-center text-muted p-5">Không có dữ liệu.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -151,11 +193,15 @@
             </div>
 
             <div class="col-lg-5">
-                <div class="detail-panel">
-                    <h5 class="mb-3" id="detailCardHeader">Chi tiết Nhóm hàng</h5>
-                    <div id="detail-summary" class="row g-3 mb-3"></div>
-                    <div id="detail-table" class="detail-table-container">
-                        <p class="text-center text-muted p-4">Vui lòng chọn một Nhóm hàng bên trái.</p>
+                <div class="main-card detail-panel">
+                    <div class="card-header-custom">
+                        <span><i class="fas fa-info-circle"></i> <span id="detailCardHeader">Chi tiết Nhóm hàng</span></span>
+                    </div>
+                    <div class="card-body-custom d-flex flex-column h-100">
+                        <div id="detail-summary" class="row g-3 mb-3"></div>
+                        <div id="detail-table" class="detail-table-container">
+                            <p class="text-center text-muted p-5">Vui lòng chọn một Nhóm hàng bên trái.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -168,9 +214,7 @@
     <script>
         function formatCurrency(num) {
             let numValue = parseFloat(num);
-            if (isNaN(numValue)) {
-                numValue = 0;
-            }
+            if (isNaN(numValue)) { numValue = 0; }
             return new Intl.NumberFormat('vi-VN').format(numValue);
         }
 
@@ -181,7 +225,7 @@
                 "paging": false, 
                 "ordering": false, 
                 "info": false, 
-                "scrollY": "calc(80vh - 150px)", 
+                "scrollY": "calc(75vh - 100px)", 
                 "scrollCollapse": true,
                 "searching": true, 
                 "dom": 't'
@@ -195,10 +239,7 @@
         let lastSelectedRow = null;
 
         function loadGroupDetails(selectedRow, groupCode, luongThieuDu, diemTaiDatROP, tonBO) {
-            // Logic tô sáng hàng được chọn
-            if (lastSelectedRow) {
-                $(lastSelectedRow).removeClass('selected');
-            }
+            if (lastSelectedRow) { $(lastSelectedRow).removeClass('selected'); }
             $(selectedRow).addClass('selected');
             lastSelectedRow = selectedRow;
 
@@ -208,66 +249,64 @@
             
             header.text(`Chi tiết Nhóm: ${groupCode}`);
             
-            // Tạo bảng tóm tắt 3 KPI bên trên
-            const deficitClass = luongThieuDu > 0 ? 'bg-danger text-white' : 'bg-success text-white';
+            // KPI Summary (Style mới)
+            const deficitClass = luongThieuDu > 0 ? 'bg-danger-custom' : 'bg-success-custom';
             summaryDiv.html(`
                 <div class="col-md-4">
-                    <div class="p-3 ${deficitClass} rounded shadow-sm">
+                    <div class="kpi-box ${deficitClass}">
                         <div class="small">Lượng Thiếu/Dư</div>
-                        <h4 class="mb-0">${formatCurrency(luongThieuDu)}</h4>
+                        <h4>${formatCurrency(luongThieuDu)}</h4>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="p-3 bg-warning-subtle text-dark rounded shadow-sm">
+                    <div class="kpi-box bg-warning-custom">
                         <div class="small">Điểm Tái Đặt (ROP)</div>
-                        <h4 class="mb-0">${formatCurrency(diemTaiDatROP)}</h4>
+                        <h4>${formatCurrency(diemTaiDatROP)}</h4>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="p-3 bg-light text-dark rounded shadow-sm">
+                    <div class="kpi-box bg-light-custom">
                         <div class="small">Tổng Dự Phòng (Tồn-BO)</div>
-                        <h4 class="mb-0">${formatCurrency(tonBO)}</h4>
+                        <h4>${formatCurrency(tonBO)}</h4>
                     </div>
                 </div>
             `);
             
-            // Bắt đầu tải chi tiết và hiển thị spinner
-            tableDiv.html('<p class="text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết các mã hàng...</p>');
+            tableDiv.html('<p class="text-center mt-5"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết...</p>');
 
-            // FIX: SỬA LỖI ĐỊNH TUYẾN: Thêm tiền tố /sales vào URL API
             fetch(`/sales/api/replenishment_details/${encodeURIComponent(groupCode)}`)
                 .then(response => {
-                    if (!response.ok) throw new Error('Không thể tải dữ liệu chi tiết. (Status: ' + response.status + ')');
+                    if (!response.ok) throw new Error('Không thể tải dữ liệu.');
                     return response.json();
                 })
                 .then(data => {
                     if (!data || !Array.isArray(data) || data.length === 0) {
-                        tableDiv.html('<p class="alert alert-info text-center">Không tìm thấy mã hàng chi tiết.</p>');
+                        tableDiv.html('<p class="alert alert-info text-center m-3">Không tìm thấy mã hàng chi tiết.</p>');
                         return;
                     }
 
-                    let tableHtml = '<div class="detail-table-container"><table class="table table-sm table-striped table-bordered small mb-0 detail-table data-table">';
+                    let tableHtml = '<table class="data-table">';
                     tableHtml += '<thead><tr>';
-                    tableHtml += '<th>Mã Hàng (InventoryID)</th>';
-                    tableHtml += '<th>Tên Hàng</th>';
-                    tableHtml += '<th class="text-end">Tồn Kho (Ton)</th>';
-                    tableHtml += '<th class="text-end">Hàng Đang Về (BO)</th>';
+                    tableHtml += '<th class="text-start">Mã Hàng</th>';
+                    tableHtml += '<th class="text-start">Tên Hàng</th>';
+                    tableHtml += '<th class="text-end">Tồn Kho</th>';
+                    tableHtml += '<th class="text-end">Hàng Về</th>';
                     tableHtml += '</tr></thead><tbody>';
 
                     data.forEach(item => {
                         tableHtml += `<tr>
-                                        <td>${item.InventoryID}</td>
+                                        <td class="text-start text-primary fw-bold">${item.InventoryID}</td>
                                         <td class="text-start">${item.InventoryName}</td>
                                         <td class="text-end">${formatCurrency(item.TonKhoHienTai)}</td>
-                                        <td class="text-end">${formatCurrency(item.HangDangVe)}</td>
+                                        <td class="text-end text-secondary">${formatCurrency(item.HangDangVe)}</td>
                                     </tr>`;
                     });
 
-                    tableHtml += '</tbody></table></div>';
+                    tableHtml += '</tbody></table>';
                     tableDiv.html(tableHtml); 
                 })
                 .catch(error => {
-                    tableDiv.html(`<p class="alert alert-danger text-center">Lỗi tải chi tiết: ${error.message}</p>`);
+                    tableDiv.html(`<p class="alert alert-danger text-center m-3">Lỗi tải chi tiết: ${error.message}</p>`);
                 });
         }
     </script>
