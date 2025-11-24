@@ -429,3 +429,38 @@ def ar_aging_detail_single_customer():
         aging_details=aging_details,
         total_overdue=total_overdue
     )
+
+@kpi_bp.route('/sales/profit_analysis', methods=['GET', 'POST'])
+@login_required
+def profit_analysis_dashboard():
+    """ROUTE: Dashboard Phân tích Lợi nhuận Gộp."""
+    from app import sales_service, db_manager
+    
+    user_code = session.get('user_code')
+    is_admin = session.get('user_role', '').strip().upper() == 'ADMIN'
+    
+    # Mặc định tháng hiện tại
+    today = datetime.now()
+    default_from = datetime(today.year, today.month, 1).strftime('%Y-%m-%d')
+    default_to = today.strftime('%Y-%m-%d')
+    
+    date_from = request.form.get('date_from') or request.args.get('date_from') or default_from
+    date_to = request.form.get('date_to') or request.args.get('date_to') or default_to
+    
+    # Gọi Service
+    details, summary = sales_service.get_profit_analysis(date_from, date_to, user_code, is_admin)
+    
+    # Lấy danh sách nhân viên để Admin lọc (nếu cần mở rộng sau này)
+    salesman_list = []
+    if is_admin:
+        salesman_list = db_manager.get_data("SELECT USERCODE, SHORTNAME FROM [GD - NGUOI DUNG] WHERE [BO PHAN] LIKE '%KINH DOANH%'")
+
+    return render_template(
+        'profit_dashboard.html',
+        details=details,
+        summary=summary,
+        date_from=date_from,
+        date_to=date_to,
+        salesman_list=salesman_list,
+        is_admin=is_admin
+    )

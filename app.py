@@ -35,6 +35,7 @@ from services.task_service import TaskService
 from services.chatbot_service import ChatbotService 
 from services.ar_aging_service import ARAgingService 
 from services.delivery_service import DeliveryService 
+from services.budget_service import BudgetService
 
 # Import các Blueprints mới
 from blueprints.crm_bp import crm_bp
@@ -45,6 +46,8 @@ from blueprints.delivery_bp import delivery_bp
 from blueprints.task_bp import task_bp
 from blueprints.chat_bp import chat_bp
 from blueprints.lookup_bp import lookup_bp
+from blueprints.budget_bp import budget_bp
+from blueprints.commission_bp import commission_bp
 
 
 # =========================================================================
@@ -88,6 +91,7 @@ ar_aging_service = ARAgingService(db_manager)
 delivery_service = DeliveryService(db_manager)
 # Khởi tạo ChatbotService (TRUYỀN THÊM delivery_service)
 chatbot_service = ChatbotService(lookup_service, customer_service, delivery_service, redis_client) # <-- THÊM delivery_service
+budget_service = BudgetService(db_manager)
 
 # =========================================================================
 # IV. HÀM AUTH & HELPER CỐT LÕI (Giữ lại ở Core)
@@ -160,12 +164,13 @@ def login():
         # === KẾT THÚC SỬA LỖI ===
 
         # GỌI DBManager ĐỂ XỬ LÝ LOGIN.
+        # 1. SỬA CÂU SQL: Thêm [CHUC VU] vào danh sách cột cần lấy
         query = f"""
-            SELECT TOP 1 [USERCODE], [USERNAME], [SHORTNAME], [ROLE], [CAP TREN], [BO PHAN]
+            SELECT TOP 1 [USERCODE], [USERNAME], [SHORTNAME], [ROLE], [CAP TREN], [BO PHAN], [CHUC VU]
             FROM {config.TEN_BANG_NGUOI_DUNG}
             WHERE ([USERCODE] = ? OR [USERNAME] = ?) AND [PASSWORD] = ?
         """
-        user_data = db_manager.get_data(query, (username, username, password)) 
+        user_data = db_manager.get_data(query, (username, username, password))
 
         if user_data:
             user = user_data[0]
@@ -185,6 +190,10 @@ def login():
             #    VD: "6.KTTC"
             normalized_bo_phan = "".join(bo_phan_raw.split()).upper()
             session['bo_phan'] = normalized_bo_phan
+
+            # 2. THÊM DÒNG NÀY: Lưu Chức vụ vào Session để dùng sau này
+            # (Dùng .strip().upper() để chuẩn hóa tránh lỗi khoảng trắng/hoa thường)
+            session['chuc_vu'] = str(user.get('CHUC VU') or '').strip().upper()
             # ----------------------------------------
 
             # --- GHI LOG (Requirement 1: Login thành công) ---
@@ -216,6 +225,62 @@ def login():
             flash(message, 'danger')
             
     return render_template('login.html', message=message)
+
+@app.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    """Chức năng đổi mật khẩu (Lưu Text Thuần - Không Hash)."""
+    
+    if request.method == 'POST':
+        old_password = request.form.get('old_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        user_code = session.get('user_code')
+        
+        # 1. Kiểm tra input
+        if not old_password or not new_password:
+            flash("Vui lòng nhập đầy đủ thông tin.", 'warning')
+            return render_template('change_password.html')
+            
+        if new_password != confirm_password:
+            flash("Mật khẩu mới và xác nhận không khớp.", 'danger')
+            return render_template('change_password.html')
+            
+        # 2. Kiểm tra mật khẩu cũ (Truy vấn trực tiếp từ DB)
+        # Lưu ý: Sử dụng config.TEN_BANG_NGUOI_DUNG đã có sẵn trong app.py
+        query_check = f"SELECT [PASSWORD] FROM {config.TEN_BANG_NGUOI_DUNG} WHERE USERCODE = ?"
+        user_data = db_manager.get_data(query_check, (user_code,))
+        
+        if user_data:
+            current_db_pass = user_data[0]['PASSWORD']
+            
+            # So sánh text thuần (Theo yêu cầu)
+            if current_db_pass == old_password:
+                # 3. Cập nhật mật khẩu mới
+                update_query = f"UPDATE {config.TEN_BANG_NGUOI_DUNG} SET [PASSWORD] = ? WHERE USERCODE = ?"
+                
+                if db_manager.execute_non_query(update_query, (new_password, user_code)):
+                    # Ghi Log Audit
+                    db_manager.write_audit_log(
+                        user_code=user_code,
+                        action_type='CHANGE_PASSWORD',
+                        severity='INFO',
+                        details="Đổi mật khẩu thành công",
+                        ip_address=get_user_ip()
+                    )
+                    
+                    flash("Đổi mật khẩu thành công!", 'success')
+                    return redirect(url_for('index'))
+                else:
+                    flash("Lỗi hệ thống khi cập nhật cơ sở dữ liệu.", 'danger')
+            else:
+                flash("Mật khẩu hiện tại không chính xác.", 'danger')
+        else:
+            flash("Không tìm thấy thông tin người dùng.", 'danger')
+            
+    return render_template('change_password.html')
+
 
 @app.route('/logout')
 def logout():
@@ -261,11 +326,22 @@ app.register_blueprint(task_bp)
 app.register_blueprint(lookup_bp)
 app.register_blueprint(chat_bp)
 app.register_blueprint(portal_bp) # Đăng ký
+app.register_blueprint(budget_bp)
+app.register_blueprint(commission_bp)
 
 if __name__ == '__main__':
-    from waitress import serve
-    serve(app, host='0.0.0.0', port=5000)
+    
+    app.run(debug=True, host='0.0.0.0', port=5000)
 
+    #from waitress import serve
+    #serve(
+    #        app, 
+    #        host='0.0.0.0', 
+     #       port=5000, 
+      #      threads=6,              # Quan trọng: Xử lý đa luồng
+       #     connection_limit=200,   # Giới hạn kết nối
+        #    channel_timeout=20      # Timeout (giây)
+        #)
     # app.py
 # ...
 

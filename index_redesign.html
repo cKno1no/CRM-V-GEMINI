@@ -133,9 +133,15 @@
         <header class="d-flex justify-content-between align-items-center mb-5">
             <div class="logo-box">
                 </div>
-            <a href="/logout" class="btn btn-sm btn-outline-secondary">
-                <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
-            </a>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('change_password') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-key me-2"></i>Đổi mật khẩu
+                </a>
+                
+                <a href="/logout" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
+                </a>
+            </div>
         </header>
 
         <h1><i class="fas fa-sitemap me-3"></i> PORTAL ĐIỀU HÀNH</h1>
@@ -145,7 +151,7 @@
 
             <div class="accordion-item">
                 <h2 class="accordion-header" id="headingCRM">
-                    <button class="accordion-button module-title-crm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCRM" aria-expanded="true" aria-controls="collapseCRM">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCRM" aria-expanded="true" aria-controls="collapseCRM">
                         <i class="fas fa-users me-3"></i> CUSTOMER RELATIONSHIP MANAGEMENT
                     </button>
                 </h2>
@@ -163,7 +169,7 @@
                         <a href="/delivery_dashboard" class="menu-link module-crm" target="_blank">
                             <i class="fas fa-shipping-fast me-3"></i> Hoạch định & Thực thi giao vận
                         </a>
-                        <a href="/x" class="menu-link module-crm" target="_blank">
+                        <a href="/#" class="menu-link module-crm" target="_blank">
                             <i class="fas fa-user-clock me-3"></i> Dự phòng & Đặt hàng tồn kho
                         </a>
                     </div>
@@ -178,35 +184,36 @@
                 </h2>
                 <div id="collapseKPI" class="accordion-collapse collapse" aria-labelledby="headingKPI" data-bs-parent="#mainAccordion">
                     <div class="accordion-body p-0">
-                        <a href="/sales_dashboard" class="menu-link module-kpi" target="_blank">
-                            <i class="fas fa-percent me-3"></i> Hiệu suất Sales & Mục tiêu
-                        </a>
                         
                         <a href="/quote_approval" class="menu-link module-kpi" target="_blank">
                             <i class="fas fa-certificate me-3"></i> Theo dõi & Phê duyệt
                         </a>
                         
-                        <a href="/quote_input_table" class="menu-link module-kpi" target="_blank">
-                            <i class="fas fa-bullseye me-3"></i> Bám sát & Hành động
-                        </a>
-                        {# Dữ liệu đã được chuẩn hóa trong app.py, chỉ cần so sánh trực tiếp #}
-                        {% set is_finance_user = current_user.role|upper == 'ADMIN' or current_user.bo_phan == '6.KTTC' %}
-                        
-                        <a href="{% if is_finance_user %}{{ url_for('kpi_bp.ar_aging_dashboard') }}{% else %}#{% endif %}" 
-                           class="menu-link module-kpi {% if not is_finance_user %}planned{% endif %}" 
-                           target="{% if is_finance_user %}_blank{% else %}_self{% endif %}">
-                            <i class="fas fa-hand-holding-usd me-3"></i> Nhắc nợ & Thu tiền
+                        <a href="/sales/sales_lookup" class="menu-link module-kpi" target="_blank">
+                            <i class="fas fa-search-dollar me-3"></i> Tra cứu & truy xuất
                         </a>
 
                         <a href="/realtime_dashboard" class="menu-link module-kpi" target="_blank">
                             <i class="fas fa-tachometer-alt me-3"></i> Chỉ số kinh doanh - Realtime Dashboard
                         </a>
-                        
-                        <a href="/sales/sales_lookup" class="menu-link module-kpi" target="_blank">
-                            <i class="fas fa-search-dollar me-3"></i> Tra cứu & truy xuất
+
+                        <a href="/quote_input_table" class="menu-link module-kpi" target="_blank">
+                            <i class="fas fa-bullseye me-3"></i> Bám sát & Hành động
                         </a>
                         
-                        </div>
+                        <a href="/budget/dashboard" class="menu-link module-kpi" target="_blank">
+                            <i class="fas fa-wallet me-3"></i> Ngân sách & Chi tiêu
+                        </a>
+                        
+                        {# Dữ liệu đã được chuẩn hóa trong app.py, chỉ cần so sánh trực tiếp #}
+                        {% set is_finance_user = current_user.role|upper == 'ADMIN' or current_user.bo_phan == '6.KTTC' %}
+                        <a href="{% if is_finance_user %}{{ url_for('kpi_bp.ar_aging_dashboard') }}{% else %}#{% endif %}" 
+                           class="menu-link module-kpi {% if not is_finance_user %}planned{% endif %}" 
+                           target="{% if is_finance_user %}_blank{% else %}_self{% endif %}">
+                            <i class="fas fa-hand-holding-usd me-3"></i> Nhắc nợ & Thu tiền
+                        </a>
+                        
+                    </div>
                 </div>
             </div>
 
@@ -225,8 +232,9 @@
                         <a href="/ar_aging" class="menu-link module-ceq" target="_blank">
                              <i class="fas fa-dollar-sign me-3"></i> Phân tích Công nợ (AR Aging)
                         </a>
-                        <a href="#" class="menu-link planned"><i class="fas fa-flask me-3"></i> Dự kiến: Chi phí</a>
-                        <a href="#" class="menu-link planned"><i class="fas fa-flask me-3"></i> Dự kiến: Dòng tiền</a>
+                        <a href="/sales/total_replenishment" class="menu-link module-ceq" target="_blank">
+                             <i class="fas fa-boxes me-3"></i> Dự báo Tồn kho Tổng thể
+                        </a>
                     </div>
                 </div>
             </div>

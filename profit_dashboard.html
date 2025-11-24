@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Phân Tích Lợi Nhuận Gộp</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body { background-color: #F4F7FE; font-family: 'Inter', sans-serif; color: #2B3674; }
+        
+        /* KPI CARDS */
+        .kpi-card { border: none; border-radius: 16px; padding: 20px; color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); height: 100%; }
+        .kpi-title { font-size: 0.85rem; font-weight: 600; opacity: 0.9; letter-spacing: 0.5px; text-transform: uppercase; }
+        .kpi-value { font-size: 1.8rem; font-weight: 800; margin-top: 10px; }
+        
+        .bg-revenue { background: linear-gradient(135deg, #4318FF 0%, #7B61FF 100%); }
+        .bg-cogs { background: linear-gradient(135deg, #FFB547 0%, #FFCA85 100%); }
+        .bg-profit { background: linear-gradient(135deg, #05CD99 0%, #0BE8B0 100%); }
+        .bg-margin { background: linear-gradient(135deg, #E31A1A 0%, #FF5F5F 100%); }
+
+        /* SINGLE TABLE STYLES (CĂN CHỈNH TUYỆT ĐỐI) */
+        .card-table { border: none; border-radius: 16px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); overflow: hidden; }
+        
+        .table { 
+            table-layout: fixed; /* QUAN TRỌNG: Cố định độ rộng cột */
+            width: 100%; 
+            margin-bottom: 0; 
+            border-collapse: collapse;
+        }
+        
+        .table thead th { 
+            background-color: #F9FAFC; color: #8B95B7; 
+            font-weight: 700; font-size: 0.8rem; text-transform: uppercase; 
+            padding: 15px; border-bottom: 2px solid #E0E5F2; cursor: pointer;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .table thead th:hover { background-color: #F0F2F5; color: #2B3674; }
+        
+        .table td { 
+            vertical-align: middle; font-size: 0.9rem; border-bottom: 1px solid #F2F4F8; 
+            padding: 12px 15px; word-wrap: break-word;
+        }
+
+        /* Hierarchy Rows */
+        /* Level 1: Customer */
+        .row-lvl-1 { background-color: #fff; font-weight: 700; cursor: pointer; border-top: 2px solid #E0E5F2; }
+        .row-lvl-1:hover { background-color: #F4F7FE; }
+        
+        /* Level 2: Order */
+        .row-lvl-2 { background-color: #FAFCFE; cursor: pointer; display: none; } /* Ẩn mặc định */
+        .row-lvl-2 td { border-bottom: 1px dashed #E0E5F2; color: #555; }
+        .row-lvl-2:hover { background-color: #F0F5FA; }
+
+        /* Level 3: Item */
+        .row-lvl-3 { background-color: #FFFFFF; display: none; } /* Ẩn mặc định */
+        .row-lvl-3 td { font-size: 0.85rem; color: #666; border-bottom: 1px solid #F2F4F8; padding-top: 8px; padding-bottom: 8px; }
+        
+        /* Icons */
+        .icon-expand { transition: transform 0.2s; display: inline-block; }
+        .expanded .icon-expand { transform: rotate(90deg); }
+        
+        /* Colors */
+        .text-loss { color: #E31A1A !important; }
+        .text-success-custom { color: #05CD99 !important; }
+        .text-secondary-custom { color: #A3AED0 !important; }
+
+        .filter-box { background: white; padding: 10px 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
+        .sort-icon { margin-left: 5px; font-size: 0.7rem; color: #ccc; }
+        .sort-active { color: #4318FF; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid p-4">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold m-0 text-dark"><i class="fas fa-chart-pie me-2 text-primary"></i>Phân Tích Lợi Nhuận</h2>
+                <p class="text-muted small m-0">Theo dõi hiệu quả kinh doanh theo Khách hàng & Đơn hàng</p>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <div class="filter-box d-flex align-items-center" style="width: 350px;">
+                    <i class="fas fa-search text-muted me-2"></i>
+                    <input type="text" id="quickSearch" class="form-control form-control-sm border-0 shadow-none p-0" 
+                           placeholder="Tìm KH, Mã hàng, NVKD...">
+                </div>
+
+                <form class="filter-box d-flex gap-2 align-items-center" method="POST">
+                    <label class="small fw-bold text-muted">Từ:</label>
+                    <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}">
+                    <label class="small fw-bold text-muted">Đến:</label>
+                    <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}">
+                    <button type="submit" class="btn btn-primary btn-sm fw-bold px-3"><i class="fas fa-filter me-1"></i> Lọc</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="kpi-card bg-revenue">
+                    <div class="kpi-title">TỔNG DOANH THU</div>
+                    <div class="kpi-value">{{ "{:,.0f}".format(summary.Revenue) }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card bg-cogs">
+                    <div class="kpi-title">TỔNG GIÁ VỐN</div>
+                    <div class="kpi-value">{{ "{:,.0f}".format(summary.COGS) }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card bg-profit">
+                    <div class="kpi-title">TỔNG LÃI GỘP</div>
+                    <div class="kpi-value">{{ "{:,.0f}".format(summary.GrossProfit) }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card bg-margin">
+                    <div class="kpi-title">BIÊN LỢI NHUẬN TB</div>
+                    <div class="kpi-value">{{ "{:.1f}%".format(summary.AvgMargin) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-table">
+            <div class="table-responsive">
+                <table class="table" id="mainTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;"></th>
+                            <th style="width: 35%;" onclick="sortTable('name')">KHÁCH HÀNG / ĐƠN HÀNG / MÃ <i class="fas fa-sort sort-icon"></i></th>
+                            <th style="width: 15%;" onclick="sortTable('sales')">NHÂN VIÊN <i class="fas fa-sort sort-icon"></i></th>
+                            <th class="text-end" style="width: 11%;" onclick="sortTable('revenue')">DOANH THU <i class="fas fa-sort sort-icon"></i></th>
+                            <th class="text-end" style="width: 11%;">GIÁ VỐN</th>
+                            <th class="text-end" style="width: 11%;" onclick="sortTable('profit')">LÃI GỘP <i class="fas fa-sort-down sort-active sort-icon"></i></th>
+                            <th class="text-center" style="width: 12%;" onclick="sortTable('margin')">% GP <i class="fas fa-sort sort-icon"></i></th>
+                        </tr>
+                    </thead>
+                    
+                    {% if details %}
+                        {% for cust in details %}
+                        {% set cust_loop = loop %}
+                        <tbody class="customer-group" 
+                               data-name="{{ cust.Name }} {{ cust.ID }}" 
+                               data-sales="{{ cust.SalesMan }}"
+                               data-revenue="{{ cust.Revenue }}"
+                               data-profit="{{ cust.Profit }}"
+                               data-margin="{{ cust.Margin }}">
+                            
+                            <tr class="row-lvl-1" onclick="toggleLvl1('grp-{{ cust_loop.index }}', this)">
+                                <td class="text-center"><i class="fas fa-chevron-right icon-expand text-primary"></i></td>
+                                <td>
+                                    <div class="text-truncate" style="max-width: 350px;" title="{{ cust.Name }}">{{ cust.Name }}</div>
+                                    <div class="small text-muted fw-normal">{{ cust.ID }}</div>
+                                </td>
+                                <td class="text-muted fw-normal">{{ cust.SalesMan }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(cust.Revenue) }}</td>
+                                <td class="text-end text-secondary-custom">{{ "{:,.0f}".format(cust.COGS) }}</td>
+                                <td class="text-end {{ 'text-loss' if cust.Profit < 0 else 'text-success-custom' }}">{{ "{:,.0f}".format(cust.Profit) }}</td>
+                                <td class="text-center {{ 'text-loss' if cust.Margin < 10 else '' }}">{{ "{:.1f}%".format(cust.Margin) }}</td>
+                            </tr>
+
+                            {% for order in cust.Orders %}
+                            {% set order_loop = loop %}
+                            
+                            <tr class="row-lvl-2 grp-{{ cust_loop.index }} search-item" 
+                                data-search="{{ order.SoDonHang }} {{ order.VoucherNo }}"
+                                onclick="toggleLvl2('ord-{{ cust_loop.index }}-{{ order_loop.index }}', this)">
+                                <td class="text-center"><i class="fas fa-caret-right icon-expand text-secondary"></i></td>
+                                <td class="ps-4">
+                                    <span class="fw-bold text-dark">{{ order.SoDonHang }}</span>
+                                    <span class="badge bg-white text-secondary border ms-2">{{ order.VoucherNo }}</span>
+                                </td>
+                                <td class="small text-muted">{{ order.Date.strftime('%d/%m/%Y') if order.Date else '' }}</td>
+                                <td class="text-end text-muted">{{ "{:,.0f}".format(order.Revenue) }}</td>
+                                <td class="text-end text-muted small">{{ "{:,.0f}".format(order.COGS) }}</td>
+                                <td class="text-end fw-bold {{ 'text-loss' if order.Profit < 0 else 'text-dark' }}">{{ "{:,.0f}".format(order.Profit) }}</td>
+                                <td class="text-center small fw-bold {{ 'text-loss' if order.Margin < 10 else 'text-muted' }}">{{ "{:.1f}%".format(order.Margin) }}</td>
+                            </tr>
+
+                            {% for item in order.Items %}
+                            <tr class="row-lvl-3 ord-{{ cust_loop.index }}-{{ order_loop.index }} search-item" data-search="{{ item.MaHang }} {{ item.TenHang }}">
+                                <td></td>
+                                <td class="ps-5">
+                                    <div class="fw-bold text-dark small">{{ item.MaHang }}</div>
+                                    <div class="text-muted text-truncate small" style="max-width: 300px;" title="{{ item.TenHang }}">{{ item.TenHang }}</div>
+                                </td>
+                                <td class="small text-muted">SL: {{ "{:,.0f}".format(item.SoLuong) }} {{ item.DVT }}</td>
+                                <td class="text-end small">{{ "{:,.0f}".format(item.DoanhThu) }}</td>
+                                <td class="text-end small text-muted">{{ "{:,.0f}".format(item.GiaVon) }}</td>
+                                <td class="text-end small fw-bold {{ 'text-loss' if item.LaiGop < 0 else 'text-success-custom' }}">{{ "{:,.0f}".format(item.LaiGop) }}</td>
+                                <td class="text-center small fw-bold {{ 'text-loss' if item.TyLeLaiGop < 10 else 'text-muted' }}">{{ "{:.1f}%".format(item.TyLeLaiGop) }}</td>
+                            </tr>
+                            {% endfor %} {% endfor %} </tbody>
+                        {% endfor %} {% else %}
+                        <tbody><tr><td colspan="7" class="text-center py-5 text-muted">Không có dữ liệu.</td></tr></tbody>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 1. LOGIC EXPAND/COLLAPSE (JS THUẦN, KHÔNG DÙNG BOOTSTRAP COLLAPSE ĐỂ GIỮ TABLE LAYOUT)
+        
+        function toggleLvl1(groupId, row) {
+            // Toggle trạng thái icon
+            row.classList.toggle('expanded');
+            const isExpanded = row.classList.contains('expanded');
+            
+            // Tìm tất cả dòng Level 2 thuộc group này
+            const lv2Rows = document.getElementsByClassName(groupId);
+            
+            for (let r of lv2Rows) {
+                if (isExpanded) {
+                    r.style.display = 'table-row'; // Hiện Level 2
+                } else {
+                    r.style.display = 'none'; // Ẩn Level 2
+                    r.classList.remove('expanded'); // Reset icon con
+                    // Ẩn luôn Level 3 của nó
+                    const subGroupId = r.getAttribute('onclick').match(/'([^']+)'/)[1];
+                    const lv3Rows = document.getElementsByClassName(subGroupId);
+                    for(let r3 of lv3Rows) r3.style.display = 'none';
+                }
+            }
+        }
+
+        function toggleLvl2(subGroupId, row) {
+            row.classList.toggle('expanded');
+            const isExpanded = row.classList.contains('expanded');
+            
+            const lv3Rows = document.getElementsByClassName(subGroupId);
+            for (let r of lv3Rows) {
+                r.style.display = isExpanded ? 'table-row' : 'none';
+            }
+        }
+
+        // 2. LOGIC FILTER (DEBOUNCE 800ms)
+        function debounce(func, timeout = 800) {
+            let timer;
+            return (...args) => { clearTimeout(timer); timer = setTimeout(() => { func.apply(this, args); }, timeout); };
+        }
+
+        function performFilter() {
+            const input = document.getElementById('quickSearch');
+            const filter = input.value.toLowerCase();
+            const bodies = document.querySelectorAll('tbody.customer-group');
+
+            bodies.forEach(body => {
+                const custName = body.getAttribute('data-name').toLowerCase();
+                const salesMan = body.getAttribute('data-sales').toLowerCase();
+                
+                // Tìm trong con
+                let childText = '';
+                body.querySelectorAll('.search-item').forEach(item => {
+                    childText += item.getAttribute('data-search') + ' ';
+                });
+                childText = childText.toLowerCase();
+
+                if (custName.includes(filter) || salesMan.includes(filter) || childText.includes(filter)) {
+                    body.style.display = ""; // Hiện tbody
+                    
+                    // Tự động mở nếu tìm thấy trong con
+                    if (filter.length > 2 && childText.includes(filter)) {
+                        const rowLvl1 = body.querySelector('.row-lvl-1');
+                        if (!rowLvl1.classList.contains('expanded')) {
+                            // Kích hoạt mở Level 1
+                            rowLvl1.classList.add('expanded');
+                            const groupId = rowLvl1.getAttribute('onclick').match(/'([^']+)'/)[1];
+                            const lv2Rows = document.getElementsByClassName(groupId);
+                            for (let r of lv2Rows) r.style.display = 'table-row';
+                        }
+                    }
+                } else {
+                    body.style.display = "none"; // Ẩn tbody
+                }
+            });
+        }
+        document.getElementById('quickSearch').addEventListener('input', debounce(performFilter));
+
+        // 3. LOGIC SORT
+        let currentSort = { column: 'profit', dir: 'desc' };
+
+        function sortTable(column) {
+            const table = document.getElementById('mainTable');
+            const bodies = Array.from(document.querySelectorAll('tbody.customer-group'));
+            
+            if (currentSort.column === column) {
+                currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.dir = 'desc';
+                if(column === 'name' || column === 'sales') currentSort.dir = 'asc';
+            }
+
+            // Icon
+            document.querySelectorAll('.sort-icon').forEach(i => i.className = 'fas fa-sort sort-icon');
+            const th = document.querySelector(`th[onclick="sortTable('${column}')"] i`);
+            if(th) th.className = `fas fa-sort-${currentSort.dir === 'asc' ? 'up' : 'down'} sort-active sort-icon`;
+
+            // Sort
+            bodies.sort((a, b) => {
+                let valA = a.getAttribute(`data-${column}`);
+                let valB = b.getAttribute(`data-${column}`);
+
+                if (column !== 'name' && column !== 'sales') {
+                    valA = parseFloat(valA); valB = parseFloat(valB);
+                }
+
+                if (valA < valB) return currentSort.dir === 'asc' ? -1 : 1;
+                if (valA > valB) return currentSort.dir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            // Re-append bodies (Sắp xếp lại các khối tbody)
+            bodies.forEach(body => table.appendChild(body));
+        }
+    </script>
+</body>
+</html>

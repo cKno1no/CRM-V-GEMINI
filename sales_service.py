@@ -13,137 +13,34 @@ class SalesService:
 
     def get_sales_performance_data(self, current_year, user_code, is_admin):
         """
-        Tổng hợp 4 chỉ số KPI chính cho Sales Dashboard.
-        Thực hiện lọc theo SalesManID nếu người dùng không phải là Admin.
+        [UPDATED] Tổng hợp KPI Sales sử dụng Stored Procedure tối ưu.
         """
-        
-        current_month = datetime.now().month
-        
-        # --- LỌC ĐIỀU KIỆN THEO ROLE ---
-        salesman_filter = ""
-        ytd_params = [current_year]
-        monthly_params = [current_year, current_month]
-        pending_params = [current_year]
-        reg_params = [current_year]
-        
-        if not is_admin:
-            # Nếu không phải Admin, áp dụng bộ lọc cho TẤT CẢ các query
-            user_code_stripped = user_code.strip()
-            salesman_filter = " AND RTRIM(T1.SalesManID) = ?"
+        try:
+            # Tham số cho SP: @CurrentYear, @UserCode, @IsAdmin
+            # Lưu ý: db_manager.execute_sp_multi trả về list các bảng, ta lấy bảng đầu tiên [0]
+            result_sets = self.db.execute_sp_multi(
+                'dbo.sp_GetSalesPerformanceSummary', 
+                (current_year, user_code, 1 if is_admin else 0)
+            )
             
-            ytd_params.append(user_code_stripped)
-            monthly_params.append(user_code_stripped)
-            pending_params.append(user_code_stripped)
-            
-            # Query đăng ký (CRM_DTCL) có tên cột khác
-            reg_params_filter = [user_code_stripped]
-
-        # --- 1. TRUY VẤN CƠ SỞ (YTD Sales & Total Orders) ---
-        ytd_query = f"""
-            SELECT 
-                RTRIM(T1.SalesManID) AS EmployeeID,
-                T3.SHORTNAME AS SalesManName,
-                SUM(T1.ConvertedAmount) AS TotalSalesAmount,
-                COUNT(DISTINCT T1.VoucherNo) AS TotalOrders
-            FROM {config.ERP_GIAO_DICH} AS T1
-            LEFT JOIN {config.TEN_BANG_NGUOI_DUNG} AS T3 ON T1.SalesManID = T3.USERCODE
-            WHERE 
-                T1.DebitAccountID = '13111'
-                AND T1.CreditAccountID LIKE '5%'
-                AND T1.TranYear = ?
-                {salesman_filter} -- ÁP DỤNG LỌC
-            GROUP BY 
-                RTRIM(T1.SalesManID), T3.SHORTNAME
-            HAVING 
-                RTRIM(T1.SalesManID) IS NOT NULL
-        """
-        base_summary = self.db.get_data(ytd_query, tuple(ytd_params))
-        summary_dict = {row['EmployeeID']: row for row in base_summary} if base_summary else {}
-        
-        # --- 2. DS ĐĂNG KÝ (Registered Sales) và Merge ---
-        # LƯU Ý: Phải sử dụng bộ lọc cho Registered Query nếu không phải Admin
-        registered_query = f"""
-            SELECT 
-                RTRIM([PHU TRACH DS]) AS EmployeeID,
-                SUM(ISNULL(DK, 0)) AS RegisteredSales
-            FROM {config.CRM_DTCL}
-            WHERE 
-                [Nam] = ?
-                AND [PHU TRACH DS] IS NOT NULL
-                { " AND RTRIM([PHU TRACH DS]) = ?" if not is_admin else "" } -- ÁP DỤNG LỌC RIÊNG
-            GROUP BY 
-                RTRIM([PHU TRACH DS])
-        """
-        registered_sales = self.db.get_data(registered_query, tuple(reg_params + (reg_params_filter if not is_admin else [])))
-
-        if registered_sales:
-            for row in registered_sales:
-                emp_id = row['EmployeeID']
-                raw_reg_sales = safe_float(row.get('RegisteredSales'))
-                if emp_id in summary_dict:
-                    summary_dict[emp_id]['RegisteredSales'] = raw_reg_sales
-                else:
-                    summary_dict[emp_id] = { 'EmployeeID': emp_id, 'SalesManName': 'N/A', 'TotalSalesAmount': 0.0, 'TotalOrders': 0, 'RegisteredSales': raw_reg_sales, 'CurrentMonthSales': 0.0, 'PendingOrdersAmount': 0.0 }
-        
-        # --- 3. DS THÁNG HIỆN TẠI và Merge ---
-        monthly_query = f"""
-            SELECT 
-                RTRIM(T1.SalesManID) AS EmployeeID,
-                SUM(T1.ConvertedAmount) AS CurrentMonthSales
-            FROM {config.ERP_GIAO_DICH} AS T1
-            WHERE 
-                T1.DebitAccountID = '13111' AND T1.CreditAccountID LIKE '5%'
-                AND T1.TranYear = ? AND T1.TranMonth = ?
-                {salesman_filter} -- ÁP DỤNG LỌC
-            GROUP BY 
-                RTRIM(T1.SalesManID)
-        """
-        monthly_sales = self.db.get_data(monthly_query, tuple(monthly_params))
-        if monthly_sales:
-            for row in monthly_sales:
-                emp_id = row['EmployeeID']
-                if emp_id in summary_dict:
-                    summary_dict[emp_id]['CurrentMonthSales'] = safe_float(row['CurrentMonthSales'])
-                    
-        # --- 4. Đơn hàng Chờ giao và Merge ---
-        pending_query = f"""
-            SELECT 
-                RTRIM(T1.SalesManID) AS EmployeeID,
-                SUM(T1.saleAmount) AS PendingOrdersAmount
-            FROM {config.ERP_OT2001} AS T1 
-            LEFT JOIN (
-                SELECT DISTINCT G.orderID FROM {config.ERP_GIAO_DICH} AS G WHERE G.VoucherTypeID = 'BH' 
-            ) AS Delivered ON T1.sorderid = Delivered.orderID
-            WHERE 
-                T1.orderStatus = 1 AND Delivered.orderID IS NULL AND T1.TranYear = ?
-                {salesman_filter} -- ÁP DỤNG LỌC
-            GROUP BY 
-                RTRIM(T1.SalesManID)
-        """
-        pending_orders = self.db.get_data(pending_query, tuple(pending_params))
-        if pending_orders:
-            for row in pending_orders:
-                emp_id = row['EmployeeID']
-                if emp_id in summary_dict:
-                    summary_dict[emp_id]['PendingOrdersAmount'] = safe_float(row['PendingOrdersAmount'])
+            if not result_sets or not result_sets[0]:
+                return []
                 
-        # --- 5. FINAL CLEANUP, TYPE CONVERSION VÀ SORTING ---
-        final_summary_list = []
-        
-        for emp_id, row in summary_dict.items():
-            row['TotalSalesAmount'] = safe_float(row.get('TotalSalesAmount'))
-            row['RegisteredSales'] = safe_float(row.get('RegisteredSales', 0.0))
-            row['CurrentMonthSales'] = safe_float(row.get('CurrentMonthSales', 0.0))
-            row['PendingOrdersAmount'] = safe_float(row.get('PendingOrdersAmount', 0.0))
-            row['TotalOrders'] = int(row.get('TotalOrders', 0) or 0)       
+            data = result_sets[0]
             
-            if row['SalesManName'] == 'N/A' or row['SalesManName'] == '':
-                 name_data = self.db.get_data(f"SELECT SHORTNAME FROM {config.TEN_BANG_NGUOI_DUNG} WHERE USERCODE = ?", (emp_id,))
-                 row['SalesManName'] = name_data[0]['SHORTNAME'] if name_data else row['EmployeeID']
+            # Ép kiểu dữ liệu để đảm bảo an toàn khi tính toán ở view
+            for row in data:
+                row['TotalSalesAmount'] = float(row.get('TotalSalesAmount') or 0)
+                row['CurrentMonthSales'] = float(row.get('CurrentMonthSales') or 0)
+                row['RegisteredSales'] = float(row.get('RegisteredSales') or 0)
+                row['PendingOrdersAmount'] = float(row.get('PendingOrdersAmount') or 0)
+                row['TotalOrders'] = int(row.get('TotalOrders') or 0)
+                
+            return data
 
-            final_summary_list.append(row)
-            
-        return final_summary_list
+        except Exception as e:
+            print(f"Lỗi khi lấy KPI Sales (SP): {e}")
+            return []
 
     # CRM STDD/sales_service.py (Hàm get_order_detail_drilldown)
 
@@ -342,6 +239,104 @@ class SalesService:
         new_business_clients = sorted(new_business_clients, key=itemgetter('TotalSalesAmount'), reverse=True)
 
         return registered_clients, new_business_clients, total_poa_amount, total_registered_sales_raw
+    # Thêm vào class SalesService
+    def get_profit_analysis(self, date_from, date_to, user_code, is_admin):
+        """Lấy dữ liệu phân tích lợi nhuận gộp (Gom nhóm theo Khách hàng -> Đơn hàng)."""
+        try:
+            salesman_param = None if is_admin else user_code
+            
+            result = self.db.execute_sp_multi(
+                'dbo.sp_GetSalesGrossProfit_Analysis', 
+                (date_from, date_to, salesman_param)
+            )
+            
+            raw_data = result[0] if result and len(result) > 0 else []
+            
+            # KPI Tổng
+            summary = {'Revenue': 0, 'COGS': 0, 'GrossProfit': 0, 'AvgMargin': 0}
+            
+            # Cấu trúc dữ liệu phân cấp
+            hierarchy = {} 
+
+            if raw_data:
+                for row in raw_data:
+                    # 1. [FIX QUAN TRỌNG] Ép kiểu và GÁN NGƯỢC LẠI vào row
+                    # Để template HTML có thể dùng format {:,.0f}
+                    row['SoLuong'] = float(row.get('SoLuong') or 0)
+                    row['DoanhThu'] = float(row.get('DoanhThu') or 0)
+                    row['GiaVon'] = float(row.get('GiaVon') or 0)
+                    row['LaiGop'] = float(row.get('LaiGop') or 0)
+                    row['TyLeLaiGop'] = float(row.get('TyLeLaiGop') or 0)
+
+                    # 2. Cộng tổng toàn cục
+                    summary['Revenue'] += row['DoanhThu']
+                    summary['COGS'] += row['GiaVon']
+                    summary['GrossProfit'] += row['LaiGop']
+
+                    # 3. Gom nhóm theo KHÁCH HÀNG
+                    cust_id = row['MaKhachHang']
+                    if cust_id not in hierarchy:
+                        hierarchy[cust_id] = {
+                            'ID': cust_id,
+                            'Name': row['TenKhachHang'],
+                            'SalesMan': row['SalesManName'],
+                            'Revenue': 0.0,
+                            'COGS': 0.0,
+                            'Profit': 0.0,
+                            'Orders': {} 
+                        }
+                    
+                    hierarchy[cust_id]['Revenue'] += row['DoanhThu']
+                    hierarchy[cust_id]['COGS'] += row['GiaVon']
+                    hierarchy[cust_id]['Profit'] += row['LaiGop']
+
+                    # 4. Gom nhóm theo ĐƠN HÀNG
+                    order_id = row['SoDonHang']
+                    if order_id not in hierarchy[cust_id]['Orders']:
+                        hierarchy[cust_id]['Orders'][order_id] = {
+                            'ID': order_id,
+                            'Date': row['NgayHachToan'], 
+                            'VoucherNo': row['SoChungTu'],
+                            'Revenue': 0.0,
+                            'COGS': 0.0,
+                            'Profit': 0.0,
+                            'Items': [] 
+                        }
+                    
+                    hierarchy[cust_id]['Orders'][order_id]['Revenue'] += row['DoanhThu']
+                    hierarchy[cust_id]['Orders'][order_id]['COGS'] += row['GiaVon']
+                    hierarchy[cust_id]['Orders'][order_id]['Profit'] += row['LaiGop']
+                    
+                    # 5. Thêm chi tiết Mã hàng (Đã được ép kiểu float ở bước 1)
+                    row['Margin'] = (row['LaiGop'] / row['DoanhThu'] * 100) if row['DoanhThu'] else 0
+                    hierarchy[cust_id]['Orders'][order_id]['Items'].append(row)
+
+            # Tính % Margin tổng
+            if summary['Revenue'] > 0:
+                summary['AvgMargin'] = (summary['GrossProfit'] / summary['Revenue']) * 100
+            
+            # Chuyển đổi hierarchy từ Dict sang List
+            final_list = []
+            for cust in hierarchy.values():
+                cust['Margin'] = (cust['Profit'] / cust['Revenue'] * 100) if cust['Revenue'] else 0
+                
+                orders_list = []
+                for ord_val in cust['Orders'].values():
+                    ord_val['Margin'] = (ord_val['Profit'] / ord_val['Revenue'] * 100) if ord_val['Revenue'] else 0
+                    orders_list.append(ord_val)
+                
+                # Sắp xếp đơn hàng mới nhất lên đầu
+                cust['Orders'] = sorted(orders_list, key=lambda x: x['Date'] or '', reverse=True)
+                final_list.append(cust)
+            
+            # Sắp xếp Khách hàng theo Lợi nhuận giảm dần
+            final_list.sort(key=lambda x: x['Profit'], reverse=True)
+
+            return final_list, summary
+            
+        except Exception as e:
+            print(f"Lỗi get_profit_analysis: {e}")
+            return [], {'Revenue': 0, 'COGS': 0, 'GrossProfit': 0, 'AvgMargin': 0}
 
 class InventoryService:
     def __init__(self, db_manager: DBManager):
@@ -489,3 +484,5 @@ class InventoryService:
         }
             
         return filtered_and_summed_data, totals
+
+    

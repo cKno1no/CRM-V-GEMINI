@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Ngân sách & Chi tiêu</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- CORE STYLES --- */
+        :root { --primary: #4318FF; --bg-color: #F4F7FE; --text-dark: #2B3674; }
+        body { background-color: var(--bg-color); font-family: 'Inter', sans-serif; color: var(--text-dark); }
+
+        /* --- COMPONENTS --- */
+        .card { border: none; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        .card-header { background-color: #fff; border-bottom: 1px solid #eee; padding: 15px 20px; font-weight: 700; color: var(--primary); }
+        .form-control, .form-select { border-radius: 10px; padding: 10px 15px; }
+        
+        /* --- AUTOCOMPLETE LIST --- */
+        .autocomplete-list {
+            max-height: 250px; overflow-y: auto;
+            position: absolute; width: 100%; z-index: 1000; display: none;
+            background: white; border: 1px solid #ddd; border-radius: 0 0 12px 12px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .list-group-item { cursor: pointer; border: none; border-bottom: 1px solid #f0f0f0; padding: 10px 15px; }
+        .list-group-item:hover { background-color: #f8f9fa; }
+        .tag-badge { font-size: 0.75em; background: #e9ecef; padding: 2px 6px; border-radius: 4px; margin-left: 8px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container mt-4 pb-5">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+                        <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="text-primary fw-bold m-0"><i class="fas fa-wallet me-2"></i> Đề Nghị Thanh Toán</h2>
+            
+            <div class="d-flex gap-2">
+                <a href="/budget/payment" class="btn btn-outline-success fw-bold shadow-sm px-3">
+                    <i class="fas fa-money-bill-wave me-2"></i>Lệnh Chi / UNC
+                </a>
+
+                <a href="/budget/approval" class="btn btn-outline-primary fw-bold shadow-sm px-3">
+                    <i class="fas fa-check-double me-2"></i>Phê Duyệt
+                </a>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-5">
+                <div class="card mb-4">
+                    <div class="card-header"><i class="fas fa-plus-circle me-2"></i>Tạo Phiếu Mới</div>
+                    <div class="card-body p-4">
+                        <form id="expenseForm">
+                            
+                            <div class="mb-3 position-relative">
+                                <label class="form-label fw-bold">Loại Chi phí <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                                    <input type="text" class="form-control" id="budgetSearchInput" placeholder="Gõ tên chi phí..." autocomplete="off">
+                                </div>
+                                <input type="hidden" id="budgetCode">
+                                <div id="budgetDropdownList" class="list-group autocomplete-list"></div>
+                            </div>
+
+                            <div class="mb-3 position-relative">
+                                <label class="form-label fw-bold">Đối tượng Thụ hưởng <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white"><i class="fas fa-user-tag text-muted"></i></span>
+                                    <input type="text" class="form-control" id="objectSearchInput" placeholder="Gõ tên NCC, Nhân viên..." autocomplete="off">
+                                </div>
+                                <input type="hidden" id="objectCode">
+                                <div id="objectDropdownList" class="list-group autocomplete-list"></div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Số tiền <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control fw-bold text-primary" id="amount" placeholder="0" onchange="checkBalance()" onkeyup="checkBalance()" min="0">
+                                    <span class="input-group-text">VNĐ</span>
+                                </div>
+                            </div>
+                            
+                            <div id="budgetStatusBox" class="d-none mb-3 border rounded p-2">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <strong id="statusTitle" class="d-block">Kiểm tra ngân sách</strong>
+                                        <small id="statusDesc" class="text-muted">...</small>
+                                    </div>
+                                    <span id="statusBadge" class="badge bg-secondary">...</span>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Lý do chi</label>
+                                <textarea class="form-control" id="reason" rows="2" placeholder="Ghi rõ nội dung chi..."></textarea>
+                            </div>
+                            
+                            <button type="button" class="btn btn-primary w-100 py-2 fw-bold" onclick="submitRequest()">
+                                <i class="fas fa-paper-plane me-2"></i> Gửi Đề Nghị
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7">
+                <div class="card h-100">
+                    <div class="card-header"><i class="fas fa-history me-2"></i>Lịch sử Đề nghị</div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">Phiếu</th>
+                                        <th>Nội dung / Đối tượng</th>
+                                        <th class="text-end">Số tiền</th>
+                                        <th class="text-center pe-3">TT</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if my_requests %}
+                                        {% for req in my_requests %}
+                                        <tr>
+                                            <td class="ps-3">
+                                                <div class="fw-bold text-primary small">{{ req.RequestID }}</div>
+                                                <div class="text-muted small" style="font-size: 0.75rem;">
+                                                    {% if req.RequestDate %}
+                                                        {{ req.RequestDate if req.RequestDate is string else req.RequestDate.strftime('%d/%m/%Y') }}
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                            
+                                            <td>
+                                                <div class="fw-bold text-dark" style="font-size: 0.9rem;">
+                                                    {{ req.BudgetName or req.BudgetCode }}
+                                                </div>
+                                                {% if req.ObjectName or req.ObjectID %}
+                                                <div class="text-secondary small fst-italic">
+                                                    <i class="fas fa-caret-right me-1"></i>
+                                                    {{ req.ObjectName or req.ObjectID }}
+                                                </div>
+                                                {% endif %}
+                                            </td>
+
+                                            <td class="text-end fw-bold text-danger">
+                                                {{ "{:,.0f}".format(req.Amount | float) }}
+                                            </td>
+
+                                            <td class="text-center pe-3">
+                                                {% if req.Status == 'APPROVED' %}
+                                                    <span class="badge bg-success-subtle text-success rounded-pill px-2">Đã duyệt</span>
+                                                    <div class="mt-1">
+                                                        <a href="/budget/print/{{ req.RequestID }}" target="_blank" class="text-decoration-none small fw-bold text-secondary">
+                                                            <i class="fas fa-print"></i> In
+                                                        </a>
+                                                    </div>
+                                                {% elif req.Status == 'REJECTED' %}
+                                                    <span class="badge bg-danger-subtle text-danger rounded-pill px-2">Từ chối</span>
+                                                {% elif req.Status == 'PAID' %}
+                                                    <span class="badge bg-primary-subtle text-primary rounded-pill px-2">Đã chi</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning-subtle text-warning rounded-pill px-2">Chờ</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr><td colspan="4" class="text-center py-5 text-muted">Chưa có dữ liệu.</td></tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 1. DỮ LIỆU NGÂN SÁCH
+        const allBudgetItems = {{ budget_codes | tojson }};
+        
+        // --- XỬ LÝ AUTOCOMPLETE CHI PHÍ ---
+        const searchInput = document.getElementById('budgetSearchInput');
+        const dropdownList = document.getElementById('budgetDropdownList');
+        const hiddenCodeInput = document.getElementById('budgetCode');
+
+        setupAutocomplete(searchInput, dropdownList, hiddenCodeInput, allBudgetItems, 'budget');
+
+        // --- XỬ LÝ AUTOCOMPLETE ĐỐI TƯỢNG ---
+        const objSearchInput = document.getElementById('objectSearchInput');
+        const objDropdownList = document.getElementById('objectDropdownList');
+        const objHiddenInput = document.getElementById('objectCode');
+        let objTimeout = null;
+
+        objSearchInput.addEventListener('input', function() {
+            const term = this.value.trim();
+            objDropdownList.innerHTML = '';
+            if (term.length < 2) { objDropdownList.style.display = 'none'; return; }
+
+            clearTimeout(objTimeout);
+            objTimeout = setTimeout(() => {
+                objDropdownList.innerHTML = '<div class="list-group-item text-muted small"><i class="fas fa-spinner fa-spin me-2"></i>Đang tìm...</div>';
+                objDropdownList.style.display = 'block';
+
+                fetch(`/api/budget/objects/${encodeURIComponent(term)}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        objDropdownList.innerHTML = '';
+                        if (data.length > 0) {
+                            data.forEach(obj => {
+                                const a = document.createElement('a');
+                                a.className = 'list-group-item list-group-item-action';
+                                a.href = '#';
+                                a.innerHTML = `<div class="d-flex justify-content-between align-items-center"><span class="fw-medium">${obj.name}</span><span class="tag-badge">${obj.id}</span></div>`;
+                                a.onclick = (e) => {
+                                    e.preventDefault();
+                                    objSearchInput.value = obj.name;
+                                    objHiddenInput.value = obj.id;
+                                    objDropdownList.style.display = 'none';
+                                };
+                                objDropdownList.appendChild(a);
+                            });
+                        } else {
+                            objDropdownList.innerHTML = '<div class="list-group-item text-muted small text-center">Không tìm thấy.</div>';
+                        }
+                    });
+            }, 300);
+        });
+
+        // --- HÀM CHUNG ---
+        function setupAutocomplete(input, list, hiddenInput, data, type) {
+            input.addEventListener('input', function() {
+                const term = this.value.toLowerCase().trim();
+                list.innerHTML = '';
+                if (term.length < 1) { list.style.display = 'none'; return; }
+
+                const filtered = data.filter(item => item.BudgetName.toLowerCase().includes(term) || item.BudgetCode.toLowerCase().includes(term));
+
+                if (filtered.length > 0) {
+                    filtered.forEach(item => {
+                        const a = document.createElement('a');
+                        a.className = 'list-group-item list-group-item-action';
+                        a.href = '#';
+                        a.innerHTML = `<div class="d-flex justify-content-between"><span class="fw-medium">${item.BudgetName}</span><span class="tag-badge">${item.BudgetCode}</span></div>`;
+                        a.onclick = (e) => {
+                            e.preventDefault();
+                            input.value = item.BudgetName;
+                            hiddenInput.value = item.BudgetCode;
+                            list.style.display = 'none';
+                            if (type === 'budget') checkBalance();
+                        };
+                        list.appendChild(a);
+                    });
+                    list.style.display = 'block';
+                } else { list.style.display = 'none'; }
+            });
+            
+            input.addEventListener('focus', function() {
+                if (this.value === '' && type === 'budget') {
+                    list.innerHTML = '';
+                    data.slice(0, 10).forEach(item => {
+                        const a = document.createElement('a');
+                        a.className = 'list-group-item list-group-item-action';
+                        a.href = '#';
+                        a.innerHTML = `<div class="d-flex justify-content-between"><span class="fw-medium">${item.BudgetName}</span><span class="tag-badge">${item.BudgetCode}</span></div>`;
+                        a.onclick = (e) => {
+                            e.preventDefault();
+                            input.value = item.BudgetName;
+                            hiddenInput.value = item.BudgetCode;
+                            list.style.display = 'none';
+                            checkBalance();
+                        };
+                        list.appendChild(a);
+                    });
+                    if (data.length > 0) list.style.display = 'block';
+                }
+            });
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !dropdownList.contains(e.target)) dropdownList.style.display = 'none';
+            if (!objSearchInput.contains(e.target) && !objDropdownList.contains(e.target)) objDropdownList.style.display = 'none';
+        });
+
+        // 3. CHECK BALANCE (CHỈ HIỆN XANH/ĐỎ)
+        function checkBalance() {
+            const code = document.getElementById('budgetCode').value;
+            const amount = parseFloat(document.getElementById('amount').value) || 0;
+            if (!code) return;
+
+            const box = document.getElementById('budgetStatusBox');
+            const title = document.getElementById('statusTitle');
+            const desc = document.getElementById('statusDesc');
+            const badge = document.getElementById('statusBadge');
+
+            fetch('/api/budget/check_balance', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({budget_code: code})
+            })
+            .then(r => r.json())
+            .then(data => {
+                box.classList.remove('d-none');
+                const remaining = data.Remaining;
+
+                if (amount > remaining) {
+                    box.className = 'alert alert-danger d-flex align-items-center justify-content-between mb-3 border rounded p-2';
+                    title.innerText = 'VƯỢT NGÂN SÁCH';
+                    title.className = 'd-block text-danger fw-bold';
+                    desc.innerText = 'Số tiền vượt hạn mức.';
+                    badge.className = 'badge bg-danger';
+                    badge.innerText = 'KHÔNG KHẢ DỤNG';
+                } else {
+                    box.className = 'alert alert-success d-flex align-items-center justify-content-between mb-3 border rounded p-2';
+                    title.innerText = 'HỢP LỆ';
+                    title.className = 'd-block text-success fw-bold';
+                    desc.innerText = 'Trong hạn mức cho phép.';
+                    badge.className = 'badge bg-success';
+                    badge.innerText = 'KHẢ DỤNG';
+                }
+            });
+        }
+
+        // 4. SUBMIT
+        function submitRequest() {
+            const code = document.getElementById('budgetCode').value;
+            const objectId = document.getElementById('objectCode').value;
+            const amount = parseFloat(document.getElementById('amount').value) || 0;
+            const reason = document.getElementById('reason').value;
+
+            if (!code) { alert("Vui lòng chọn loại chi phí."); return; }
+            if (!objectId) { alert("Vui lòng chọn đối tượng thụ hưởng."); return; }
+            if (amount <= 0) { alert("Vui lòng nhập số tiền hợp lệ."); return; }
+            if (!reason) { alert("Vui lòng nhập lý do."); return; }
+
+            if(!confirm("Xác nhận gửi đề nghị?")) return;
+
+            const btn = document.querySelector('button[onclick="submitRequest()"]');
+            const oldText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
+            btn.disabled = true;
+
+            fetch('/api/budget/submit_request', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    budget_code: code,
+                    object_id: objectId,
+                    amount: amount,
+                    reason: reason
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Thành công!");
+                    location.reload();
+                } else {
+                    alert("Lỗi: " + data.message);
+                    btn.innerHTML = oldText;
+                    btn.disabled = false;
+                }
+            })
+            .catch(err => {
+                alert("Lỗi kết nối.");
+                btn.innerHTML = oldText;
+                btn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>

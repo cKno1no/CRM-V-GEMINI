@@ -3,389 +3,319 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nhập Liệu Nhân Sự Liên Hệ</title>
+    <title>Tạo Mới Nhân Sự Liên Hệ</title>
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #F8F9FA; color: #3C4043; }
-        .container { max-width: 1200px; margin-top: 30px; }
-        h1 { font-weight: 700; color: #007bff; border-bottom: 3px solid #007bff; padding-bottom: 10px; margin-bottom: 25px; } 
-
-        .card { border: 1px solid #E0E0E0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); border-radius: 8px; margin-bottom: 30px; }
+        /* --- 1. CORE STYLES (Đồng bộ nhaplieu_new) --- */
+        :root {
+            --primary: #4318FF;
+            --primary-light: #F4F7FE;
+            --secondary: #A3AED0;
+            --text-dark: #2B3674;
+            --danger: #E31A1A;
+            --success: #05CD99;
+            --warning: #FFB547;
+            --bg-color: #F4F7FE;
+            --card-radius: 20px;
+            --input-bg: #F4F7FE;
+        }
         
-        /* Màu Header */
-        #contact-ref-card .card-header { 
-            background-color: #346265 !important; 
-            color: white !important; 
+        body { background-color: var(--bg-color); font-family: 'Inter', sans-serif; color: var(--text-dark); }
+        .container { max-width: 900px; padding: 40px 20px; }
+
+        /* HEADER */
+        .page-header { margin-bottom: 30px; text-align: center; }
+        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--primary); margin-bottom: 10px; }
+        
+        /* CARD */
+        .main-card {
+            background: white; border-radius: var(--card-radius); padding: 30px;
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); border: none;
+        }
+
+        /* FORM INPUTS */
+        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
+        .form-control, .form-select {
+            border: 1px solid #E0E5F2; background-color: white; border-radius: 12px;
+            padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); transition: all 0.2s;
+        }
+        .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1); }
+        
+        /* SEARCH BOX */
+        #kh_search_results { position: absolute; width: 100%; z-index: 1000; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 5px; }
+        .search-wrapper { position: relative; }
+
+        /* BUTTONS */
+        .btn-save { background-color: var(--primary); color: white; border: none; padding: 12px 40px; border-radius: 16px; font-weight: 600; width: 100%; transition: all 0.3s; }
+        .btn-save:hover { background-color: #3311db; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(67, 24, 255, 0.2); }
+
+        /* TABLE STYLE (MỚI - GỌN GÀNG) */
+        .table-custom th { 
+            background-color: var(--primary-light); 
+            color: var(--primary); 
             font-weight: 600; 
-            font-size: 1.2rem;
+            border: none; 
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            padding: 12px 15px;
         }
-
-        /* YÊU CẦU 4: MÀU HEADER CHI TIẾT (Xanh Dương như hình 1) */
-        #detail-card .card-header {
-            background-color: #E8F0FE; 
-            color: #4285F4; 
-            font-weight: 600; 
-            font-size: 1.2rem;
+        .table-custom td { 
+            vertical-align: middle; 
+            font-size: 0.95rem; 
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
         }
-        
-        .form-control-lg { padding: 0.5rem 1rem; }
-        
-        /* YÊU CẦU 4: MÀU XANH LÁ CHO LABEL */
-        .form-label { color: #3C4043; } /* Mặc định */
-        .highlight-label { color: #34A853 !important; font-weight: 600; } /* Xanh Lá Cây */
-
-        /* Vùng tham chiếu nhân sự đã nhập */
-        .reference-list {
-            min-height: 250px;
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            background-color: #fff;
-        }
-        .table-ref th { background-color: #E8F0FE; color: #4285F4; }
-
-        /* Nút Lưu và Về Dashboard */
-        .btn-save-custom {
-            background-color: #34A853; 
-            border-color: #34A853;
-            font-weight: 600;
-            min-width: 150px;
-            color: white !important;
-        }
-        .btn-save-custom:hover {
-            background-color: #2F834D;
-            border-color: #2F834D;
-        }
-        .btn-secondary-custom {
-            min-width: 150px;
-            font-weight: 600;
-        }
-        
-        /* Cần thiết cho Autocomplete */
-        #kh_search_results { 
-            width: 100%; 
-            border-radius: 8px; 
-            border-color: #4285F4;
-            outline: none;
-            display: none;
-        }
+        .empty-state { text-align: center; padding: 30px; color: var(--secondary); font-style: italic; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>TẠO MỚI NHÂN SỰ LIÊN HỆ</h1>
         
-        {% if message and 'success' in message %}
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <strong>Thành công!</strong> {{ message }}.
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="page-header">
+            <h1 class="page-title"><i class="fas fa-user-plus me-2"></i>Thêm Mới Nhân Sự</h1>
+            <p class="text-muted">Nhập thông tin người liên hệ mới cho khách hàng</p>
         </div>
-        {% elif message and 'error' in message %}
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong>Lỗi!</strong> {{ message }}.
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        {% endif %}
 
-        <form method="POST" action="/nhansu_nhaplieu">
-            <div class="card mb-4" id="contact-ref-card">
-                <div class="card-header">Liên hệ tới</div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Công ty</label>
-                            
-                            <input type="text" id="kh_ten_tat" placeholder="Gõ tên viết tắt hoặc Mã ĐT..." class="form-control form-control-lg"
-                                   {% if default_ten_khachhang %} 
-                                        value="{{ default_ten_khachhang }}" 
-                                        readonly
-                                   {% endif %}>
-                            <small id="kh_status" class="form-text text-muted">Nhập tên để tìm kiếm tự động.</small>
-                            <select id="kh_search_results" class="form-select mt-2" size="5" onchange="chonKhachHang()">
-                            </select>
-                            
-                            <input type="hidden" name="ma_cong_ty_kh" id="kh_ma_doi_tuong" 
-                                   value="{{ default_ma_khachhang or '' }}"
-                                   {% if not default_ma_khachhang %} required {% endif %}>
-                            
-                            <h5 class="mt-3">Mã Đối tượng đã chọn: <span id="display_ma_dt" class="highlight-label">
-                                {% if default_ma_khachhang %} {{ default_ma_khachhang }} {% else %} ... {% endif %}
-                            </span></h5>
-                        </div>
+        <div class="main-card">
+            {% if message %}
+            <div class="alert alert-{{ 'success' if 'success' in message else 'danger' }} rounded-4 mb-4">
+                <i class="fas fa-{{ 'check-circle' if 'success' in message else 'exclamation-circle' }} me-2"></i> {{ message }}
+            </div>
+            {% endif %}
 
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Chúng ta đã quen biết:</label>
-                            <div class="reference-list mt-1">
-                                <table class="table table-sm table-ref table-striped mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Tên</th>
-                                            <th>Chức vụ</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="nhansu_ref_body">
-                                        <tr><td colspan="2" class="text-center text-muted small">Vui lòng chọn Công ty để hiển thị nhân sự đã có.</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
+            <form method="POST" action="/nhansu_nhaplieu">
+                <div class="mb-4 search-wrapper">
+                    <label class="form-label">Khách hàng (Công ty) <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-building text-primary"></i></span>
+                        <input type="text" id="kh_ten_tat" placeholder="Nhập tên viết tắt để tìm..." class="form-control border-start-0 ps-0" autocomplete="off">
+                        <input type="hidden" name="ma_cong_ty_kh" id="kh_ma_cong_ty" required>
+                        <input type="hidden" name="ten_cong_ty_kh" id="kh_ten_cong_ty">
+                    </div>
+                    <small id="kh_status" class="text-muted mt-1 ms-1" style="font-size: 0.8rem;">
+                        {% if default_ma_khachhang %}
+                            <span class="text-success fw-bold"><i class="fas fa-lock me-1"></i>Đã khóa theo: {{ default_ma_khachhang }}</span>
+                        {% else %}
+                            Gõ từ khóa để tìm kiếm...
+                        {% endif %}
+                    </small>
+                    <select id="kh_search_results" class="form-select" size="5" style="display:none;"></select>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Họ và Tên đệm</label>
+                        <input type="text" name="ten_ho" class="form-control" placeholder="Ví dụ: Nguyễn Văn">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Tên thường gọi <span class="text-danger">*</span></label>
+                        <input type="text" name="ten_thuong_goi" class="form-control" placeholder="Ví dụ: An" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Chức vụ</label>
+                        <input type="text" name="chuc_vu" class="form-control" placeholder="Ví dụ: Trưởng phòng mua hàng">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Số ĐTDĐ 1 <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="fas fa-phone text-success"></i></span>
+                            <input type="text" name="so_dtdd_1" class="form-control" required>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <div class="card" id="detail-card">
-                <div class="card-header">Những hiểu biết của bạn</div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        
-                        <div class="col-md-6 border-end">
-                            
-                            <div class="mb-3">
-                                <label class="form-label highlight-label">Tên đầy đủ</label>
-                                <input type="text" name="ten_ho" class="form-control" required placeholder="PHẢI là tên đầy đủ có họ tên">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Tên thường gọi</label>
-                                <input type="text" name="ten_thuong_goi" class="form-control" placeholder="Tên giao tiếp khi làm việc, xưng hô">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Chức vụ</label>
-                                <input type="text" name="chuc_vu" class="form-control" placeholder="Chức vụ">
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label highlight-label">Số ĐTDD 1</label>
-                                <input type="text" name="so_dtdd_1" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Email</label>
-                                <input type="email" name="dia_chi_email" class="form-control">
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label">TK Cá nhân</label>
-                                <textarea name="ghi_chu" class="form-control" rows="3" 
-                                          placeholder="Tên TK, Mã số TK, Ngân hàng, ..."></textarea>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-
-                            <div class="mb-3">
-                                <label class="form-label">Quê quán</label>
-                                <select name="que_quan_ddl" id="que_quan_ddl" class="form-select">
-                                    <option value="">-- Chọn Tỉnh/Thành phố --</option>
-                                    </select>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label">Độ tuổi</label>
-                                <input type="text" name="do_tuoi" class="form-control" placeholder="Độ tuổi (Không bắt buộc)">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Thâm niên tại nhà máy</label>
-                                <input type="text" name="gia_dinh" class="form-control" placeholder="Thâm niên tại nhà máy (Không bắt buộc)">
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">TT Cá nhân</label>
-                                <textarea name="ghi_chu_dac_biet" class="form-control" rows="3" 
-                                          placeholder="Những thông tin 'ngoài lề' về cá nhân: độ tuổi, gia đình, tính cách, quan điểm công việc, ..."></textarea>
-                            </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Email</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="fas fa-envelope text-warning"></i></span>
+                            <input type="email" name="dia_chi_email" class="form-control">
                         </div>
                     </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Quê quán (Tỉnh/TP)</label>
+                        <select name="que_quan_ddl" id="que_quan_ddl" class="form-select">
+                            <option value="">-- Chọn Tỉnh/TP --</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Ghi chú chung</label>
+                        <input type="text" name="ghi_chu" class="form-control" placeholder="Ghi chú thêm...">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Đặc điểm cá nhân (Sở thích, Gia đình...)</label>
+                        <textarea name="gia_dinh" class="form-control" rows="2" placeholder="Thông tin phụ trợ để chăm sóc khách hàng..."></textarea>
+                    </div>
+                    <input type="hidden" name="ghi_chu_dac_biet">
                 </div>
-            </div>
 
+                <div class="mt-4">
+                    <button type="submit" class="btn-save shadow">
+                        <i class="fas fa-save me-2"></i>Lưu Nhân Sự Mới
+                    </button>
+                </div>
+            </form>
+        </div>
 
-            <div class="d-flex justify-content-center gap-3 mt-4 pb-5">
-                <button type="submit" class="btn btn-primary btn-lg btn-save-custom">Lưu Nhân Sự Mới</button>
-                <a href="/nhaplieu" class="btn btn-secondary btn-lg btn-secondary-custom">Quay lại Form Báo Cáo</a>
+        <div class="mt-5">
+            <h5 class="fw-bold text-secondary mb-3"><i class="fas fa-users me-2"></i>Nhân sự đã có của khách hàng này</h5>
+            <div class="table-responsive bg-white rounded-4 shadow-sm p-3">
+                <table class="table table-custom table-hover mb-0" id="tbl_existing_contacts">
+                    <thead>
+                        <tr>
+                            <th style="width: 60%;">Họ Tên</th>
+                            <th style="width: 40%;">Chức vụ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="2" class="empty-state">Vui lòng chọn khách hàng để xem danh sách.</td></tr>
+                    </tbody>
+                </table>
             </div>
-        </form>
+        </div>
+
     </div>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        
+        // --- CẤU HÌNH TỪ SERVER ---
+        const defaultMaKhachHang = "{{ default_ma_khachhang or '' }}";
+        const defaultTenKhachHang = "{{ default_ten_khachhang or '' }}";
+
         function debounce(func, timeout = 300) {
             let timer;
-            return (...args) => {
-                clearTimeout(timer);
-                timer = setTimeout(() => { func.apply(this, args); }, timeout);
-            };
-        }
-        
-        // Hàm hiển thị danh sách Nhân sự đã nhập
-        function displayReferencePersonnel(data) {
-            const tbody = document.getElementById('nhansu_ref_body');
-            tbody.innerHTML = '';
-            
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted small">Chưa có Nhân sự nào được nhập cho đối tượng này.</td></tr>';
-                return;
-            }
-            
-            data.forEach(p => {
-                const row = tbody.insertRow();
-                // CHÚ Ý: Tên cột là [TEN HO], [CHUC VU] (có khoảng trắng)
-                row.insertCell().textContent = `${p['TEN HO']} (${p['TEN THUONG GOI'] || 'N/A'})`;
-                row.insertCell().textContent = p['CHUC VU'] || 'N/A';
-            });
+            return (...args) => { clearTimeout(timer); timer = setTimeout(() => { func.apply(this, args); }, timeout); };
         }
 
-        // Hàm gọi API lấy danh sách nhân sự đã có (Bảng tham chiếu)
-        function fetchReferencePersonnel(maDoiTuong) {
-            const tbody = document.getElementById('nhansu_ref_body');
-            tbody.innerHTML = '<tr><td colspan="2" class="text-center text-secondary small">Đang tải danh sách...</td></tr>';
-
-            fetch(`/api/nhansu_by_khachhang/${maDoiTuong}`)
-                .then(response => {
-                    if (!response.ok) throw new Error('Lỗi Server khi tải danh sách Nhân sự.');
-                    return response.json();
-                })
-                .then(data => {
-                    displayReferencePersonnel(data);
-                })
-                .catch(error => {
-                    tbody.innerHTML = `<tr><td colspan="2" class="text-center text-danger small">Lỗi: Không tải được danh sách.</td></tr>`;
-                    console.error("Fetch Personnel Error:", error);
-                });
-        }
-        
-        // Hàm nạp dropdown Tỉnh Thành
-        function loadTinhThanhDropdown() {
-            const ddl = document.getElementById('que_quan_ddl');
-            fetch('/api/tinh_thanh')
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.length > 0) {
-                        data.forEach(tinh => {
-                            const option = document.createElement('option');
-                            option.value = tinh;
-                            option.textContent = tinh;
-                            ddl.appendChild(option);
-                        });
-                    }
-                })
-                .catch(error => console.error("Lỗi tải Tỉnh thành:", error));
-        }
-
-
-        // Hàm gọi API và hiển thị 5 lựa chọn (Chỉ chạy khi readonly là FALSE)
+        // 1. TÌM KHÁCH HÀNG
         function timKhachHang() {
-            const ten_tat_input = document.getElementById('kh_ten_tat');
-            if (ten_tat_input.readOnly) return; // KHÔNG CHẠY NẾU LÀ READONLY
-
-            const ten_tat = ten_tat_input.value.trim();
-            const status_msg = document.getElementById('kh_status');
+            const ten_tat = document.getElementById('kh_ten_tat').value.trim();
             const resultsDropdown = document.getElementById('kh_search_results');
             
-            status_msg.textContent = 'Đang tìm kiếm...';
-            resultsDropdown.style.display = 'none';
-            resultsDropdown.innerHTML = '';
-
-
-            if (ten_tat.length < 2) {
-                status_msg.textContent = 'Nhập ít nhất 2 ký tự.';
-                return;
+            if (ten_tat.length < 2) { 
+                resultsDropdown.style.display = 'none'; 
+                return; 
             }
-
-            fetch(`/api/khachhang/${ten_tat}`)
-                .then(response => {
-                    if (response.status === 404) { throw new Error('Không tìm thấy khách hàng.'); }
-                    if (!response.ok) { throw new Error('Lỗi Server.'); }
-                    return response.json(); 
-                })
+            
+            fetch(`/sales/api/khachhang/${ten_tat}`)
+                .then(r => r.json())
                 .then(data => {
+                    resultsDropdown.innerHTML = '';
                     if (data && data.length > 0) {
                         data.forEach(kh => {
                             const option = document.createElement('option');
-                            option.value = kh.ID; 
+                            option.value = kh.ID;
                             option.textContent = `${kh.FullName} (${kh.ID})`;
+                            option.setAttribute('data-fullname', kh.FullName);
                             resultsDropdown.appendChild(option);
                         });
-                        
                         resultsDropdown.style.display = 'block';
-                        resultsDropdown.size = Math.min(data.length, 5); 
-                        status_msg.textContent = `Tìm thấy ${data.length} kết quả. Vui lòng chọn.`;
-                        
-                        if (data.length === 1) {
-                             resultsDropdown.selectedIndex = 0;
-                             chonKhachHang();
-                        }
+                        resultsDropdown.size = Math.min(data.length, 5) + 1;
                     } else {
-                        status_msg.textContent = 'Không tìm thấy kết quả nào.';
+                        resultsDropdown.style.display = 'none';
                     }
                 })
-                .catch(error => {
-                    status_msg.textContent = `Lỗi tra cứu: ${error.message}`;
-                });
+                .catch(e => console.error("Lỗi tìm KH:", e));
         }
-        
-        // Hàm xử lý khi người dùng chọn từ dropdown (Chỉ áp dụng khi KHÔNG phải readonly)
-        function chonKhachHang() {
-            const ten_tat_input = document.getElementById('kh_ten_tat');
-            if (ten_tat_input.readOnly) return; 
 
+        // 2. CHỌN KHÁCH HÀNG
+        function chonKhachHang() {
             const resultsDropdown = document.getElementById('kh_search_results');
-            if (resultsDropdown.selectedIndex === -1) { return; }
-            
             const selectedOption = resultsDropdown.options[resultsDropdown.selectedIndex];
             
-            const ma_doi_tuong_field = document.getElementById('kh_ma_doi_tuong');
-            const maDoiTuongDisplay = document.getElementById('display_ma_dt');
-
             if (selectedOption) {
                 const maDoiTuong = selectedOption.value;
+                const tenDayDu = selectedOption.getAttribute('data-fullname');
 
-                ma_doi_tuong_field.value = maDoiTuong;
-                maDoiTuongDisplay.textContent = maDoiTuong;
-                
-                // GỌI API ĐỂ TẢI DANH SÁCH NHÂN SỰ ĐÃ CÓ
-                fetchReferencePersonnel(maDoiTuong);
+                document.getElementById('kh_ten_tat').value = tenDayDu; 
+                document.getElementById('kh_ma_cong_ty').value = maDoiTuong;
+                document.getElementById('kh_ten_cong_ty').value = tenDayDu;
 
-                document.getElementById('kh_status').textContent = '✅ Khách hàng đã được chọn và xác nhận.';
+                resultsDropdown.style.display = 'none';
+                loadExistingContacts(maDoiTuong);
             }
         }
-        
-        // Hàm kích hoạt tải dữ liệu khi trang được mở với mã mặc định
+
+        // 3. TẢI DANH SÁCH NHÂN SỰ (TINH GỌN)
+        function loadExistingContacts(maDoiTuong) {
+            const tbody = document.querySelector('#tbl_existing_contacts tbody');
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>';
+
+            fetch(`/api/nhansu_by_khachhang/${maDoiTuong}`)
+                .then(r => r.json())
+                .then(data => {
+                    tbody.innerHTML = '';
+                    if (data && data.length > 0) {
+                        data.forEach(item => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>
+                                    <span class="fw-bold text-primary me-2">${item.ShortName}</span>
+                                    <span class="text-dark">${item.FullName}</span>
+                                </td>
+                                <td class="text-secondary fw-medium">${item.Title || ''}</td>
+                            `;
+                            tbody.appendChild(row);
+                        });
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="2" class="empty-state">Chưa có nhân sự nào.</td></tr>';
+                    }
+                })
+                .catch(e => {
+                    console.error("Lỗi tải NS:", e);
+                    tbody.innerHTML = '<tr><td colspan="2" class="text-danger text-center">Lỗi kết nối dữ liệu.</td></tr>';
+                });
+        }
+
+        // 4. TẢI TỈNH THÀNH
+        function loadTinhThanhDropdown() {
+            fetch('/api/tinh_thanh')
+                .then(r => r.json())
+                .then(data => {
+                    const ddl = document.getElementById('que_quan_ddl');
+                    if (data && data.length > 0) {
+                        data.forEach(tinh => {
+                            ddl.appendChild(new Option(tinh, tinh));
+                        });
+                    }
+                })
+                .catch(e => console.error("Lỗi tải tỉnh thành:", e));
+        }
+
+        // 5. INIT
         function initializeDefaultKhachHang() {
-            const maDoiTuong = document.getElementById('kh_ma_doi_tuong').value;
             const tenTatInput = document.getElementById('kh_ten_tat');
-
-            if (maDoiTuong.trim() !== '') {
-                // Tải danh sách tham chiếu và cập nhật bảng nhân sự
-                fetchReferencePersonnel(maDoiTuong);
+            
+            if (defaultMaKhachHang) {
+                tenTatInput.value = defaultTenKhachHang || defaultMaKhachHang;
+                document.getElementById('kh_ma_cong_ty').value = defaultMaKhachHang;
+                document.getElementById('kh_ten_cong_ty').value = defaultTenKhachHang;
                 
-                // Cập nhật trạng thái hiển thị
-                document.getElementById('kh_status').textContent = 'Khách hàng được gán mặc định từ form báo cáo.';
+                tenTatInput.readOnly = true; 
+                tenTatInput.classList.add('bg-light');
+                loadExistingContacts(defaultMaKhachHang);
                 
-                // Ẩn dropdown kết quả (nếu nó hiển thị)
+                document.getElementById('kh_status').innerHTML = '<span class="text-success fw-bold"><i class="fas fa-check-circle"></i> Đã chọn từ báo cáo.</span>';
                 document.getElementById('kh_search_results').style.display = 'none';
-
             } else {
-                 // Nếu không có mã, đảm bảo form là rỗng và cho phép tìm kiếm
                  tenTatInput.readOnly = false;
                  document.getElementById('kh_status').textContent = 'Nhập tên để tìm kiếm tự động.';
             }
         }
 
-
-        // === ĐĂNG KÝ SỰ KIỆN CHÍNH ===
         document.addEventListener('DOMContentLoaded', function() {
             const tenTatInput = document.getElementById('kh_ten_tat');
             const resultsDropdown = document.getElementById('kh_search_results');
             
             loadTinhThanhDropdown();
-            
-            // 1. Logic Tải/Khóa khi có mã mặc định
             initializeDefaultKhachHang();
             
-            // 2. Kích hoạt lại Autocomplete cho trường hợp không có default code (hoặc sau khi xóa)
             tenTatInput.addEventListener('input', debounce(function() {
-                timKhachHang();
+                if (!this.readOnly) timKhachHang();
             }, 300)); 
 
             tenTatInput.addEventListener('keydown', function(e) {
@@ -397,7 +327,6 @@
 
             resultsDropdown.addEventListener('change', chonKhachHang);
         });
-
     </script>
 </body>
 </html>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đề Xuất Hoa Hồng Sales</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        body { background-color: #F4F7FE; font-family: 'Inter', sans-serif; }
+        .container { max-width: 1200px; margin-top: 30px; padding-bottom: 100px; }
+        .card { border: none; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        
+        /* Sticky Footer cho thanh tổng tiền */
+        .bottom-bar {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: white; border-top: 1px solid #ddd;
+            padding: 15px 30px; z-index: 1000;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 -5px 10px rgba(0,0,0,0.05);
+        }
+        .total-box { font-size: 1.1rem; font-weight: 600; color: #2B3674; }
+        .total-money { font-size: 1.5rem; color: #4318FF; font-weight: 800; }
+        
+        /* Table */
+        .table th { background-color: #F4F7FE !important; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; }
+        .search-results-dropdown { 
+            width: 100%; border-radius: 12px; border: 1px solid #4318FF; 
+            outline: none; display: none; position: absolute; z-index: 1056; 
+            margin-top: 5px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        .search-container { position: relative; }
+        /* Highlight row khi được chọn */
+        .table-info td { background-color: #e8f0fe !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold text-dark"><i class="fas fa-hand-holding-usd me-2 text-primary"></i>Đề Xuất Hoa Hồng</h3>
+            <a href="/" class="btn btn-light border"><i class="fas fa-times me-2"></i>Đóng</a>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body p-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4 search-container">
+                        <label class="form-label fw-bold">Khách hàng</label>
+                        <input type="text" id="kh_search_input" class="form-control" placeholder="Nhập tên hoặc mã KH...">
+                        <input type="hidden" id="kh_id_selected">
+                        <select id="kh_search_results" class="form-select search-results-dropdown" size="5"></select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">Từ ngày</label>
+                        <input type="date" id="date_from" class="form-control" value="{{ date_from }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">Đến ngày</label>
+                        <input type="date" id="date_to" class="form-control" value="{{ date_to }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold text-danger">Mức chi (%)</label>
+                        <input type="number" id="commission_rate" class="form-control" value="1.0" step="0.1" min="0">
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-primary w-100 fw-bold" id="btnCreate" onclick="createProposal()">
+                            <i class="fas fa-bolt me-2"></i>Tạo Phiếu
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card d-none" id="resultCard">
+            <div class="card-header bg-white py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-success me-2">MÃ PHIẾU: <span id="displayMaSo">---</span></span>
+                        <span class="text-muted small">Danh sách hóa đơn đã thanh toán</span>
+                    </div>
+                    <div class="text-end">
+                         <small class="text-muted fw-bold">Tổng DS Hóa đơn:</small> 
+                         <span id="displayTotalInvoice" class="fw-bold ms-1 text-dark">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th class="text-center" width="50">
+                                <input type="checkbox" class="form-check-input" id="checkAll" onclick="toggleAll(this.checked)">
+                            </th>
+                            <th>Ngày HĐ</th>
+                            <th>Số HĐ</th>
+                            <th>Mã Chứng từ (ERP)</th>
+                            <th class="text-end">Giá trị (VNĐ)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoiceTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-bar d-none" id="bottomBar">
+        <div class="total-box">
+            <div>Tổng Doanh số được chọn:</div>
+            <span id="footerTotalDS" class="text-dark fs-4">0</span>
+        </div>
+        <div class="d-flex align-items-center gap-4">
+            <div class="text-end">
+                <div class="small text-muted text-uppercase fw-bold">Giá trị đề nghị chi</div>
+                <div class="total-money" id="footerTotalCommission">0</div>
+            </div>
+            <button class="btn btn-success btn-lg px-4 fw-bold shadow" onclick="submitProposal()">
+                <i class="fas fa-paper-plane me-2"></i>Gửi Duyệt
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentMaSo = null;
+
+        function formatCurrency(num) {
+            return new Intl.NumberFormat('vi-VN').format(num || 0);
+        }
+
+        // --- 1. XỬ LÝ TÌM KHÁCH HÀNG ---
+        const searchInput = document.getElementById('kh_search_input');
+        const resultsDropdown = document.getElementById('kh_search_results');
+        
+        searchInput.addEventListener('input', function() {
+            const term = this.value.trim();
+            if (term.length < 2) { resultsDropdown.style.display = 'none'; return; }
+            
+            // Giả lập API tìm kiếm KH (Cần đảm bảo backend có route này)
+            fetch(`/sales/api/khachhang/${term}`)
+                .then(r => r.json())
+                .then(data => {
+                    resultsDropdown.innerHTML = '';
+                    if (data.length > 0) {
+                        data.forEach(kh => {
+                            const opt = document.createElement('option');
+                            opt.value = kh.ID;
+                            opt.text = `${kh.FullName} (${kh.ID})`;
+                            resultsDropdown.appendChild(opt);
+                        });
+                        resultsDropdown.style.display = 'block';
+                    }
+                })
+                .catch(err => console.error("Lỗi tìm KH:", err));
+        });
+
+        resultsDropdown.addEventListener('change', function() {
+            const selected = this.options[this.selectedIndex];
+            document.getElementById('kh_id_selected').value = selected.value;
+            searchInput.value = selected.text;
+            resultsDropdown.style.display = 'none';
+        });
+        
+        // Ẩn dropdown khi click ra ngoài
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !resultsDropdown.contains(e.target)) {
+                resultsDropdown.style.display = 'none';
+            }
+        });
+
+        // --- 2. TẠO PHIẾU ---
+        function createProposal() {
+            const customerId = document.getElementById('kh_id_selected').value;
+            if (!customerId) { alert("Vui lòng chọn khách hàng."); return; }
+
+            const btn = document.getElementById('btnCreate');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
+
+            fetch('/api/commission/create', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    customer_id: customerId,
+                    date_from: document.getElementById('date_from').value,
+                    date_to: document.getElementById('date_to').value,
+                    rate: document.getElementById('commission_rate').value
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                btn.disabled = false; btn.innerHTML = '<i class="fas fa-bolt me-2"></i>Tạo Phiếu';
+                if (data.success) {
+                    currentMaSo = data.ma_so;
+                    renderTable(data.details);
+                    updateFooter(data.master);
+                    
+                    document.getElementById('resultCard').classList.remove('d-none');
+                    document.getElementById('bottomBar').classList.remove('d-none');
+                    document.getElementById('displayMaSo').innerText = currentMaSo;
+                } else {
+                    alert("Lỗi: " + data.message);
+                }
+            })
+            .catch(err => {
+                btn.disabled = false; btn.innerHTML = '<i class="fas fa-bolt me-2"></i>Tạo Phiếu';
+                alert("Có lỗi xảy ra khi kết nối server.");
+            });
+        }
+
+        // --- 3. VẼ BẢNG (Đã sửa ID thành VoucherID) ---
+        function renderTable(details) {
+            const tbody = document.getElementById('invoiceTableBody');
+            tbody.innerHTML = '';
+            let totalInvoiceVal = 0;
+            document.getElementById('checkAll').checked = false; // Reset check all
+
+            if (!details || details.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-muted">Không tìm thấy hóa đơn nào đã thanh toán trong kỳ này.</td></tr>';
+                document.getElementById('displayTotalInvoice').innerText = '0';
+                return;
+            }
+
+            details.forEach(item => {
+                totalInvoiceVal += parseFloat(item.DOANH_SO || 0);
+                const isChecked = item.CHON ? 'checked' : '';
+                
+                // Ưu tiên lấy InvoiceNo, nếu không có thì lấy INVOICE_NO
+                const invoiceNo = item.InvoiceNo || item.INVOICE_NO || '---';
+                
+                // QUAN TRỌNG: Dùng VoucherID làm ID dòng và tham số hàm
+                // Vì VoucherID là chuỗi (varchar), cần để trong dấu nháy đơn ''
+                const row = `
+                    <tr class="${item.CHON ? 'table-info' : ''}" id="row-${item.VoucherID}">
+                        <td class="text-center">
+                            <input type="checkbox" class="form-check-input item-checkbox" 
+                                onchange="toggleItem('${item.VoucherID}', this.checked)" ${isChecked}>
+                        </td>
+                        <td>${item.VoucherDate ? new Date(item.VoucherDate).toLocaleDateString('vi-VN') : ''}</td>
+                        <td class="fw-bold text-primary">${invoiceNo}</td>
+                        <td class="small text-muted">${item.VoucherID}</td>
+                        <td class="text-end fw-bold">${formatCurrency(item.DOANH_SO)}</td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML('beforeend', row);
+            });
+            
+            document.getElementById('displayTotalInvoice').innerText = formatCurrency(totalInvoiceVal);
+        }
+
+        // --- 4. XỬ LÝ CHECKBOX (Sửa logic chuỗi VoucherID) ---
+        function toggleItem(voucherId, isChecked) {
+            // Sửa selector ID: row-VoucherID
+            const row = document.getElementById(`row-${voucherId}`);
+            if (row) {
+                if (isChecked) row.classList.add('table-info'); 
+                else row.classList.remove('table-info');
+            }
+
+            fetch('/api/commission/toggle_item', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                // Gửi detail_id là voucherId (chuỗi) cho khớp với Backend sửa đổi
+                body: JSON.stringify({ detail_id: voucherId, is_checked: isChecked, ma_so: currentMaSo })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    updateFooter(data.master);
+                }
+            });
+        }
+
+        // --- 5. TÍNH NĂNG CHỌN TẤT CẢ ---
+        function toggleAll(sourceChecked) {
+            const checkboxes = document.querySelectorAll('.item-checkbox');
+            
+            // Cách 1: Loop qua frontend (Nhanh về giao diện, chậm request nếu nhiều dòng)
+            // Tối ưu nhất là nên có API /toggle_all ở backend. 
+            // Ở đây tạm thời dùng loop để tái sử dụng API toggle_item hiện có.
+            
+            // Hiển thị UI ngay để user không phải chờ
+            checkboxes.forEach(cb => {
+                cb.checked = sourceChecked;
+                const row = cb.closest('tr');
+                if(sourceChecked) row.classList.add('table-info');
+                else row.classList.remove('table-info');
+            });
+
+            // Gửi lệnh update lên server (Khuyến nghị: Nên viết thêm API batch update)
+            // Giả lập gửi từng request (Cần lưu ý hiệu năng nếu list > 50 dòng)
+            let promises = [];
+            checkboxes.forEach(cb => {
+                // Lấy voucherID từ attribute onchange: toggleItem('VoucherID', ...)
+                // Cách parse nhanh string từ onchange:
+                const voucherId = cb.getAttribute('onchange').match(/'([^']+)'/)[1];
+                
+                promises.push(
+                    fetch('/api/commission/toggle_item', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ detail_id: voucherId, is_checked: sourceChecked, ma_so: currentMaSo })
+                    }).then(r => r.json())
+                );
+            });
+
+            // Đợi tất cả xong để update footer cuối cùng
+            Promise.all(promises).then(results => {
+                // Lấy kết quả của request cuối cùng để update footer
+                if(results.length > 0 && results[results.length-1].success) {
+                    updateFooter(results[results.length-1].master);
+                }
+            });
+        }
+
+        function updateFooter(master) {
+            document.getElementById('footerTotalDS').innerText = formatCurrency(master.DOANH_SO_CHON);
+            document.getElementById('footerTotalCommission').innerText = formatCurrency(master.GIA_TRI_CHI);
+        }
+
+        // --- 6. GỬI DUYỆT ---
+        function submitProposal() {
+            if (!confirm("Hệ thống sẽ xóa các hóa đơn không được chọn và tạo đề nghị thanh toán. Tiếp tục?")) return;
+            
+            fetch('/api/commission/submit', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ ma_so: currentMaSo })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert("Lỗi: " + data.message);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

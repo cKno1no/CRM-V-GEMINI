@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard Quản lý Đầu việc (v2)</title>
+    <title>Dashboard Quản lý Đầu việc (v2.2)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -172,6 +172,28 @@
         .modal-header { background-color: var(--primary-light); border-bottom: none; }
         .modal-header .modal-title { color: var(--primary); font-weight: 700; }
 
+        /* --- 6b. STYLE MỚI CHO THẺ HELP CALL (UI Swap) --- */
+        .help-call-display {
+            display: none; /* Mặc định ẩn */
+            align-items: center;
+            justify-content: center;
+            background-color: #FFF8E1; /* Nền vàng nhạt */
+            border: 2px dashed #FFC107; /* Viền nét đứt cảnh báo */
+            color: #B71C1C; /* Chữ đỏ đậm */
+            border-radius: 16px;
+            height: 48px; /* Chiều cao bằng input thường */
+            font-weight: 700;
+            width: 100%;
+            animation: flash-border 2s infinite;
+        }
+        .help-call-display i { margin-right: 10px; font-size: 1.2rem; }
+        
+        @keyframes flash-border {
+            0% { border-color: #FFC107; }
+            50% { border-color: #FF5722; }
+            100% { border-color: #FFC107; }
+        }
+
         /* --- 7. HISTORY TABLE (Style mới) --- */
         .table-task th { 
             background-color: #FAFCFE !important; color: var(--secondary) !important;
@@ -182,8 +204,10 @@
         .table-task tbody tr:hover td { background-color: var(--primary-light); }
         
         .truncate-content {
-            max-width: 400px; white-space: nowrap; 
-            overflow: hidden; text-overflow: ellipsis; cursor: default;
+            max-width: 400px; 
+            white-space: normal; /* Cho phép xuống dòng */
+            word-wrap: break-word; /* Ngắt từ nếu quá dài */
+            cursor: text;
         }
         
         /* DataTables (Style mới) */
@@ -272,7 +296,16 @@
             background: none; border: none; color: var(--primary); /* Màu tím */
             font-size: 1.5rem; margin-left: 10px; cursor: pointer;
         }
-        
+        /* YÊU CẦU 3: STYLE MỚI CHO MULTI-SELECT NGƯỜI HỖ TRỢ (ĐỒNG BỘ) */
+        #helper_code_select {
+            background-color: #FFF; 
+            border: 1px solid #E0E5F2; 
+            /* Bỏ border đỏ/hồng cũ */
+        }
+        #helper_code_select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary-light);
+        }
         /* Mobile */
         @media (max-width: 992px) {
             .kanban-container {
@@ -296,7 +329,6 @@
 </head>
 <body>
     <div class="container-fluid">
-        <!-- HEADER (Đã đổi class) -->
         <div class="page-header">
             <h1 class="page-title"><i class="fas fa-tasks me-2"></i> QUẢN LÝ ĐẦU VIỆC HÀNG NGÀY</h1>
             
@@ -318,7 +350,6 @@
             </div>
         </div>
         
-        <!-- KPI TILES (Giữ nguyên HTML, CSS mới sẽ tự áp dụng) -->
         <div class="row g-4 mb-4">
             <div class="col-md-3 col-6">
                 <div class="kpi-tile bg-total {% if active_filter == 'ALL' %}kpi-active{% endif %}" onclick="filterTasks('ALL')">
@@ -346,7 +377,6 @@
             </div>
         </div>
 
-        <!-- KANBAN CARD (Đã đổi class .card -> .main-card) -->
         <div class="main-card">
             <div class="card-header-custom">
                 <div>
@@ -357,26 +387,12 @@
                 </button>
             </div>
             <div class="card-body-custom">
-                <!-- HTML bên trong giữ nguyên, CSS mới tự áp dụng -->
                 <div class="kanban-container">
                     <div class="kanban-column" style="border-top: 5px solid var(--secondary);">
                         <div class="kanban-column-header">MỚI TẠO (OPEN)</div>
                         <div class="task-list">
                             {% for task in kanban_tasks if task.Status == 'OPEN' %}
-                                <div class="task-card" onclick="openUpdateModal({{ task.TaskID }})"> 
-                                    <span class="task-id-tag">#{{ task.TaskID }}</span>
-                                    <div class="task-title-small">{{ task.Title }}</div>
-                                    <p class="mt-1 mb-0 text-muted" style="font-size: 0.75rem;">
-                                        <span class="badge bg-secondary">{{ task.UserCode }}</span> | {{ task.TaskDateDisplay }}
-                                        <!-- THÊM SỐ LOG COUNT -->
-                                        <span class="badge bg-primary-subtle text-primary-emphasis rounded-pill ms-1" title="Số lượng log">
-                                            <i class="fas fa-stream fa-xs"></i> {{ task.LogCount | default(0) }}
-                                        </span>
-                                        {% if task.ClientName %}
-                                            <span class="float-end text-primary"><i class="fas fa-user-tag me-1"></i> {{ task.ClientName|default(task.ObjectID)|truncate(15, True) }}</span>
-                                        {% endif %}
-                                    </p>
-                                </div>
+                                {% include 'partials/task_card.html' %}
                             {% endfor %}
                         </div>
                     </div>
@@ -385,20 +401,7 @@
                         <div class="kanban-column-header" style="color: var(--warning);">ĐANG XỬ LÝ (PENDING)</div>
                         <div class="task-list">
                             {% for task in kanban_tasks if task.Status == 'PENDING' or task.Status == 'BLOCKED' %}
-                                <div class="task-card" onclick="openUpdateModal({{ task.TaskID }})"> 
-                                    <span class="task-id-tag">#{{ task.TaskID }}</span>
-                                    <div class="task-title-small">{{ task.Title }}</div>
-                                    <p class="mt-1 mb-0 text-muted" style="font-size: 0.75rem;">
-                                        <span class="badge bg-secondary">{{ task.UserCode }}</span> | {{ task.TaskDateDisplay }}
-                                        <!-- THÊM SỐ LOG COUNT -->
-                                        <span class="badge bg-primary-subtle text-primary-emphasis rounded-pill ms-1" title="Số lượng log">
-                                            <i class="fas fa-stream fa-xs"></i> {{ task.LogCount | default(0) }}
-                                        </span>
-                                        {% if task.ClientName %}
-                                            <span class="float-end text-primary"><i class="fas fa-user-tag me-1"></i> {{ task.ClientName|default(task.ObjectID)|truncate(15, True) }}</span>
-                                        {% endif %}
-                                    </p>
-                                </div>
+                                {% include 'partials/task_card.html' %}
                             {% endfor %}
                         </div>
                     </div>
@@ -407,24 +410,7 @@
                         <div class="kanban-column-header" style="color: var(--danger);">CẦN HỖ TRỢ/ GIAO VIỆC</div>
                         <div class="task-list">
                             {% for task in kanban_tasks if task.Status == 'HELP_NEEDED' %}
-                                {% set priority_class = '' %}
-                                {% if task.Priority == 'HIGH' %}{% set priority_class = 'priority-high' %}{% endif %}
-                                {% if task.Priority == 'ALERT' %}{% set priority_class = 'priority-alert' %}{% endif %}
-                                
-                                <div class="task-card {{ priority_class }}" onclick="openUpdateModal({{ task.TaskID }})"> 
-                                    <span class="task-id-tag">#{{ task.TaskID }}</span>
-                                    <div class="task-title-small">{{ task.Title }}</div>
-                                    <p class="mt-1 mb-0 text-muted" style="font-size: 0.75rem;">
-                                        <span class="badge bg-secondary">{{ task.UserCode }}</span> | {{ task.TaskDateDisplay }}
-                                        <!-- THÊM SỐ LOG COUNT -->
-                                        <span class="badge bg-primary-subtle text-primary-emphasis rounded-pill ms-1" title="Số lượng log">
-                                            <i class="fas fa-stream fa-xs"></i> {{ task.LogCount | default(0) }}
-                                        </span>
-                                        {% if task.ClientName %}
-                                            <span class="float-end text-primary"><i class="fas fa-user-tag me-1"></i> {{ task.ClientName|default(task.ObjectID)|truncate(15, True) }}</span>
-                                        {% endif %}
-                                    </p>
-                                </div>
+                                {% include 'partials/task_card.html' %}
                             {% endfor %}
                         </div>
                     </div>
@@ -433,24 +419,7 @@
                         <div class="kanban-column-header" style="color: var(--success);">HOÀN THÀNH (COMPLETED)</div>
                         <div class="task-list">
                             {% for task in kanban_tasks if task.Status == 'COMPLETED' %}
-                                {% set priority_class = '' %}
-                                {% if task.Priority == 'HIGH' %}{% set priority_class = 'priority-high' %}{% endif %}
-                                {% if task.Priority == 'ALERT' %}{% set priority_class = 'priority-alert' %}{% endif %}
-                                
-                                <div class="task-card {{ priority_class }}" onclick="openUpdateModal({{ task.TaskID }})"> 
-                                    <span class="task-id-tag">#{{ task.TaskID }}</span>
-                                    <div class="task-title-small">{{ task.Title }}</div>
-                                    <p class="mt-1 mb-0 text-muted" style="font-size: 0.75rem;">
-                                        <span class="badge bg-secondary">{{ task.UserCode }}</span> | {{ task.TaskDateDisplay }}
-                                        <!-- THÊM SỐ LOG COUNT -->
-                                        <span class="badge bg-primary-subtle text-primary-emphasis rounded-pill ms-1" title="Số lượng log">
-                                            <i class="fas fa-stream fa-xs"></i> {{ task.LogCount | default(0) }}
-                                        </span>
-                                        {% if task.ClientName %}
-                                            <span class="float-end text-primary"><i class="fas fa-user-tag me-1"></i> {{ task.ClientName|default(task.ObjectID)|truncate(15, True) }}</span>
-                                        {% endif %}
-                                    </p>
-                                </div>
+                                {% include 'partials/task_card.html' %}
                             {% endfor %}
                         </div>
                     </div>
@@ -458,13 +427,11 @@
             </div>
         </div>
 
-        <!-- HISTORY TABLE CARD (Đã đổi class .card -> .main-card) -->
         <div class="main-card">
             <div class="card-header-custom">
                 <div><i class="fas fa-history"></i> Bảng Truy vấn Lịch sử Chi tiết (30 Ngày)</div>
             </div>
             <div class="card-body-custom">
-                <!-- Form lọc (Style mới tự áp dụng) -->
                 <form method="GET" action="{{ url_for('task_bp.task_dashboard', view=view_mode, filter=active_filter) }}" class="mb-3">
                     <div class="input-group">
                         <input type="text" name="search" class="form-control" placeholder="Lọc nhanh theo Tiêu đề, Nội dung hoặc Khách hàng..." 
@@ -478,7 +445,6 @@
                     </div>
                 </form>
 
-                <!-- Bảng (Giữ nguyên HTML, CSS mới tự áp dụng) -->
                 {% if history_tasks %}
                     <div class="table-responsive">
                         <table id="task-history-table" class="table table-hover table-sm table-task" style="width: 100%;">
@@ -503,9 +469,11 @@
                                         <td>{{ task.TaskID }}</td>
                                         <td>{{ task.TaskDateDisplay }}</td>
                                         <td><span class="badge bg-secondary">{{ task.TaskType }}</span></td>
-                                        <!-- SỬA CỘT TIÊU ĐỀ: THÊM SỐ LOG COUNT -->
                                         <td>
                                             {{ task.Title }}
+                                            {% if task.Attachments %}
+                                                <a href="{{ task.Attachments }}" target="_blank" class="text-danger ms-1" title="Mở Link"><i class="fas fa-link"></i></a>
+                                            {% endif %}
                                             <span class="badge bg-primary-subtle text-primary-emphasis rounded-pill ms-1" title="Số lượng log">
                                                 <i class="fas fa-stream fa-xs"></i> {{ task.LogCount | default(0) }}
                                             </span>
@@ -549,11 +517,10 @@
         
     </div>
     
-    <!-- MODALS (Giữ nguyên HTML, CSS mới tự áp dụng) -->
     <div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form method="POST" action="{{ url_for('task_bp.task_dashboard') }}">
+                <form method="POST" action="{{ url_for('task_bp.task_dashboard') }}" enctype="multipart/form-data">
                     <input type="hidden" name="create_task" value="1">
                     <input type="hidden" name="view" value="{{ view_mode }}">
                     <input type="hidden" name="filter" value="{{ active_filter }}">
@@ -584,6 +551,13 @@
                                 <option value="NOI_BO">5. Nội bộ</option>
                                 <option value="KHAC">6. Khác</option>
                             </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="task_email_link" class="form-label">Link Email / Tài liệu (URL)</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-link"></i></span>
+                                <input type="url" class="form-control" id="task_email_link" name="task_email_link" placeholder="Paste link Gmail/Outlook hoặc Drive vào đây...">
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -628,12 +602,17 @@
                                             <option value="BLOCKED">BLOCKED - Đang bị nghẽn (Blocker)</option>
                                             <option value="REQUEST_CLOSE">REQUEST_CLOSE - Yêu cầu đóng</option>
                                         </select>
+                                        
+                                        <div id="helpCallDisplay" class="help-call-display">
+                                            <i class="fas fa-bullhorn animate__animated animate__flash"></i>
+                                            <span>ĐANG KÊU GỌI HỖ TRỢ</span>
+                                        </div>
                                     </div>
-                                    <div class="col-md-6 mb-3" id="helperSelectionBox" style="display: none;">
-                                        <label for="helper_code_select" class="form-label text-danger">Chọn người cần hỗ trợ *</label> 
-                                        <select class="form-select" id="helper_code_select" name="helper_code">
-                                            <option value="">-- Vui lòng chọn --</option>
-                                        </select>
+                                    <div class="col-12 mb-3" id="helperSelectionBox" style="display: none;">
+                                        <label class="form-label text-danger fw-bold">Chọn người/bộ phận hỗ trợ *</label>
+                                        <select class="form-select" id="helper_code_select" multiple style="height: 150px; border: 2px solid var(--danger); background-color: #FFF5F5;">
+                                            </select>
+                                        <small class="text-muted d-block mt-1"><i class="fas fa-info-circle"></i> Giữ phím <strong>Ctrl</strong> (Windows) hoặc <strong>Command</strong> (Mac) để chọn nhiều người.</small>
                                     </div>
                                 </div>
                             </form>
@@ -687,7 +666,6 @@
     </div>
     {% endif %}
 
-    <!-- CHATBOT (Giữ nguyên HTML, CSS mới tự áp dụng) -->
     <div class="chatbot-toggle" id="chatbotToggle">
         <i class="fas fa-robot"></i>
     </div>
@@ -723,9 +701,6 @@
         </div>
     </div>
     
-    <!-- ======================================================== -->
-    <!-- TOÀN BỘ JAVASCRIPT ĐƯỢC GIỮ NGUYÊN 100% -->
-    <!-- ======================================================== -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
@@ -782,8 +757,12 @@
                 // Cài đặt trạng thái Progress Ban đầu
                 $('#progress_percent').val(task.ProgressPercentage || 0); 
                 $('#update_detail_content').val(''); // Bắt đầu Log mới với nội dung trống
-                $('#log_type_select').val('PROGRESS'); // Mặc định là PROGRESS
-                $('#helperSelectionBox').hide(); // Ẩn helper box
+                
+                // --- RESET UI (SHOW DROPDOWN, HIDE BADGE) ---
+                $('#log_type_select').show().val('PROGRESS');
+                $('#helpCallDisplay').css('display', 'none');
+                $('#helperSelectionBox').hide(); 
+                // ---------------------------------------------
 
                 // 2. Tải Lịch sử Log (API MỚI)
                 $('#logHistoryContainer').html('<p class="text-center text-muted">Đang tải lịch sử...</p>');
@@ -826,6 +805,7 @@
         
         let eligibleHelpers = []; 
 
+        // FIX: HÀM LOAD HELPERS MỚI (CÓ GROUP)
         function loadEligibleHelpers() {
             if (eligibleHelpers.length > 0) return;
             
@@ -834,10 +814,21 @@
                 .then(data => {
                     eligibleHelpers = data;
                     const ddl = $('#helper_code_select');
-                    ddl.empty().append('<option value="">-- Vui lòng chọn --</option>');
+                    ddl.empty(); // Không cần option mặc định cho multiple select
+
+                    // 1. Thêm các lựa chọn BỘ PHẬN
+                    ddl.append('<optgroup label="--- GỬI CẢ BỘ PHẬN ---">');
+                    ddl.append('<option value="DEPT_2. KINH DOANH">⭐ TOÀN BỘ KINH DOANH</option>');
+                    ddl.append('<option value="DEPT_5. KHO">⭐ TOÀN BỘ KHO</option>');
+                    ddl.append('<option value="DEPT_3. THU KY">⭐ TOÀN BỘ THƯ KÝ</option>');
+                    ddl.append('</optgroup>');
+
+                    // 2. Thêm danh sách NHÂN VIÊN
+                    ddl.append('<optgroup label="--- NHÂN VIÊN ---">');
                     data.forEach(h => {
                         ddl.append(`<option value="${h.code}">${h.name}</option>`);
                     });
+                    ddl.append('</optgroup>');
                 })
                 .catch(error => console.error("Error loading helpers:", error));
         }
@@ -991,13 +982,24 @@
             selectClient('create_kh_search_results', 'create_object_id_input', 'create_object_id_selected');
         });
 
-        // HÀM KÊU GỌI HỖ TRỢ (Nút riêng)
+        // HÀM KÊU GỌI HỖ TRỢ (Nút riêng) - ĐÃ FIX UI SWAP
         $('#helpCallBtn').on('click', function() {
-            // Chuyển loại log thành HELP_CALL và hiển thị helper box
+            // 1. Ẩn Select, Hiện Badge
+            $('#log_type_select').hide();
+            $('#helpCallDisplay').css('display', 'flex'); // Dùng flex để căn giữa
+            
+            // 2. Tự động thêm option HELP_CALL và chọn nó
+            if ($('#log_type_select option[value="HELP_CALL"]').length === 0) {
+                $('#log_type_select').append('<option value="HELP_CALL">HELP</option>');
+            }
             $('#log_type_select').val('HELP_CALL');
-            $('#helperSelectionBox').show();
+
+            // 3. Hiện ô chọn người và load
+            $('#helperSelectionBox').slideDown(); // Hiệu ứng trượt xuống
             loadEligibleHelpers();
-            alert("Vui lòng chọn người cần hỗ trợ và ghi nhận Log để gửi yêu cầu.");
+            
+            // Focus vào ô chọn người
+            setTimeout(() => { $('#helper_code_select').focus(); }, 100);
         });
 
         // HÀM XỬ LÝ SỰ KIỆN GHI LOG TIẾN ĐỘ (Update Task)
@@ -1005,16 +1007,14 @@
             e.preventDefault();
             const form = $(this);
             
+            // FIX: Lấy giá trị MULTIPLE SELECT
+            const selectedHelpers = form.find('#helper_code_select').val() || [];
             const logType = form.find('#log_type_select').val();
-            let helperCode = null;
-            
-            // Xử lý logic kêu gọi hỗ trợ
-            if (logType === 'HELP_CALL') {
-                 helperCode = form.find('#helper_code_select').val();
-                 if (!helperCode) {
-                     alert('Vui lòng chọn người cần hỗ trợ.');
-                     return;
-                 }
+
+            // Validate Help Call
+            if (logType === 'HELP_CALL' && selectedHelpers.length === 0) {
+                 alert('Vui lòng chọn ít nhất 1 người hoặc bộ phận để gửi yêu cầu.');
+                 return;
             }
             
             // LƯU Ý: Name của textarea đã được đổi thành 'content'
@@ -1024,7 +1024,7 @@
                 content: form.find('#update_detail_content').val(), 
                 progress_percent: parseInt(form.find('#progress_percent').val()),
                 log_type: logType,
-                helper_code: helperCode 
+                helper_codes: selectedHelpers // Gửi MẢNG helper_codes
             };
             
             // API mới là /api/task/log_progress
@@ -1172,7 +1172,6 @@
 
     </script>
     
-    <!-- CHATBOT JAVASCRIPT (Giữ nguyên) -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         

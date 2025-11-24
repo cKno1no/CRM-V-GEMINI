@@ -413,3 +413,62 @@ def api_defaults(loai_code):
         return jsonify(defaults)
     else:
         return jsonify({}), 404
+
+@crm_bp.route('/api/nhansu/list/<string:ma_doi_tuong>', methods=['GET'])
+@login_required
+def api_nhansu_list(ma_doi_tuong):
+    """API: Lấy danh sách chi tiết nhân sự theo khách hàng (cho bảng tham chiếu)."""
+    from app import db_manager
+    
+    # Truy vấn đầy đủ các trường cần thiết cho bảng hiển thị
+    query = f"""
+        SELECT 
+            MA AS ShortName, 
+            ([TEN HO] + ' ' + [TEN THUONG GOI]) AS FullName,
+            [CHUC VU] AS Title,
+            [DIEN THOAI 1] AS Phone,
+            [EMAIL] AS Email,
+            [GHI CHU] AS Note
+        FROM dbo.{config.TEN_BANG_NHAN_SU_LH} 
+        WHERE [CONG TY] = ? 
+        ORDER BY [TEN HO]
+    """
+    
+    data = db_manager.get_data(query, (ma_doi_tuong,))
+    
+    if data:
+        return jsonify(data)
+    else:
+        return jsonify([])
+
+# Trong crm_bp.py
+
+# Trong file crm_bp.py
+
+@crm_bp.route('/api/nhansu_by_khachhang/<string:ma_doi_tuong>', methods=['GET'])
+@login_required
+def api_get_nhansu_list(ma_doi_tuong):
+    """API: Lấy danh sách nhân sự chi tiết cho bảng tham chiếu (Đã sửa cột SO DTDD 1)."""
+    from app import db_manager
+    import config # Đảm bảo đã import config
+    
+    # SỬA TÊN CỘT [DIEN THOAI...] THÀNH [SO DTDD 1]
+    query = f"""
+        SELECT 
+            MA AS ShortName,
+            ISNULL([TEN HO], [TEN THUONG GOI]) AS FullName,
+            [CHUC VU] AS Title,
+            [SO DTDD 1] AS Phone,  -- <--- CẬP NHẬT TÊN CỘT CHÍNH XÁC TẠI ĐÂY
+            [DIA CHI EMAIL] AS Email,
+            [GHI CHU] AS Note
+        FROM dbo.{config.TEN_BANG_NHAN_SU_LH} 
+        WHERE [CONG TY] = ? 
+        ORDER BY [TEN HO]
+    """
+    
+    try:
+        data = db_manager.get_data(query, (ma_doi_tuong,))
+        return jsonify(data if data else [])
+    except Exception as e:
+        print(f"Lỗi API Nhân sự: {e}")
+        return jsonify([])

@@ -328,3 +328,116 @@ def api_save_quote_cost_override():
         print(f"LỖI API LƯU COST OVERRIDE: {e}")
         return jsonify({'success': False, 'message': f'Lỗi hệ thống: {str(e)}'}), 500
 # ==================================
+@approval_bp.route('/quote_input_table', methods=['GET', 'POST'])
+@login_required
+def quote_input_table():
+    """ROUTE: Bảng nhập liệu Bám sát Báo giá (Action Plan)."""
+    
+    # Import Service xử lý logic khách hàng
+    from app import customer_service 
+    
+    user_code = session.get('user_code')
+    
+    # 1. Xử lý bộ lọc ngày (Mặc định 30 ngày)
+    today = datetime.now()
+    default_from = (today - timedelta(days=30)).strftime('%Y-%m-%d')
+    default_to = today.strftime('%Y-%m-%d')
+    
+    date_from = request.form.get('date_from') or request.args.get('date_from') or default_from
+    date_to = request.form.get('date_to') or request.args.get('date_to') or default_to
+    
+    # 2. Gọi hàm lấy dữ liệu từ CustomerService
+    quotes = customer_service.get_quotes_for_input(user_code, date_from, date_to)
+    
+    # 3. Định nghĩa danh sách cho Dropdown (Status & Action)
+    quote_statuses = [
+        ('CHỜ', 'CHỜ - Đang theo dõi'),
+        ('WIN', 'WIN - Thắng'),
+        ('LOST', 'LOST - Thua'),
+        ('CANCEL', 'CANCEL - Hủy'),
+        ('DELAY', 'DELAY - Trì hoãn')
+    ]
+    
+    actions = [
+        ('', '-- Chọn hành động --'),
+        ('GOI_DIEN', 'Gọi điện'),
+        ('GUI_MAIL', 'Gửi Email'),
+        ('GAP_MAT', 'Gặp mặt'),
+        ('ZALO', 'Nhắn Zalo'),
+        ('DEMO', 'Gửi mẫu/Demo'),
+        ('THUONG_LUONG', 'Thương lượng giá')
+    ]
+    
+    return render_template(
+        'quote_table_input.html',
+        quotes=quotes,
+        date_from=date_from,
+        date_to=date_to,
+        quote_statuses=quote_statuses,
+        actions=actions
+    )
+
+
+@approval_bp.route('/api/update_quote_status', methods=['POST'])
+@login_required
+def api_update_quote_status():
+    """API: Cập nhật trạng thái/hành động cho Báo giá (Upsert)."""
+    from app import db_manager
+    import config
+    
+    data = request.json
+    quote_id = data.get('quote_id')
+    
+    if not quote_id:
+        return jsonify({'success': False, 'message': 'Thiếu Quote ID'}), 400
+        
+    # Lấy các trường dữ liệu
+    status_code = data.get('status_code')
+    loss_reason = data.get('loss_reason')
+    action_1 = data.get('action_1')
+    action_2 = data.get('action_2')
+    
+    # Xử lý ngày giờ (nếu rỗng gửi None)
+    time_start = data.get('time_start') or None
+    time_complete = data.get('time_complete') or None
+    
+    user_code = session.get('user_code')
+
+    # Query UPSERT (Nếu tồn tại thì Update, chưa thì Insert)
+    # Lưu ý: Cần đảm bảo bảng HD_CAP NHAT BAO GIA có khóa chính là (MA_BAO_GIA, NGAY_CAP_NHAT) hoặc xử lý logic phù hợp.
+    # Ở đây dùng logic đơn giản: INSERT dòng mới nhất với ngày hiện tại (Lịch sử)
+    
+    query = f"""
+        MERGE {config.TEN_BANG_CAP_NHAT_BG} AS TARGET
+        USING (SELECT ? AS MA_BAO_GIA) AS SOURCE
+        ON (TARGET.MA_BAO_GIA = SOURCE.MA_BAO_GIA AND CAST(TARGET.NGAY_CAP_NHAT AS DATE) = CAST(GETDATE() AS DATE))
+        WHEN MATCHED THEN
+            UPDATE SET 
+                TINH_TRANG_BG = ?, 
+                LY_DO_THUA = ?, 
+                MA_HANH_DONG_1 = ?, 
+                MA_HANH_DONG_2 = ?,
+                THOI_GIAN_PHAT_SINH = ?,
+                THOI_GIAN_HOAN_TAT = ?,
+                NGUOI_CAP_NHAT = ?,
+                NGAY_CAP_NHAT = GETDATE()
+        WHEN NOT MATCHED THEN
+            INSERT (MA_BAO_GIA, TINH_TRANG_BG, LY_DO_THUA, MA_HANH_DONG_1, MA_HANH_DONG_2, THOI_GIAN_PHAT_SINH, THOI_GIAN_HOAN_TAT, NGUOI_CAP_NHAT, NGAY_CAP_NHAT)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, GETDATE());
+    """
+    
+    # Tham số cho MERGE (Lặp lại 2 lần cho Update và Insert)
+    params = (
+        quote_id, 
+        status_code, loss_reason, action_1, action_2, time_start, time_complete, user_code, # Update
+        quote_id, status_code, loss_reason, action_1, action_2, time_start, time_complete, user_code  # Insert
+    )
+    
+    try:
+        if db_manager.execute_non_query(query, params):
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'message': 'Lỗi SQL'}), 500
+    except Exception as e:
+        print(f"Lỗi update quote status: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500

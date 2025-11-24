@@ -66,8 +66,12 @@ class PortalService:
 
         current_year = datetime.now().year
         current_month = datetime.now().month
+        
+        # --- LOGIC LỌC CHUNG (SỬA ĐỔI) ---
+        # Kiểm tra bộ phận để xác định cột lọc: SalesManID (Kinh doanh) hay EmployeeID (Thư ký)
         is_thu_ky = "THU KY" in bo_phan or "THUKY" in bo_phan
         col_filter_erp = "EmployeeID" if is_thu_ky else "SalesManID"
+        
         TABLE_CUSTOMER_ERP = config.ERP_IT1202
 
         try:
@@ -78,6 +82,7 @@ class PortalService:
             return data
 
         # --- 1. KPI: DOANH SỐ ---
+        # (Giữ nguyên SalesManID vì KPI doanh số luôn gắn với người bán, Thư ký có thể xem 0 hoặc cần logic khác nếu muốn xem tổng)
         try:
             cursor.execute(f"SELECT SUM([DK]) FROM {config.CRM_DTCL} WHERE [Nam]=? AND [PHU TRACH DS]=?", (current_year, user_code))
             row = cursor.fetchone()
@@ -112,7 +117,7 @@ class PortalService:
         except Exception as e:
             data['errors']['tasks'] = str(e)
 
-        # --- 3. CÔNG NỢ (Sửa ObjectID và ShortObjectName) ---
+        # --- 3. CÔNG NỢ ---
         try:
             cursor.execute(f"""
                 SELECT TOP 20 
@@ -135,13 +140,14 @@ class PortalService:
         except Exception as e:
             data['errors']['debt'] = str(e)
 
-        # --- 4. THỐNG KÊ ĐƠN TRONG THÁNG ---
+        # --- 4. THỐNG KÊ ĐƠN TRONG THÁNG (ĐÃ SỬA LOGIC LỌC) ---
         try:
+            # Sử dụng col_filter_erp thay vì cứng nhắc SalesManID
             query_stat = f"""
                 SELECT COUNT(DISTINCT T1.SOrderID)
                 FROM {config.ERP_SALES_DETAIL} T2
                 INNER JOIN {config.ERP_OT2001} T1 ON T2.SOrderID = T1.SOrderID
-                WHERE T1.SalesManID = ?
+                WHERE T1.{col_filter_erp} = ? 
                 AND MONTH(T2.Date01) = MONTH(GETDATE()) AND YEAR(T2.Date01) = YEAR(GETDATE())
                 AND T1.OrderStatus = 1 
                 AND NOT EXISTS (
@@ -156,7 +162,7 @@ class PortalService:
         except Exception as e:
             data['errors']['orders_stat'] = str(e)
 
-        # --- 5. BÁO GIÁ (Sửa ObjectID và ShortObjectName) ---
+        # --- 5. BÁO GIÁ (Đã dùng col_filter_erp từ trước - OK) ---
         try:
             query = f"""
                 SELECT TOP 40 
@@ -186,7 +192,7 @@ class PortalService:
         except Exception as e:
             data['errors']['quotes'] = str(e)
 
-        # --- 6. LXH - PENDING DELIVERIES (Sửa ObjectID và ShortObjectName) ---
+        # --- 6. LXH - PENDING DELIVERIES (Đã có logic rẽ nhánh - OK) ---
         try:
             query = f"""
                 SELECT DISTINCT TOP 40 
@@ -202,9 +208,10 @@ class PortalService:
                 INNER JOIN {config.ERP_DELIVERY_DETAIL} T2 ON DW.VoucherID = T2.VoucherID
                 INNER JOIN {config.ERP_OT2001} T3 ON T2.RespVoucherID = T3.SOrderID
                 WHERE DW.DeliveryStatus <> N'DA GIAO' 
-                AND { "T3.EmployeeID" if is_thu_ky else "T3.SalesManID" } = ?
+                AND T3.{col_filter_erp} = ? 
                 ORDER BY DW.VoucherDate ASC
             """
+            # Note: Đoạn trên dùng T3.{col_filter_erp} thay cho logic if/else cũ để code gọn hơn
             cursor.execute(query, (user_code,))
             if cursor.description:
                 cols = [c[0] for c in cursor.description]
@@ -219,8 +226,9 @@ class PortalService:
         except Exception as e:
             data['errors']['delivery'] = str(e)
 
-        # --- 7. LỊCH GIAO HÀNG (Sửa ObjectID và ShortObjectName) ---
+        # --- 7. LỊCH GIAO HÀNG (ĐÃ SỬA LOGIC LỌC) ---
         try:
+            # Sử dụng col_filter_erp thay vì cứng nhắc SalesManID
             query = f"""
                 SELECT TOP 40 
                     T1.VoucherNo, 
@@ -232,7 +240,7 @@ class PortalService:
                 INNER JOIN {config.ERP_OT2001} T1 ON T2.SOrderID = T1.SOrderID
                 LEFT JOIN {TABLE_CUSTOMER_ERP} C ON T1.ObjectID = C.ObjectID
                 WHERE 
-                    T1.SalesManID = ?
+                    T1.{col_filter_erp} = ? 
                     AND T2.Date01 BETWEEN DATEADD(day, -30, GETDATE()) AND DATEADD(day, 30, GETDATE())
                     AND T1.VoucherTypeID <> 'DTK' 
                     AND T1.OrderStatus = 1
@@ -275,7 +283,7 @@ class PortalService:
         except Exception as e:
             data['errors']['replenish'] = str(e)
 
-        # --- 9. BÁO CÁO (Sửa tên cột MA KH thành KHACH HANG) ---
+        # --- 9. BÁO CÁO (Giữ nguyên) ---
         try:
             cursor.execute(f"SELECT TOP 20 STT, NGAY, [KHACH HANG] as [TEN DOI TUONG], [NOI DUNG 4] as MucDich FROM {config.TEN_BANG_BAO_CAO} WHERE NGUOI=? AND NGAY >= DATEADD(day, -7, GETDATE()) ORDER BY NGAY DESC", (user_code,))
             if cursor.description:

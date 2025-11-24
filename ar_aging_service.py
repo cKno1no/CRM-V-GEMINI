@@ -22,51 +22,55 @@ class ARAgingService:
         where_conditions = []
         # Tham số đầu tiên LUÔN LÀ NĂM HIỆN TẠI cho mệnh đề JOIN
         params = [current_year]
-
+        query_params = []
+        
         # --- LOGIC PHÂN QUYỀN (Đã sửa) ---
         role_check = user_role.upper()
         bo_phan_check = user_bo_phan.upper().replace(" ", "")
         is_full_access_role = role_check in ['ADMIN', 'GM', 'MANAGER']
         is_finance_dept = bo_phan_check == '6.KTTC'
 
-        # Nếu không phải (Admin HOẶC Kế toán) thì mới lọc theo SalesManID
+        where_conditions = ["1=1"] # Mặc định luôn đúng
+        
+        # Nếu là Sales (không phải Admin/KTTC), lọc theo NVKD được gán trong DTCL
         if not (is_full_access_role or is_finance_dept):
-            # FIX: Lọc trên T2.[PHU TRACH DS] (Bảng DTCL)
             where_conditions.append("T2.[PHU TRACH DS] = ?")
-            params.append(user_code)
-        # --- KẾT THÚC SỬA LOGIC ---
+            query_params.append(user_code)
             
         if customer_name:
             where_conditions.append("T1.ObjectName LIKE ?")
-            params.append(f"%{customer_name}%")
+            query_params.append(f"%{customer_name}%")
             
-        where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+        where_clause = " AND ".join(where_conditions)
 
-        # --- SỬA CÂU SELECT (JOIN VÀ LẤY ĐÚNG NVKD) ---
+        # THAY ĐỔI 2: Sửa câu Query sang LEFT JOIN
         query = f"""
             SELECT 
                 T1.ObjectID, T1.ObjectName, 
-                T2.[PHU TRACH DS] AS SalesManID, -- Lấy NVKD từ DTCL
-                ISNULL(T3.SHORTNAME, T2.[PHU TRACH DS]) AS SalesManName, -- Lấy tên NVKD từ DTCL
+                -- Nếu không có trong DTCL (T2 null), lấy tạm NVKD từ danh mục gốc hoặc để trống
+                ISNULL(T2.[PHU TRACH DS], 'UNKNOWN') AS SalesManID, 
+                ISNULL(T3.SHORTNAME, 'N/A') AS SalesManName,
                 T1.ReDueDays, T1.TotalDebt, T1.TotalOverdueDebt,
                 T1.Debt_Current, T1.Debt_Range_1_30, T1.Debt_Range_31_90, T1.Debt_Range_91_180, T1.Debt_Over_180
             FROM 
                 dbo.CRM_AR_AGING_SUMMARY AS T1
-            -- JOIN VỚI BẢNG DTCL ĐỂ LẤY NVKD PHỤ TRÁCH HIỆN TẠI --
-            INNER JOIN 
-                {config.CRM_DTCL} AS T2 ON T1.ObjectID = T2.[MA KH]
+            -- DÙNG LEFT JOIN ĐỂ GIỮ LẠI TẤT CẢ KHÁCH NỢ --
+            LEFT JOIN 
+                {config.CRM_DTCL} AS T2 
+                ON T1.ObjectID = T2.[MA KH] AND T2.[Nam] = ? -- Chuyển điều kiện Năm lên đây
             LEFT JOIN
                 {config.TEN_BANG_NGUOI_DUNG} AS T3 ON T2.[PHU TRACH DS] = T3.USERCODE
             WHERE 
-                T2.[Nam] = ? AND -- Lọc DTCL theo năm hiện tại (param đầu tiên)
-                {where_clause}
-                AND T1.TotalDebt > 1 
+                T1.TotalDebt > 1 
+                AND {where_clause}
             ORDER BY 
                 T1.TotalOverdueDebt DESC, T1.TotalDebt DESC
         """
-        # --- KẾT THÚC SỬA SELECT ---
         
-        data = self.db.get_data(query, tuple(params))
+        # Param cho Year phải đứng đầu tiên vì nó nằm trong mệnh đề JOIN
+        final_params = [current_year] + query_params
+        
+        data = self.db.get_data(query, tuple(final_params))
         
         if not data:
             return []

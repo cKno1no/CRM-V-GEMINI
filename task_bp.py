@@ -96,10 +96,10 @@ def task_dashboard():
 @task_bp.route('/api/task/log_progress', methods=['POST'])
 @login_required
 def api_log_task_progress():
-    """API: Ghi Log Tiến độ mới (Progress, Blocked, Request_Close)."""
+    """API: Ghi Log Tiến độ mới và Tạo Task Hỗ trợ (Fan-out)."""
     
     # FIX: Import Services Cục bộ
-    from app import task_service 
+    from app import task_service, db_manager
     
     data = request.get_json(silent=True) or {} 
     user_code = session.get('user_code')
@@ -108,34 +108,48 @@ def api_log_task_progress():
     content = data.get('content', '')
     progress_percent = data.get('progress_percent') 
     log_type = data.get('log_type')
-    helper_code = data.get('helper_code')
+    
+    # Lấy danh sách người hỗ trợ (Mảng)
+    helper_codes = data.get('helper_codes', [])
+    if not isinstance(helper_codes, list):
+         helper_codes = [helper_codes] if helper_codes else []
 
-    if task_id is None or task_id.strip() == '' or \
-       content.strip() == '' or \
-       progress_percent is None or \
-       log_type is None:
-        
-        return jsonify({'success': False, 'message': 'Thiếu dữ liệu bắt buộc (ID, Nội dung, Phần trăm, Loại Log).'}), 400
+    if not task_id or not log_type:
+        return jsonify({'success': False, 'message': 'Thiếu dữ liệu bắt buộc.'}), 400
 
     try:
+        # --- 1. NẾU LÀ HELP_CALL: TẠO CÁC TASK CON (FAN-OUT) ---
+        if log_type == 'HELP_CALL' and helper_codes:
+             count = task_service.process_help_request_multicast(
+                helper_codes_list=helper_codes,
+                original_task_id=task_id,
+                current_user_code=user_code,
+                detail_content=content
+            )
+             # Bổ sung thông tin vào nội dung log để dễ theo dõi
+             content = f"{content} (Đã gửi yêu cầu đến {count} người)"
+
+        # --- 2. GHI LOG & CẬP NHẬT TRẠNG THÁI TASK GỐC ---
+        # Chuyển danh sách helper thành chuỗi để lưu vào cột HelperRequestCode (cho mục đích hiển thị log)
+        helper_code_str = ",".join(helper_codes)
+
         log_id = task_service.log_task_progress(
             task_id=task_id,
             user_code=user_code,
             progress_percent=int(progress_percent),
             content=content,
             log_type=log_type,
-            helper_code=helper_code 
+            helper_code=helper_code_str 
         )
         
         if log_id:
-            # LOG TASK PROGRESS (BỔ SUNG)
-            from app import db_manager
+            # Ghi Audit Log
             db_manager.write_audit_log(
                 user_code, 'TASK_LOG_PROGRESS', 'INFO', 
-                f"Log tiến độ Task #{task_id} (Type: {log_type}, %: {progress_percent})", 
+                f"Log tiến độ Task #{task_id} (Type: {log_type})", 
                 get_user_ip()
             )
-            return jsonify({'success': True, 'message': f'Đã ghi nhận Log #{log_id} thành công!'})
+            return jsonify({'success': True, 'message': f'Đã cập nhật thành công!'})
         else:
             return jsonify({'success': False, 'message': 'Lỗi CSDL khi ghi Log.'}), 500
 
@@ -246,7 +260,26 @@ def api_update_task():
     object_id = data.get('object_id', None)
     content = data.get('detail_content', '')
     status = data.get('status')
-    helper_code = data.get('helper_code') 
+    
+
+    helper_codes = data.get('helper_codes', []) 
+    if not isinstance(helper_codes, list): 
+        helper_codes = [helper_codes] if helper_codes else []
+
+    # --- 1. XỬ LÝ TASK HỖ TRỢ ---
+    if status and status.upper() == 'HELP_NEEDED':
+        if helper_codes:
+            # Gọi hàm Multicast mới
+            count = task_service.process_help_request_multicast(
+                helper_codes_list=helper_codes,
+                original_task_id=task_id,
+                current_user_code=session.get('user_code'),
+                detail_content=data.get('detail_content', '')
+            )
+            # (Có thể thêm thông báo: "Đã gửi yêu cầu cho X người")
+        else:
+            return jsonify({'success': False, 'message': 'Vui lòng chọn ít nhất 1 người.'}), 400
+
     completed_date = data.get('status') == 'COMPLETED'
     
     # Chuyển hướng sang hàm wrapper trong service

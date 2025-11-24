@@ -2,61 +2,112 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Form Phê duyệt Nhanh</title>
+    <title>Form Phê duyệt Nhanh (v2)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { background-color: #f4f7f6; }
-        .container { max-width: 900px; margin-top: 40px; }
-        .approval-card {
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            border: none;
-            margin-bottom: 30px;
+        /* --- 1. CORE STYLES (Đồng bộ) --- */
+        :root {
+            --primary: #4318FF;
+            --primary-light: #F4F7FE;
+            --secondary: #A3AED0;
+            --text-dark: #2B3674;
+            --danger: #E31A1A;
+            --success: #05CD99;
+            --warning: #FFB547;
+            --bg-color: #F4F7FE;
+            --card-radius: 20px;
+            --input-bg: #F4F7FE;
         }
-        .approval-card-header {
-            font-weight: 700;
-            font-size: 1.25rem;
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #e9ecef;
-        }
-        .header-quote { color: #1A73E8; background-color: #E8F0FE; }
-        .header-order { color: #1E8E3E; background-color: #E6F4EA; }
         
-        .form-label { font-weight: 600; }
-        .btn-approve-override {
-            font-weight: 600;
-            padding: 0.5rem 1.5rem;
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-dark); 
         }
-        /* Tô màu các option cần Ghi đè */
-        option.needs-override {
-            background-color: #FFF7E6 !important;
-            color: #E65100 !important;
-            font-weight: 600;
+        .container { max-width: 900px; margin-top: 40px; padding-bottom: 50px; }
+
+        /* --- 2. HEADER --- */
+        .page-header { text-align: center; margin-bottom: 40px; }
+        .page-title { font-size: 2rem; font-weight: 700; color: var(--text-dark); margin-bottom: 10px; }
+        .page-sub { color: var(--secondary); font-size: 0.95rem; }
+
+        /* --- 3. APPROVAL CARDS --- */
+        .main-card {
+            border: none; background: white; border-radius: var(--card-radius);
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); margin-bottom: 30px; overflow: hidden;
+            transition: transform 0.2s;
         }
-        /* Tô màu các option lỗi cứng */
-        option.needs-fix {
-            background-color: #FCE8E6 !important;
-            color: #DB4437 !important;
-            text-decoration: line-through;
+        .main-card:hover { transform: translateY(-5px); }
+
+        .card-header-custom {
+            padding: 20px 30px; font-weight: 700; font-size: 1.1rem;
+            display: flex; align-items: center;
         }
+        .card-header-custom i { font-size: 1.3rem; margin-right: 15px; }
+        
+        /* Quote Header Style */
+        .header-quote { background-color: var(--primary-light); color: var(--primary); }
+        
+        /* Order Header Style */
+        .header-order { background-color: #E6FDF5; color: var(--success); } /* Xanh lá nhạt */
+
+        .card-body-custom { padding: 30px; }
+
+        /* --- 4. FORMS --- */
+        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.95rem; margin-bottom: 10px; }
+        
+        .form-select {
+            border: none; background-color: var(--input-bg); border-radius: 16px;
+            padding: 15px 20px; font-size: 1rem; color: var(--text-dark); box-shadow: none;
+            height: auto; cursor: pointer;
+        }
+        .form-select:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
+
+        /* Custom Options Colors */
+        option.needs-override { background-color: #FFF8E1; color: #B71C1C; font-weight: 600; }
+        option.needs-fix { background-color: #FFEBEE; color: var(--danger); text-decoration: line-through; }
+
+        /* Buttons */
+        .btn-approve {
+            width: 100%; padding: 15px; border-radius: 16px; font-weight: 700; font-size: 1rem;
+            border: none; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px;
+            margin-top: 10px;
+        }
+        .btn-quote { background-color: var(--warning); color: white; box-shadow: 0 4px 15px rgba(255, 181, 71, 0.3); }
+        .btn-quote:hover { background-color: #ffc107; transform: translateY(-2px); }
+        
+        .btn-order { background-color: var(--success); color: white; box-shadow: 0 4px 15px rgba(5, 205, 153, 0.3); }
+        .btn-order:hover { background-color: #04b385; transform: translateY(-2px); }
+
+        .btn-back {
+            background-color: white; color: var(--secondary); border: 1px solid #E0E5F2;
+            padding: 12px 30px; border-radius: 14px; font-weight: 600; text-decoration: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: all 0.2s;
+        }
+        .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; transform: translateY(-2px); }
+
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="text-center mb-4"><i class="fas fa-gavel me-2"></i> Bảng Điều Khiển Phê Duyệt Nhanh</h1>
-        <p class="text-center text-muted">Chỉ hiển thị các phiếu trong 90 ngày qua mà bạn có quyền duyệt.</p>
+        <div class="page-header">
+            <h1 class="page-title"><i class="fas fa-gavel me-2 text-primary"></i> Bảng Điều Khiển Phê Duyệt Nhanh</h1>
+            <p class="page-sub">Chỉ hiển thị các phiếu trong 90 ngày qua mà bạn có quyền duyệt.</p>
+        </div>
 
-        <div class="card approval-card">
-            <div class="card-header header-quote">
-                <i class="fas fa-certificate me-2"></i> 1. Phê duyệt Chào Giá (Quotes)
+        <!-- CARD 1: QUOTE APPROVAL -->
+        <div class="main-card">
+            <div class="card-header-custom header-quote">
+                <i class="fas fa-certificate"></i> 1. Phê duyệt Chào Giá (Quotes)
             </div>
-            <div class="card-body p-4">
-                <div class="mb-3">
+            <div class="card-body-custom">
+                <div class="mb-4">
                     <label for="quoteSelect" class="form-label">Chọn Chào Giá cần duyệt:</label>
-                    <select id="quoteSelect" class="form-select form-select-lg">
-                        <option value="">-- Chọn một phiếu --</option>
+                    <select id="quoteSelect" class="form-select">
+                        <option value="">-- Vui lòng chọn phiếu --</option>
                         {% for quote in quotes %}
                             {% set result = quote.ApprovalResult %}
                             {% set is_pass = result.Passed %}
@@ -73,26 +124,27 @@
                                     data-reason="{{ result.Reason }}"
                                     class="{% if is_failed_hard %}needs-fix{% elif needs_override %}needs-override{% endif %}">
                                 
-                                {{ quote.QuotationNo }} | {{ quote.ClientName }} | (Tỷ số: {{ result.ApprovalRatio }}) | Trạng thái: {{ result.Reason }}
+                                {{ quote.QuotationNo }} - {{ quote.ClientName }} (HS: {{ result.ApprovalRatio }})
                             </option>
                         {% endfor %}
                     </select>
                 </div>
-                <button id="approveQuoteBtn" class="btn btn-warning btn-lg w-100 btn-approve-override">
-                    <i class="fas fa-check-double me-1"></i> DUYỆT CHÀO GIÁ ĐÃ CHỌN
+                <button id="approveQuoteBtn" class="btn-approve btn-quote">
+                    <i class="fas fa-check-double me-2"></i> Duyệt Chào Giá
                 </button>
             </div>
         </div>
 
-        <div class="card approval-card">
-            <div class="card-header header-order">
-                <i class="fas fa-shipping-fast me-2"></i> 2. Phê duyệt Đơn Hàng Bán (SO)
+        <!-- CARD 2: ORDER APPROVAL -->
+        <div class="main-card">
+            <div class="card-header-custom header-order">
+                <i class="fas fa-shipping-fast"></i> 2. Phê duyệt Đơn Hàng Bán (SO)
             </div>
-            <div class="card-body p-4">
-                <div class="mb-3">
+            <div class="card-body-custom">
+                <div class="mb-4">
                     <label for="orderSelect" class="form-label">Chọn Đơn Hàng cần duyệt:</label>
-                    <select id="orderSelect" class="form-select form-select-lg">
-                        <option value="">-- Chọn một phiếu --</option>
+                    <select id="orderSelect" class="form-select">
+                        <option value="">-- Vui lòng chọn phiếu --</option>
                         {% for order in orders %}
                             {% set result = order.ApprovalResult %}
                             {% set is_pass = result.Passed %}
@@ -109,19 +161,19 @@
                                     data-needs-override="{{ needs_override | tojson }}"
                                     data-reason="{{ result.Reason }}">
                                 
-                                {{ order.OrderID }} | {{ order.ClientName }} | (Tỷ số: {{ result.ApprovalRatio }}) | Trạng thái: {{ result.Reason }}
+                                {{ order.OrderID }} - {{ order.ClientName }} (HS: {{ result.ApprovalRatio }})
                             </option>
                         {% endfor %}
                     </select>
                 </div>
-                <button id="approveOrderBtn" class="btn btn-success btn-lg w-100 btn-approve-override">
-                    <i class="fas fa-check-double me-1"></i> DUYỆT ĐƠN HÀNG ĐÃ CHỌN
+                <button id="approveOrderBtn" class="btn-approve btn-order">
+                    <i class="fas fa-check-circle me-2"></i> Duyệt Đơn Hàng
                 </button>
             </div>
         </div>
 
-        <div class="text-center mt-4 mb-5">
-            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+        <div class="text-center mt-5">
+            <a href="{{ url_for('index') }}" class="btn-back">
                 <i class="fas fa-arrow-left me-2"></i> Về Portal
             </a>
         </div>
@@ -129,6 +181,8 @@
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- JAVASCRIPT LOGIC GIỮ NGUYÊN -->
     <script>
         $(document).ready(function() {
 
@@ -185,7 +239,7 @@
                     alert('Lỗi kết nối: ' + error.message);
                 })
                 .finally(() => {
-                    button.prop('disabled', false).html('<i class="fas fa-check-double me-1"></i> DUYỆT CHÀO GIÁ ĐÃ CHỌN');
+                    button.prop('disabled', false).html('<i class="fas fa-check-double me-2"></i> Duyệt Chào Giá');
                 });
             });
 
@@ -242,7 +296,7 @@
                     alert('Lỗi kết nối: ' + error.message);
                 })
                 .finally(() => {
-                    button.prop('disabled', false).html('<i class="fas fa-check-double me-1"></i> DUYỆT ĐƠN HÀNG ĐÃ CHỌN');
+                    button.prop('disabled', false).html('<i class="fas fa-check-circle me-2"></i> Duyệt Đơn Hàng');
                 });
             });
 

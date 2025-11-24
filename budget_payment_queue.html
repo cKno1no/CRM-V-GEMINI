@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Hàng Đợi Thanh Toán</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #F4F7FE; font-family: 'Inter', sans-serif; }
+        .table th { background-color: #e9ecef; font-size: 0.85rem; text-transform: uppercase; }
+        .btn-pay { background-color: #05CD99; color: white; border: none; }
+        .btn-pay:hover { background-color: #04b688; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="text-primary fw-bold"><i class="fas fa-money-check-alt me-2"></i>Hàng Đợi Thanh Toán (Payment Queue)</h3>
+            <span class="badge bg-warning text-dark fs-6">Chờ chi: {{ pending_count }} phiếu</span>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Mã Phiếu</th>
+                                <th>Ngày duyệt</th>
+                                <th>Người đề nghị</th>
+                                <th>Khoản mục</th>
+                                <th>Đối tượng</th>
+                                <th class="text-end">Số tiền</th>
+                                <th>Nội dung</th>
+                                <th class="text-center">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for req in approved_list %}
+                            <tr id="row-{{ req.RequestID }}">
+                                <td class="ps-4 fw-bold text-primary">{{ req.RequestID }}</td>
+                                <td>{{ req.ApprovalDate.strftime('%d/%m %H:%M') }}</td>
+                                <td>{{ req.RequesterName }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ req.BudgetCode }}</span></td>
+                                <td class="text-primary fw-bold">{{ req.ObjectID or '--' }}</td>
+                                <td class="text-end fw-bold fs-6 text-danger">{{ "{:,.0f}".format(req.Amount) }}</td>
+                                <td class="small text-muted" style="max-width: 250px;">{{ req.Reason }}</td>
+                                <td class="text-center">
+                                    <button class="btn btn-pay btn-sm px-3 py-1 rounded-pill fw-bold" 
+                                            onclick="openPayModal('{{ req.RequestID }}', {{ req.Amount }})">
+                                        <i class="fas fa-check me-1"></i> CHI TIỀN
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="8" class="text-center py-5 text-muted">Không có phiếu nào đang chờ chi.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="payModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Xác nhận Thực Chi</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="payRequestId">
+                    <div class="mb-3">
+                        <label class="form-label">Mã Phiếu:</label>
+                        <input type="text" id="payRequestDisplay" class="form-control-plaintext fw-bold" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Số tiền:</label>
+                        <input type="text" id="payAmountDisplay" class="form-control-plaintext fw-bold text-danger fs-5" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Số chứng từ (UNC/PC) <span class="text-danger">*</span></label>
+                        <input type="text" id="payRefNo" class="form-control" placeholder="VD: UNC12345">
+                        <small class="text-muted">Nhập số phiếu chi hoặc UNC ngân hàng để tham chiếu.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ngày thực chi</label>
+                        <input type="date" id="payDate" class="form-control" value="{{ now.strftime('%Y-%m-%d') }}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-success fw-bold" onclick="submitPayment()">XÁC NHẬN ĐÃ CHI</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const payModal = new bootstrap.Modal(document.getElementById('payModal'));
+
+        function openPayModal(reqId, amount) {
+            document.getElementById('payRequestId').value = reqId;
+            document.getElementById('payRequestDisplay').value = reqId;
+            document.getElementById('payAmountDisplay').value = new Intl.NumberFormat('vi-VN').format(amount) + ' VNĐ';
+            document.getElementById('payRefNo').value = '';
+            payModal.show();
+        }
+
+        function submitPayment() {
+            const reqId = document.getElementById('payRequestId').value;
+            const refNo = document.getElementById('payRefNo').value.trim();
+            const payDate = document.getElementById('payDate').value;
+
+            if (!refNo) { alert("Vui lòng nhập Số chứng từ (UNC/PC)."); return; }
+
+            fetch('/api/budget/pay', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ request_id: reqId, payment_ref: refNo, payment_date: payDate })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Đã xác nhận chi thành công!");
+                    payModal.hide();
+                    document.getElementById('row-' + reqId).remove(); // Xóa dòng khỏi bảng
+                } else {
+                    alert("Lỗi: " + data.message);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

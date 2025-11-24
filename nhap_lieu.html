@@ -431,7 +431,7 @@
                             const option = document.createElement('option');
                             option.value = kh.ID; option.textContent = `${kh.FullName} (${kh.ID})`;
                             option.setAttribute('data-fullname', kh.FullName);
-                            option.setAttribute('data-diachi', kh.DiaChi || 'N/A');
+                            option.setAttribute('data-diachi', kh.Address || 'N/A');
                             resultsDropdown.appendChild(option);
                         });
                         resultsDropdown.style.display = 'block'; resultsDropdown.size = Math.min(data.length, 5) + 1;

@@ -173,12 +173,15 @@ class CustomerService:
     # --- HÀM MỚI (Hỗ trợ Chatbot) ---
     def get_customer_by_name(self, name_fragment):
         """
-        Tìm kiếm khách hàng (giống api/khachhang) nhưng trả về data cho service.
+       Tìm kiếm khách hàng (giống api/khachhang) nhưng trả về data cho service.
         """
         
-        # SỬA ĐỔI: Thêm "OR T1.ObjectName LIKE ?" vào truy vấn
+        # SỬA CÂU TRUY VẤN: Thêm T1.Address
         query = f"""
-            SELECT TOP 5 T1.ObjectID AS ID, T1.ShortObjectName AS FullName
+            SELECT TOP 5 
+                T1.ObjectID AS ID, 
+                T1.ShortObjectName AS FullName,
+                T1.Address AS Address  -- <--- [FIX] THÊM DÒNG NÀY
             FROM {config.ERP_IT1202} AS T1 
             WHERE 
                 T1.ShortObjectName LIKE ? 
@@ -186,8 +189,9 @@ class CustomerService:
                 OR T1.ObjectName LIKE ?
             ORDER BY T1.ShortObjectName
         """
-        like_param = f'%{name_fragment}%'
         
-        # SỬA ĐỔI: Truyền 3 tham số (thay vì 2)
-        data = self.db.get_data(query, (like_param, like_param, like_param))
+        search_term = f"%{name_fragment}%"
+        data = self.db.get_data(query, (search_term, search_term, search_term))
+        
+        # Trả về nguyên bản danh sách dict (đã bao gồm Address)
         return data if data else []

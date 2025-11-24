@@ -380,12 +380,16 @@ class TaskService:
     
     # THÊM: Hàm lấy danh sách Helper đủ điều kiện (Req 2)
     def get_eligible_helpers(self):
+        """
+        Lấy danh sách nhân viên hỗ trợ.
+        YÊU CẦU 4: Lọc [PHONG BAN] IS NOT NULL và <> '9. DU HOC'.
+        """
         query = f"""
             SELECT [USERCODE], [SHORTNAME] 
             FROM {config.TEN_BANG_NGUOI_DUNG}
             WHERE 
-                [BO PHAN] IS NOT NULL 
-                AND RTRIM([BO PHAN]) NOT LIKE '9. DU HOC%'
+                [PHONG BAN] IS NOT NULL 
+                AND RTRIM([PHONG BAN]) <> '9. DU HOC'
             ORDER BY [SHORTNAME]
         """
         return self.db.get_data(query)
@@ -469,6 +473,7 @@ class TaskService:
     def log_task_progress(self, task_id, user_code, progress_percent, content, log_type, helper_code=None):
         """
         Ghi Log Tiến độ mới vào TPL. Cập nhật Status và Progress trên Task_Master.
+        [SỬA ĐỔI]: Tự động tạo Task cho Helper nếu là Help Call.
         """
         
         # 1. Ghi Log vào TPL (Trả về LogID)
@@ -478,15 +483,31 @@ class TaskService:
         
         if not log_id: return False
         
-        # 2. Xác định Status mới cho Master
+        # 2. Xác định Status mới cho Master & Tạo Task Hỗ trợ
         if log_type == self.LOG_TYPE_BLOCKED:
              new_status = self.STATUS_BLOCKED
         elif log_type == self.LOG_TYPE_REQUEST_CLOSE:
              new_status = 'COMPLETED' if progress_percent == 100 else 'PENDING'
         elif log_type == self.LOG_TYPE_HELP_CALL:
              new_status = 'HELP_NEEDED'
+             
+             # [FIX] Tạo Task mới cho Helper ngay tại đây
+             if helper_code:
+                 original_task = self.get_task_by_id(task_id)
+                 if original_task:
+                     self.create_help_request_task(
+                         helper_code=helper_code,
+                         original_task_id=task_id,
+                         current_user_code=user_code,
+                         original_title=original_task.get('Title', 'Yêu cầu hỗ trợ'),
+                         original_object_id=original_task.get('ObjectID'),
+                         # Quan trọng: Truyền nội dung log hiện tại vào Task mới
+                         original_detail_content=content, 
+                         new_task_type=original_task.get('TaskType', 'KHAC')
+                     )
+
         else:
-             new_status = 'PENDING' # Cập nhật thông thường
+             new_status = 'PENDING' 
         
         # 3. Cập nhật Master Task (Task_Master)
         update_master_query = f"""
@@ -497,7 +518,6 @@ class TaskService:
                 DetailContent = ?
             WHERE TaskID = ?
         """
-        # Sử dụng nội dung log mới nhất cho DetailContent
         self.db.execute_non_query(update_master_query, (progress_percent, new_status, content, task_id))
 
         return log_id
@@ -535,4 +555,47 @@ class TaskService:
         data = self.db.get_data(query)
         # Chỉ trả về TaskID và LastUpdated để giảm tải
         return [{'TaskID': task['TaskID'], 'LastUpdated': task['LastUpdated']} for task in data]
+    
+    def get_users_by_department(self, dept_code):
+        """Lấy danh sách UserCode thuộc một bộ phận."""
+        query = f"SELECT USERCODE FROM {config.TEN_BANG_NGUOI_DUNG} WHERE [BO PHAN] = ?"
+        data = self.db.get_data(query, (dept_code,))
+        return [row['USERCODE'] for row in data] if data else []
+
+    def process_help_request_multicast(self, helper_codes_list, original_task_id, current_user_code, detail_content):
+        """
+        Xử lý yêu cầu hỗ trợ cho NHIỀU người (hoặc Bộ phận).
+        """
+        original_task = self.get_task_by_id(original_task_id)
+        if not original_task: return False
+        
+        # 1. Làm phẳng danh sách (Xử lý nếu có mã Bộ phận)
+        final_helpers = set()
+        for code in helper_codes_list:
+            if code.startswith('DEPT_'): # Quy ước mã bộ phận bắt đầu bằng DEPT_
+                real_dept = code.replace('DEPT_', '')
+                dept_users = self.get_users_by_department(real_dept)
+                final_helpers.update(dept_users)
+            else:
+                final_helpers.add(code)
+        
+        # Loại bỏ chính mình (nếu lỡ chọn)
+        if current_user_code in final_helpers:
+            final_helpers.remove(current_user_code)
+
+        # 2. Vòng lặp tạo Task cho từng người
+        count = 0
+        for helper in final_helpers:
+            self.create_help_request_task(
+                helper_code=helper,
+                original_task_id=original_task_id,
+                current_user_code=current_user_code,
+                original_title=original_task.get('Title', 'N/A'),
+                original_object_id=original_task.get('ObjectID', None),
+                original_detail_content=detail_content,
+                new_task_type='NOI_BO' # Hoặc giữ nguyên loại cũ
+            )
+            count += 1
+            
+        return count # Trả về số lượng task đã tạo    
     
