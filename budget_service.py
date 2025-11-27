@@ -303,3 +303,178 @@ class BudgetService:
         """
         # Cần thêm cột PaymentRef, PaymentDate, PayerCode vào bảng nếu chưa có
         return self.db.execute_non_query(query, (payment_ref, payment_date, user_code, request_id))
+
+
+    # --- HÀM BÁO CÁO CHÍNH (ĐÃ CẬP NHẬT) ---
+    def get_ytd_budget_report(self, department_code, year):
+        """
+        Lấy báo cáo YTD gom nhóm theo ReportGroup.
+        """
+        
+        # 1. Lấy dữ liệu Kế hoạch (Plan) - LẤY TOÀN BỘ NĂM
+        plan_query = """
+            SELECT 
+                M.ReportGroup, 
+                PL.[Month], 
+                SUM(PL.BudgetAmount) as PlanAmount
+            FROM dbo.BUDGET_PLAN PL
+            JOIN dbo.BUDGET_MASTER M ON PL.BudgetCode = M.BudgetCode
+            WHERE PL.FiscalYear = ? 
+            GROUP BY M.ReportGroup, PL.[Month]
+        """
+        plan_raw = self.db.get_data(plan_query, (year,))
+
+        # 2. Lấy dữ liệu Thực tế (Actual) - LẤY TOÀN BỘ NĂM
+        # FIX: Bỏ điều kiện lọc TK 642
+        actual_query = f"""
+            SELECT Ana03ID, TranMonth, SUM(ConvertedAmount) as ActualAmount
+            FROM {config.ERP_GIAO_DICH}
+            WHERE TranYear = ? 
+              AND Ana03ID IS NOT NULL 
+              AND Ana03ID <> 'cp2014'
+            GROUP BY Ana03ID, TranMonth
+        """
+        actual_raw = self.db.get_data(actual_query, (year,))
+        
+        # 3. Lấy Mapping
+        mapping_query = """
+            SELECT DISTINCT ERP_Ana03ID, ReportGroup 
+            FROM dbo.BUDGET_MASTER 
+            WHERE ERP_Ana03ID IS NOT NULL AND ReportGroup IS NOT NULL
+        """
+        mapping_raw = self.db.get_data(mapping_query)
+        ana03_to_group = {}
+        if mapping_raw:
+            for row in mapping_raw:
+                if row['ERP_Ana03ID']:
+                    ana03_to_group[row['ERP_Ana03ID']] = row['ReportGroup']
+
+        # 4. TỔNG HỢP DỮ LIỆU VÀO DICT
+        groups_data = {}
+        
+        def get_group_entry(g_name):
+            if g_name not in groups_data:
+                groups_data[g_name] = {
+                    'GroupName': g_name,
+                    'Plan_Month': {}, 
+                    'Actual_Month': {}
+                }
+            return groups_data[g_name]
+
+        if plan_raw:
+            for p in plan_raw:
+                g_name = p['ReportGroup'] or 'Khác (Chưa phân loại)'
+                entry = get_group_entry(g_name)
+                m = p['Month']
+                entry['Plan_Month'][m] = entry['Plan_Month'].get(m, 0) + safe_float(p['PlanAmount'])
+
+        if actual_raw:
+            for a in actual_raw:
+                ana03 = a['Ana03ID']
+                g_name = ana03_to_group.get(ana03, 'Khác (Chưa phân loại)')
+                entry = get_group_entry(g_name)
+                m = a['TranMonth']
+                entry['Actual_Month'][m] = entry['Actual_Month'].get(m, 0) + safe_float(a['ActualAmount'])
+
+        # 5. TÍNH TOÁN CỘT HIỂN THỊ
+        current_month = datetime.now().month
+        current_year_real = datetime.now().year
+        
+        ytd_limit_month = 12
+        if year == current_year_real:
+            ytd_limit_month = current_month
+        elif year > current_year_real:
+            ytd_limit_month = 0
+        
+        final_report = []
+        
+        for g_name, data in groups_data.items():
+            row = {
+                'GroupName': g_name,
+                'Month_Plan': 0, 'Month_Actual': 0, 'Month_Diff': 0,
+                'YTD_Plan': 0, 'YTD_Actual': 0, 'YTD_Diff': 0,
+                'Year_Plan': 0,
+                'UsagePercent': 0
+            }
+            
+            for m in range(1, 13):
+                p_val = data['Plan_Month'].get(m, 0)
+                a_val = data['Actual_Month'].get(m, 0)
+                
+                row['Year_Plan'] += p_val
+                
+                if m <= ytd_limit_month:
+                    row['YTD_Plan'] += p_val
+                    row['YTD_Actual'] += a_val
+                
+                if m == current_month:
+                    row['Month_Plan'] = p_val
+                    row['Month_Actual'] = a_val
+
+            row['Month_Diff'] = row['Month_Plan'] - row['Month_Actual']
+            row['YTD_Diff'] = row['YTD_Plan'] - row['YTD_Actual']
+            
+            if row['YTD_Plan'] > 0:
+                row['UsagePercent'] = (row['YTD_Actual'] / row['YTD_Plan']) * 100
+            else:
+                row['UsagePercent'] = 0 if row['YTD_Actual'] == 0 else 100 
+            
+            final_report.append(row)
+
+        # Sắp xếp theo Tổng Ngân sách Năm (Year_Plan) GIẢM DẦN
+        final_report.sort(key=lambda x: x['Year_Plan'], reverse=True)
+
+        return final_report
+    
+    # --- HÀM MỚI: LẤY CHI TIẾT PHIẾU CHI (DRILL-DOWN) ---
+    def get_expense_details_by_group(self, report_group, year):
+        """
+        Lấy danh sách các phiếu chi (GT9000) thuộc một Nhóm Báo cáo (ReportGroup).
+        """
+        
+        # 1. Lấy danh sách Ana03ID thuộc nhóm
+        ana_query = "SELECT ERP_Ana03ID FROM dbo.BUDGET_MASTER WHERE ReportGroup = ?"
+        ana_data = self.db.get_data(ana_query, (report_group,))
+        
+        if not ana_data:
+            return []
+            
+        ana_codes = [row['ERP_Ana03ID'] for row in ana_data if row['ERP_Ana03ID']]
+        if not ana_codes:
+            return []
+            
+        ana_codes_str = "', '".join(ana_codes)
+        
+        # 2. Truy vấn chi tiết từ GT9000
+        # FIX: Bỏ điều kiện lọc TK 642
+        detail_query = f"""
+            SELECT TOP 100
+                T1.VoucherNo,
+                T1.VoucherDate,
+                T1.VDescription as VDescription,
+                T1.ObjectID,
+                ISNULL(T2.ShortObjectName, T2.ObjectName) as ObjectName,
+                T1.Ana03ID,
+                SUM(T1.ConvertedAmount) as TotalAmount
+            FROM {config.ERP_GIAO_DICH} T1
+            LEFT JOIN {config.ERP_IT1202} T2 ON T1.ObjectID = T2.ObjectID
+            WHERE T1.TranYear = ? 
+              AND T1.Ana03ID IN ('{ana_codes_str}')
+            GROUP BY T1.VoucherNo, T1.VoucherDate, T1.VDescription, T1.ObjectID, T2.ShortObjectName, T2.ObjectName, T1.Ana03ID
+            ORDER BY TotalAmount DESC
+        """
+        
+        details = self.db.get_data(detail_query, (year,))
+        
+        # Format dữ liệu
+        if details:  # Kiểm tra nếu details không phải None
+            for row in details:
+                row['TotalAmount'] = safe_float(row['TotalAmount'])
+                if row['VoucherDate']:
+                    try:
+                        row['VoucherDate'] = row['VoucherDate'].strftime('%d/%m/%Y')
+                    except: pass
+        else:
+            return []
+                
+        return details

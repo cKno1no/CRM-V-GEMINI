@@ -89,8 +89,9 @@ def dashboard_reports():
         where_conditions.append(f"T1.NGUOI = ?")
         where_params.append(selected_user)
     if kh_search_term and kh_search_term.strip() != '':
-        where_conditions.append(f"T3.[TEN DOI TUONG] LIKE ?")
-        where_params.append(f'%{kh_search_term}%')
+        # CẬP NHẬT: Tìm theo tên ngắn hoặc tên đầy đủ trong IT1202
+        where_conditions.append(f"(T3.ShortObjectName LIKE ? OR T3.ObjectName LIKE ?)")
+        where_params.extend([f'%{kh_search_term}%', f'%{kh_search_term}%'])
     if text_search_term and text_search_term.strip() != '':
         terms = [t.strip() for t in text_search_term.split(';') if t.strip()]
         if terms:
@@ -104,25 +105,30 @@ def dashboard_reports():
     where_clause = " AND ".join(where_conditions)
     
     # 5. Execute Queries
+    # 5. Execute Queries
+    # CẬP NHẬT: Join với config.ERP_IT1202 thay vì TEN_BANG_KHACH_HANG
     count_query = f"""
-SELECT COUNT(T1.STT) AS Total
-FROM {TEN_BANG_BAO_CAO} AS T1
-LEFT JOIN {TEN_BANG_NGUOI_DUNG} AS T2 ON T1.NGUOI = T2.USERCODE
-LEFT JOIN {TEN_BANG_KHACH_HANG} AS T3 ON T1.[KHACH HANG] = T3.[MA DOI TUONG]
-WHERE {where_clause}
-"""
+        SELECT COUNT(T1.STT) AS Total
+        FROM {TEN_BANG_BAO_CAO} AS T1
+        LEFT JOIN {TEN_BANG_NGUOI_DUNG} AS T2 ON T1.NGUOI = T2.USERCODE
+        LEFT JOIN {config.ERP_IT1202} AS T3 ON T1.[KHACH HANG] = T3.ObjectID 
+        WHERE {where_clause}
+    """
+
+    # CẬP NHẬT: Lấy T3.ShortObjectName AS KH
     report_query = f"""
-SELECT 
-    T1.STT AS ID_KEY, T1.NGAY, T2.SHORTNAME AS NV, T3.[TEN DOI TUONG] AS KH,
-    T1.[NOI DUNG 2] AS [NOI DUNG 1], T1.[DANH GIA 2] AS [DANH GIA 1],
-    T1.ATTACHMENTS
-FROM {TEN_BANG_BAO_CAO} AS T1
-LEFT JOIN {TEN_BANG_NGUOI_DUNG} AS T2 ON T1.NGUOI = T2.USERCODE
-LEFT JOIN {TEN_BANG_KHACH_HANG} AS T3 ON T1.[KHACH HANG] = T3.[MA DOI TUONG]
-WHERE {where_clause}
-ORDER BY T1.STT DESC
-OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
-"""
+        SELECT 
+            T1.STT AS ID_KEY, T1.NGAY, T2.SHORTNAME AS NV, 
+            ISNULL(T3.ShortObjectName, T3.ObjectName) AS KH, -- Ưu tiên tên ngắn, nếu null lấy tên đầy đủ
+            T1.[NOI DUNG 2] AS [NOI DUNG 1], T1.[DANH GIA 2] AS [DANH GIA 1],
+            T1.ATTACHMENTS
+        FROM {TEN_BANG_BAO_CAO} AS T1
+        LEFT JOIN {TEN_BANG_NGUOI_DUNG} AS T2 ON T1.NGUOI = T2.USERCODE
+        LEFT JOIN {config.ERP_IT1202} AS T3 ON T1.[KHACH HANG] = T3.ObjectID
+        WHERE {where_clause}
+        ORDER BY T1.STT DESC
+        OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+    """
     
     total_count_data = db_manager.get_data(count_query, tuple(where_params))
     total_reports = total_count_data[0]['Total'] if total_count_data and total_count_data[0].get('Total') is not None else 0

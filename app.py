@@ -48,7 +48,7 @@ from blueprints.chat_bp import chat_bp
 from blueprints.lookup_bp import lookup_bp
 from blueprints.budget_bp import budget_bp
 from blueprints.commission_bp import commission_bp
-
+from blueprints.executive_bp import executive_bp
 
 # =========================================================================
 # III. KHỞI TẠO ỨNG DỤNG VÀ DỊCH VỤ
@@ -328,6 +328,8 @@ app.register_blueprint(chat_bp)
 app.register_blueprint(portal_bp) # Đăng ký
 app.register_blueprint(budget_bp)
 app.register_blueprint(commission_bp)
+app.register_blueprint(executive_bp)
+
 
 if __name__ == '__main__':
     

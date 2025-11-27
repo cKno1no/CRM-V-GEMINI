@@ -213,3 +213,91 @@ def public_verify_request(request_id):
          return render_template('verify_result.html', error="CẢNH BÁO: Phiếu này CHƯA ĐƯỢC DUYỆT!")
          
     return render_template('verify_result.html', req=req)
+
+@budget_bp.route('/budget/report/ytd', methods=['GET'])
+@login_required
+def budget_ytd_report():
+
+    # --- 1. BẢO MẬT: CHẶN USER KHÔNG PHẢI ADMIN ---
+    user_role = session.get('user_role', '').strip().upper()
+    
+    if user_role != 'ADMIN':
+        flash("Bạn không có quyền truy cập Báo cáo này. Vui lòng liên hệ Admin.", "danger")
+        return redirect(url_for('budget_bp.budget_dashboard'))
+    """Báo cáo so sánh Ngân sách vs Thực tế (YTD)."""
+    
+    from app import budget_service
+    
+    current_year = datetime.now().year
+    current_month = datetime.now().month # Lấy tháng hiện tại để hiển thị trên header
+    
+    dept_code = session.get('bo_phan', 'KD') # Mặc định bộ phận người dùng
+    
+    # Lấy tham số filter nếu có
+    year_filter = request.args.get('year', current_year, type=int)
+    
+    # SỬA ĐỔI: Logic lấy dept_filter
+    is_admin = session.get('user_role') == 'ADMIN'
+    
+    if is_admin:
+        # Nếu là Admin và không có param dept trên URL, mặc định xem TOÀN CÔNG TY
+        dept_filter = request.args.get('dept', 'ALL')
+    else:
+        # User thường chỉ xem được bộ phận của mình
+        dept_filter = dept_code
+
+    # Lấy dữ liệu (đã được gom nhóm theo ReportGroup và chỉ trả về 1 dòng cho mỗi Group từ service)
+    report_data = budget_service.get_ytd_budget_report(dept_filter, year_filter)
+    
+    # Vì service đã trả về danh sách phẳng các Group (final_report), ta không cần loop group nữa.
+    # Tuy nhiên, để tương thích với template đang dùng cấu trúc grouped_report (dict), ta sẽ chuyển đổi một chút.
+    # Hoặc tốt hơn: Truyền thẳng report_data vào template và sửa template để loop list thay vì dict.
+    
+    # Ở đây tôi sẽ giữ cấu trúc dict `grouped_report` để ít thay đổi template nhất có thể,
+    # nhưng thực tế mỗi 'group' chỉ có 1 item chính nó.
+    
+    grouped_report = {}
+    for row in report_data:
+        group_name = row['GroupName']
+        grouped_report[group_name] = row # Gán thẳng row vào dict
+        
+    # Tính tổng toàn công ty (Grand Total)
+    grand_total = {
+        'Month_Plan': sum(r['Month_Plan'] for r in report_data),
+        'Month_Actual': sum(r['Month_Actual'] for r in report_data),
+        'Month_Diff': sum(r['Month_Diff'] for r in report_data),
+        'YTD_Plan': sum(r['YTD_Plan'] for r in report_data),
+        'YTD_Actual': sum(r['YTD_Actual'] for r in report_data),
+        'YTD_Diff': sum(r['YTD_Diff'] for r in report_data),
+        'Year_Plan': sum(r['Year_Plan'] for r in report_data)
+    }
+
+    return render_template(
+        'budget_ytd_report.html',
+        grouped_report=grouped_report,
+        grand_total=grand_total,
+        current_year=current_year,
+        current_month=current_month,
+        year_filter=year_filter,
+        dept_filter=dept_filter,
+        is_admin=is_admin
+    )
+
+@budget_bp.route('/api/budget/group_details', methods=['GET'])
+@login_required
+def api_get_group_details():
+    """API: Lấy chi tiết phiếu chi theo ReportGroup."""
+    from app import budget_service
+    
+    group_name = request.args.get('group_name')
+    year = request.args.get('year', datetime.now().year, type=int)
+    
+    if not group_name:
+        return jsonify({'error': 'Thiếu tên nhóm'}), 400
+        
+    try:
+        details = budget_service.get_expense_details_by_group(group_name, year)
+        return jsonify(details)
+    except Exception as e:
+        print(f"Lỗi lấy chi tiết nhóm {group_name}: {e}")
+        return jsonify({'error': str(e)}), 500
