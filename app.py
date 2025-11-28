@@ -49,6 +49,7 @@ from blueprints.lookup_bp import lookup_bp
 from blueprints.budget_bp import budget_bp
 from blueprints.commission_bp import commission_bp
 from blueprints.executive_bp import executive_bp
+from blueprints.cross_sell_bp import cross_sell_bp
 
 # =========================================================================
 # III. KHỞI TẠO ỨNG DỤNG VÀ DỊCH VỤ
@@ -56,7 +57,7 @@ from blueprints.executive_bp import executive_bp
 app = Flask(__name__, static_url_path='/attachments', static_folder='attachments') 
 app.secret_key = config.APP_SECRET_KEY
 app.config['UPLOAD_FOLDER'] = config.UPLOAD_FOLDER_PATH
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=6)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=3)
 
 # Khởi tạo REDIS
 try:
@@ -150,21 +151,19 @@ def inject_user():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if session.get('logged_in'):
-        # Đã đăng nhập, chuyển đến trang chủ (index_redesign.html)
-        return redirect(url_for('portal_bp.portal_dashboard')) 
+        # Nếu đã login, điều hướng dựa trên quyền
+        user_role = session.get('user_role', '').strip().upper()
+        if user_role in ['ADMIN']: # Thêm GM nếu muốn Giám đốc cũng vào Cockpit
+            return redirect(url_for('executive_bp.ceo_cockpit_dashboard'))
+        return redirect(url_for('portal_bp.portal_dashboard'))
 
     message = None
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-
-        # === SỬA LỖI: Lấy IP ngay lập tức ===
-        # Phải định nghĩa user_ip ở đây để cả 2 trường hợp (thành công/thất bại) đều dùng được
         user_ip = get_user_ip() 
-        # === KẾT THÚC SỬA LỖI ===
 
-        # GỌI DBManager ĐỂ XỬ LÝ LOGIN.
-        # 1. SỬA CÂU SQL: Thêm [CHUC VU] vào danh sách cột cần lấy
+        # Query lấy thông tin user
         query = f"""
             SELECT TOP 1 [USERCODE], [USERNAME], [SHORTNAME], [ROLE], [CAP TREN], [BO PHAN], [CHUC VU]
             FROM {config.TEN_BANG_NGUOI_DUNG}
@@ -174,53 +173,53 @@ def login():
 
         if user_data:
             user = user_data[0]
-            # --- CẬP NHẬT SESSION VÀ LẤY BỘ PHẬN ---
+            # --- CẬP NHẬT SESSION ---
             session['logged_in'] = True
-            session.permanent = True # <--- BẮT BUỘC ĐỂ CẤU HÌNH PERMANENT_SESSION_LIFETIME CÓ HIỆU LỰC
+            session.permanent = True
             session['user_code'] = user.get('USERCODE')
             session['username'] = user.get('USERNAME')
             session['user_shortname'] = user.get('SHORTNAME')
-            session['user_role'] = user.get('ROLE')
+            
+            # Lấy Role và chuẩn hóa
+            user_role = str(user.get('ROLE') or '').strip().upper()
+            session['user_role'] = user_role
+            
             session['cap_tren'] = user.get('CAP TREN', '')
-
+            
             bo_phan_raw = user.get('BO PHAN', '')
-            # 2. .split() sẽ cắt chuỗi dựa trên BẤT KỲ ký tự trắng nào (space, tab, nbsp...)
-            #    VD: ['6.', 'KTTC']
-            # 3. .join() ghép chúng lại không có khoảng trắng
-            #    VD: "6.KTTC"
             normalized_bo_phan = "".join(bo_phan_raw.split()).upper()
             session['bo_phan'] = normalized_bo_phan
-
-            # 2. THÊM DÒNG NÀY: Lưu Chức vụ vào Session để dùng sau này
-            # (Dùng .strip().upper() để chuẩn hóa tránh lỗi khoảng trắng/hoa thường)
             session['chuc_vu'] = str(user.get('CHUC VU') or '').strip().upper()
-            # ----------------------------------------
-
-            # --- GHI LOG (Requirement 1: Login thành công) ---
+            # [THÊM DÒNG NÀY] Lưu mật khẩu hiện tại vào session làm "Security Stamp"
+            # Lưu ý: Đây là mật khẩu đã hash hoặc text (tùy DB của bạn), dùng để đối chiếu
+            session['security_hash'] = user.get('PASSWORD')
+            # Ghi Log
             db_manager.write_audit_log(
                 user_code=user.get('USERCODE'),
                 action_type='LOGIN_SUCCESS',
                 severity='INFO',
-                details=f"Login thành công với vai trò: {user.get('ROLE')}, {normalized_bo_phan}",
+                details=f"Login thành công: {user_role}",
                 ip_address=user_ip
             )
-            # --- KẾT THÚC GHI LOG ---
 
             flash(f"Đăng nhập thành công! Chào mừng {user.get('SHORTNAME')}.", 'success')
             
-            return redirect(url_for('portal_bp.portal_dashboard'))
-            # ---------------------------------------------
+            # --- [SỬA ĐỔI QUAN TRỌNG]: ĐIỀU HƯỚNG THEO ROLE ---
+            if user_role in ['ADMIN']: # Nếu là Sếp
+                return redirect(url_for('executive_bp.ceo_cockpit_dashboard'))
+            else: # Nếu là nhân viên
+                return redirect(url_for('portal_bp.portal_dashboard'))
+            # ---------------------------------------------------
+            
         else:
-            # --- GHI LOG (Requirement 3: Cảnh báo Login thất bại) ---
+            # Ghi log thất bại
             db_manager.write_audit_log(
-                user_code=username, # Ghi lại username đã cố gắng login
+                user_code=username,
                 action_type='LOGIN_FAILED',
-                severity='WARNING', # Mức độ Cảnh báo
-                details=f"Đăng nhập thất bại. Password: {password}",
+                severity='WARNING',
+                details=f"Sai mật khẩu",
                 ip_address=user_ip
             )
-            # --- KẾT THÚC GHI LOG ---
-            
             message = "Tên đăng nhập hoặc mật khẩu không chính xác."
             flash(message, 'danger')
             
@@ -329,7 +328,7 @@ app.register_blueprint(portal_bp) # Đăng ký
 app.register_blueprint(budget_bp)
 app.register_blueprint(commission_bp)
 app.register_blueprint(executive_bp)
-
+app.register_blueprint(cross_sell_bp)
 
 if __name__ == '__main__':
     

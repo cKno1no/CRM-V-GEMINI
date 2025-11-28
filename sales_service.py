@@ -344,145 +344,162 @@ class InventoryService:
 
     # sales_service.py (Hàm get_inventory_aging_data)
 
+    
     def get_inventory_aging_data(self, item_filter_term, category_filter, qty_filter, value_filter, i05id_filter):
         """
-        Lấy và lọc dữ liệu tuổi hàng tồn kho (Inventory Aging).
-        - Sử dụng logic lọc KHÁC (<>) cho Ngành hàng và Tính chất (I05ID).
-        - Tính Subtotal cho 4 KPI Tiles.
+        [UPDATED] Lấy dữ liệu tồn kho, GOM NHÓM THEO I04ID và Sắp xếp theo rủi ro.
         """
         
-        # Khai báo hằng số
-        DIVISOR = 1000000.0
         RISK_THRESHOLD = 5000000.0 # 5 Triệu VNĐ
         
-        # 1. Chuẩn bị gọi SP: Luôn truyền NULL để SP trả về toàn bộ dữ liệu
+        # 1. Lấy dữ liệu Aging từ SP
         sp_query = "{CALL dbo.sp_GetInventoryAging (?)}" 
         aging_data = []
-        
         try:
-            # Gọi hàm lấy dữ liệu (Truyền NULL để khắc phục lỗi STRING_SPLIT và lấy toàn bộ)
             raw_data = self.db.get_data(sp_query, (None,))
-            if raw_data is not None:
+            if raw_data:
                 aging_data = raw_data
-            
         except Exception as e:
-            print(f"LỖI KHI GỌI SP INVENTORY AGING: {e}")
-            # Trả về danh sách rỗng nếu có lỗi
-            return [], {'total_inventory': 0, 'total_quantity': 0, 'total_new_6_months': 0, 'total_over_2_years': 0, 'total_clc_value': 0}
+            print(f"Lỗi SP Inventory Aging: {e}")
+            return [], {}
 
+        # 2. [MỚI] Lấy Mapping I04ID từ IT1302
+        i04_map = {}
+        try:
+            query_i04 = f"SELECT InventoryID, I04ID FROM {config.ERP_IT1302}"
+            i04_data = self.db.get_data(query_i04)
+            if i04_data:
+                for row in i04_data:
+                    i04_map[row['InventoryID']] = row['I04ID'] if row['I04ID'] and row['I04ID'].strip() else 'KHÁC'
+        except Exception as e:
+            print(f"Lỗi lấy mapping I04ID: {e}")
 
-        # --- 2. TÍNH TOÁN KPI VÀ ÁP DỤNG LỌC PYTHON TRÊN TẤT CẢ CÁC ROWS ---
+        # 3. [MỚI] Lấy Mapping Tên Nhóm từ [NOI DUNG HD]
+        # Link: [NOI DUNG HD].[LOAI] = I04ID, Lấy cột [TEN]
+        i04_name_map = {}
+        try:
+            query_name = f"SELECT [LOAI], [TEN] FROM {config.TEN_BANG_NOI_DUNG_HD}"
+            name_data = self.db.get_data(query_name)
+            if name_data:
+                for row in name_data:
+                    i04_name_map[row['LOAI']] = row['TEN']
+        except Exception as e:
+            print(f"Lỗi lấy tên nhóm I04: {e}")
 
-        total_inventory = 0
-        total_quantity = 0 
-        total_new_6_months = 0 
-        total_over_2_years = 0 
-        total_clc_value = 0
+        # 3. Xử lý Lọc, Tính toán & Gom nhóm
+        totals = {
+            'total_inventory': 0, 'total_quantity': 0, 'total_new_6_months': 0,
+            'total_over_2_years': 0, 'total_clc_value': 0
+        }
         
-        filtered_and_summed_data = []
-        
-        # Phân tích điều kiện lọc số trước vòng lặp (Sử dụng hàm helper)
+        # Dictionary để gom nhóm
+        groups = {}
+
+        # Parse điều kiện lọc
         qty_op, qty_thresh = parse_filter_string(qty_filter)
         val_op, val_thresh = parse_filter_string(value_filter)
         search_terms = [t.strip().lower() for t in item_filter_term.split(';') if t.strip()]
 
         for row in aging_data:
-            # Lấy giá trị thô và ép kiểu an toàn (sử dụng safe_float)
-            total_val = safe_float(row.get('TotalCurrentValue'))
-            total_qty = safe_float(row.get('TotalCurrentQuantity'))
-            range_0_180_val = safe_float(row.get('Range_0_180_V'))
-            range_over_720_val = safe_float(row.get('Range_Over_720_V'))
+            # -- A. Ép kiểu số an toàn --
+            row['TotalCurrentValue'] = safe_float(row.get('TotalCurrentValue'))
+            row['TotalCurrentQuantity'] = safe_float(row.get('TotalCurrentQuantity'))
+            row['Range_0_180_V'] = safe_float(row.get('Range_0_180_V'))
+            row['Range_181_360_V'] = safe_float(row.get('Range_181_360_V'))
+            row['Range_361_540_V'] = safe_float(row.get('Range_361_540_V'))
+            row['Range_541_720_V'] = safe_float(row.get('Range_541_720_V'))
+            row['Range_Over_720_V'] = safe_float(row.get('Range_Over_720_V'))
             
-            # 1. TÍNH TOÁN CỘT D (RỦI RO CLC) VÀ ÁP DỤNG LOGIC KHÁC
-            item_class = row.get('StockClass', '')
+            # -- B. Tính chỉ số CLC (Risk Value) --
+            stock_class = str(row.get('StockClass', '')).strip().upper()
+            row['Risk_CLC_Value'] = 0.0
+            if stock_class != 'D' and row['Range_Over_720_V'] > RISK_THRESHOLD:
+                row['Risk_CLC_Value'] = row['Range_Over_720_V']
+
+            # -- C. Kiểm tra điều kiện lọc --
+            is_match = True
             
-            # Logic Cột D: IF I05ID != 'D' AND >720_V > 5M THEN >720_V ELSE 0
-            risk_clc_val = 0.0
-            # Kiểm tra điều kiện 1: I05ID KHÁC 'D' hoặc là NULL/Rỗng
-            is_not_d_class = (item_class.upper() != 'D' and item_class.strip() != '') or (item_class is None or item_class.strip() == '')
-
-            if is_not_d_class and range_over_720_val > RISK_THRESHOLD:
-                risk_clc_val = range_over_720_val
-                
-            row['Risk_CLC_Value'] = risk_clc_val # Gán giá trị tính toán vào row (cho hiển thị)
-
-            # 2. LOGIC LỌC PYTHON (Subtotal)
-            is_match_text = True
-            is_match_category = True
-            is_match_class = True
-            is_match_qty = True
-            is_match_value = True
-
-            # Lấy giá trị chuỗi
-            item_id = row.get('InventoryID', '').lower()
-            item_name = row.get('InventoryName', '').lower()
-            item_category_code = row.get('ItemCategory', '').lower() # I02ID
-            item_category_name = row.get('InventoryTypeName', '').lower() # Tên ngành hàng
-            item_class = row.get('StockClass', '').lower()
-
-            # Lọc Text (SKU/Tên)
+            # Lọc Text
             if search_terms:
-                item_id = row.get('InventoryID', '').lower()
-                item_name = row.get('InventoryName', '').lower()
-                is_match_text = any(term in item_id or term in item_name for term in search_terms)
-                
-            # FIX 1: LỌC NGÀNH HÀNG (I02ID HOẶC TÊN)
-            if category_filter:
-                op, val = ('!=', category_filter.replace('!=', '').replace('<>', '')) if category_filter.startswith(('!=', '<>')) else ('=', category_filter)
-                val_lower = val.lower()
-                
-                # Điều kiện khớp: Khớp với Code HOẶC Khớp với Tên
-                is_category_match = (val_lower == item_category_code) or (val_lower in item_category_name)
-                
-                is_match_category = is_category_match if op == '=' else (not is_category_match)
-
-            # Lọc Tính chất (I05ID) - Hỗ trợ lọc KHÁC (!=)
-            if i05id_filter:
-                item_class_lower = item_class.lower()
-                op, val = ('!=', i05id_filter.replace('!=', '').replace('<>', '')) if i05id_filter.startswith(('!=', '<>')) else ('=', i05id_filter)
-                is_match_class = (item_class_lower == val.lower()) if op == '=' else (item_class_lower != val.lower())
-                
-            # Lọc Số lượng & Giá trị
-            if qty_thresh is not None:
-                is_match_qty = evaluate_condition(total_qty, qty_op, qty_thresh)
-            if val_thresh is not None:
-                is_match_value = evaluate_condition(total_val, val_op, val_thresh)
-
-
-            # 3. TÍNH SUBTOTTAL VÀ THÊM VÀO DANH SÁCH
-            if is_match_text and is_match_category and is_match_class and is_match_qty and is_match_value:
-                # TÍNH SUBTOTTAL CỦA BỘ LỌC HIỆN TẠI
-                total_inventory += total_val
-                total_quantity += total_qty 
-                total_new_6_months += range_0_180_val
-                total_over_2_years += range_over_720_val
-                total_clc_value += risk_clc_val # Tính tổng KPI Cột D
-                
-                filtered_and_summed_data.append(row)
-
-        # 3. SẮP XẾP CUỐI CÙNG (FIX: Sort theo Cột D trước, rồi TotalCurrentValue)
-        
-        # SỬ DỤNG HÀM LAMBDA ĐỂ ÉP KIỂU AN TOÀN TRONG ITEMGETTER
-        filtered_and_summed_data = sorted(
-            filtered_and_summed_data, 
-            key=lambda row: (
-                safe_float(row.get('Risk_CLC_Value', 0)),    # Sắp xếp Cột D trước
-                safe_float(row.get('TotalCurrentValue', 0)) # Sắp xếp Tổng Tồn sau
-            ), 
-            reverse=True
-        )        
-
-           
-                
-        # 4. Chuẩn bị dữ liệu tổng
-        totals = {
-            'total_inventory': total_inventory,
-            'total_quantity': total_quantity,
-            'total_new_6_months': total_new_6_months,
-            'total_over_2_years': total_over_2_years,
-            'total_clc_value': total_clc_value
-        }
+                inv_str = str(row.get('InventoryID', '')).lower()
+                name_str = str(row.get('InventoryName', '')).lower()
+                if not any(term in inv_str or term in name_str for term in search_terms):
+                    is_match = False
             
-        return filtered_and_summed_data, totals
+            # Lọc Ngành hàng
+            if is_match and category_filter:
+                cat_filter_val = category_filter.replace('!=', '').replace('<>', '').strip().lower()
+                item_cat = str(row.get('InventoryTypeName', '')).lower()
+                item_cat_code = str(row.get('ItemCategory', '')).lower()
+                
+                is_cat_match = (cat_filter_val in item_cat) or (cat_filter_val == item_cat_code)
+                if category_filter.startswith(('!=', '<>')):
+                    if is_cat_match: is_match = False
+                else:
+                    if not is_cat_match: is_match = False
+
+            # Lọc I05
+            if is_match and i05id_filter:
+                i05_val = i05id_filter.replace('!=', '').replace('<>', '').strip().upper()
+                if i05id_filter.startswith(('!=', '<>')):
+                    if stock_class == i05_val: is_match = False
+                else:
+                    if stock_class != i05_val: is_match = False
+
+            # Lọc Số lượng & Giá trị
+            if is_match and qty_thresh is not None:
+                is_match = evaluate_condition(row['TotalCurrentQuantity'], qty_op, qty_thresh)
+            if is_match and val_thresh is not None:
+                is_match = evaluate_condition(row['TotalCurrentValue'], val_op, val_thresh)
+
+            # -- D. Cộng tổng & Gom nhóm --
+            if is_match:
+                # Cộng Totals toàn cục
+                totals['total_inventory'] += row['TotalCurrentValue']
+                totals['total_quantity'] += row['TotalCurrentQuantity']
+                totals['total_new_6_months'] += row['Range_0_180_V']
+                totals['total_over_2_years'] += row['Range_Over_720_V']
+                totals['total_clc_value'] += row['Risk_CLC_Value']
+
+                # Lấy mã nhóm I04 và Tên nhóm
+                i04_code = i04_map.get(row['InventoryID'], 'KHÁC')
+                # Lấy tên từ map, nếu không có thì dùng chính mã code
+                i04_name = i04_name_map.get(i04_code, i04_code)
+                if i04_code == 'KHÁC': i04_name = 'Khác / Chưa phân loại'
+                
+                # Tạo nhóm
+                if i04_code not in groups:
+                    groups[i04_code] = {
+                        'GroupID': i04_code,
+                        'GroupName': i04_name, # <--- Thêm trường Tên Nhóm
+                        'Items': [],
+                        'Group_TotalVal': 0.0,
+                        'Group_TotalQty': 0.0,
+                        'Group_Over720': 0.0,
+                        'Group_CLC': 0.0
+                    }
+                
+                # Cộng vào nhóm
+                groups[i04_code]['Items'].append(row)
+                groups[i04_code]['Group_TotalVal'] += row['TotalCurrentValue']
+                groups[i04_code]['Group_TotalQty'] += row['TotalCurrentQuantity']
+                groups[i04_code]['Group_Over720'] += row['Range_Over_720_V']
+                groups[i04_code]['Group_CLC'] += row['Risk_CLC_Value']
+
+        # 5. SẮP XẾP
+        sorted_groups = sorted(
+            groups.values(),
+            key=lambda g: (g['Group_CLC'], g['Group_Over720']), 
+            reverse=True
+        )
+
+        for group in sorted_groups:
+            group['Items'] = sorted(
+                group['Items'],
+                key=lambda i: (i['Risk_CLC_Value'], i['Range_Over_720_V']),
+                reverse=True
+            )
+
+        return sorted_groups, totals
 
     

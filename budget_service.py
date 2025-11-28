@@ -209,7 +209,7 @@ class BudgetService:
         # 1. Xác định điều kiện lọc dựa trên Role
         role_check = str(user_role).strip().upper()
         
-        if role_check in ['ADMIN', 'GM']:
+        if role_check in ['ADMIN']:
             # Admin thấy hết
             where_clause = "R.Status = 'PENDING'"
         else:

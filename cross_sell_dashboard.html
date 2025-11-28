@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Phân Tích Hiệu Suất Bán Chéo (DNA)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- GIỮ NGUYÊN TOÀN BỘ CSS CŨ --- */
+        :root {
+            --primary: #4318FF; --bg-color: #F4F7FE; --text-dark: #2B3674;
+            --success: #05CD99; --warning: #FFB547; --danger: #E31A1A; --info: #33CCFF;
+            --card-radius: 20px;
+        }
+        body { background-color: var(--bg-color); font-family: 'Inter', sans-serif; color: var(--text-dark); }
+        .container-fluid { max-width: 1800px; padding: 30px; }
+        /* ... (Các class CSS khác giữ nguyên) ... */
+        
+        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
+        .btn-back { background: white; color: #A3AED0; border: 1px solid #E0E5F2; padding: 10px 20px; border-radius: 14px; text-decoration: none; font-weight: 600; }
+
+        .kpi-card {
+            background: white; border-radius: var(--card-radius); padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05); transition: all 0.2s;
+            border-left: 5px solid transparent; position: relative; overflow: hidden; cursor: pointer;
+        }
+        .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .kpi-card.active { background-color: #fff; border: 2px solid var(--primary); transform: scale(1.02); }
+        
+        .group-titan { border-left-color: #4318FF; } 
+        .group-diamond { border-left-color: #05CD99; }
+        .group-growth { border-left-color: #FFB547; }
+        .group-opp { border-left-color: #E31A1A; } 
+
+        .kpi-title { font-size: 0.75rem; text-transform: uppercase; color: #A3AED0; font-weight: 700; margin-bottom: 5px; }
+        .kpi-value { font-size: 2rem; font-weight: 800; color: var(--text-dark); line-height: 1; margin-bottom: 5px; }
+        .kpi-desc { font-size: 0.8rem; color: #A3AED0; font-weight: 500; }
+        .kpi-icon { position: absolute; right: 15px; top: 15px; font-size: 3rem; opacity: 0.05; }
+
+        .dna-bar { display: flex; gap: 2px; height: 12px; width: 180px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+        .dna-segment { flex: 1; background-color: #e0e0e0; transition: opacity 0.2s; }
+        .dna-segment:hover { opacity: 0.7; }
+        .dna-segment.active { background-color: var(--primary); }
+        .dna-segment.active-low-margin { background-color: var(--danger); }
+
+        .main-card { background: white; border-radius: var(--card-radius); box-shadow: 0 4px 20px rgba(0,0,0,0.05); overflow: hidden; margin-top: 20px;}
+        .table-custom { width: 100%; border-collapse: collapse; }
+        .table-custom th { 
+            background-color: #FAFCFE; color: #A3AED0; font-size: 0.75rem; 
+            text-transform: uppercase; padding: 15px; border-bottom: 1px solid #E0E5F2; font-weight: 700;
+        }
+        .table-custom td { padding: 15px; vertical-align: middle; font-size: 0.95rem; border-bottom: 1px solid #F4F7FE; color: var(--text-dark); }
+        
+        .row-master { cursor: pointer; transition: background 0.1s; }
+        .row-master:hover { background-color: #F4F7FE; }
+        .row-master.expanded { background-color: #F0F5FF; border-left: 4px solid var(--primary); }
+        .transition-icon { transition: transform 0.2s; }
+
+        .detail-container { background-color: #FAFCFE; padding: 20px; border-bottom: 1px solid #E0E5F2; display: none; }
+        .detail-box { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); height: 100%; }
+        
+        .table-detail th { background-color: var(--primary); color: white !important; padding: 8px 10px; font-size: 0.8rem; }
+        .table-detail td { font-size: 0.85rem; padding: 8px 10px; }
+        
+        .badge-i04 { font-family: monospace; background: #F0F0F0; color: #333; padding: 2px 5px; border-radius: 4px; border: 1px solid #ddd; font-size: 0.7rem; margin-right: 5px; }
+        .text-margin-high { color: var(--success); font-weight: 700; }
+        .text-margin-low { color: var(--danger); font-weight: 700; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold text-dark m-0"><i class="fas fa-dna me-2 text-primary"></i>Phân Tích Hiệu Suất Bán Chéo</h2>
+                <p class="text-muted small mt-1">Đánh giá mức độ thâm nhập thị trường qua nhóm vật tư</p>
+            </div>
+            <a href="/" class="btn btn-back shadow-sm"><i class="fas fa-home me-2"></i>Về Portal</a>
+        </div>
+
+        <div class="row g-4 mb-4" id="kpiTabs">
+            <div class="col-xl-3 col-md-6">
+                <div class="kpi-card group-titan active" onclick="filterGroup('titan', this)">
+                    <div class="kpi-title">Titan Ecosystem (>15 Loại)</div>
+                    <div class="kpi-value text-primary">{{ summary.titan_count }} <span class="fs-6 text-muted fw-normal">KH</span></div>
+                    <div class="kpi-desc">Nhóm khách hàng cốt lõi</div>
+                    <i class="fas fa-globe kpi-icon text-primary"></i>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="kpi-card group-diamond" onclick="filterGroup('diamond', this)">
+                    <div class="kpi-title">Diamond Partner (10-14 Loại)</div>
+                    <div class="kpi-value text-success">{{ summary.diamond_count }} <span class="fs-6 text-muted fw-normal">KH</span></div>
+                    <div class="kpi-desc">Đối tác chiến lược</div>
+                    <i class="fas fa-gem kpi-icon text-success"></i>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="kpi-card group-growth" onclick="filterGroup('growth', this)">
+                    <div class="kpi-title">Growth Tier (4-9 Loại)</div>
+                    <div class="kpi-value text-warning">{{ summary.growth_count }} <span class="fs-6 text-muted fw-normal">KH</span></div>
+                    <div class="kpi-desc">Tiềm năng tăng trưởng cao</div>
+                    <i class="fas fa-chart-line kpi-icon text-warning"></i>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="kpi-card group-opp" onclick="filterGroup('opp', this)">
+                    <div class="kpi-title">Opportunity (< 4 Loại)</div>
+                    <div class="kpi-value text-danger">{{ summary.opp_count }} <span class="fs-6 text-muted fw-normal">KH</span></div>
+                    <div class="kpi-desc">Cần khai thác thêm</div>
+                    <i class="fas fa-seedling kpi-icon text-danger"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-card">
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;"></th>
+                            <th style="width: 30%;">Khách hàng</th>
+                            <th class="text-center" style="width: 120px;">Độ phủ (I04)</th>
+                            <th class="text-center" style="width: 220px;">DNA Sản phẩm</th>
+                            <th class="text-end">Doanh Số (Năm nay)</th>
+                            <th class="text-center">% Lãi Biên TB</th>
+                            <th class="text-center">Phân hạng</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        {% for group_key, clients in buckets.items() %}
+                            {% for client in clients %}
+                            <tr class="row-master" onclick="toggleDetail(this, '{{ client.ClientID }}')" data-group="{{ group_key }}" style="{{ 'display:none;' if group_key != 'titan' }}">
+                                <td class="text-center"><i class="fas fa-chevron-right text-muted transition-icon"></i></td>
+                                <td>
+                                    <div class="fw-bold text-dark">{{ client.ClientName }}</div>
+                                    <div class="small text-muted font-monospace">{{ client.ClientID }}</div>
+                                </td>
+                                <td class="text-center">
+                                    <span class="fw-bold fs-5 {{ 'text-primary' if group_key == 'titan' else ('text-success' if group_key == 'diamond' else ('text-warning' if group_key == 'growth' else 'text-danger')) }}">
+                                        {{ client.I04_Count }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-flex flex-column align-items-center">
+                                        <div class="dna-bar">
+                                            {% for seg in client.DNA_Visual %}
+                                            <div class="dna-segment {{ seg.status }}" title="{{ seg.tooltip }}" data-bs-toggle="tooltip"></div>
+                                            {% endfor %}
+                                        </div>
+                                        <small class="text-muted" style="font-size: 0.65rem;">{{ client.I04_Count }}/{{ master_dna|length }} Nhóm</small>
+                                    </div>
+                                </td>
+                                <td class="text-end fw-bold">{{ "{:,.0f}".format(client.TotalRevenue) }}</td>
+                                <td class="text-center">
+                                    <span class="badge {{ 'bg-danger-subtle text-danger border border-danger' if client.AvgMargin < 10 else 'bg-light text-dark border' }}">
+                                        {{ "{:.1f}%".format(client.AvgMargin) }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    {% if group_key == 'titan' %} <span class="badge bg-primary rounded-pill">Titan</span>
+                                    {% elif group_key == 'diamond' %} <span class="badge bg-success rounded-pill">Diamond</span>
+                                    {% elif group_key == 'growth' %} <span class="badge bg-warning text-dark rounded-pill">Growth</span>
+                                    {% else %} <span class="badge bg-danger rounded-pill">Opportunity</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            
+                            <tr style="{{ 'display:none;' if group_key != 'titan' }}" data-group="{{ group_key }}">
+                                <td colspan="7" class="p-0 border-0">
+                                    <div class="detail-container" id="detail-{{ client.ClientID }}">
+                                        </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function formatCurrency(num) {
+            return new Intl.NumberFormat('vi-VN').format(num);
+        }
+
+        function filterGroup(group, cardElement) {
+            document.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('active'));
+            if(cardElement) cardElement.classList.add('active');
+
+            const rows = document.querySelectorAll('#tableBody tr');
+            rows.forEach(r => {
+                if (r.getAttribute('data-group') === group) {
+                    r.style.display = '';
+                    if (!r.classList.contains('row-master')) {} 
+                } else {
+                    r.style.display = 'none';
+                }
+            });
+        }
+
+        function toggleDetail(row, clientId) {
+            const icon = row.querySelector('.fa-chevron-right');
+            const detailRow = row.nextElementSibling;
+            const container = detailRow.querySelector('.detail-container');
+
+            if (container.style.display === 'block') {
+                container.style.display = 'none';
+                icon.style.transform = 'rotate(0deg)';
+                row.classList.remove('expanded');
+            } else {
+                container.style.display = 'block';
+                icon.style.transform = 'rotate(90deg)';
+                row.classList.add('expanded');
+                
+                if (!container.hasAttribute('data-loaded')) {
+                    loadDetailData(clientId, container);
+                }
+            }
+        }
+
+        // --- UPDATE: HÀM LOAD DATA VÀ HIỂN THỊ TÊN NHÓM ---
+        function loadDetailData(clientId, container) {
+            container.innerHTML = '<p class="text-center text-muted p-3"><i class="fas fa-spinner fa-spin me-2"></i>Đang phân tích dữ liệu...</p>';
+            
+            fetch(`/api/cross_sell/detail/${clientId}`)
+                .then(r => r.json())
+                .then(data => {
+                    const bought = data.bought || [];
+                    const whiteSpace = data.white_space || [];
+                    
+                    let boughtHtml = '';
+                    bought.forEach(item => {
+                        const marginClass = item.Margin < 10 ? 'text-margin-low' : 'text-margin-high';
+                        // HIỂN THỊ TÊN NHÓM Ở ĐÂY
+                        boughtHtml += `
+                            <tr>
+                                <td>
+                                    <span class="badge-i04">${item.I04ID}</span>
+                                    <span class="fw-bold text-dark">${item.GroupName}</span>
+                                </td>
+                                <td class="text-end">${formatCurrency(item.Revenue)}</td>
+                                <td class="text-end">${formatCurrency(item.Profit)}</td>
+                                <td class="text-center ${marginClass}">${item.Margin.toFixed(1)}%</td>
+                            </tr>
+                        `;
+                    });
+
+                    let whiteSpaceHtml = '';
+                    whiteSpace.slice(0, 5).forEach(item => {
+                        // HIỂN THỊ TÊN NHÓM CHO WHITE SPACE
+                        whiteSpaceHtml += `
+                            <li class="list-group-item d-flex justify-content-between align-items-center ps-0 pe-0">
+                                <span>
+                                    <i class="far fa-square text-secondary me-2"></i>
+                                    <strong>${item.GroupName}</strong> 
+                                    <span class="text-muted small ms-1">(${item.I04ID})</span>
+                                </span>
+                                <span class="badge bg-light text-dark border">Tiềm năng</span>
+                            </li>
+                        `;
+                    });
+
+                    const html = `
+                        <div class="row g-4">
+                            <div class="col-lg-8">
+                                <div class="detail-box">
+                                    <h6 class="fw-bold text-primary mb-3 border-bottom pb-2">
+                                        <i class="fas fa-shopping-cart me-2"></i>Nhóm hàng Đã mua (${bought.length})
+                                    </h6>
+                                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                        <table class="table table-sm table-detail mb-0">
+                                            <thead>
+                                                <tr><th>Tên Nhóm Vật Tư</th><th class="text-end">Doanh Số</th><th class="text-end">Lãi Gộp</th><th class="text-center">% Lãi</th></tr>
+                                            </thead>
+                                            <tbody>${boughtHtml}</tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-4">
+                                <div class="detail-box bg-white border-danger border-start border-4">
+                                    <h6 class="fw-bold text-danger mb-3">
+                                        <i class="fas fa-bullseye me-2"></i>Cơ hội Bán chéo (White Space)
+                                    </h6>
+                                    <p class="small text-muted mb-2">Chưa phát sinh doanh số ở các nhóm:</p>
+                                    <ul class="list-group list-group-flush small mb-3">
+                                        ${whiteSpaceHtml}
+                                    </ul>
+                                    ${whiteSpace.length > 5 ? `<p class="small text-muted text-center fst-italic">...và ${whiteSpace.length - 5} nhóm khác.</p>` : ''}
+                                    <a href="#" class="btn btn-sm btn-outline-danger w-100"><i class="fas fa-file-signature me-1"></i> Tạo Báo Giá Gợi Ý</a>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    container.innerHTML = html;
+                    container.setAttribute('data-loaded', 'true');
+                })
+                .catch(err => {
+                    container.innerHTML = `<p class="text-center text-danger p-3">Lỗi tải dữ liệu: ${err.message}</p>`;
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            });
+        });
+    </script>
+</body>
+</html>

@@ -439,14 +439,15 @@ def profit_analysis_dashboard():
     user_code = session.get('user_code')
     is_admin = session.get('user_role', '').strip().upper() == 'ADMIN'
     
-    # Mặc định tháng hiện tại
+    # [UPDATED] Mặc định từ đầu năm (1/1) đến hiện tại
     today = datetime.now()
-    default_from = datetime(today.year, today.month, 1).strftime('%Y-%m-%d')
+    default_from = datetime(today.year, 1, 1).strftime('%Y-%m-%d') # Sửa tại đây
     default_to = today.strftime('%Y-%m-%d')
     
     date_from = request.form.get('date_from') or request.args.get('date_from') or default_from
     date_to = request.form.get('date_to') or request.args.get('date_to') or default_to
     
+    # Gọi Service
     # Gọi Service
     details, summary = sales_service.get_profit_analysis(date_from, date_to, user_code, is_admin)
     

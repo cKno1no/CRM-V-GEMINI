@@ -20,6 +20,7 @@
             --success: #05CD99;
             --warning: #FFB547;
             --danger: #E31A1A;
+            --info: #33ccff;
             --card-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
         }
 
@@ -29,14 +30,12 @@
             color: var(--text-dark);
         }
 
-        h1, h2, h3, h4, h5, h6 {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Plus Jakarta Sans', sans-serif; }
 
         /* --- LAYOUT --- */
         .main-content {
             padding: 30px;
-            max-width: 1600px;
+            max-width: 1800px; /* Mở rộng để chứa 4 cột thoải mái */
             margin: 0 auto;
         }
 
@@ -51,16 +50,20 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            display: block;
+            text-decoration: none; /* Bỏ gạch chân cho thẻ a */
+            color: inherit;
         }
         .card-box:hover {
             transform: translateY(-5px);
             box-shadow: 0 25px 50px rgba(112, 144, 176, 0.2);
+            cursor: pointer;
         }
 
         /* Scorecard Styles */
         .score-label {
             color: var(--secondary);
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             font-weight: 700;
             margin-bottom: 5px;
             text-transform: uppercase;
@@ -68,13 +71,13 @@
         }
         .score-value {
             color: var(--text-dark);
-            font-size: 2.2rem;
+            font-size: 1.8rem;
             font-weight: 800;
-            line-height: 1;
-            margin-bottom: 10px;
+            line-height: 1.1;
+            margin-bottom: 8px;
         }
         .trend-badge {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 700;
             padding: 4px 10px;
             border-radius: 20px;
@@ -82,28 +85,33 @@
             align-items: center;
             gap: 5px;
         }
-        .trend-up { background-color: #E6FDF5; color: var(--success); }
-        .trend-down { background-color: #FEEEEE; color: var(--danger); }
+        
+        /* Colors */
+        .bg-trend-up { background-color: #E6FDF5; color: var(--success); }
+        .bg-trend-down { background-color: #FEEEEE; color: var(--danger); }
+        .bg-trend-warn { background-color: #FFF8E1; color: #B71C1C; }
 
         /* Gradient Card (Profit) */
         .card-gradient {
             background: linear-gradient(135deg, #4318FF 0%, #7B61FF 100%);
-            color: white;
+            color: white !important;
         }
-        .card-gradient .score-label { color: rgba(255,255,255,0.8); }
-        .card-gradient .score-value { color: white; }
+        .card-gradient .score-label { color: rgba(255,255,255,0.8) !important; }
+        .card-gradient .score-value { color: white !important; }
         .card-gradient .trend-badge { background-color: rgba(255,255,255,0.2); color: white; }
 
         /* Icon Box */
         .icon-box {
-            width: 50px; height: 50px;
+            width: 45px; height: 45px;
             border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem;
+            font-size: 1.3rem;
         }
         .ib-primary { background-color: #F4F7FE; color: var(--primary); }
         .ib-warning { background-color: #FFF8E1; color: var(--warning); }
         .ib-danger { background-color: #FFF5F5; color: var(--danger); }
+        .ib-success { background-color: #E6FDF5; color: var(--success); }
+        .ib-info { background-color: #E1F5FE; color: #039BE5; }
 
         /* --- ACTION CENTER --- */
         .action-item {
@@ -171,7 +179,7 @@
         </div>
         <div class="d-flex gap-3">
             <span class="bg-white px-3 py-2 rounded-pill shadow-sm text-secondary fw-bold small d-flex align-items-center">
-                <i class="far fa-clock me-2"></i> Dữ liệu Real-time
+                <i class="far fa-calendar-check me-2"></i> Dữ liệu Lũy kế năm (YTD)
             </span>
             <a href="/" class="btn btn-light fw-bold text-secondary shadow-sm rounded-pill px-4">
                 <i class="fas fa-home me-2"></i> Về Portal
@@ -182,37 +190,37 @@
     <div class="row g-4 mb-4">
         
         <div class="col-xl-3 col-md-6">
-            <div class="card-box">
+            <a href="/realtime_dashboard" target="_blank" class="card-box">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="score-label">DOANH SỐ THÁNG</div>
-                        <div class="score-value">{{ "{:,.0f}".format(kpi_summary.Sales_CurrentMonth / 1000000) }}M</div>
-                        <div class="trend-badge trend-up">
-                            <i class="fas fa-bullseye"></i> Mục tiêu: {{ "{:,.0f}".format(kpi_summary.TargetMonth / 1000000) }}M
+                        <div class="score-label">DOANH SỐ YTD</div>
+                        <div class="score-value">{{ "{:,.0f}".format(kpi_summary.Sales_YTD / 1000000) }}M</div>
+                        <div class="trend-badge bg-trend-up">
+                            <i class="fas fa-bullseye"></i> Target Năm: {{ "{:,.0f}".format(kpi_summary.TargetYear / 1000000) }}M
                         </div>
                     </div>
                     <div class="icon-box ib-primary"><i class="fas fa-chart-line"></i></div>
                 </div>
                 <div class="mt-3">
                     <div class="d-flex justify-content-between small text-secondary mb-1">
-                        <span>Tiến độ</span>
+                        <span>Tiến độ năm</span>
                         <span class="fw-bold">{{ kpi_summary.Percent }}%</span>
                     </div>
                     <div class="progress" style="height: 6px; border-radius: 10px;">
                         <div class="progress-bar bg-primary" style="width: {{ kpi_summary.Percent }}%"></div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <div class="col-xl-3 col-md-6">
-            <div class="card-box card-gradient">
+            <a href="/sales/profit_analysis" target="_blank" class="card-box card-gradient">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="score-label">LỢI NHUẬN GỘP (Ước tính)</div>
+                        <div class="score-label">LỢI NHUẬN GỘP YTD</div>
                         <div class="score-value">{{ "{:,.0f}".format(profit_summary.GrossProfit / 1000000) }}M</div>
                         <div class="trend-badge">
-                            <i class="fas fa-check-circle"></i> Biên LN: {{ "{:.1f}".format(profit_summary.AvgMargin) }}%
+                            <i class="fas fa-percentage"></i> Margin: {{ "{:.1f}".format(profit_summary.AvgMargin) }}%
                         </div>
                     </div>
                     <div class="icon-box" style="background: rgba(255,255,255,0.2); color: white;">
@@ -220,48 +228,140 @@
                     </div>
                 </div>
                 <div class="mt-3 text-white-50 small">
-                    *Dữ liệu từ sổ cái tài khoản 511 & 632.
+                    *Dữ liệu ước tính từ sổ cái TK 511 & 632.
                 </div>
-            </div>
+            </a>
         </div>
 
         <div class="col-xl-3 col-md-6">
-            <div class="card-box">
+            <a href="/budget/report/ytd" target="_blank" class="card-box">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="score-label text-warning">CHI PHÍ HOẠT ĐỘNG YTD</div>
+                        
+                        <div class="score-value text-dark mb-1">
+                            {{ "{:,.0f}".format(finance_summary.TotalExpenses / 1000000) }}M
+                        </div>
+                        
+                        <div class="small fw-bold text-secondary mb-2" style="font-size: 0.8rem;">
+                            / Ngân sách: {{ "{:,.0f}".format(kpi_summary.BudgetPlan_YTD / 1000000) }}M
+                        </div>
+                        
+                        {% if kpi_summary.OverBudgetCount > 0 %}
+                        <div class="trend-badge bg-trend-down text-danger">
+                            <i class="fas fa-exclamation-circle"></i> {{ kpi_summary.OverBudgetCount }} khoản vượt
+                        </div>
+                        {% else %}
+                        <div class="trend-badge bg-trend-up">
+                            <i class="fas fa-check-circle"></i> Kiểm soát tốt
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="icon-box ib-warning"><i class="fas fa-money-bill-wave"></i></div>
+                </div>
+                <div class="mt-3 small text-muted" style="font-size: 0.75rem;">
+                    Toàn bộ khoản mục chi vs Ngân sách.
+                </div>
+            </a>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+                <a href="/cross_sell_dashboard" target="_blank" class="card-box">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="score-label text-info">LỢI NHUẬN VIP YTD</div>
+                            <div class="score-value text-dark">
+                                {{ "{:,.0f}".format(finance_summary.CrossSellProfit / 1000000) }}M
+                            </div>
+                            
+                            <div class="trend-badge bg-trend-up text-info">
+                                <i class="fas fa-gem"></i> {{ kpi_summary.CrossSellCustCount }} KH Titan/Diamond
+                            </div>
+                        </div>
+                        <div class="icon-box ib-info"><i class="fas fa-dna"></i></div>
+                    </div>
+                    <div class="mt-3 small text-muted" style="font-size: 0.75rem;">
+                        Lợi nhuận từ KH có >=10 nhóm hàng.
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        
+        <div class="col-xl-3 col-md-6">
+            <a href="/ar_aging" target="_blank" class="card-box">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="score-label text-danger">NỢ RỦI RO (>180 NGÀY)</div>
                         <div class="score-value text-danger">{{ "{:,.0f}".format(risk_summary.Debt_Over_180 / 1000000) }}M</div>
-                        <div class="trend-badge trend-down">
-                            <i class="fas fa-exclamation-triangle"></i> Cần xử lý gấp
+                        <div class="trend-badge bg-trend-down">
+                            <i class="fas fa-skull-crossbones"></i> Cần xử lý gấp
                         </div>
                     </div>
-                    <div class="icon-box ib-danger"><i class="fas fa-skull-crossbones"></i></div>
+                    <div class="icon-box ib-danger"><i class="fas fa-file-invoice-dollar"></i></div>
                 </div>
                 <div class="mt-3 small text-muted">
                     Tổng nợ quá hạn: <strong>{{ "{:,.0f}".format(risk_summary.TotalOverdueDebt / 1000000) }}M</strong>
                 </div>
-            </div>
+            </a>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <a href="/inventory_aging" target="_blank" class="card-box">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="score-label" style="color: #E65100;">HÀNG CLC (>2 NĂM)</div>
+                        <div class="score-value" style="color: #E65100;">{{ "{:,.0f}".format(risk_summary.Inventory_Over_2Y / 1000000) }}M</div>
+                        <div class="trend-badge bg-trend-warn text-danger">
+                            <i class="fas fa-box-open"></i> Rủi ro cao
+                        </div>
+                    </div>
+                    <div class="icon-box ib-warning"><i class="fas fa-warehouse"></i></div>
+                </div>
+                <div class="mt-3 small text-muted">
+                    Hàng tồn kho lâu năm chất lượng kém.
+                </div>
+            </a>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <a href="/delivery_dashboard" target="_blank" class="card-box">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="score-label text-primary">GIAO HÀNG ĐÚNG HẠN (OTIF)</div>
+                        <div class="score-value text-primary">{{ "{:.1f}".format(kpi_summary.OTIF_YTD) }}%</div>
+                        <div class="trend-badge bg-trend-up">
+                            Tháng này: {{ "{:.1f}".format(kpi_summary.OTIF_Month) }}%
+                        </div>
+                    </div>
+                    <div class="icon-box ib-primary"><i class="fas fa-shipping-fast"></i></div>
+                </div>
+                <div class="mt-3 small text-muted">
+                    Tỷ lệ đơn giao đúng hẹn/tổng đơn đã giao.
+                </div>
+            </a>
         </div>
 
         <div class="col-xl-3 col-md-6">
             <div class="card-box">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="score-label text-warning">HÀNG CLC (>2 NĂM)</div>
-                        <div class="score-value" style="color: #E65100;">{{ "{:,.0f}".format(risk_summary.Inventory_Over_2Y / 1000000) }}M</div>
-                        <div class="text-muted small mt-1">
-                            Rủi ro chôn vốn cao
+                        <div class="score-label text-info">NEW BUSINESS (360 Ngày)</div>
+                        <div class="score-value text-dark">{{ kpi_summary.NewCust_Count }} <span class="fs-6 text-muted">KH</span></div>
+                        <div class="trend-badge bg-trend-up">
+                            <i class="fas fa-user-plus"></i> Tăng trưởng
                         </div>
                     </div>
-                    <div class="icon-box ib-warning"><i class="fas fa-box-open"></i></div>
+                    <div class="icon-box ib-info"><i class="fas fa-users"></i></div>
                 </div>
-                <div class="mt-3">
-                    <a href="/inventory_aging" class="text-decoration-none small fw-bold text-primary">
-                        Xem chi tiết thanh lý <i class="fas fa-arrow-right ms-1"></i>
-                    </a>
+                <div class="mt-3 small text-muted">
+                    Doanh số KH mới: <strong>{{ "{:,.0f}".format(kpi_summary.NewCust_Sales / 1000000) }}M</strong>
                 </div>
             </div>
         </div>
+
     </div>
 
     <div class="row g-4 mb-4">
@@ -278,19 +378,70 @@
         </div>
 
         <div class="col-lg-4">
-            <div class="card-box d-flex flex-column">
-                <h5 class="fw-bold mb-4">Cấu Trúc Tồn kho (Theo Tuổi)</h5>
-                <div id="inventoryChart" style="flex-grow: 1; min-height: 250px;"></div>
-                
-                <div class="mt-3 pt-3 border-top text-center">
-                    <small class="text-muted">Biểu đồ thể hiện tỷ trọng giá trị tồn kho theo thời gian lưu kho.</small>
+            <div class="card-box">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold m-0"><i class="fas fa-bolt text-warning me-2"></i>Trung Tâm Hành Động</h5>
+                    <span class="badge bg-danger rounded-pill">{{ pending_actions.Total }} việc cần xử lý</span>
                 </div>
+
+                <div class="action-item">
+                    <div class="d-flex align-items-center">
+                        <div class="action-icon">
+                            <i class="fas fa-file-signature"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark">Phê duyệt Chào giá biên thấp</div>
+                            <div class="small text-secondary">Có <strong>{{ pending_actions.Quotes }}</strong> phiếu đang chờ.</div>
+                        </div>
+                    </div>
+                    <a href="/quote_approval" class="btn-go"><i class="fas fa-arrow-right"></i></a>
+                </div>
+
+                <div class="action-item">
+                    <div class="d-flex align-items-center">
+                        <div class="action-icon text-danger" style="background-color: #FFF5F5;">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark">Đề nghị Thanh toán</div>
+                            <div class="small text-secondary">Có <strong>{{ pending_actions.Budgets }}</strong> đề nghị chi.</div>
+                        </div>
+                    </div>
+                    <a href="/budget/approval" class="btn-go bg-danger border-danger"><i class="fas fa-arrow-right"></i></a>
+                </div>
+
+                <div class="action-item">
+                    <div class="d-flex align-items-center">
+                        <div class="action-icon text-success" style="background-color: #E6FDF5;">
+                            <i class="fas fa-shipping-fast"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark">Duyệt Đơn hàng Bán</div>
+                            <div class="small text-secondary">Có <strong>{{ pending_actions.Orders }}</strong> đơn hàng chờ.</div>
+                        </div>
+                    </div>
+                    <a href="/sales_order_approval" class="btn-go bg-success border-success"><i class="fas fa-arrow-right"></i></a>
+                </div>
+                
+                <div class="action-item border-0">
+                    <div class="d-flex align-items-center">
+                        <div class="action-icon text-warning" style="background-color: #FFF8E1;">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark">Các sự vụ "Báo động"</div>
+                            <div class="small text-secondary">Có <strong>{{ pending_actions.UrgentTasks }}</strong> task khẩn cấp.</div>
+                        </div>
+                    </div>
+                    <a href="/task_dashboard?filter=RISK" class="btn-go bg-warning border-warning text-dark"><i class="fas fa-arrow-right"></i></a>
+                </div>
+
             </div>
         </div>
     </div>
 
     <div class="row g-4">
-        <div class="col-lg-6">
+        <div class="col-12">
             <div class="card-box">
                 <h5 class="fw-bold mb-3">Bảng Xếp Hạng Sales (YTD)</h5>
                 <div class="table-responsive">
@@ -337,68 +488,6 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-lg-6">
-            <div class="card-box">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="fw-bold m-0"><i class="fas fa-bolt text-warning me-2"></i>Trung Tâm Hành Động</h5>
-                    <span class="badge bg-danger rounded-pill">{{ pending_actions.Total }} việc cần xử lý</span>
-                </div>
-
-                <div class="action-item">
-                    <div class="d-flex align-items-center">
-                        <div class="action-icon">
-                            <i class="fas fa-file-signature"></i>
-                        </div>
-                        <div>
-                            <div class="fw-bold text-dark">Phê duyệt Chào giá biên thấp</div>
-                            <div class="small text-secondary">Có <strong>{{ pending_actions.Quotes }}</strong> phiếu đang chờ (vượt quyền Sales).</div>
-                        </div>
-                    </div>
-                    <a href="/quote_approval" class="btn-go"><i class="fas fa-arrow-right"></i></a>
-                </div>
-
-                <div class="action-item">
-                    <div class="d-flex align-items-center">
-                        <div class="action-icon text-danger" style="background-color: #FFF5F5;">
-                            <i class="fas fa-file-invoice-dollar"></i>
-                        </div>
-                        <div>
-                            <div class="fw-bold text-dark">Đề nghị Thanh toán</div>
-                            <div class="small text-secondary">Có <strong>{{ pending_actions.Budgets }}</strong> đề nghị chi cần chữ ký.</div>
-                        </div>
-                    </div>
-                    <a href="/budget/approval" class="btn-go bg-danger border-danger"><i class="fas fa-arrow-right"></i></a>
-                </div>
-
-                <div class="action-item">
-                    <div class="d-flex align-items-center">
-                        <div class="action-icon text-success" style="background-color: #E6FDF5;">
-                            <i class="fas fa-shipping-fast"></i>
-                        </div>
-                        <div>
-                            <div class="fw-bold text-dark">Duyệt Đơn hàng Bán</div>
-                            <div class="small text-secondary">Có <strong>{{ pending_actions.Orders }}</strong> đơn hàng chờ xác nhận.</div>
-                        </div>
-                    </div>
-                    <a href="/sales_order_approval" class="btn-go bg-success border-success"><i class="fas fa-arrow-right"></i></a>
-                </div>
-                
-                <div class="action-item border-0">
-                    <div class="d-flex align-items-center">
-                        <div class="action-icon text-warning" style="background-color: #FFF8E1;">
-                            <i class="fas fa-tasks"></i>
-                        </div>
-                        <div>
-                            <div class="fw-bold text-dark">Các sự vụ "Báo động"</div>
-                            <div class="small text-secondary">Có <strong>{{ pending_actions.UrgentTasks }}</strong> task đang bị Block/Ưu tiên cao.</div>
-                        </div>
-                    </div>
-                    <a href="/task_dashboard?filter=RISK" class="btn-go bg-warning border-warning text-dark"><i class="fas fa-arrow-right"></i></a>
-                </div>
-
             </div>
         </div>
     </div>
@@ -463,49 +552,6 @@
     };
     var chartRevenue = new ApexCharts(document.querySelector("#revenueChart"), revenueOptions);
     chartRevenue.render();
-
-    // 2. Biểu đồ Tồn kho (Sử dụng dữ liệu mẫu, có thể thay bằng dữ liệu động nếu có API)
-    // Hiện tại dùng số liệu cứng để demo visual, logic backend có thể update sau
-    var inventoryOptions = {
-        series: [65, 20, 10, 5], 
-        labels: ['Hàng mới (<180)', 'Trung bình (180-360)', 'Chậm (360-720)', 'Rủi ro (>720)'],
-        chart: {
-            type: 'donut',
-            height: 320,
-            fontFamily: 'Inter, sans-serif',
-        },
-        colors: ['#05CD99', '#4318FF', '#FFB547', '#E31A1A'],
-        plotOptions: {
-            pie: {
-                donut: {
-                    size: '75%',
-                    labels: {
-                        show: true,
-                        name: { show: true },
-                        value: {
-                            show: true,
-                            formatter: function (val) { return val + "%"; }
-                        },
-                        total: {
-                            show: true,
-                            label: 'Tổng quan',
-                            color: '#A3AED0',
-                            formatter: function (w) {
-                                return "Aging";
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        legend: { position: 'bottom' },
-        dataLabels: { enabled: false },
-        tooltip: {
-            y: { formatter: function (val) { return val + "% tỷ trọng" } }
-        }
-    };
-    var chartInventory = new ApexCharts(document.querySelector("#inventoryChart"), inventoryOptions);
-    chartInventory.render();
 </script>
 
 </body>
