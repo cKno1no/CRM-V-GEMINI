@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 # FIX: Import login_required từ utils.py (và loại bỏ các import dịch vụ/helper từ app ở đây)
 from utils import login_required 
 from datetime import datetime, timedelta
-
+import config
 delivery_bp = Blueprint('delivery_bp', __name__)
 
 # [HÀM HELPER CẦN THIẾT]
@@ -18,54 +18,41 @@ def get_user_ip():
 @delivery_bp.route('/delivery_dashboard', methods=['GET'])
 @login_required
 def delivery_dashboard():
-    """ROUTE: Hiển thị Bảng Điều phối Giao vận (2 Tab)."""
+    from app import delivery_service, db_manager
     
-    # FIX: Import Delivery Service Cục bộ
-    from app import delivery_service, db_manager # ADD db_manager
-    
-    # --- LOGIC PHÂN QUYỀN (TỪ APP.PY GỐC) ---
+    # [CONFIG]: Chuẩn hóa Phân quyền
     user_role = session.get('user_role', '').strip().upper()
     user_bo_phan = session.get('bo_phan', '').strip() 
     
-    is_admin_or_gm = user_role in ['ADMIN', 'GM']
-    is_thu_ky = user_bo_phan == '3.THU KY'
-    is_kho = user_bo_phan == '5.KHO'
+    is_admin_or_gm = user_role in [config.ROLE_ADMIN, config.ROLE_GM]
+    is_thu_ky = str(user_bo_phan) == str(config.DEPT_THUKY)
+    is_kho = str(user_bo_phan) == str(config.DEPT_KHO)
     
     can_edit_planner = is_admin_or_gm
     can_view_dispatch = is_admin_or_gm or is_kho or is_thu_ky
     can_edit_dispatch = is_admin_or_gm or is_kho
-    # ----------------------------------------
 
     grouped_tasks_json, ungrouped_tasks_json = delivery_service.get_planning_board_data()
     
     today_str = datetime.now().strftime('%Y-%m-%d')
     today_weekday = datetime.now().strftime('%A').upper() 
     
-    # --- LOGIC CHO TAB 2 (KHO - Dùng danh sách LXH LẺ TỪ APP.PY GỐC) ---
-    dispatch_pool = [t for t in ungrouped_tasks_json if t['DeliveryStatus'] != 'Da Giao']
+    # Filter lists for dispatch view
+    dispatch_pool = [t for t in ungrouped_tasks_json if t['DeliveryStatus'] != config.DELIVERY_STATUS_DONE]
     
-    # 1a. Hôm nay phải giao
     kho_hom_nay = [t for t in dispatch_pool if t['Planned_Day'] == today_weekday or t['Planned_Day'] == 'URGENT']
-    
-    # 1b. Trong tuần sẽ giao
     kho_trong_tuan = [t for t in dispatch_pool if t['Planned_Day'] not in ['POOL', 'URGENT', 'WITHIN_WEEK', 'PICKUP', today_weekday]]
-    
-    # 1c. Sắp xếp trong tuần
     kho_sap_xep = [t for t in dispatch_pool if t['Planned_Day'] == 'WITHIN_WEEK']
+    kho_da_giao = [t for t in ungrouped_tasks_json if t['DeliveryStatus'] == config.DELIVERY_STATUS_DONE]
     
-    # Đã Giao
-    kho_da_giao = [t for t in ungrouped_tasks_json if t['DeliveryStatus'] == 'Da Giao']
-    # --------------------------------------------------------------------
-    
-    # LOG VIEW_DELIVERY_DASHBOARD (BỔ SUNG)
+    # Log access
     try:
+        from app import get_user_ip
         db_manager.write_audit_log(
             session.get('user_code'), 'VIEW_DELIVERY_DASHBOARD', 'INFO', 
-            "Truy cập Bảng Điều phối Giao vận", 
-            get_user_ip()
+            "Truy cập Bảng Điều phối Giao vận", get_user_ip()
         )
-    except Exception as e:
-        print(f"Lỗi ghi log VIEW_DELIVERY_DASHBOARD: {e}")
+    except: pass
 
     return render_template(
         'delivery_dashboard.html',
@@ -90,11 +77,10 @@ def api_delivery_set_day():
     """API: (Thư ký) Kéo thả 1 LXH hoặc 1 Nhóm KH vào 1 ngày kế hoạch."""
     
     # FIX: Import Delivery Service Cục bộ
-    from app import delivery_service, db_manager # ADD db_manager
-    
-    user_role = session.get('user_role', '').strip().upper()
+    from app import delivery_service, db_manager
     user_code = session.get('user_code')
-    if user_role not in ['ADMIN', 'GM']:
+    user_role = session.get('user_role', '').strip().upper()
+    if user_role not in [config.ROLE_ADMIN, config.ROLE_GM]:
         return jsonify({'success': False, 'message': 'Bạn không có quyền thực hiện thao tác này.'}), 403
         
     data = request.json
@@ -137,7 +123,8 @@ def api_delivery_set_status():
     user_bo_phan = session.get('bo_phan', '').strip()
     user_code = session.get('user_code')
 
-    if user_role not in ['ADMIN', 'GM'] and user_bo_phan != '5.KHO':
+    # [CONFIG]: Check quyền Kho & Admin
+    if user_role not in [config.ROLE_ADMIN, config.ROLE_GM] and str(user_bo_phan) != str(config.DEPT_KHO):
         return jsonify({'success': False, 'message': 'Bạn không có quyền thực hiện thao tác này.'}), 403
 
     data = request.json
@@ -175,7 +162,9 @@ def api_delivery_get_items(voucher_id):
     
     user_role = session.get('user_role', '').strip().upper()
     user_bo_phan = session.get('bo_phan', '').strip()
-    if user_role not in ['ADMIN', 'GM'] and user_bo_phan not in ['5.KHO', '3.THU KY']:
+    # [CONFIG]: Check quyền xem chi tiết
+    if user_role not in [config.ROLE_ADMIN, config.ROLE_GM] and \
+       str(user_bo_phan) not in [str(config.DEPT_KHO), str(config.DEPT_THUKY)]:
         return jsonify({'error': 'Bạn không có quyền xem dữ liệu này.'}), 403
         
     items = delivery_service.get_delivery_items(voucher_id)

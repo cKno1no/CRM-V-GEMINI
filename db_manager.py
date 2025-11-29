@@ -20,6 +20,8 @@ def safe_float(value):
 
 def parse_filter_string(filter_str):
     """Phân tích chuỗi điều kiện lọc (Ví dụ: '>100' -> ('>', 100))."""
+    if not filter_str:
+        return None, None
     filter_str = filter_str.replace(' ', '')
     match = re.match(r"([<>=!]+)([0-9,.]+)", filter_str)
     if match:
@@ -65,9 +67,12 @@ class DBManager:
             
             if params:
                  cursor.execute(query, params)
-                 columns = [column[0] for column in cursor.description]
-                 data = cursor.fetchall()
-                 df = pd.DataFrame.from_records(data, columns=columns)
+                 if cursor.description:
+                     columns = [column[0] for column in cursor.description]
+                     data = cursor.fetchall()
+                     df = pd.DataFrame.from_records(data, columns=columns)
+                 else:
+                     return []
             else:
                  df = pd.read_sql(query, conn)
             

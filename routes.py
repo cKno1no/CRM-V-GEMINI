@@ -12,7 +12,7 @@ sales_bp = Blueprint('sales_bp', __name__)
 
 def is_admin_check_simple(session):
     """Kiểm tra quyền Admin dựa trên session."""
-    return session.get('user_role', '').strip().upper() == 'ADMIN'
+    return session.get('user_role', '').strip().upper() == config.ROLE_ADMIN
 
 
 @sales_bp.route('/sales_lookup', methods=['GET', 'POST'])
@@ -27,8 +27,8 @@ def sales_lookup_dashboard():
     user_code = session.get('user_code', 'GUEST') 
     
     user_role = session.get('user_role', '').strip().upper()
-    is_admin_or_gm = user_role in ['ADMIN', 'GM']
-    is_manager = user_role == 'MANAGER'
+    is_admin_or_gm = user_role in [config.ROLE_ADMIN, config.ROLE_GM]
+    is_manager = user_role == config.ROLE_MANAGER
     
     show_block_3 = is_admin_or_gm
     show_block_2 = is_admin_or_gm or is_manager

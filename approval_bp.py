@@ -92,7 +92,8 @@ def quick_approval_form():
     user_role = session.get('user_role', '').strip().upper()
     user_code = session.get('user_code')
     
-    if user_role not in ['ADMIN', 'GM']:
+    # [CONFIG]: Check quyền vào trang duyệt nhanh
+    if user_role not in [config.ROLE_ADMIN, config.ROLE_GM]:
         flash("Bạn không có quyền truy cập chức năng này.", 'danger')
         return redirect(url_for('index'))
 

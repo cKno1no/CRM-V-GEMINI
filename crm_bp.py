@@ -76,8 +76,8 @@ def dashboard_reports():
 
     # 4. Lọc theo User, KH, Text Search
     current_user_role_cleaned = session.get('user_role').strip().upper() if session.get('user_role') else ''
-    if current_user_role_cleaned != 'ADMIN':
-        query_admin = f"SELECT [USERCODE] FROM {TEN_BANG_NGUOI_DUNG} WHERE UPPER(RTRIM([ROLE])) = 'ADMIN'"
+    if current_user_role_cleaned != config.ROLE_ADMIN:
+        query_admin = f"SELECT [USERCODE] FROM {TEN_BANG_NGUOI_DUNG} WHERE UPPER(RTRIM([ROLE])) = config.ROLE_ADMIN"
         admin_data = db_manager.get_data(query_admin)
         if admin_data:
             admin_codes = [user['USERCODE'] for user in admin_data if user['USERCODE']]
@@ -181,7 +181,7 @@ def report_detail_page(report_stt):
     current_user_id = session.get('user_code')
     current_user_role = session.get('user_role').strip().upper() if session.get('user_role') else ''
 
-    if current_user_role != 'ADMIN':
+    if current_user_role != config.ROLE_ADMIN:
         query_auth = f"""
             SELECT T1.NGUOI AS NguoiBaoCao, T2.[CAP TREN] AS CapTrenBaoCao
             FROM {TEN_BANG_BAO_CAO} AS T1

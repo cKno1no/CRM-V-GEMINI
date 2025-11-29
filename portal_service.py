@@ -1,4 +1,5 @@
 # services/portal_service.py
+
 import pyodbc
 from db_manager import DBManager, safe_float
 import config
@@ -29,7 +30,6 @@ class PortalService:
         ordered_groups = []
 
         for item in items:
-            # Lấy tên KH làm key gom nhóm
             c_name = item.get(name_key) or item.get('ObjectName') or 'Khách lẻ / Khác'
             c_id = item.get(id_key) or 'UNK'
 
@@ -67,9 +67,9 @@ class PortalService:
         current_year = datetime.now().year
         current_month = datetime.now().month
         
-        # --- LOGIC LỌC CHUNG (SỬA ĐỔI) ---
-        # Kiểm tra bộ phận để xác định cột lọc: SalesManID (Kinh doanh) hay EmployeeID (Thư ký)
-        is_thu_ky = "THU KY" in bo_phan or "THUKY" in bo_phan
+        # --- LOGIC LỌC CHUNG ---
+        # [CONFIG]: Dùng mã phòng ban từ Config
+        is_thu_ky = str(bo_phan).strip() == str(config.DEPT_THUKY).strip()
         col_filter_erp = "EmployeeID" if is_thu_ky else "SalesManID"
         
         TABLE_CUSTOMER_ERP = config.ERP_IT1202
@@ -82,16 +82,17 @@ class PortalService:
             return data
 
         # --- 1. KPI: DOANH SỐ ---
-        # (Giữ nguyên SalesManID vì KPI doanh số luôn gắn với người bán, Thư ký có thể xem 0 hoặc cần logic khác nếu muốn xem tổng)
         try:
             cursor.execute(f"SELECT SUM([DK]) FROM {config.CRM_DTCL} WHERE [Nam]=? AND [PHU TRACH DS]=?", (current_year, user_code))
             row = cursor.fetchone()
             monthly_target = (safe_float(row[0]) / 12) if row and row[0] else 0
             
+            # [CONFIG]: ACC_PHAI_THU_KH (13111), ACC_DOANH_THU (511%)
             cursor.execute(f"""
                 SELECT SUM(ConvertedAmount) FROM {config.ERP_GIAO_DICH} 
                 WHERE SalesManID=? AND TranMonth=? AND TranYear=? 
-                AND DebitAccountID='13111' AND CreditAccountID LIKE '5%'
+                AND DebitAccountID='{config.ACC_PHAI_THU_KH}' 
+                AND CreditAccountID LIKE '{config.ACC_DOANH_THU}'
             """, (user_code, current_month, current_year))
             row = cursor.fetchone()
             actual_sales = safe_float(row[0]) if row and row[0] else 0
@@ -103,12 +104,14 @@ class PortalService:
 
         # --- 2. TASK ---
         try:
+            # [CONFIG]: TASK_TABLE, TASK_LOG_TABLE, TASK STATUSES
             cursor.execute(f"""
                 SELECT TOP 20 M.TaskID, M.Title, M.Status, M.Priority, M.LastUpdated, M.ObjectID,
                 (SELECT COUNT(*) FROM {config.TASK_LOG_TABLE} L WHERE L.TaskID = M.TaskID) as UpdateCount,
                 CASE WHEN M.LastUpdated >= DATEADD(hour, -24, GETDATE()) THEN 1 ELSE 0 END as IsNewUpdate
                 FROM {config.TASK_TABLE} M
-                WHERE (M.UserCode=? OR M.CapTren=?) AND M.Status IN ('OPEN','PENDING','HELP_NEEDED','BLOCKED')
+                WHERE (M.UserCode=? OR M.CapTren=?) 
+                AND M.Status IN ('{config.TASK_STATUS_OPEN}', '{config.TASK_STATUS_PENDING}', '{config.TASK_STATUS_HELP}', '{config.TASK_STATUS_BLOCKED}')
                 ORDER BY CASE WHEN M.Priority='HIGH' THEN 0 ELSE 1 END, M.LastUpdated DESC
             """, (user_code, user_code))
             if cursor.description:
@@ -119,16 +122,18 @@ class PortalService:
 
         # --- 3. CÔNG NỢ ---
         try:
+            # [CONFIG]: CRM_AR_AGING_SUMMARY, RISK_DEBT_VALUE
             cursor.execute(f"""
                 SELECT TOP 20 
                     T1.ObjectID, 
                     ISNULL(C.ShortObjectName, T1.ObjectName) as ObjectName, 
                     T1.TotalOverdueDebt, 
                     T1.ReDueDays
-                FROM dbo.CRM_AR_AGING_SUMMARY AS T1
+                FROM {config.CRM_AR_AGING_SUMMARY} AS T1
                 LEFT JOIN {TABLE_CUSTOMER_ERP} C ON T1.ObjectID = C.ObjectID 
                 INNER JOIN {config.CRM_DTCL} AS T2 ON T1.ObjectID = T2.[MA KH]
-                WHERE T2.[Nam]=? AND T2.[PHU TRACH DS]=? AND T1.TotalOverdueDebt > 1000
+                WHERE T2.[Nam]=? AND T2.[PHU TRACH DS]=? 
+                AND T1.TotalOverdueDebt > {config.RISK_DEBT_VALUE}
                 ORDER BY T1.TotalOverdueDebt DESC
             """, (current_year, user_code))
             if cursor.description:
@@ -140,9 +145,8 @@ class PortalService:
         except Exception as e:
             data['errors']['debt'] = str(e)
 
-        # --- 4. THỐNG KÊ ĐƠN TRONG THÁNG (ĐÃ SỬA LOGIC LỌC) ---
+        # --- 4. THỐNG KÊ ĐƠN TRONG THÁNG ---
         try:
-            # Sử dụng col_filter_erp thay vì cứng nhắc SalesManID
             query_stat = f"""
                 SELECT COUNT(DISTINCT T1.SOrderID)
                 FROM {config.ERP_SALES_DETAIL} T2
@@ -162,7 +166,7 @@ class PortalService:
         except Exception as e:
             data['errors']['orders_stat'] = str(e)
 
-        # --- 5. BÁO GIÁ (Đã dùng col_filter_erp từ trước - OK) ---
+        # --- 5. BÁO GIÁ ---
         try:
             query = f"""
                 SELECT TOP 40 
@@ -192,8 +196,9 @@ class PortalService:
         except Exception as e:
             data['errors']['quotes'] = str(e)
 
-        # --- 6. LXH - PENDING DELIVERIES (Đã có logic rẽ nhánh - OK) ---
+        # --- 6. LXH - PENDING DELIVERIES ---
         try:
+            # [CONFIG]: DELIVERY_WEEKLY_VIEW, DELIVERY_STATUS_DONE
             query = f"""
                 SELECT DISTINCT TOP 40 
                     DW.VoucherNo, 
@@ -207,11 +212,10 @@ class PortalService:
                 LEFT JOIN {TABLE_CUSTOMER_ERP} C ON DW.ObjectID = C.ObjectID
                 INNER JOIN {config.ERP_DELIVERY_DETAIL} T2 ON DW.VoucherID = T2.VoucherID
                 INNER JOIN {config.ERP_OT2001} T3 ON T2.RespVoucherID = T3.SOrderID
-                WHERE DW.DeliveryStatus <> N'DA GIAO' 
+                WHERE DW.DeliveryStatus <> '{config.DELIVERY_STATUS_DONE}' 
                 AND T3.{col_filter_erp} = ? 
                 ORDER BY DW.VoucherDate ASC
             """
-            # Note: Đoạn trên dùng T3.{col_filter_erp} thay cho logic if/else cũ để code gọn hơn
             cursor.execute(query, (user_code,))
             if cursor.description:
                 cols = [c[0] for c in cursor.description]
@@ -226,9 +230,8 @@ class PortalService:
         except Exception as e:
             data['errors']['delivery'] = str(e)
 
-        # --- 7. LỊCH GIAO HÀNG (ĐÃ SỬA LOGIC LỌC) ---
+        # --- 7. LỊCH GIAO HÀNG ---
         try:
-            # Sử dụng col_filter_erp thay vì cứng nhắc SalesManID
             query = f"""
                 SELECT TOP 40 
                     T1.VoucherNo, 
@@ -266,9 +269,11 @@ class PortalService:
         except Exception as e:
             data['errors']['orders'] = str(e)
 
-        # --- 8. DỰ PHÒNG (Giữ nguyên logic) ---
+        # --- 8. DỰ PHÒNG (Đã Sửa lỗi Syntax và tên biến Config) ---
         try:
-            cursor.execute("{CALL dbo.sp_GetPortalReplenishment (?, ?)}", (user_code, current_year))
+            # [FIX]: Thêm chữ 'f' trước chuỗi và dùng đúng tên biến SP_REPLENISH_PORTAL
+            cursor.execute(f"{{CALL {config.SP_REPLENISH_PORTAL} (?, ?)}}", (user_code, current_year))
+            
             if cursor.description:
                 cols = [c[0] for c in cursor.description]
                 replenish_items = [dict(zip(cols, r)) for r in cursor.fetchall()]
@@ -283,7 +288,7 @@ class PortalService:
         except Exception as e:
             data['errors']['replenish'] = str(e)
 
-        # --- 9. BÁO CÁO (Giữ nguyên) ---
+        # --- 9. BÁO CÁO ---
         try:
             cursor.execute(f"SELECT TOP 20 STT, NGAY, [KHACH HANG] as [TEN DOI TUONG], [NOI DUNG 4] as MucDich FROM {config.TEN_BANG_BAO_CAO} WHERE NGUOI=? AND NGAY >= DATEADD(day, -7, GETDATE()) ORDER BY NGAY DESC", (user_code,))
             if cursor.description:

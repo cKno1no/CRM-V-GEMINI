@@ -27,7 +27,7 @@ class QuotationApprovalService:
         query = f"""
             SELECT 1 
             FROM {config.TEN_BANG_NGUOI_DUNG}
-            WHERE USERCODE = ? AND Role = 'ADMIN'
+            WHERE USERCODE = ? AND Role = config.ROLE_ADMIN
         """
         return bool(self.db.get_data(query, (user_code,)))
 
@@ -161,9 +161,9 @@ class QuotationApprovalService:
             approval_status['ApprovalRatio'] = min(9999, round(ratio))
             
             if customer_class == 'M':
-                required_ratio = 150
+                required_ratio = config.RATIO_REQ_CLASS_M
             elif customer_class == 'T':
-                required_ratio = 138
+                required_ratio = config.RATIO_REQ_CLASS_T
                 
             if required_ratio > 0 and ratio < required_ratio:
                 approval_status['Passed'] = False
@@ -179,7 +179,8 @@ class QuotationApprovalService:
 
 
         # 3. XÁC ĐỊNH NGƯỜI DUYỆT (Quyết định hành động cuối cùng)
-        if sale_amount >= 20000000.0: # Ngưỡng 20 Triệu: Phải qua logic duyệt phức tạp
+        # Mới: (Dùng chung limit với SO hoặc bạn tạo biến riêng LIMIT_APPROVE_QUOTE)
+        if sale_amount >= config.LIMIT_AUTO_APPROVE_SO:
             
             approver_data = self.db.get_data(f"SELECT Approver FROM {config.ERP_APPROVER_MASTER} WHERE VoucherTypeID = ?", (quote.get('VoucherTypeID'),))
             
@@ -187,8 +188,8 @@ class QuotationApprovalService:
             approvers_str = ", ".join(approvers)
             
             if not approvers:
-                approvers = ['ADMIN']
-                approvers_str = 'ADMIN'
+                approvers = [config.ROLE_ADMIN]
+                approvers_str = config.ROLE_ADMIN
             
             approval_status['ApproverDisplay'] = approvers_str
             approval_status['ApproverRequired'] = approvers_str 

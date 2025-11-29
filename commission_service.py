@@ -19,7 +19,7 @@ class CommissionService:
             cursor = conn.cursor()
             
             # 2. Chạy lệnh SQL
-            sql = "EXEC dbo.sp_CreateCommissionProposal ?, ?, ?, ?, ?"
+            sql = f"EXEC {config.SP_CREATE_COMMISSION} ?, ?, ?, ?, ?"
             params = (user_code, customer_id, date_from, date_to, float(commission_rate_percent))
             
             cursor.execute(sql, params)
@@ -53,10 +53,10 @@ class CommissionService:
             SET 
                 DOANH_SO_CHON = ISNULL(D.TotalSelected, 0),
                 GIA_TRI_CHI = ISNULL(D.TotalSelected, 0) * (ISNULL(M.MUC_CHI_PERCENT, 0) / 100.0)
-            FROM dbo.[DE XUAT BAO HANH_MASTER] M
+            FROM {config.TABLE_COMMISSION_MASTER} M
             OUTER APPLY (
                 SELECT SUM(DOANH_SO) as TotalSelected 
-                FROM dbo.[DE XUAT BAO HANH_DS] 
+                FROM {config.TABLE_COMMISSION_DETAIL} 
                 WHERE MA_SO = M.MA_SO AND CHON = 1
             ) D
             WHERE M.MA_SO = ?
@@ -65,17 +65,17 @@ class CommissionService:
 
     def toggle_invoice(self, detail_id, is_checked):
         self.db.execute_non_query(
-            "UPDATE dbo.[DE XUAT BAO HANH_DS] SET CHON = ? WHERE VoucherID = ?", 
+            "UPDATE {config.TABLE_COMMISSION_DETAIL} SET CHON = ? WHERE VoucherID = ?", 
             (1 if is_checked else 0, detail_id)
         )
-        row = self.db.get_data("SELECT MA_SO FROM dbo.[DE XUAT BAO HANH_DS] WHERE VoucherID = ?", (detail_id,))
+        row = self.db.get_data("SELECT MA_SO FROM {config.TABLE_COMMISSION_DETAIL} WHERE VoucherID = ?", (detail_id,))
         if row:
             self.recalculate_proposal(row[0]['MA_SO'])
             return True
         return False
 
     def submit_to_payment_request(self, ma_so, user_code):
-        master_data = self.db.get_data("SELECT * FROM dbo.[DE XUAT BAO HANH_MASTER] WHERE MA_SO = ?", (ma_so,))
+        master_data = self.db.get_data("SELECT * FROM {config.TABLE_COMMISSION_MASTER} WHERE MA_SO = ?", (ma_so,))
         if not master_data:
             return {'success': False, 'message': 'Không tìm thấy phiếu đề xuất.'}
         
@@ -84,13 +84,13 @@ class CommissionService:
             return {'success': False, 'message': 'Phiếu này đã được gửi hoặc xử lý rồi.'}
 
         self.db.execute_non_query(
-            "DELETE FROM dbo.[DE XUAT BAO HANH_DS] WHERE MA_SO = ? AND CHON = 0", 
+            "DELETE FROM {config.TABLE_COMMISSION_DETAIL} WHERE MA_SO = ? AND CHON = 0", 
             (ma_so,)
         )
         self.recalculate_proposal(ma_so)
         
         # Lấy lại master sau khi recalculate
-        master = self.db.get_data("SELECT * FROM dbo.[DE XUAT BAO HANH_MASTER] WHERE MA_SO = ?", (ma_so,))[0]
+        master = self.db.get_data("SELECT * FROM {config.TABLE_COMMISSION_MASTER} WHERE MA_SO = ?", (ma_so,))[0]
         amount = safe_float(master['GIA_TRI_CHI'])
         
         if amount <= 0:
@@ -105,7 +105,7 @@ class CommissionService:
         )
 
         if result['success']:
-            self.db.execute_non_query("UPDATE dbo.[DE XUAT BAO HANH_MASTER] SET TRANG_THAI = 'SUBMITTED' WHERE MA_SO = ?", (ma_so,))
+            self.db.execute_non_query("UPDATE {config.TABLE_COMMISSION_MASTER} SET TRANG_THAI = 'SUBMITTED' WHERE MA_SO = ?", (ma_so,))
             return {'success': True, 'message': f"Đã chuyển sang đề nghị thanh toán: {result['request_id']}"}
         else:
             return result

@@ -59,7 +59,7 @@ class TaskService:
     def _is_admin_user(self, user_code):
         """Kiểm tra xem UserCode có vai trò ADMIN hay không."""
         query = f"""
-            SELECT [ROLE] FROM {config.TEN_BANG_NGUOI_DUNG} WHERE USERCODE = ? AND RTRIM([ROLE]) = 'ADMIN'
+            SELECT [ROLE] FROM {config.TEN_BANG_NGUOI_DUNG} WHERE USERCODE = ? AND RTRIM([ROLE]) = config.ROLE_ADMIN
         """
         return bool(self.db.get_data(query, (user_code,)))
     

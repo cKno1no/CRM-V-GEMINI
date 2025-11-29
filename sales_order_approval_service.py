@@ -1,4 +1,4 @@
-# CRM STDD/sales_order_approval_service.py
+# services/sales_order_approval_service.py
 
 from datetime import datetime
 from db_manager import DBManager, safe_float
@@ -13,7 +13,6 @@ class SalesOrderApprovalService:
     def get_orders_for_approval(self, user_code, date_from, date_to):
         """
         Truy vấn tất cả các Đơn hàng bán chưa duyệt (OrderStatus = 0) trong khoảng ngày.
-        ... (Giữ nguyên logic truy vấn) ...
         """
         
         where_conditions = ["T1.OrderStatus = 0"]
@@ -26,6 +25,7 @@ class SalesOrderApprovalService:
         where_clause = " AND ".join(where_conditions)
         
         # TRUY VẤN TỔNG HỢP (OT2001 Header)
+        # [CONFIG]: Tất cả các bảng đã được lấy từ config
         order_query = f"""
             SELECT 
                 T1.VoucherNo AS OrderID,    
@@ -81,9 +81,8 @@ class SalesOrderApprovalService:
         return results
 
     def _check_approval_criteria(self, order, current_user_code):
-        """Kiểm tra các quy tắc nghiệp vụ cho DHB (1, 2a/2b, 3, 4). (Giữ nguyên logic đã cung cấp)"""
+        """Kiểm tra các quy tắc nghiệp vụ cho DHB."""
         
-        # KHỞI TẠO LUÔN CÓ 'ApprovalResult' ĐÃ GÁN LÚC ĐẦU
         approval_status = {'Passed': True, 'Reason': 'OK', 'ApproverRequired': current_user_code, 'ApproverDisplay': 'TỰ DUYỆT (SELF)', 'ApprovalRatio': 0}
         order['ApprovalResult'] = approval_status
         
@@ -98,13 +97,13 @@ class SalesOrderApprovalService:
 
         # --- KIỂM TRA ĐIỀU KIỆN 1 & 2a (Validation & DTK Exception) ---
         
-        # 1. Check hợp lệ: giá bán, ngày giao hàng (date01), kế thừa
+        # 1. Check hợp lệ
         if not order.get('SalesManID') or total_sale == 0 or total_cost == 0 or not has_all_date01:
             approval_status['Passed'] = False
             approval_status['Reason'] = 'FAILED: Thiếu SalesmanID/Giá/Chi phí (Cost)/Date01 không đầy đủ.'
             return order
         
-        # 1. Kiểm tra 100% kế thừa từ chào giá (trừ DTK)
+        # 2. Kiểm tra 100% kế thừa từ chào giá (trừ DTK)
         if voucher_type != 'DTK' and not is_fully_quoted:
              approval_status['Passed'] = False
              approval_status['Reason'] = 'FAILED: DHB không 100% kế thừa từ Chào giá.'
@@ -119,35 +118,33 @@ class SalesOrderApprovalService:
             ratio = 30 + 100 * (total_sale / total_cost)
             approval_status['ApprovalRatio'] = min(9999, round(ratio))
             
-            if customer_class == 'M': required_ratio = 150
-            elif customer_class == 'T': required_ratio = 138
+            # [CONFIG]: Dùng RATIO từ config
+            if customer_class == 'M': required_ratio = config.RATIO_REQ_CLASS_M
+            elif customer_class == 'T': required_ratio = config.RATIO_REQ_CLASS_T
                 
             if required_ratio > 0 and ratio < required_ratio:
                 approval_status['Passed'] = False
                 ratio_failed = True
-                # SỬA LỖI: Chuyển FAILED (lỗi cứng) thành PENDING (lỗi lợi nhuận)
                 approval_status['Reason'] = f'PENDING: Tỷ số ({round(ratio)}) < Y/C ({required_ratio}).'
-                # THÊM CỜ: Cho phép Ghi đè
                 approval_status['NeedsOverride'] = True
         else:
-             # Đây vẫn là lỗi cứng
              approval_status['Reason'] = 'FAILED: Không tính được Tỷ số Duyệt (Sale/Cost = 0).'
              approval_status['Passed'] = False
              ratio_failed = True
 
         # --- KIỂM TRA ĐIỀU KIỆN 2b & 4 (Xác định người duyệt) ---
         
-        is_dtk_and_small = voucher_type == 'DTK' and sale_amount < 100000000.0 # 100 Triệu VNĐ
+        # [CONFIG]: Dùng LIMIT_AUTO_APPROVE_DTK
+        is_dtk_and_small = voucher_type == 'DTK' and sale_amount < config.LIMIT_AUTO_APPROVE_DTK
         
-        # 1. TRƯỜNG HỢP TỰ DUYỆT (DTK nhỏ < 100M)
+        # 1. TRƯỜNG HỢP TỰ DUYỆT
         if is_dtk_and_small and approval_status['Passed']:
             approval_status['ApproverDisplay'] = 'TỰ DUYỆT (SELF - DTK < 100M)'
             approval_status['ApproverRequired'] = current_user_code
         
-        # 2. TRƯỜNG HỢP PHẢI XÉT NGƯỜI DUYỆT CẤP CAO (Kiểm tra đúng người trong nhóm)
+        # 2. TRƯỜNG HỢP PHẢI XÉT NGƯỜI DUYỆT CẤP CAO
         else: 
-            # --- BẮT ĐẦU SỬA LOGIC (GIỐNG BÊN CHÀO GIÁ) ---
-            # Bỏ `TOP 1`, lấy về DANH SÁCH người duyệt
+            # [CONFIG]: Dùng bảng ERP_APPROVER_MASTER
             approver_query = f"""
                 SELECT Approver 
                 FROM {config.ERP_APPROVER_MASTER} 
@@ -155,45 +152,34 @@ class SalesOrderApprovalService:
             """
             approver_data = self.db.get_data(approver_query, (voucher_type,))
             
-            # Tạo danh sách approvers
             approvers = [d['Approver'].strip() for d in approver_data if d.get('Approver')] if approver_data else []
             
             if not approvers:
-                approvers = ['ADMIN'] # Mặc định là ADMIN nếu không ai được gán
+                approvers = [config.ROLE_ADMIN] # Mặc định là ADMIN
 
             approvers_str = ", ".join(approvers)
             
             approval_status['ApproverDisplay'] = approvers_str
-            approval_status['ApproverRequired'] = approvers_str # Lưu danh sách (để UI có thể check)
+            approval_status['ApproverRequired'] = approvers_str
             
-            # Kiểm tra xem user hiện tại CÓ TRONG danh sách duyệt không
             is_current_user_approver = current_user_code in approvers
 
             if not is_current_user_approver:
-                 # Người dùng này không có quyền duyệt
                  approval_status['Passed'] = False
                  if not ratio_failed:
                      approval_status['Reason'] = f"PENDING: Cần sự duyệt của {approvers_str}."
                  else:
-                     # Vừa fail ratio, vừa sai người duyệt
                      approval_status['Reason'] = f"FAILED: {approval_status['Reason']} (Cần Sửa lỗi & Duyệt bởi {approvers_str})."
             
             elif is_current_user_approver and not approval_status['Passed']:
-                # Đúng người duyệt, nhưng fail ratio (hoặc điều kiện 1)
                 approval_status['Reason'] = f"FAILED: {approval_status['Reason']} (Bạn là người duyệt, Cần SỬA LỖI TRƯỚC KHI DUYỆT)."
-            
-            # Trường hợp còn lại: is_current_user_approver = True VÀ approval_status['Passed'] = True
-            # -> Giữ nguyên 'Passed' = True, sẵn sàng để duyệt.
-            # --- KẾT THÚC SỬA LOGIC ---
             
         return order
 
     def get_order_details(self, sorder_id):
         """
-        Truy vấn chi tiết mặt hàng cho Panel Detail DHB, sử dụng SOrderID duy nhất.
-        ... (Giữ nguyên logic) ...
+        Truy vấn chi tiết mặt hàng cho Panel Detail DHB.
         """
-        
         try:
             detail_query = f"""
                 SELECT
@@ -223,7 +209,6 @@ class SalesOrderApprovalService:
             
         if not details: return []
         
-        # Định dạng số và ngày
         for detail in details:
             detail['SoLuong'] = f"{safe_float(detail.get('SoLuong')):.0f}"
             detail['DonGia'] = f"{safe_float(detail.get('DonGia')):,.0f}"
@@ -240,7 +225,7 @@ class SalesOrderApprovalService:
     
     def approve_sales_order(self, order_id, sorder_id, client_id, salesman_id, approval_ratio, current_user):
         """
-        Thực hiện phê duyệt Đơn hàng Bán (Cập nhật ERP) và lưu log vào bảng DUYETCT.
+        Thực hiện phê duyệt Đơn hàng Bán và lưu log.
         """
         db = self.db
         conn = None
@@ -263,7 +248,7 @@ class SalesOrderApprovalService:
             sale_amount = safe_float(detail.get('SaleAmount'))
             order_date = detail.get('OrderDate')
 
-            # 2. Thực hiện phê duyệt trong ERP (Update OrderStatus = 1)
+            # 2. Thực hiện phê duyệt trong ERP
             update_query_erp = f"""
                 UPDATE {config.ERP_OT2001} 
                 SET OrderStatus = 1 
@@ -271,9 +256,10 @@ class SalesOrderApprovalService:
             """
             db.execute_query_in_transaction(conn, update_query_erp, (order_id,)) 
             
-            # 3. Lưu log vào bảng CRM_STDD.DUYETCT (Dùng chung)
+            # 3. Lưu log vào bảng DUYETCT
+            # [CONFIG]: Dùng config.LOG_DUYETCT_TABLE thay vì chuỗi cứng
             insert_query_log = f"""
-                INSERT INTO DUYETCT (
+                INSERT INTO {config.LOG_DUYETCT_TABLE} (
                     MACT, NGayCT, TySoDuyetCT, NGUOILAM, Tonggiatri, 
                     MasoCT, MaKH, NguoiDuyet, Ngayduyet
                 )
@@ -286,10 +272,10 @@ class SalesOrderApprovalService:
 
             db.execute_query_in_transaction(conn, insert_query_log, params)
             
-            # 4. COMMIT - Hoàn tất giao dịch
+            # 4. COMMIT
             db.commit(conn) 
 
-            return {"success": True, "message": f"Đơn hàng Bán {order_id} đã duyệt thành công và lưu log vào DUYETCT."}
+            return {"success": True, "message": f"Đơn hàng Bán {order_id} đã duyệt thành công và lưu log vào {config.LOG_DUYETCT_TABLE}."}
 
         except Exception as e:
             if conn:

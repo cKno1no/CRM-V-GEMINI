@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from utils import login_required 
 from datetime import datetime
 from db_manager import safe_float # Cần cho format/validation
-
+import config 
 task_bp = Blueprint('task_bp', __name__)
 
 # [HÀM HELPER CẦN THIẾT]
@@ -25,13 +25,14 @@ def task_dashboard():
     
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
-    is_admin = user_role == 'ADMIN'
+    is_admin = (user_role == config.ROLE_ADMIN)
+    
     
     view_mode = request.args.get('view', 'USER').upper()
     filter_type = request.args.get('filter') or 'ALL'
     text_search_term = request.args.get('search') or request.form.get('search') or ''
 
-    can_manage_view = is_admin or user_role == 'MANAGER'
+    can_manage_view = is_admin or (user_role == config.ROLE_MANAGER)
 
     # 1. XỬ LÝ TẠO TASK MỚI (Logic INSERT)
     if request.method == 'POST' and 'create_task' in request.form:
@@ -305,7 +306,7 @@ def api_task_recent_updates():
     
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
-    is_admin = user_role == 'ADMIN'
+    is_admin = user_role == config.ROLE_ADMIN
     # Lấy view_mode từ request.args để áp dụng bộ lọc quyền
     view_mode = request.args.get('view', 'USER').upper()
     minutes_ago = int(request.args.get('minutes', 15))

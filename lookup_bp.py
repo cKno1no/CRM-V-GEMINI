@@ -27,7 +27,7 @@ def sales_lookup_dashboard():
     from app import lookup_service, db_manager # ADD db_manager
     
     user_role = session.get('user_role', '').strip().upper()
-    is_admin_or_gm = user_role in ['ADMIN', 'GM']
+    is_admin_or_gm = user_role in [config.ROLE_ADMIN, config.ROLE_GM]
     is_manager = user_role == 'MANAGER'
     
     show_block_3 = is_admin_or_gm
@@ -83,7 +83,7 @@ def total_replenishment_dashboard():
     
     # 1. Kiểm tra Quyền
     user_role = session.get('user_role', '').strip().upper()
-    if user_role not in ['ADMIN', 'GM', 'MANAGER']:
+    if user_role not in [config.ROLE_ADMIN, config.ROLE_GM]:
         flash("Bạn không có quyền truy cập chức năng này.", 'danger')
         return redirect(url_for('index'))
 
@@ -101,7 +101,7 @@ def total_replenishment_dashboard():
 
     # 3. Gọi SP
     try:
-        sp_data = db_manager.execute_sp_multi('dbo.sp_GetTotalReplenishmentNeeds', None)
+        sp_data = db_manager.execute_sp_multi(config.SP_REPLENISH_TOTAL, None)
         alert_list = sp_data[0] if sp_data else []
     except Exception as e:
         flash(f"Lỗi thực thi Stored Procedure: {e}", 'danger')
@@ -119,7 +119,7 @@ def export_total_replenishment():
     from app import db_manager, get_user_ip # ADD get_user_ip
     
     user_role = session.get('user_role', '').strip().upper()
-    if user_role not in ['ADMIN', 'GM', 'MANAGER']:
+    if user_role not in [config.ROLE_ADMIN, config.ROLE_GM]:
         flash("Bạn không có quyền truy cập chức năng này.", 'danger')
         return redirect(url_for('index'))
     
@@ -154,7 +154,7 @@ def customer_replenishment_dashboard():
     
     # 1. Kiểm tra Quyền (Thêm quyền SALES vì đây là báo cáo KH)
     user_role = session.get('user_role', '').strip().upper()
-    if user_role not in ['ADMIN', 'GM', 'MANAGER', 'SALES']:
+    if user_role not in [config.ROLE_ADMIN, config.ROLE_GM, config.ROLE_MANAGER]:
         flash("Bạn không có quyền truy cập chức năng này.", 'danger')
         return redirect(url_for('index'))
 
@@ -271,14 +271,14 @@ def api_get_replenishment_details(group_code):
     from app import db_manager
     
     user_role = session.get('user_role', '').strip().upper()
-    if user_role not in ['ADMIN', 'GM']: # Chỉ Admin và GM mới được xem chi tiết tổng thể
+    if user_role not in [config.ROLE_ADMIN, config.ROLE_GM]: # Chỉ Admin và GM mới được xem chi tiết tổng thể
         return jsonify({'error': 'Không có quyền.'}), 403
 
     if not group_code:
         return jsonify({'error': 'Thiếu mã nhóm (Varchar05).'}), 400
 
     try:
-        data = db_manager.execute_sp_multi('dbo.sp_GetReplenishmentGroupDetails', (group_code,))
+        data = db_manager.execute_sp_multi(config.SP_REPLENISH_GROUP, (group_code,))
         
         # LOG VIEW_REPLENISH_DETAIL (BỔ SUNG)
         db_manager.write_audit_log(
@@ -303,7 +303,7 @@ def api_get_customer_replenishment_data(customer_id):
     from app import db_manager 
     
     user_role = session.get('user_role', '').strip().upper()
-    if user_role not in ['ADMIN', 'GM', 'MANAGER', 'SALES']:
+    if user_role not in [config.ROLE_ADMIN, config.ROLE_GM, config.ROLE_MANAGER]:
         return jsonify({'error': 'Không có quyền.'}), 403
 
     if not customer_id:
@@ -311,7 +311,7 @@ def api_get_customer_replenishment_data(customer_id):
 
     try:
         # Giả định SP là 'dbo.sp_GetCustomerReplenishmentNeeds'
-        sp_data = db_manager.execute_sp_multi('dbo.sp_GetCustomerReplenishmentSuggest', (customer_id,))
+        sp_data = db_manager.execute_sp_multi(config.SP_CROSS_SELL_GAP, (customer_id,))
         
         # LOG API_CUSTOMER_REPLENISH (BỔ SUNG)
         db_manager.write_audit_log(

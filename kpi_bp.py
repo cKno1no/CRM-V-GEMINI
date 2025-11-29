@@ -32,8 +32,9 @@ def sales_dashboard():
     current_year = datetime.now().year
     DIVISOR = 1000000.0 # Để chuyển đổi từ tiền tệ sang triệu đồng
 
+    user_role = session.get('user_role', '').strip().upper()
+    is_admin = (user_role == config.ROLE_ADMIN) # [CONFIG] 
     user_code = session.get('user_code')
-    is_admin = session.get('user_role', '').strip().upper() == 'ADMIN' 
     
     if not user_code:
         flash("Lỗi phiên đăng nhập: Không tìm thấy mã nhân viên.", 'danger')
@@ -154,7 +155,7 @@ def realtime_dashboard():
     
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
-    is_admin = user_role == 'ADMIN'
+    is_admin = user_role == config.ROLE_ADMIN
     
     selected_salesman = None
     
@@ -191,7 +192,7 @@ def realtime_dashboard():
     sp_params = (salesman_param_for_sp, current_year)
     
     # Gọi Stored Procedure trả về 5 bộ kết quả
-    all_results = db_manager.execute_sp_multi('dbo.sp_GetRealtimeSalesKPI', sp_params)
+    all_results = db_manager.execute_sp_multi(config.SP_GET_REALTIME_KPI, sp_params)
 
     if not all_results or len(all_results) < 5:
         flash("Lỗi tải dữ liệu: Không đủ 5 bộ kết quả từ Stored Procedure. Vui lòng kiểm tra SP.", 'danger')
@@ -335,7 +336,7 @@ def ar_aging_detail_dashboard():
     
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
-    is_admin_or_manager = user_role in ['ADMIN', 'GM', 'MANAGER']
+    is_admin_or_manager = user_role in [config.ROLE_ADMIN, config.ROLE_GM, config.ROLE_MANAGER]
     
     # Xử lý Filters
     customer_name_filter = request.form.get('customer_name', '')
@@ -437,7 +438,7 @@ def profit_analysis_dashboard():
     from app import sales_service, db_manager
     
     user_code = session.get('user_code')
-    is_admin = session.get('user_role', '').strip().upper() == 'ADMIN'
+    is_admin = session.get('user_role', '').strip().upper() == config.ROLE_ADMIN
     
     # [UPDATED] Mặc định từ đầu năm (1/1) đến hiện tại
     today = datetime.now()

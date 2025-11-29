@@ -153,7 +153,7 @@ def login():
     if session.get('logged_in'):
         # Nếu đã login, điều hướng dựa trên quyền
         user_role = session.get('user_role', '').strip().upper()
-        if user_role in ['ADMIN']: # Thêm GM nếu muốn Giám đốc cũng vào Cockpit
+        if user_role in [config.ROLE_ADMIN]: # Thêm GM nếu muốn Giám đốc cũng vào Cockpit
             return redirect(url_for('executive_bp.ceo_cockpit_dashboard'))
         return redirect(url_for('portal_bp.portal_dashboard'))
 
@@ -205,7 +205,7 @@ def login():
             flash(f"Đăng nhập thành công! Chào mừng {user.get('SHORTNAME')}.", 'success')
             
             # --- [SỬA ĐỔI QUAN TRỌNG]: ĐIỀU HƯỚNG THEO ROLE ---
-            if user_role in ['ADMIN']: # Nếu là Sếp
+            if user_role in [config.ROLE_ADMIN]: # Nếu là Sếp
                 return redirect(url_for('executive_bp.ceo_cockpit_dashboard'))
             else: # Nếu là nhân viên
                 return redirect(url_for('portal_bp.portal_dashboard'))

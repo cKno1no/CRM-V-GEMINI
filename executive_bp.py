@@ -3,7 +3,7 @@
 from flask import Blueprint, render_template, session, redirect, url_for, flash
 from utils import login_required
 from datetime import datetime
-
+import config
 executive_bp = Blueprint('executive_bp', __name__)
 
 @executive_bp.route('/ceo_cockpit', methods=['GET'])
@@ -13,7 +13,7 @@ def ceo_cockpit_dashboard():
     ROUTE: Bảng điều hành trung tâm dành cho CEO/GM.
     """
     user_role = session.get('user_role', '').strip().upper()
-    if user_role not in ['ADMIN', 'GM']:
+    if user_role not in [config.ROLE_ADMIN]:
         flash("Bạn không có quyền truy cập CEO Cockpit.", "danger")
         return redirect(url_for('portal_bp.portal_dashboard'))
 

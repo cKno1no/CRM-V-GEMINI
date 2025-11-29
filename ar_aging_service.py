@@ -27,7 +27,7 @@ class ARAgingService:
         # --- LOGIC PHÂN QUYỀN (Đã sửa) ---
         role_check = user_role.upper()
         bo_phan_check = user_bo_phan.upper().replace(" ", "")
-        is_full_access_role = role_check in ['ADMIN', 'GM', 'MANAGER']
+        is_full_access_role = role_check in [config.ROLE_ADMIN, config.ROLE_GM, config.ROLE_MANAGER]
         is_finance_dept = bo_phan_check == '6.KTTC'
 
         where_conditions = ["1=1"] # Mặc định luôn đúng
@@ -53,7 +53,7 @@ class ARAgingService:
                 T1.ReDueDays, T1.TotalDebt, T1.TotalOverdueDebt,
                 T1.Debt_Current, T1.Debt_Range_1_30, T1.Debt_Range_31_90, T1.Debt_Range_91_180, T1.Debt_Over_180
             FROM 
-                dbo.CRM_AR_AGING_SUMMARY AS T1
+                {config.CRM_AR_AGING_SUMMARY} AS T1
             -- DÙNG LEFT JOIN ĐỂ GIỮ LẠI TẤT CẢ KHÁCH NỢ --
             LEFT JOIN 
                 {config.CRM_DTCL} AS T2 
@@ -96,7 +96,7 @@ class ARAgingService:
         
         # 1. Xác định tham số Salesman (PHU TRACH DS)
         salesman_param = None
-        if user_role.upper() in ['ADMIN', 'GM', 'MANAGER']:
+        if user_role.upper() in [config.ROLE_ADMIN, config.ROLE_GM, config.ROLE_MANAGER]:
             # Nếu là Admin/Manager, ta dùng filter_salesman_id từ form (Yêu cầu 4)
             salesman_param = filter_salesman_id
         else:
@@ -107,8 +107,7 @@ class ARAgingService:
         object_id_param = customer_id
         
         # 3. Gọi SP (Thêm tham số CurrentYear)
-        sp_results = self.db.execute_sp_multi(
-            'dbo.sp_GetARAgingDetail', 
+        sp_results = self.db.execute_sp_multi(config.SP_AR_AGING_DETAIL, 
             (salesman_param, object_id_param, current_year)
         )
         
@@ -149,7 +148,7 @@ class ARAgingService:
         where_conditions = ["ObjectID = ?"]
         params = [object_id]
 
-        if user_role.upper() not in ['ADMIN', 'GM', 'MANAGER']:
+        if user_role.upper() not in [config.ROLE_ADMIN, config.ROLE_GM, config.ROLE_MANAGER]:
             # Áp dụng bộ lọc cho NVKD thường (dựa trên SalesManID trên bảng tổng hợp)
             where_conditions.append("SalesManID = ?")
             params.append(user_code) 
@@ -160,7 +159,7 @@ class ARAgingService:
             SELECT TOP 1
                 ObjectID, ObjectName, SalesManName,
                 TotalDebt, TotalOverdueDebt, Debt_Over_180
-            FROM dbo.CRM_AR_AGING_SUMMARY
+            FROM {config.CRM_AR_AGING_SUMMARY}
             WHERE 
                 {where_clause}
         """

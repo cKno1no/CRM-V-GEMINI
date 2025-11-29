@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 from collections import defaultdict 
 import locale # <-- THÊM THƯ VIỆN LOCALE
-
+import config
 # Cài đặt locale Tiếng Việt để lấy đúng tên Thứ
 try:
     locale.setlocale(locale.LC_TIME, 'vi_VN.UTF-8')
@@ -106,7 +106,7 @@ class DeliveryService:
                 VoucherID, VoucherNo, VoucherDate, RefNo02, ObjectID, ObjectName, 
                 TotalValue, ItemCount, EarliestRequestDate, Planned_Day, DeliveryStatus,
                 ActualDeliveryDate
-            FROM dbo.Delivery_Weekly
+            FROM {config.DELIVERY_WEEKLY_VIEW}
             WHERE 
                 (DeliveryStatus <> 'Da Giao') 
                 OR (DeliveryStatus = 'Da Giao' AND ActualDeliveryDate >= '{seven_days_ago}')
@@ -235,21 +235,21 @@ class DeliveryService:
         - Nếu kéo Thẻ Khách hàng (gộp nhóm), cập nhật TẤT CẢ LXH của KH đó.
         - Nếu kéo 1 LXH lẻ, cập nhật LXH đó.
         """
-        
+        # [FIX]: Sử dụng f-string đúng cách để thay thế tên bảng từ config
         if object_id:
             # Kéo-thả Thẻ Khách hàng (Gộp nhóm) -> Cập nhật TẤT CẢ LXH của KH
-            query = """
-                UPDATE dbo.Delivery_Weekly
+            query = f"""
+                UPDATE {config.DELIVERY_WEEKLY_VIEW}
                 SET Planned_Day = ?, LastUpdated = GETDATE()
                 WHERE 
                     ObjectID = ? 
                     AND DeliveryStatus IN ('Open', 'Da Soan')
             """
-            params = (new_day, object_id) # Bỏ old_day trong WHERE vì đã gộp nhóm
+            params = (new_day, object_id) 
         elif voucher_id:
             # Kéo-thả 1 LXH lẻ
-            query = """
-                UPDATE dbo.Delivery_Weekly
+            query = f"""
+                UPDATE {config.DELIVERY_WEEKLY_VIEW}
                 SET Planned_Day = ?, LastUpdated = GETDATE()
                 WHERE VoucherID = ?
             """
@@ -260,16 +260,17 @@ class DeliveryService:
         return self.db.execute_non_query(query, params)
 
     def set_delivery_status(self, voucher_id, new_status, user_code):
-        if new_status == 'Da Giao':
-            query = """
-                UPDATE dbo.Delivery_Weekly
+        # [FIX]: Sử dụng f-string đúng cách
+        if new_status == config.DELIVERY_STATUS_DONE:
+            query = f"""
+                UPDATE {config.DELIVERY_WEEKLY_VIEW}
                 SET DeliveryStatus = ?, ActualDeliveryDate = GETDATE(), DispatcherUser = ?
                 WHERE VoucherID = ?
             """
             params = (new_status, user_code, voucher_id)
         else:
-            query = """
-                UPDATE dbo.Delivery_Weekly
+            query = f"""
+                UPDATE {config.DELIVERY_WEEKLY_VIEW}
                 SET DeliveryStatus = ?, LastUpdated = GETDATE()
                 WHERE VoucherID = ?
             """
@@ -281,8 +282,8 @@ class DeliveryService:
         query = """
             SELECT 
                 d.TransactionID, d.InventoryID, i.InventoryName, d.ActualQuantity
-            FROM [OMEGA_STDD].[dbo].[OT2302] d
-            LEFT JOIN [OMEGA_STDD].[dbo].[IT1302] i ON d.InventoryID = i.InventoryID
+            FROM {config.ERP_DELIVERY_DETAIL} d
+            LEFT JOIN {config.ERP_IT1302} i ON d.InventoryID = i.InventoryID
             WHERE d.VoucherID = ?
             ORDER BY d.Orders
         """
@@ -308,7 +309,7 @@ class DeliveryService:
                 VoucherNo, VoucherDate, Planned_Day, DeliveryStatus, 
                 EarliestRequestDate, ActualDeliveryDate,
                 ItemCount  -- <<< BỔ SUNG ITEMCOUNT
-            FROM dbo.Delivery_Weekly
+            FROM {config.DELIVERY_WEEKLY_VIEW}
             WHERE 
                 ObjectID = ? 
                 AND VoucherDate >= '{date_limit}'

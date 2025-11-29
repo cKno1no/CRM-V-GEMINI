@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, request, jsonify, session, redirec
 
 from utils import login_required
 from datetime import datetime
-
+import config
 budget_bp = Blueprint('budget_bp', __name__)
 
 @budget_bp.route('/budget/dashboard', methods=['GET'])
@@ -156,7 +156,7 @@ def budget_payment_queue():
     
     # 2. KIỂM TRA QUYỀN (LOGIC MỚI)
     # Chỉ cho phép nếu là ADMIN hoặc Chức vụ là 'KT TRUONG'
-    if user_role != 'ADMIN' and user_chuc_vu != 'KT TRUONG':
+    if user_role != config.ROLE_ADMIN and user_chuc_vu != 'KT TRUONG':
         flash("Bạn không có quyền truy cập vào trang thực hiện thanh toán.", "danger")
         return redirect(url_for('budget_bp.budget_dashboard'))
         
@@ -221,7 +221,7 @@ def budget_ytd_report():
     # --- 1. BẢO MẬT: CHẶN USER KHÔNG PHẢI ADMIN ---
     user_role = session.get('user_role', '').strip().upper()
     
-    if user_role != 'ADMIN':
+    if user_role != config.ROLE_ADMIN:
         flash("Bạn không có quyền truy cập Báo cáo này. Vui lòng liên hệ Admin.", "danger")
         return redirect(url_for('budget_bp.budget_dashboard'))
     """Báo cáo so sánh Ngân sách vs Thực tế (YTD)."""
@@ -237,7 +237,7 @@ def budget_ytd_report():
     year_filter = request.args.get('year', current_year, type=int)
     
     # SỬA ĐỔI: Logic lấy dept_filter
-    is_admin = session.get('user_role') == 'ADMIN'
+    is_admin = session.get('user_role') == config.ROLE_ADMIN
     
     if is_admin:
         # Nếu là Admin và không có param dept trên URL, mặc định xem TOÀN CÔNG TY
