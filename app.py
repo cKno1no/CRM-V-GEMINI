@@ -50,7 +50,7 @@ from blueprints.budget_bp import budget_bp
 from blueprints.commission_bp import commission_bp
 from blueprints.executive_bp import executive_bp
 from blueprints.cross_sell_bp import cross_sell_bp
-
+from blueprints.ap_bp import ap_bp
 # =========================================================================
 # III. KHỞI TẠO ỨNG DỤNG VÀ DỊCH VỤ
 # =========================================================================
@@ -103,7 +103,13 @@ def get_user_ip():
        return request.headers.getlist("X-Forwarded-For")[0]
     else:
        return request.remote_addr
+# --- HÀM HELPER ---
 
+def allowed_file(filename):
+    """Kiểm tra đuôi file có hợp lệ không dựa trên config."""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in config.ALLOWED_EXTENSIONS
+           
 def save_uploaded_files(files):
     """Xử lý lưu các file và trả về chuỗi tên file ngăn cách bởi dấu phẩy."""
     saved_filenames = []
@@ -220,7 +226,7 @@ def login():
                 details=f"Sai mật khẩu",
                 ip_address=user_ip
             )
-            message = "Tên đăng nhập hoặc mật khẩu không chính xác."
+            message = "Tên đăng nhập đã bị xóa hoặc không tồn tại."
             flash(message, 'danger')
             
     return render_template('login.html', message=message)
@@ -329,6 +335,7 @@ app.register_blueprint(budget_bp)
 app.register_blueprint(commission_bp)
 app.register_blueprint(executive_bp)
 app.register_blueprint(cross_sell_bp)
+app.register_blueprint(ap_bp)
 
 if __name__ == '__main__':
     

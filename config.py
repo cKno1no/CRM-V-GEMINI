@@ -37,12 +37,15 @@ CONNECTION_STRING = (
 # =========================================================================
 ACC_DOANH_THU = '511%'        # Tài khoản Doanh thu
 ACC_GIA_VON = '632%'          # Tài khoản Giá vốn
-ACC_CHI_PHI_BH = '641%'       # Chi phí Bán hàng
-ACC_CHI_PHI_QL = '642%'       # Chi phí Quản lý
+ACC_CHI_PHI_BH = '64%'       # Chi phí Bán hàng
+ACC_CHI_PHI_QL = '64%'       # Chi phí Quản lý
 ACC_CHI_PHI_TC = '635%'       # Chi phí Tài chính
 ACC_CHI_PHI_KHAC = '811%'     # Chi phí Khác
 ACC_TIEN = '11%'              # Tiền mặt/Ngân hàng (111, 112...)
 ACC_PHAI_THU_KH = '13111'     # Phải thu khách hàng
+ACC_PHAI_TRA_NB = '331%' # Dùng cho các truy vấn ad-hoc nếu có
+
+
 
 # Các mã loại trừ
 EXCLUDE_ANA03_CP2014 = 'cp2014' # Mã phân tích chi phí cần loại trừ (Kết chuyển)
@@ -56,7 +59,7 @@ DIVISOR_VIEW = 1000000.0      # Chia cho 1 triệu để hiển thị (M)
 # Ngưỡng phân loại Khách hàng & Rủi ro
 LIMIT_SMALL_CUSTOMER = 20000000.0  # 20 Triệu - Dưới mức này là khách nhỏ lẻ
 RISK_INVENTORY_VALUE = 5000000.0   # 5 Triệu - Tồn kho lâu năm > mức này mới tính là CLC
-RISK_DEBT_VALUE = 1000.0           # 1 Nghìn - Nợ nhỏ hơn mức này bỏ qua
+RISK_DEBT_VALUE = 2000000.0           # 1 Nghìn - Nợ nhỏ hơn mức này bỏ qua
 
 # Ngưỡng Phê duyệt (Approval Logic)
 LIMIT_AUTO_APPROVE_DTK = 100000000.0 # 100 Triệu - DTK dưới mức này tự duyệt
@@ -153,6 +156,8 @@ ERP_DELIVERY_DETAIL = f'{ERP_DB}.[dbo].[OT2302]'
 
 # --- C. VIEWS ---
 CRM_AR_AGING_SUMMARY = '[dbo].[CRM_AR_AGING_SUMMARY]' # Dùng bản HN
+CRM_AP_AGING_SUMMARY = '[dbo].[CRM_AP_AGING_SUMMARY]'
+
 DELIVERY_WEEKLY_VIEW = '[dbo].[Delivery_Weekly]'
 VIEW_BACK_ORDER = f'{ERP_DB}.[dbo].[CRM_TON KHO BACK ORDER]'
 VIEW_BACK_ORDER_DETAIL = f'{ERP_DB}.[dbo].[CRM_BACKORDER]'
@@ -171,7 +176,7 @@ SP_REPLENISH_TOTAL = 'dbo.sp_GetTotalReplenishmentNeeds'
 SP_REPLENISH_GROUP = 'dbo.sp_GetReplenishmentGroupDetails'
 # Phân tích Lợi nhuận (Dùng trong sales_service.get_profit_analysis)
 SP_SALES_GROSS_PROFIT = 'dbo.sp_GetSalesGrossProfit_Analysis' 
-
+SP_AP_AGING_DETAIL = 'dbo.sp_GetAPAgingDetail'
 # Tính Hoa hồng (Dùng trong commission_service)
 SP_CREATE_COMMISSION = 'dbo.sp_CreateCommissionProposal'
 
@@ -195,3 +200,7 @@ QUOTE_STATUS_DELAY = 'DELAY'
 QUOTE_RISK_DELAY_DAYS = 10          # Cảnh báo nếu trễ > 10 ngày
 QUOTE_RISK_NO_ACTION_DAYS = 5       # Cảnh báo nếu không có hành động > 5 ngày
 QUOTE_RISK_AVG_VALUE = 30000000.0   # Giá trị trung bình (30 Triệu)
+
+# Trong config.py, thêm vào phần 7 (Cấu hình Database Objects)
+TABLE_COMMISSION_MASTER = '[dbo].[DE XUAT BAO HANH_MASTER]'
+TABLE_COMMISSION_DETAIL = '[dbo].[DE XUAT BAO HANH_DS]'

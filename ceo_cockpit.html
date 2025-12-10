@@ -35,7 +35,7 @@
         /* --- LAYOUT --- */
         .main-content {
             padding: 30px;
-            max-width: 1800px; /* Mở rộng để chứa 4 cột thoải mái */
+            max-width: 1800px;
             margin: 0 auto;
         }
 
@@ -51,7 +51,7 @@
             position: relative;
             overflow: hidden;
             display: block;
-            text-decoration: none; /* Bỏ gạch chân cho thẻ a */
+            text-decoration: none;
             color: inherit;
         }
         .card-box:hover {
@@ -86,7 +86,6 @@
             gap: 5px;
         }
         
-        /* Colors */
         .bg-trend-up { background-color: #E6FDF5; color: var(--success); }
         .bg-trend-down { background-color: #FEEEEE; color: var(--danger); }
         .bg-trend-warn { background-color: #FFF8E1; color: #B71C1C; }
@@ -165,7 +164,12 @@
             font-size: 0.8rem; font-weight: 800;
             margin-right: 10px;
         }
-
+        
+        /* Modal Custom */
+        .modal-content { border-radius: 16px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .modal-header { border-bottom: 1px solid #E0E5F2; padding: 20px 25px; }
+        .modal-title { font-weight: 700; color: var(--text-dark); }
+        .modal-body { padding: 25px; }
     </style>
 </head>
 <body>
@@ -238,15 +242,12 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="score-label text-warning">CHI PHÍ HOẠT ĐỘNG YTD</div>
-                        
                         <div class="score-value text-dark mb-1">
                             {{ "{:,.0f}".format(finance_summary.TotalExpenses / 1000000) }}M
                         </div>
-                        
                         <div class="small fw-bold text-secondary mb-2" style="font-size: 0.8rem;">
                             / Ngân sách: {{ "{:,.0f}".format(kpi_summary.BudgetPlan_YTD / 1000000) }}M
                         </div>
-                        
                         {% if kpi_summary.OverBudgetCount > 0 %}
                         <div class="trend-badge bg-trend-down text-danger">
                             <i class="fas fa-exclamation-circle"></i> {{ kpi_summary.OverBudgetCount }} khoản vượt
@@ -266,25 +267,23 @@
         </div>
 
         <div class="col-xl-3 col-md-6">
-                <a href="/cross_sell_dashboard" target="_blank" class="card-box">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="score-label text-info">LỢI NHUẬN VIP YTD</div>
-                            <div class="score-value text-dark">
-                                {{ "{:,.0f}".format(finance_summary.CrossSellProfit / 1000000) }}M
-                            </div>
-                            
-                            <div class="trend-badge bg-trend-up text-info">
-                                <i class="fas fa-gem"></i> {{ kpi_summary.CrossSellCustCount }} KH Titan/Diamond
-                            </div>
+            <a href="/cross_sell_dashboard" target="_blank" class="card-box">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="score-label text-info">LỢI NHUẬN VIP YTD</div>
+                        <div class="score-value text-dark">
+                            {{ "{:,.0f}".format(finance_summary.CrossSellProfit / 1000000) }}M
                         </div>
-                        <div class="icon-box ib-info"><i class="fas fa-dna"></i></div>
+                        <div class="trend-badge bg-trend-up text-info">
+                            <i class="fas fa-gem"></i> {{ kpi_summary.CrossSellCustCount }} KH Titan/Diamond
+                        </div>
                     </div>
-                    <div class="mt-3 small text-muted" style="font-size: 0.75rem;">
-                        Lợi nhuận từ KH có >=10 nhóm hàng.
-                    </div>
-                </a>
-            </div>
+                    <div class="icon-box ib-info"><i class="fas fa-dna"></i></div>
+                </div>
+                <div class="mt-3 small text-muted" style="font-size: 0.75rem;">
+                    Lợi nhuận từ KH có >=10 nhóm hàng.
+                </div>
+            </a>
         </div>
     </div>
 
@@ -365,15 +364,107 @@
     </div>
 
     <div class="row g-4 mb-4">
-        <div class="col-lg-8">
+        <div class="col-lg-5">
             <div class="card-box">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="fw-bold m-0">Xu hướng Doanh thu & Lợi nhuận (12 Tháng)</h5>
-                    <div class="dropdown">
-                        <button class="btn btn-light btn-sm fw-bold text-secondary" type="button">Dữ liệu GT9000</button>
+                    <div>
+                        <h5 class="fw-bold m-0 text-dark">Sức khỏe Tồn kho (Aging)</h5>
+                        <small class="text-muted" style="font-size: 0.8rem;">
+                            <i class="fas fa-mouse-pointer me-1"></i> Click vào biểu đồ để xem chi tiết
+                        </small>
                     </div>
+                    <a href="/inventory_aging" target="_blank" class="btn btn-light btn-sm text-danger fw-bold">
+                        <i class="fas fa-warehouse"></i> Full
+                    </a>
                 </div>
-                <div id="revenueChart" style="height: 350px;"></div>
+                <div id="inventoryChart" style="height: 320px;"></div>
+                <div class="text-center mt-2 small text-muted">
+                    *Cảnh báo: Nhóm Rủi ro > 2 năm khó thanh lý.
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card-box">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold m-0 text-dark">Hiệu quả Kinh doanh Top 10 Nhóm hàng</h5>
+                    <span class="badge bg-primary-subtle text-primary border border-primary">Doanh thu vs Lợi nhuận gộp</span>
+                </div>
+                <div id="categoryChart" style="height: 320px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-7">
+            <div class="card-box">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold m-0 text-dark">Xu hướng Tài chính (12 Tháng)</h5>
+                    <span class="badge bg-light text-secondary border">Doanh thu - Chi phí - Lãi ròng</span>
+                </div>
+                <div id="financialTrendChart" style="height: 350px;"></div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card-box">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold m-0 text-dark">Phễu Chuyển đổi (Conversion)</h5>
+                    <span class="badge bg-success-subtle text-success">6 Tháng gần nhất</span>
+                </div>
+                <div id="funnelChart" style="height: 350px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card-box">
+                <h5 class="fw-bold mb-3">Bảng Xếp Hạng Sales (YTD)</h5>
+                <div class="table-responsive">
+                    <table class="table table-borderless table-leaderboard m-0">
+                        <thead>
+                            <tr>
+                                <th>Nhân viên</th>
+                                <th class="text-end">Doanh số</th>
+                                <th class="text-center">% KPI</th>
+                                <th>Hạng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sale in top_sales %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-circle">{{ sale.ShortName[:2] }}</div>
+                                        <div>
+                                            <div class="text-dark">{{ sale.ShortName }}</div>
+                                            <div class="small text-muted" style="font-size: 0.7rem;">{{ sale.UserCode }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-end">{{ "{:,.0f}".format(sale.TotalSalesAmount / 1000000) }}M</td>
+                                <td class="text-center">
+                                    <div class="d-flex align-items-center justify-content-center">
+                                        <span class="me-2 small fw-bold">{{ sale.Percent }}%</span>
+                                        <div class="progress" style="width: 50px; height: 4px;">
+                                            <div class="progress-bar {{ 'bg-success' if sale.Percent >= 100 else 'bg-primary' }}" style="width: {{ sale.Percent }}%"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    {% if loop.index == 1 %} <i class="fas fa-medal text-warning"></i>
+                                    {% elif loop.index == 2 %} <i class="fas fa-medal text-secondary"></i>
+                                    {% elif loop.index == 3 %} <i class="fas fa-medal" style="color: #CD7F32;"></i>
+                                    {% else %} <span class="text-muted fw-bold">#{{ loop.index }}</span> {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="4" class="text-center text-muted">Đang cập nhật dữ liệu...</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -440,118 +531,193 @@
         </div>
     </div>
 
-    <div class="row g-4">
-        <div class="col-12">
-            <div class="card-box">
-                <h5 class="fw-bold mb-3">Bảng Xếp Hạng Sales (YTD)</h5>
+</div>
+
+<div class="modal fade" id="inventoryDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold">Chi tiết Tồn kho: <span id="invModalTitle" class="text-primary"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-borderless table-leaderboard m-0">
-                        <thead>
+                    <table class="table table-sm table-hover mb-0" id="invDetailTable">
+                        <thead class="table-light sticky-top">
                             <tr>
-                                <th>Nhân viên</th>
-                                <th class="text-end">Doanh số</th>
-                                <th class="text-center">% KPI</th>
-                                <th>Hạng</th>
+                                <th class="ps-4">Mã Nhóm (I04)</th>
+                                <th class="text-end pe-4">Giá trị (VNĐ)</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {% for sale in top_sales %}
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar-circle">{{ sale.ShortName[:2] }}</div>
-                                        <div>
-                                            <div class="text-dark">{{ sale.ShortName }}</div>
-                                            <div class="small text-muted" style="font-size: 0.7rem;">{{ sale.UserCode }}</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-end">{{ "{:,.0f}".format(sale.TotalSalesAmount / 1000000) }}M</td>
-                                <td class="text-center">
-                                    <div class="d-flex align-items-center justify-content-center">
-                                        <span class="me-2 small fw-bold">{{ sale.Percent }}%</span>
-                                        <div class="progress" style="width: 50px; height: 4px;">
-                                            <div class="progress-bar {{ 'bg-success' if sale.Percent >= 100 else 'bg-primary' }}" style="width: {{ sale.Percent }}%"></div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-center">
-                                    {% if loop.index == 1 %} <i class="fas fa-medal text-warning"></i>
-                                    {% elif loop.index == 2 %} <i class="fas fa-medal text-secondary"></i>
-                                    {% elif loop.index == 3 %} <i class="fas fa-medal" style="color: #CD7F32;"></i>
-                                    {% else %} <span class="text-muted fw-bold">#{{ loop.index }}</span> {% endif %}
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr><td colspan="4" class="text-center text-muted">Đang cập nhật dữ liệu...</td></tr>
-                            {% endfor %}
-                        </tbody>
+                        <tbody></tbody>
                     </table>
                 </div>
             </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
+            </div>
         </div>
     </div>
-
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
-    // Lấy dữ liệu từ Backend truyền qua Jinja2
-    const chartData = {{ chart_data | tojson }};
-    
-    // 1. Biểu đồ Xu hướng Doanh thu & Lợi nhuận
-    var revenueOptions = {
-        series: [{
-            name: 'Doanh thu',
-            data: chartData.revenue // Dữ liệu động từ Python
-        }, {
-            name: 'Lợi nhuận gộp',
-            data: chartData.profit // Dữ liệu động từ Python
-        }],
+    // --- DỮ LIỆU TỪ SERVER ---
+    const invData = {{ inventory_chart_data | tojson }};
+    const financialData = {{ chart_data | tojson }}; 
+    const catData = {{ category_perf_data | tojson }};
+    const funnelData = {{ sales_funnel_data | tojson }};
+
+    // --- 1. BIỂU ĐỒ TỒN KHO (DONUT + DRILLDOWN) ---
+    var invOptions = {
+        series: invData.series,
+        labels: invData.labels,
         chart: {
-            height: 350,
-            type: 'area',
-            toolbar: { show: false },
-            fontFamily: 'Inter, sans-serif',
-            zoom: { enabled: false }
+            type: 'donut', height: 320, fontFamily: 'Inter, sans-serif',
+            events: {
+                dataPointSelection: function(event, chartContext, config) {
+                    // Xử lý sự kiện click vào phần tử biểu đồ
+                    const label = config.w.config.labels[config.dataPointIndex];
+                    const details = invData.drilldown[label];
+                    showInventoryModal(label, details);
+                }
+            }
         },
-        colors: ['#4318FF', '#05CD99'],
+        // Màu sắc: Xanh (An toàn) -> Xanh nhạt -> Vàng -> Cam (Tồn lâu) -> Đỏ (CLC/Rủi ro)
+        colors: ['#05CD99', '#4318FF', '#FFB547', '#FF8F00', '#E31A1A'],
+        plotOptions: {
+            pie: { 
+                donut: { 
+                    size: '60%', 
+                    labels: { 
+                        show: true, 
+                        total: { 
+                            show: true, 
+                            label: 'Tổng Tồn', 
+                            formatter: (w) => (w.globals.seriesTotals.reduce((a, b) => a + b, 0)/1000000).toFixed(0) + 'M' 
+                        } 
+                    } 
+                } 
+            }
+        },
         dataLabels: { enabled: false },
-        stroke: { curve: 'smooth', width: 3 },
-        fill: {
-            type: 'gradient',
-            gradient: {
-                shadeIntensity: 1,
-                opacityFrom: 0.4,
-                opacityTo: 0.05,
-                stops: [0, 90, 100]
-            }
+        legend: { position: 'bottom', fontSize: '11px' },
+        tooltip: { y: { formatter: (val) => new Intl.NumberFormat('vi-VN').format(val) + " VNĐ" } }
+    };
+    new ApexCharts(document.querySelector("#inventoryChart"), invOptions).render();
+
+    // Hàm hiển thị Modal Drill-down
+    function showInventoryModal(title, items) {
+        document.getElementById('invModalTitle').innerText = title;
+        const tbody = document.querySelector('#invDetailTable tbody');
+        tbody.innerHTML = '';
+        if(items && items.length > 0) {
+            items.forEach(i => {
+                const row = `<tr><td class="ps-4 fw-medium">${i.name}</td><td class="text-end pe-4 fw-bold font-monospace">${new Intl.NumberFormat('vi-VN').format(i.value)}</td></tr>`;
+                tbody.innerHTML += row;
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted py-3">Không có dữ liệu chi tiết.</td></tr>';
+        }
+        
+        // Khởi tạo Modal Bootstrap
+        new bootstrap.Modal(document.getElementById('inventoryDetailModal')).show();
+    }
+
+    // --- 2. BIỂU ĐỒ HIỆU QUẢ NHÓM HÀNG (MIXED) ---
+    var catOptions = {
+        series: [
+            { name: 'Doanh thu', type: 'column', data: catData.revenue.map(x=>(x/1000000).toFixed(0)) },
+            { name: 'Lợi nhuận gộp', type: 'column', data: catData.profit.map(x=>(x/1000000).toFixed(0)) },
+            { name: '% Margin', type: 'line', data: catData.margin }
+        ],
+        chart: { height: 320, type: 'line', toolbar: {show:false}, fontFamily: 'Inter' },
+        stroke: { width: [0, 0, 3], curve: 'smooth' },
+        colors: ['#4318FF', '#05CD99', '#FFB547'],
+        xaxis: { 
+            categories: catData.categories,
+            labels: { rotate: -45, style: { fontSize: '10px' } }
         },
-        xaxis: {
-            categories: chartData.categories, // Nhãn tháng/năm động
-            axisBorder: { show: false },
-            axisTicks: { show: false },
-            tooltip: { enabled: false }
+        yaxis: [
+            { title: {text: 'Triệu VNĐ'}, labels: {formatter: (val) => val} }, 
+            { opposite: true, title: {text: '%'}, labels: {formatter: (val) => val} }
+        ],
+        plotOptions: { bar: { columnWidth: '60%', borderRadius: 3 } },
+        dataLabels: { 
+            enabled: true, 
+            enabledOnSeries: [2], 
+            formatter: (val) => val + "%",
+            style: { colors: ['#B71C1C'] } // Màu chữ đỏ cho label margin
         },
-        yaxis: {
-            labels: { 
-                formatter: function (value) { return value + " Tỷ"; },
-                style: { colors: '#A3AED0' }
-            }
-        },
-        grid: {
-            borderColor: '#f1f1f1',
-            strokeDashArray: 4,
-        },
+        legend: { position: 'top' },
         tooltip: {
-            y: { formatter: function (val) { return val + " Tỷ VNĐ" } }
-        },
-        legend: {
-            position: 'top',
-            horizontalAlign: 'right'
+            shared: true, intersect: false,
+            y: {
+                formatter: function (y, { seriesIndex }) {
+                    if(seriesIndex === 2) return y + " %";
+                    return new Intl.NumberFormat('vi-VN').format(y) + " Triệu";
+                }
+            }
         }
     };
-    var chartRevenue = new ApexCharts(document.querySelector("#revenueChart"), revenueOptions);
-    chartRevenue.render();
+    new ApexCharts(document.querySelector("#categoryChart"), catOptions).render();
+
+    // --- 3. BIỂU ĐỒ XU HƯỚNG TÀI CHÍNH (3 SERIES) ---
+    var finOptions = {
+        series: [
+            { name: 'Doanh thu', type: 'column', data: financialData.revenue },
+            { name: 'Chi phí', type: 'column', data: financialData.expenses },
+            { name: 'Lợi nhuận Ròng', type: 'line', data: financialData.net_profit }
+        ],
+        chart: { height: 350, type: 'line', toolbar: {show:false}, fontFamily: 'Inter' },
+        stroke: { width: [0, 0, 4], curve: 'smooth' },
+        colors: ['#4318FF', '#FFB547', '#05CD99'], 
+        xaxis: { categories: financialData.categories },
+        yaxis: { title: { text: 'Tỷ VNĐ' } },
+        plotOptions: { bar: { columnWidth: '55%', borderRadius: 2 } },
+        dataLabels: { enabled: false },
+        legend: { position: 'top' },
+        tooltip: { y: { formatter: (val) => val + " Tỷ" } }
+    };
+    new ApexCharts(document.querySelector("#financialTrendChart"), finOptions).render();
+
+    // --- 4. BIỂU ĐỒ PHỄU KINH DOANH (QUOTE -> ORDER -> REVENUE) ---
+    var funnelOptions = {
+        series: [
+            { name: 'Số lượng Chào giá', type: 'column', data: funnelData.quotes },
+            { name: 'Đơn hàng thành công', type: 'column', data: funnelData.orders },
+            { name: 'Doanh số (Tỷ)', type: 'line', data: funnelData.revenue }
+        ],
+        chart: { height: 350, type: 'line', toolbar: {show:false}, fontFamily: 'Inter' },
+        stroke: { width: [0, 0, 3], curve: 'monotoneCubic' },
+        colors: ['#A3AED0', '#4318FF', '#05CD99'], 
+        xaxis: { categories: funnelData.categories },
+        yaxis: [
+            { 
+                title: { text: 'Số lượng Phiếu' }, 
+                labels: { formatter: (val) => val.toFixed(0) } 
+            },
+            { 
+                opposite: true, 
+                title: { text: 'Doanh số (Tỷ)' },
+                labels: { formatter: (val) => val }
+            }
+        ],
+        plotOptions: { bar: { columnWidth: '60%', borderRadius: 2 } },
+        legend: { position: 'top' },
+        tooltip: {
+            shared: true, intersect: false,
+            y: {
+                formatter: function (y, { seriesIndex }) {
+                    if(seriesIndex === 2) return y + " Tỷ";
+                    return y + " Phiếu";
+                }
+            }
+        }
+    };
+    new ApexCharts(document.querySelector("#funnelChart"), funnelOptions).render();
+
 </script>
 
 </body>

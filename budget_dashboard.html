@@ -63,7 +63,7 @@
                 <div class="card mb-4">
                     <div class="card-header"><i class="fas fa-plus-circle me-2"></i>Tạo Phiếu Mới</div>
                     <div class="card-body p-4">
-                        <form id="expenseForm">
+                        <form id="expenseForm" enctype="multipart/form-data">
                             
                             <div class="mb-3 position-relative">
                                 <label class="form-label fw-bold">Loại Chi phí <span class="text-danger">*</span></label>
@@ -91,6 +91,12 @@
                                     <input type="number" class="form-control fw-bold text-primary" id="amount" placeholder="0" onchange="checkBalance()" onkeyup="checkBalance()" min="0">
                                     <span class="input-group-text">VNĐ</span>
                                 </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Đính kèm chứng từ (Bảng kê, Hóa đơn...)</label>
+                                <input type="file" class="form-control" id="attachments" multiple>
+                                <div class="form-text small">Cho phép ảnh, pdf, excel, word, zip. Chọn nhiều file cùng lúc.</div>
                             </div>
                             
                             <div id="budgetStatusBox" class="d-none mb-3 border rounded p-2">
@@ -320,11 +326,11 @@
 
                 if (amount > remaining) {
                     box.className = 'alert alert-danger d-flex align-items-center justify-content-between mb-3 border rounded p-2';
-                    title.innerText = 'VƯỢT NGÂN SÁCH';
+                    title.innerText = 'VƯỢT NGÂN SÁCH THÁNG';
                     title.className = 'd-block text-danger fw-bold';
-                    desc.innerText = 'Số tiền vượt hạn mức.';
+                    desc.innerText = 'Số tiền vượt hạn mức tháng.';
                     badge.className = 'badge bg-danger';
-                    badge.innerText = 'KHÔNG KHẢ DỤNG';
+                    badge.innerText = 'CẢNH BÁO';
                 } else {
                     box.className = 'alert alert-success d-flex align-items-center justify-content-between mb-3 border rounded p-2';
                     title.innerText = 'HỢP LỆ';
@@ -336,12 +342,13 @@
             });
         }
 
-        // 4. SUBMIT
+        // 4. SUBMIT (UPDATED: Sử dụng FormData để gửi file)
         function submitRequest() {
             const code = document.getElementById('budgetCode').value;
             const objectId = document.getElementById('objectCode').value;
             const amount = parseFloat(document.getElementById('amount').value) || 0;
             const reason = document.getElementById('reason').value;
+            const fileInput = document.getElementById('attachments');
 
             if (!code) { alert("Vui lòng chọn loại chi phí."); return; }
             if (!objectId) { alert("Vui lòng chọn đối tượng thụ hưởng."); return; }
@@ -355,20 +362,29 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
             btn.disabled = true;
 
+            // [NEW] Tạo FormData để chứa cả text và files
+            const formData = new FormData();
+            formData.append('budget_code', code);
+            formData.append('object_id', objectId);
+            formData.append('amount', amount);
+            formData.append('reason', reason);
+            
+            // Loop qua tất cả các file đã chọn và append vào form
+            if (fileInput && fileInput.files.length > 0) {
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    formData.append('attachments', fileInput.files[i]);
+                }
+            }
+
+            // Gửi request POST dạng Multipart (Không set Content-Type header để browser tự xử lý boundary)
             fetch('/api/budget/submit_request', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    budget_code: code,
-                    object_id: objectId,
-                    amount: amount,
-                    reason: reason
-                })
+                body: formData 
             })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    alert("Thành công!");
+                    alert("Thành công! Đề nghị đã được gửi.");
                     location.reload();
                 } else {
                     alert("Lỗi: " + data.message);
@@ -377,6 +393,7 @@
                 }
             })
             .catch(err => {
+                console.error(err);
                 alert("Lỗi kết nối.");
                 btn.innerHTML = oldText;
                 btn.disabled = false;

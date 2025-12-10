@@ -3,7 +3,7 @@
 from flask import Blueprint, render_template, request, jsonify, session
 from utils import login_required
 from datetime import datetime
-
+import config
 commission_bp = Blueprint('commission_bp', __name__)
 
 @commission_bp.route('/commission/request', methods=['GET'])
@@ -43,13 +43,12 @@ def api_create_proposal():
     if ma_so:
         # 1. Lấy Chi tiết (Sửa ORDER BY VoucherDate)
         details = db_manager.get_data(
-            "SELECT * FROM dbo.[DE XUAT BAO HANH_DS] WHERE MA_SO = ? ORDER BY VoucherDate DESC", 
+            f"SELECT * FROM {config.TABLE_COMMISSION_DETAIL} WHERE MA_SO = ? ORDER BY VoucherDate DESC", 
             (ma_so,)
         ) or [] 
         
-        # 2. Lấy Master (Sửa tên bảng có dấu cách nếu DB dùng dấu cách)
         master_data = db_manager.get_data(
-            "SELECT * FROM dbo.[DE XUAT BAO HANH_MASTER] WHERE MA_SO = ?", 
+            f"SELECT * FROM {config.TABLE_COMMISSION_MASTER} WHERE MA_SO = ?", 
             (ma_so,)
         )
         
@@ -84,9 +83,10 @@ def api_toggle_item():
     
     if success:
         ma_so = data.get('ma_so')
-        # Lấy lại thông tin tổng tiền mới nhất
+        
+        # [FIX]: Dùng f-string với config
         master_data = db_manager.get_data(
-            "SELECT DOANH_SO_CHON, GIA_TRI_CHI FROM dbo.[DE XUAT BAO HANH_MASTER] WHERE MA_SO = ?", 
+            f"SELECT DOANH_SO_CHON, GIA_TRI_CHI FROM {config.TABLE_COMMISSION_MASTER} WHERE MA_SO = ?", 
             (ma_so,)
         )
         

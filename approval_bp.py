@@ -4,6 +4,8 @@ from utils import login_required
 from datetime import datetime, timedelta
 from db_manager import safe_float # Cần cho format/validation
 # LƯU Ý: Không import các service như approval_service, order_approval_service TỪ app ở đây.
+import config
+
 
 approval_bp = Blueprint('approval_bp', __name__)
 

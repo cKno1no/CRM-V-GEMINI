@@ -53,15 +53,15 @@ class CrossSellService:
                 T1.ObjectID AS ClientID,
                 ISNULL(T3.ShortObjectName, T3.ObjectName) AS ClientName,
                 T2.I04ID,
-                SUM(CASE WHEN T1.CreditAccountID LIKE '511%' THEN T1.ConvertedAmount ELSE 0 END) as Revenue,
-                SUM(CASE WHEN T1.DebitAccountID LIKE '632%' THEN T1.ConvertedAmount ELSE 0 END) as COGS
+                SUM(CASE WHEN T1.CreditAccountID LIKE '{config.ACC_DOANH_THU}' THEN T1.ConvertedAmount ELSE 0 END) as Revenue,
+                SUM(CASE WHEN T1.DebitAccountID LIKE '{config.ACC_GIA_VON}' THEN T1.ConvertedAmount ELSE 0 END) as COGS
             FROM {config.ERP_GIAO_DICH} T1
             INNER JOIN {config.ERP_IT1302} T2 ON T1.InventoryID = T2.InventoryID
             LEFT JOIN {config.ERP_IT1202} T3 ON T1.ObjectID = T3.ObjectID
             WHERE 
-                T1.VoucherDate >= DATEADD(day, -365, GETDATE()) -- Lấy 12 tháng gần nhất
+                T1.VoucherDate >= DATEADD(day, -365, GETDATE()) 
                 AND T2.I04ID IS NOT NULL AND T2.I04ID <> ''
-                AND (T1.CreditAccountID LIKE '511%' OR T1.DebitAccountID LIKE '632%')
+                AND (T1.CreditAccountID LIKE '{config.ACC_DOANH_THU}' OR T1.DebitAccountID LIKE '{config.ACC_GIA_VON}')
             GROUP BY T1.ObjectID, T3.ShortObjectName, T3.ObjectName, T2.I04ID
         """
         
@@ -156,8 +156,8 @@ class CrossSellService:
         query = f"""
             SELECT 
                 T2.I04ID,
-                SUM(CASE WHEN T1.CreditAccountID LIKE '511%' THEN T1.ConvertedAmount ELSE 0 END) as Revenue,
-                SUM(CASE WHEN T1.DebitAccountID LIKE '632%' THEN T1.ConvertedAmount ELSE 0 END) as COGS
+                SUM(CASE WHEN T1.CreditAccountID LIKE '{config.ACC_DOANH_THU}' THEN T1.ConvertedAmount ELSE 0 END) as Revenue,
+                SUM(CASE WHEN T1.DebitAccountID LIKE '{config.ACC_GIA_VON}' THEN T1.ConvertedAmount ELSE 0 END) as COGS
             FROM {config.ERP_GIAO_DICH} T1
             INNER JOIN {config.ERP_IT1302} T2 ON T1.InventoryID = T2.InventoryID
             WHERE 
@@ -165,7 +165,7 @@ class CrossSellService:
                 AND T1.VoucherDate >= DATEADD(day, -365, GETDATE()) -- Lọc 365 ngày
                 AND T2.I04ID IS NOT NULL
             GROUP BY T2.I04ID
-            HAVING SUM(CASE WHEN T1.CreditAccountID LIKE '511%' THEN T1.ConvertedAmount ELSE 0 END) > 0
+            HAVING SUM(CASE WHEN T1.CreditAccountID LIKE '{config.ACC_DOANH_THU}' THEN T1.ConvertedAmount ELSE 0 END) > 0
         """
         purchased_data = self.db.get_data(query, (client_id,))
         

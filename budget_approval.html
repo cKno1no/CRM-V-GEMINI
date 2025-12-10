@@ -54,7 +54,6 @@
             border-bottom: 1px solid var(--primary-light);
             display: flex; align-items: center;
         }
-        .card-header-custom i { font-size: 1.2rem; margin-right: 12px; color: var(--success); }
         .card-body-custom { padding: 0; }
 
         .table-approval { width: 100%; border-collapse: collapse; }
@@ -133,7 +132,7 @@
                                 <th>Người đề nghị</th>
                                 <th>Khoản mục</th>
                                 <th class="text-end">Số tiền</th>
-                                <th>Lý do</th>
+                                <th>Lý do & Hồ sơ</th>
                                 <th class="text-center">Hành động</th>
                             </tr>
                         </thead>
@@ -158,6 +157,14 @@
                                         <span class="badge badge-warning-custom mb-1"><i class="fas fa-exclamation-triangle"></i> Vượt NS</span><br>
                                     {% endif %}
                                     <span class="text-muted small">{{ item.Reason | truncate(30) }}</span>
+                                    
+                                    {% if item.Attachments %}
+                                        <div class="mt-1">
+                                            <span class="badge bg-light text-primary border border-primary-subtle">
+                                                <i class="fas fa-paperclip me-1"></i> Có đính kèm
+                                            </span>
+                                        </div>
+                                    {% endif %}
                                 </td>
                                 <td class="text-center">
                                     <button class="btn-action-sm btn-review">
@@ -202,35 +209,41 @@
                         <span class="info-label">Khoản mục:</span>
                         <span class="info-val" id="md_budget">...</span>
                     </div>
+                    
                     <div class="mb-3">
                         <span class="info-label d-block mb-1">Lý do chi:</span>
                         <div class="p-2 bg-light rounded small" id="md_reason">...</div>
                     </div>
 
+                    <div id="md_attachments_box" class="mb-3 d-none">
+                        <span class="info-label d-block mb-1 text-primary fw-bold"><i class="fas fa-paperclip"></i> Tài liệu đính kèm:</span>
+                        <div class="d-flex flex-wrap gap-2" id="md_attachment_list">
+                            </div>
+                    </div>
+
                     <div id="md_context_box" class="budget-context-box">
                         <div class="context-title d-flex justify-content-between align-items-center">
-                            <span><i class="fas fa-chart-pie me-1"></i> Tình hình Ngân sách Nhóm (<span id="md_parent_code"></span>)</span>
+                            <span><i class="fas fa-chart-pie me-1"></i> NGÂN SÁCH LŨY KẾ (<span id="md_parent_code"></span>)</span>
                             <span id="md_warning_badge" class="badge bg-danger d-none">NGUY CƠ VƯỢT</span>
                         </div>
                         
                         <div class="progress-custom mb-2" style="height: 20px; background-color: #e9ecef;">
-                            <div id="bar_actual" class="progress-bar bg-secondary" style="width: 0%" title="Đã chi thực tế"></div>
-                            <div id="bar_pending" class="progress-bar bg-warning text-dark" style="width: 0%" title="Đang chờ duyệt khác"></div>
+                            <div id="bar_actual" class="progress-bar bg-secondary" style="width: 0%" title="Đã chi (ERP)"></div>
                             <div id="bar_current" class="progress-bar bg-primary progress-bar-striped progress-bar-animated" style="width: 0%" title="Phiếu này"></div>
                         </div>
                         
                         <div class="row g-2 small mb-2">
                             <div class="col-4">
-                                <span class="d-block text-muted">Tổng Ngân sách</span>
-                                <strong class="text-dark" id="md_plan">...</strong>
+                                <span class="d-block text-muted">Tổng NS Năm</span>
+                                <strong class="text-dark" id="md_plan">0</strong>
                             </div>
                             <div class="col-4 text-center">
-                                <span class="d-block text-muted">Đã dùng (ERP+App)</span>
-                                <strong class="text-secondary" id="md_used">...</strong>
+                                <span class="d-block text-muted">Thực chi YTD</span>
+                                <strong class="text-secondary" id="md_used">0</strong>
                             </div>
                             <div class="col-4 text-end">
-                                <span class="d-block text-muted">Còn lại</span>
-                                <strong class="text-success" id="md_remaining">...</strong>
+                                <span class="d-block text-muted">Còn lại YTD</span>
+                                <strong class="text-success" id="md_remaining">0</strong>
                             </div>
                         </div>
 
@@ -260,61 +273,97 @@
         const reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
 
         function formatCurrency(num) {
-            return new Intl.NumberFormat('vi-VN').format(num || 0);
+            if (num === undefined || num === null) return '0';
+            return new Intl.NumberFormat('vi-VN').format(num);
         }
 
         function openReviewModal(item) {
+            // DEBUG: Xem dữ liệu nhận được để kiểm tra trường Attachments
+            console.log("Review Item Data:", item);
+
             document.getElementById('md_request_id').value = item.RequestID;
             document.getElementById('md_requester').innerText = item.RequesterName;
             document.getElementById('md_amount').innerText = formatCurrency(item.Amount) + ' VNĐ';
             document.getElementById('md_budget').innerText = `${item.BudgetName} (${item.BudgetCode})`;
             document.getElementById('md_reason').innerText = item.Reason;
 
-            // --- CẬP NHẬT VISUALIZATION ---
-            const totalPlan = item.GroupPlan;
-            const actual = item.GroupActual;
-            const pendingOther = item.GroupPending; 
-            const currentAmount = item.Amount;
+            // [UPDATED] Xử lý hiển thị file đính kèm (An toàn cho cả Attachments và attachments)
+            const attachBox = document.getElementById('md_attachments_box');
+            const attachList = document.getElementById('md_attachment_list');
+            attachList.innerHTML = '';
             
-            // Tính %
-            let pctActual = (actual / totalPlan) * 100;
-            let pctPending = (pendingOther / totalPlan) * 100;
-            let pctCurrent = (currentAmount / totalPlan) * 100;
+            // Kiểm tra cả 2 trường hợp tên biến (hoa/thường)
+            const rawFiles = item.Attachments || item.attachments;
+
+            if (rawFiles && rawFiles.trim() !== '') {
+                attachBox.classList.remove('d-none');
+                const files = rawFiles.split(';');
+                files.forEach(file => {
+                    if(file.trim()) {
+                        const link = document.createElement('a');
+                        link.href = `/attachments/${file}`;
+                        link.target = '_blank';
+                        link.className = 'btn btn-sm btn-light border shadow-sm';
+                        
+                        // Hiển thị tên file gọn gàng (Bỏ prefix timestamp BUD_xxxx_)
+                        const displayName = file.split('_').slice(2).join('_') || file;
+                        link.innerHTML = `<i class="fas fa-file-download me-1 text-primary"></i> ${displayName}`; 
+                        
+                        attachList.appendChild(link);
+                    }
+                });
+            } else {
+                attachBox.classList.add('d-none');
+            }
+
+            // --- LOGIC HIỂN THỊ YTD ---
+            const ytdPlan = parseFloat(item.YTD_Plan) || 0;
+            const ytdActual = parseFloat(item.YTD_Actual) || 0; 
+            const currentAmount = parseFloat(item.Amount) || 0;
             
-            // Giới hạn max width để không vỡ giao diện nếu vượt 100%
-            if (pctActual + pctPending + pctCurrent > 100) {
-                const scale = 100 / (pctActual + pctPending + pctCurrent);
-                pctActual *= scale; pctPending *= scale; pctCurrent *= scale;
+            const totalUsage = ytdActual + currentAmount;
+            const remaining = ytdPlan - totalUsage;
+
+            let pctActual = (ytdPlan > 0) ? (ytdActual / ytdPlan) * 100 : 0;
+            let pctCurrent = (ytdPlan > 0) ? (currentAmount / ytdPlan) * 100 : 0;
+
+            if (pctActual + pctCurrent > 100) {
+                const scale = 100 / (pctActual + pctCurrent);
+                pctActual *= scale;
+                pctCurrent *= scale;
             }
 
             document.getElementById('bar_actual').style.width = `${pctActual}%`;
-            document.getElementById('bar_actual').innerText = pctActual > 10 ? 'Chi' : '';
-            
-            document.getElementById('bar_pending').style.width = `${pctPending}%`;
+            document.getElementById('bar_actual').setAttribute('title', `Đã chi: ${formatCurrency(ytdActual)}`);
             
             document.getElementById('bar_current').style.width = `${pctCurrent}%`;
-            document.getElementById('bar_current').innerText = pctCurrent > 10 ? 'Phiếu này' : '';
+            document.getElementById('bar_current').setAttribute('title', `Đang duyệt: ${formatCurrency(currentAmount)}`);
 
-            // Điền số liệu
-            document.getElementById('md_plan').innerText = formatCurrency(item.GroupPlan);
-            document.getElementById('md_used').innerText = formatCurrency(item.GroupActual + item.GroupPending);
-            document.getElementById('md_remaining').innerText = formatCurrency(item.GroupRemaining);
-            document.getElementById('md_parent_code').innerText = item.ParentCode;
+            document.getElementById('md_plan').innerText = formatCurrency(ytdPlan);
+            document.getElementById('md_used').innerText = formatCurrency(ytdActual);
+            document.getElementById('md_parent_code').innerText = item.ParentCode || '...';
 
-            // Cảnh báo
             const alertMsg = document.getElementById('md_alert_msg');
             const badge = document.getElementById('md_warning_badge');
+            const elRemaining = document.getElementById('md_remaining');
             
+            if (remaining < 0) {
+                elRemaining.innerText = "(" + formatCurrency(Math.abs(remaining)) + ")";
+                elRemaining.className = "text-danger fw-bold";
+            } else {
+                elRemaining.innerText = formatCurrency(remaining);
+                elRemaining.className = "text-success fw-bold";
+            }
+
             if (item.IsWarning) {
                 alertMsg.classList.remove('d-none');
+                if(item.WarningMsg) alertMsg.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i> ${item.WarningMsg}`;
                 badge.classList.remove('d-none');
                 document.getElementById('md_context_box').classList.add('warning');
-                document.getElementById('md_remaining').className = "text-danger fw-bold";
             } else {
                 alertMsg.classList.add('d-none');
                 badge.classList.add('d-none');
                 document.getElementById('md_context_box').classList.remove('warning');
-                document.getElementById('md_remaining').className = "text-success fw-bold";
             }
             
             document.getElementById('md_note').value = '';

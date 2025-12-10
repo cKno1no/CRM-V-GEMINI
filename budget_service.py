@@ -8,148 +8,129 @@ class BudgetService:
     def __init__(self, db_manager: DBManager):
         self.db = db_manager
 
-    def check_budget_company_wide(self, budget_code, amount_request):
+    def get_budget_status(self, budget_code, department_code, month, year):
         """
-        Kiểm tra ngân sách TOÀN CÔNG TY.
+        [LOGIC TẠO PHIẾU]: Kiểm tra Ngân sách THÁNG (Month) theo ParentCode.
+        Công thức: Còn lại = Plan Tháng - Actual Tháng (ERP).
         """
-        amount_request = safe_float(amount_request)
-        now = datetime.now()
-        month = now.month
-        year = now.year
+        # 1. Lấy ParentCode từ BudgetCode được chọn
+        query_master = f"SELECT ParentCode, ControlLevel FROM {config.TABLE_BUDGET_MASTER} WHERE BudgetCode = ?"
+        master_data = self.db.get_data(query_master, (budget_code,))
         
-        # 1. Lấy thông tin mã chi phí
-        master_query = f"""
-            SELECT BudgetCode, ParentCode, BudgetName, ERP_Ana03ID, ControlLevel 
-            FROM {config.TABLE_BUDGET_MASTER} WHERE BudgetCode = ?
-        """
-        item_info = self.db.get_data(master_query, (budget_code,))
-        if not item_info:
-            return {'status': 'ERROR', 'message': 'Mã chi phí không tồn tại', 'group_remaining': 0}
+        if not master_data:
+            return {'Remaining': 0, 'Status': 'ERROR', 'Message': 'Mã chi phí không hợp lệ'}
             
-        item = item_info[0]
-        parent_code = item['ParentCode']
-        erp_id = item['ERP_Ana03ID']
+        parent_code = master_data[0]['ParentCode']
+        control_level = master_data[0]['ControlLevel']
         
-        # 2. Tính toán SỨC KHỎE CỦA CẢ NHÓM
-        
-        # A. Tổng Ngân sách Kế hoạch
-        query_plan_group = f"""
+        # 2. Tính NGÂN SÁCH THÁNG (Plan) của cả nhóm ParentCode
+        query_plan = f"""
             SELECT SUM(P.BudgetAmount) as TotalPlan
             FROM {config.TABLE_BUDGET_PLAN} P
             INNER JOIN {config.TABLE_BUDGET_MASTER} M ON P.BudgetCode = M.BudgetCode
             WHERE M.ParentCode = ? AND P.[Month] = ? AND P.FiscalYear = ?
         """
-        plan_data = self.db.get_data(query_plan_group, (parent_code, month, year))
-        group_plan = safe_float(plan_data[0]['TotalPlan']) if plan_data else 0
+        plan_data = self.db.get_data(query_plan, (parent_code, month, year))
+        month_plan = safe_float(plan_data[0]['TotalPlan']) if plan_data else 0
 
-        # B. Tổng Thực chi từ ERP
-        # [CONFIG]: Dùng ACC_CHI_PHI_QL thay vì '642%'
-        query_actual_erp = f"""
+        # 3. Tính THỰC CHI THÁNG (Actual) từ ERP
+        # Logic: Ana03ID trong GT9000 chính là ParentCode
+        query_actual = f"""
             SELECT SUM(ConvertedAmount) as TotalActual
             FROM {config.ERP_GIAO_DICH}
-            WHERE Ana03ID = ? AND TranMonth = ? AND TranYear = ? 
-            AND DebitAccountID LIKE '{config.ACC_CHI_PHI_QL}'
+            WHERE Ana03ID = ? 
+              AND TranMonth = ? AND TranYear = ? 
+              AND (DebitAccountID LIKE '64%' OR DebitAccountID LIKE '811%')
         """
-        actual_data = self.db.get_data(query_actual_erp, (erp_id, month, year))
-        group_actual = safe_float(actual_data[0]['TotalActual']) if actual_data else 0
+        actual_data = self.db.get_data(query_actual, (parent_code, month, year))
+        month_actual = safe_float(actual_data[0]['TotalActual']) if actual_data else 0
 
-        # C. Tổng Đang chờ duyệt trên App
-        query_pending_group = f"""
-            SELECT SUM(R.Amount) as TotalPending
-            FROM {config.TABLE_EXPENSE_REQUEST} R
-            INNER JOIN {config.TABLE_BUDGET_MASTER} M ON R.BudgetCode = M.BudgetCode
-            WHERE M.ParentCode = ? 
-            AND MONTH(R.RequestDate) = ? AND YEAR(R.RequestDate) = ?
-            AND R.[Status] = 'PENDING'
-        """
-        pending_data = self.db.get_data(query_pending_group, (parent_code, month, year))
-        group_pending = safe_float(pending_data[0]['TotalPending']) if pending_data else 0
-
-        # D. Tính dư
-        group_remaining = group_plan - group_actual - group_pending
-        
-        # E. Logic Quyết định
-        if amount_request <= group_remaining:
-            return {
-                'status': 'PASS', 
-                'message': 'Ngân sách hợp lệ.',
-                'group_plan': group_plan,
-                'group_actual': group_actual,
-                'group_pending': group_pending,
-                'group_remaining': group_remaining,
-                'is_warning': False
-            }
-        else:
-            shortage = amount_request - group_remaining
-            msg = f"Nhóm chi phí '{parent_code}' ({erp_id}) đã vượt ngân sách chung {shortage:,.0f} VNĐ."
-            
-            if item['ControlLevel'] == 'HARD':
-                return {
-                    'status': 'BLOCK', 
-                    'message': msg,
-                    'group_plan': group_plan,
-                    'group_remaining': group_remaining
-                }
-            else:
-                return {
-                    'status': 'WARN', 
-                    'message': msg, 
-                    'is_warning': True,
-                    'group_plan': group_plan,
-                    'group_actual': group_actual,
-                    'group_pending': group_pending,
-                    'group_remaining': group_remaining
-                }
-
-    def get_budget_status(self, budget_code, department_code, month, year):
-        """
-        Tính toán tình hình ngân sách của 1 mã chi phí.
-        """
-        # 1. Plan
-        query_plan = f"""
-            SELECT BudgetAmount FROM {config.TABLE_BUDGET_PLAN} 
-            WHERE BudgetCode = ? AND DepartmentCode = ? AND [Month] = ? AND FiscalYear = ?
-        """
-        plan_data = self.db.get_data(query_plan, (budget_code, department_code, month, year))
-        budget_amount = safe_float(plan_data[0]['BudgetAmount']) if plan_data else 0
-
-        # 2. Actual
-        # [CONFIG]: Dùng ACC_CHI_PHI_QL
-        query_actual = f"""
-            SELECT SUM(ConvertedAmount) as Actual 
-            FROM {config.ERP_GIAO_DICH} 
-            WHERE Ana03ID = ? AND TranMonth = ? AND TranYear = ? 
-            AND DebitAccountID LIKE '{config.ACC_CHI_PHI_QL}'
-        """
-        actual_data = self.db.get_data(query_actual, (budget_code, month, year))
-        actual_amount = safe_float(actual_data[0]['Actual']) if actual_data and actual_data[0]['Actual'] else 0
-
-        # 3. Pending
-        query_pending = f"""
-            SELECT SUM(Amount) as Pending 
-            FROM {config.TABLE_EXPENSE_REQUEST} 
-            WHERE BudgetCode = ? AND DepartmentCode = ? 
-            AND MONTH(RequestDate) = ? AND YEAR(RequestDate) = ?
-            AND [Status] = 'PENDING'
-        """
-        pending_data = self.db.get_data(query_pending, (budget_code, department_code, month, year))
-        pending_amount = safe_float(pending_data[0]['Pending']) if pending_data and pending_data[0]['Pending'] else 0
-
-        # 4. Remaining
-        remaining = budget_amount - actual_amount - pending_amount
+        # 4. Tính dư ngân sách tháng (Không tính Pending)
+        remaining = month_plan - month_actual
         
         return {
             'BudgetCode': budget_code,
-            'Planned': budget_amount,
-            'Actual_ERP': actual_amount,
-            'Pending_App': pending_amount,
+            'ParentCode': parent_code,
+            'Month_Plan': month_plan,
+            'Month_Actual': month_actual,
             'Remaining': remaining,
-            'UsagePercent': ((actual_amount + pending_amount) / budget_amount * 100) if budget_amount > 0 else 0
+            'ControlLevel': control_level
         }
 
-    def create_expense_request(self, user_code, dept_code, budget_code, amount, reason, object_id=None):
+    def check_budget_for_approval(self, budget_code, request_amount):
         """
-        Tạo đề nghị thanh toán mới.
+        [LOGIC PHÊ DUYỆT]: Kiểm tra Ngân sách LŨY KẾ (YTD) theo ParentCode.
+        So sánh: (Thực chi YTD + Số tiền phiếu này) vs (Ngân sách YTD)
+        """
+        request_amount = safe_float(request_amount)
+        now = datetime.now()
+        current_month = now.month
+        year = now.year
+        
+        # 1. Lấy thông tin ParentCode
+        query_master = f"SELECT ParentCode, ControlLevel FROM {config.TABLE_BUDGET_MASTER} WHERE BudgetCode = ?"
+        master_data = self.db.get_data(query_master, (budget_code,))
+        if not master_data:
+            return {'status': 'ERROR', 'message': 'Mã lỗi'}
+            
+        parent_code = master_data[0]['ParentCode']
+        control_level = master_data[0]['ControlLevel']
+        
+        # 2. Tính PLAN LŨY KẾ (YTD Plan)
+        # Tổng ngân sách từ tháng 1 đến tháng hiện tại
+        query_plan_ytd = f"""
+            SELECT SUM(P.BudgetAmount) as TotalPlan
+            FROM {config.TABLE_BUDGET_PLAN} P
+            INNER JOIN {config.TABLE_BUDGET_MASTER} M ON P.BudgetCode = M.BudgetCode
+            WHERE M.ParentCode = ? 
+              AND P.FiscalYear = ? 
+              AND P.[Month] <= ?
+        """
+        plan_data = self.db.get_data(query_plan_ytd, (parent_code, year, current_month))
+        ytd_plan = safe_float(plan_data[0]['TotalPlan']) if plan_data else 0
+        
+        # 3. Tính ACTUAL LŨY KẾ (YTD Actual)
+        query_actual_ytd = f"""
+            SELECT SUM(ConvertedAmount) as TotalActual
+            FROM {config.ERP_GIAO_DICH}
+            WHERE Ana03ID = ? 
+              AND TranYear = ? 
+              AND TranMonth <= ?
+              AND (DebitAccountID LIKE '64%' OR DebitAccountID LIKE '811%')
+        """
+        actual_data = self.db.get_data(query_actual_ytd, (parent_code, year, current_month))
+        ytd_actual = safe_float(actual_data[0]['TotalActual']) if actual_data else 0
+        
+        # 4. So sánh
+        total_usage_after_approval = ytd_actual + request_amount
+        is_over_budget = total_usage_after_approval > ytd_plan
+        shortage = total_usage_after_approval - ytd_plan
+        
+        result = {
+            'ParentCode': parent_code,
+            'YTD_Plan': ytd_plan,
+            'YTD_Actual': ytd_actual,
+            'Request_Amount': request_amount,
+            'Total_After': total_usage_after_approval,
+            'IsWarning': False,
+            'Message': 'Trong hạn mức ngân sách lũy kế.',
+            'Status': 'PASS'
+        }
+        
+        if is_over_budget:
+            msg = f"Nhóm '{parent_code}' vượt ngân sách lũy kế {shortage:,.0f} đ."
+            result['IsWarning'] = True
+            result['Message'] = msg
+            if control_level == 'HARD':
+                result['Status'] = 'BLOCK'
+            else:
+                result['Status'] = 'WARN'
+                
+        return result
+
+    def create_expense_request(self, user_code, dept_code, budget_code, amount, reason, object_id=None, attachments=None):
+        """
+        [UPDATED] Tạo đề nghị thanh toán mới (Có đính kèm file).
         """
         now = datetime.now()
         
@@ -162,64 +143,61 @@ class BudgetService:
         control_level = master_data[0]['ControlLevel']
         default_approver = master_data[0]['DefaultApprover']
 
-        # 2. Kiểm tra số dư ngân sách
+        # 2. Kiểm tra số dư ngân sách THÁNG
         status = self.get_budget_status(budget_code, dept_code, now.month, now.year)
         
         if amount > status['Remaining']:
             if control_level == 'HARD':
-                return {'success': False, 'message': f"Bị chặn: Vượt ngân sách khả dụng ({status['Remaining']:,.0f})."}
+                return {'success': False, 'message': f"Bị chặn: Vượt ngân sách tháng ({status['Remaining']:,.0f})."}
             else:
-                reason = f"[CẢNH BÁO VƯỢT NS] {reason}"
+                reason = f"[CẢNH BÁO VƯỢT THÁNG] {reason}"
 
-        # 3. Xác định người duyệt (Logic nâng cao)
+        # 3. Xác định người duyệt
         approver = default_approver
-        
-        # Nếu chưa có người duyệt HOẶC Người duyệt trùng với Người tạo (tránh tự duyệt)
         if not approver or approver == user_code:
-            # Lấy Cấp trên trực tiếp
             user_query = f"SELECT [CAP TREN] FROM {config.TEN_BANG_NGUOI_DUNG} WHERE USERCODE = ?"
             user_data = self.db.get_data(user_query, (user_code,))
             parent_approver = user_data[0]['CAP TREN'] if user_data else None
             
-            # Nếu Cấp trên cũng là mình (VD: CEO) -> Gán ADMIN
             if parent_approver == user_code:
                 approver = config.ROLE_ADMIN
             else:
                 approver = parent_approver or config.ROLE_ADMIN
 
-        # 4. Lưu vào DB
+        # 4. Lưu vào DB (Có Attachments)
         req_id = f"REQ-{now.strftime('%y%m')}-{int(datetime.now().timestamp())}"
         
         insert_query = f"""
             INSERT INTO {config.TABLE_EXPENSE_REQUEST} 
-            (RequestID, UserCode, DepartmentCode, BudgetCode, Amount, Reason, CurrentApprover, Status, ObjectID)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)
+            (RequestID, UserCode, DepartmentCode, BudgetCode, Amount, Reason, CurrentApprover, Status, ObjectID, Attachments)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
         """
         
-        if self.db.execute_non_query(insert_query, (req_id, user_code, dept_code, budget_code, amount, reason, approver, object_id)):
+        # Đảm bảo cột Attachments đã được thêm vào bảng EXPENSE_REQUEST trong SQL Server
+        # ALTER TABLE dbo.EXPENSE_REQUEST ADD Attachments NVARCHAR(MAX);
+        
+        if self.db.execute_non_query(insert_query, (req_id, user_code, dept_code, budget_code, amount, reason, approver, object_id, attachments)):
             return {'success': True, 'message': 'Đã gửi đề nghị thành công.', 'request_id': req_id}
             
         return {'success': False, 'message': 'Lỗi CSDL khi lưu đề nghị.'}
 
     def get_requests_for_approval(self, approver_code, user_role=''):
         """
-        Lấy danh sách phiếu chờ duyệt.
+        Lấy danh sách phiếu chờ duyệt (kèm thông tin kiểm tra YTD).
         """
         query_params = []
         role_check = str(user_role).strip().upper()
         
-        # [CONFIG]: Dùng ROLE_ADMIN
         if role_check in [config.ROLE_ADMIN, config.ROLE_GM]:
             where_clause = "R.Status = 'PENDING'"
         else:
             where_clause = "R.CurrentApprover = ? AND R.Status = 'PENDING'"
             query_params.append(approver_code)
 
-        # [CONFIG]: Thay thế tên bảng cứng bằng config
         query = f"""
             SELECT 
                 R.*, 
-                M.BudgetName, 
+                M.BudgetName, M.ParentCode,
                 U.SHORTNAME as RequesterName,
                 U2.SHORTNAME as CurrentApproverName
             FROM {config.TABLE_EXPENSE_REQUEST} R
@@ -232,18 +210,23 @@ class BudgetService:
         
         requests = self.db.get_data(query, tuple(query_params))
         
+        # Tính toán trạng thái YTD cho từng phiếu để hiển thị cảnh báo khi duyệt
         for req in requests:
             req['Amount'] = safe_float(req.get('Amount'))
-            check = self.check_budget_company_wide(req['BudgetCode'], req['Amount'])
-            req['GroupRemaining'] = check.get('group_remaining', 0)
-            req['IsWarning'] = req['Amount'] > check.get('group_remaining', 0)
+            
+            # Gọi hàm kiểm tra Lũy kế
+            check = self.check_budget_for_approval(req['BudgetCode'], req['Amount'])
+            
+            req['YTD_Plan'] = check['YTD_Plan']
+            req['YTD_Actual'] = check['YTD_Actual']
+            req['IsWarning'] = check['IsWarning']
+            req['WarningMsg'] = check['Message']
             
         return requests
 
     def approve_request(self, request_id, approver_code, action, note):
         """Xử lý Duyệt hoặc Từ chối."""
         new_status = 'APPROVED' if action == 'APPROVE' else 'REJECTED'
-        
         query = f"""
             UPDATE {config.TABLE_EXPENSE_REQUEST}
             SET Status = ?, 
@@ -256,7 +239,6 @@ class BudgetService:
 
     def get_request_detail_for_print(self, request_id):
         """Lấy chi tiết phiếu để in."""
-        # [CONFIG]: Thay tên bảng cứng
         query = f"""
             SELECT R.*, M.BudgetName, 
                    U1.SHORTNAME AS RequesterName, U1.[BO PHAN] AS RequesterDept,
@@ -270,17 +252,34 @@ class BudgetService:
         data = self.db.get_data(query, (request_id,))
         return data[0] if data else None
 
-    def get_approved_requests_for_payment(self):
-        """Lấy danh sách phiếu ĐÃ DUYỆT chờ thanh toán."""
-        # [CONFIG]: Thay tên bảng cứng
+    def get_payment_queue(self, from_date, to_date):
+        """
+        [UPDATED] Lấy danh sách phiếu Chờ chi & Đã chi (Đã thêm xử lý safe_float).
+        """
         query = f"""
-            SELECT R.*, U.SHORTNAME as RequesterName 
+            SELECT 
+                R.*, 
+                U.SHORTNAME as RequesterName,
+                M.ParentCode,
+                M.BudgetName
             FROM {config.TABLE_EXPENSE_REQUEST} R
             LEFT JOIN {config.TEN_BANG_NGUOI_DUNG} U ON R.UserCode = U.USERCODE
-            WHERE R.Status = 'APPROVED'
-            ORDER BY R.ApprovalDate ASC
+            LEFT JOIN {config.TABLE_BUDGET_MASTER} M ON R.BudgetCode = M.BudgetCode
+            WHERE R.Status IN ('APPROVED', 'PAID')
+              AND CAST(R.ApprovalDate AS DATE) >= ? 
+              AND CAST(R.ApprovalDate AS DATE) <= ?
+            ORDER BY 
+                CASE WHEN R.Status = 'APPROVED' THEN 0 ELSE 1 END,
+                R.ApprovalDate DESC
         """
-        return self.db.get_data(query)
+        data = self.db.get_data(query, (from_date, to_date))
+        
+        # [FIX QUAN TRỌNG]: Chuyển đổi số liệu an toàn để tránh lỗi Template
+        if data:
+            for row in data:
+                row['Amount'] = safe_float(row.get('Amount'))
+                
+        return data
 
     def process_payment(self, request_id, user_code, payment_ref, payment_date):
         """Xác nhận ĐÃ CHI."""
@@ -298,7 +297,7 @@ class BudgetService:
         """
         Lấy báo cáo YTD gom nhóm theo ReportGroup.
         """
-        # 1. Plan
+        # 1. Plan YTD (Theo ReportGroup)
         query_plan = f"""
             SELECT 
                 M.ReportGroup, PL.[Month], SUM(PL.BudgetAmount) as PlanAmount
@@ -309,21 +308,22 @@ class BudgetService:
         """
         plan_raw = self.db.get_data(query_plan, (year,))
 
-        # 2. Actual - [CONFIG]: Dùng EXCLUDE_ANA03_CP2014
+        # 2. Actual YTD (Theo Ana03ID = ParentCode)
+        # Vì Ana03ID trong GT9000 là ParentCode, cần map về ReportGroup
         query_actual = f"""
             SELECT Ana03ID, TranMonth, SUM(ConvertedAmount) as ActualAmount
             FROM {config.ERP_GIAO_DICH}
             WHERE TranYear = ? 
               AND Ana03ID IS NOT NULL 
-              AND Ana03ID <> '{config.EXCLUDE_ANA03_CP2014}'
+              AND (DebitAccountID LIKE '64%' OR DebitAccountID LIKE '811%')
             GROUP BY Ana03ID, TranMonth
         """
         actual_raw = self.db.get_data(query_actual, (year,))
         
-        # 3. Mapping
-        query_map = f"SELECT DISTINCT ERP_Ana03ID, ReportGroup FROM {config.TABLE_BUDGET_MASTER} WHERE ERP_Ana03ID IS NOT NULL"
+        # 3. Mapping ParentCode -> ReportGroup
+        query_map = f"SELECT DISTINCT ParentCode, ReportGroup FROM {config.TABLE_BUDGET_MASTER} WHERE ParentCode IS NOT NULL"
         mapping_raw = self.db.get_data(query_map)
-        ana03_to_group = {row['ERP_Ana03ID']: row['ReportGroup'] for row in mapping_raw if row['ERP_Ana03ID']} if mapping_raw else {}
+        ana03_to_group = {row['ParentCode']: row['ReportGroup'] for row in mapping_raw if row['ParentCode']} if mapping_raw else {}
 
         # 4. Aggregate
         groups_data = {}
@@ -364,11 +364,12 @@ class BudgetService:
     
     def get_expense_details_by_group(self, report_group, year):
         """Lấy chi tiết phiếu chi theo ReportGroup."""
-        ana_query = f"SELECT ERP_Ana03ID FROM {config.TABLE_BUDGET_MASTER} WHERE ReportGroup = ?"
+        # Update: Lấy theo ParentCode
+        ana_query = f"SELECT DISTINCT ParentCode FROM {config.TABLE_BUDGET_MASTER} WHERE ReportGroup = ?"
         ana_data = self.db.get_data(ana_query, (report_group,))
         
         if not ana_data: return []
-        ana_codes = [row['ERP_Ana03ID'] for row in ana_data if row['ERP_Ana03ID']]
+        ana_codes = [row['ParentCode'] for row in ana_data if row['ParentCode']]
         if not ana_codes: return []
         ana_str = "', '".join(ana_codes)
         
@@ -385,7 +386,6 @@ class BudgetService:
         if details:
             for row in details:
                 row['TotalAmount'] = safe_float(row['TotalAmount'])
-                # --- SỬA LỖI SYNTAX Ở ĐÂY ---
                 if row['VoucherDate']:
                     try:
                         row['VoucherDate'] = row['VoucherDate'].strftime('%d/%m/%Y')

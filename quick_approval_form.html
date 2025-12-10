@@ -2,13 +2,13 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Form Phê duyệt Nhanh (v2)</title>
+    <title>Form Phê duyệt Nhanh (v2.1 - AutoComplete)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        /* --- 1. CORE STYLES (Đồng bộ) --- */
+        /* --- 1. CORE STYLES --- */
         :root {
             --primary: #4318FF;
             --primary-light: #F4F7FE;
@@ -37,44 +37,59 @@
         /* --- 3. APPROVAL CARDS --- */
         .main-card {
             border: none; background: white; border-radius: var(--card-radius);
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); margin-bottom: 30px; overflow: hidden;
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); margin-bottom: 30px; overflow: visible; /* Để hiển thị dropdown tràn ra */
             transition: transform 0.2s;
         }
-        .main-card:hover { transform: translateY(-5px); }
-
+        
         .card-header-custom {
             padding: 20px 30px; font-weight: 700; font-size: 1.1rem;
             display: flex; align-items: center;
         }
         .card-header-custom i { font-size: 1.3rem; margin-right: 15px; }
         
-        /* Quote Header Style */
         .header-quote { background-color: var(--primary-light); color: var(--primary); }
-        
-        /* Order Header Style */
-        .header-order { background-color: #E6FDF5; color: var(--success); } /* Xanh lá nhạt */
+        .header-order { background-color: #E6FDF5; color: var(--success); }
 
         .card-body-custom { padding: 30px; }
 
-        /* --- 4. FORMS --- */
+        /* --- 4. FORMS & AUTOCOMPLETE --- */
         .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.95rem; margin-bottom: 10px; }
         
-        .form-select {
-            border: none; background-color: var(--input-bg); border-radius: 16px;
+        /* Input Search Style */
+        .search-input {
+            border: 2px solid var(--input-bg); background-color: white; border-radius: 16px;
             padding: 15px 20px; font-size: 1rem; color: var(--text-dark); box-shadow: none;
-            height: auto; cursor: pointer;
+            width: 100%; transition: all 0.2s;
         }
-        .form-select:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
+        .search-input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1); }
 
-        /* Custom Options Colors */
-        option.needs-override { background-color: #FFF8E1; color: #B71C1C; font-weight: 600; }
-        option.needs-fix { background-color: #FFEBEE; color: var(--danger); text-decoration: line-through; }
+        /* Dropdown List Style */
+        .autocomplete-wrapper { position: relative; }
+        
+        .autocomplete-list {
+            position: absolute; top: 100%; left: 0; width: 100%;
+            max-height: 300px; overflow-y: auto;
+            background: white; border: 1px solid #E0E5F2; border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            z-index: 1000; display: none; margin-top: 5px;
+        }
+        
+        .suggestion-item {
+            padding: 12px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer;
+            font-size: 0.95rem; color: var(--text-dark); transition: background 0.2s;
+        }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background-color: var(--primary-light); }
+        
+        /* Custom Colors for Suggestions (Copy from Options) */
+        .suggestion-item.needs-override { background-color: #FFF8E1; color: #B71C1C; font-weight: 600; border-left: 4px solid #FFC107; }
+        .suggestion-item.needs-fix { background-color: #FFEBEE; color: var(--danger); text-decoration: line-through; border-left: 4px solid var(--danger); opacity: 0.7; }
 
         /* Buttons */
         .btn-approve {
             width: 100%; padding: 15px; border-radius: 16px; font-weight: 700; font-size: 1rem;
             border: none; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px;
-            margin-top: 10px;
+            margin-top: 20px;
         }
         .btn-quote { background-color: var(--warning); color: white; box-shadow: 0 4px 15px rgba(255, 181, 71, 0.3); }
         .btn-quote:hover { background-color: #ffc107; transform: translateY(-2px); }
@@ -89,6 +104,9 @@
         }
         .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; transform: translateY(-2px); }
 
+        /* Hidden Select used for Logic */
+        .hidden-select { display: none; }
+
     </style>
 </head>
 <body>
@@ -98,15 +116,17 @@
             <p class="page-sub">Chỉ hiển thị các phiếu trong 90 ngày qua mà bạn có quyền duyệt.</p>
         </div>
 
-        <!-- CARD 1: QUOTE APPROVAL -->
         <div class="main-card">
             <div class="card-header-custom header-quote">
                 <i class="fas fa-certificate"></i> 1. Phê duyệt Chào Giá (Quotes)
             </div>
             <div class="card-body-custom">
-                <div class="mb-4">
-                    <label for="quoteSelect" class="form-label">Chọn Chào Giá cần duyệt:</label>
-                    <select id="quoteSelect" class="form-select">
+                <div class="autocomplete-wrapper">
+                    <label class="form-label">Tìm kiếm Chào Giá (Mã BG, Tên KH):</label>
+                    <input type="text" id="quoteSearchInput" class="search-input" placeholder="Gõ để tìm kiếm..." autocomplete="off">
+                    <div id="quoteSuggestions" class="autocomplete-list"></div>
+                    
+                    <select id="quoteSelect" class="hidden-select">
                         <option value="">-- Vui lòng chọn phiếu --</option>
                         {% for quote in quotes %}
                             {% set result = quote.ApprovalResult %}
@@ -129,21 +149,24 @@
                         {% endfor %}
                     </select>
                 </div>
+                
                 <button id="approveQuoteBtn" class="btn-approve btn-quote">
                     <i class="fas fa-check-double me-2"></i> Duyệt Chào Giá
                 </button>
             </div>
         </div>
 
-        <!-- CARD 2: ORDER APPROVAL -->
         <div class="main-card">
             <div class="card-header-custom header-order">
                 <i class="fas fa-shipping-fast"></i> 2. Phê duyệt Đơn Hàng Bán (SO)
             </div>
             <div class="card-body-custom">
-                <div class="mb-4">
-                    <label for="orderSelect" class="form-label">Chọn Đơn Hàng cần duyệt:</label>
-                    <select id="orderSelect" class="form-select">
+                <div class="autocomplete-wrapper">
+                    <label class="form-label">Tìm kiếm Đơn Hàng (Mã ĐH, Tên KH):</label>
+                    <input type="text" id="orderSearchInput" class="search-input" placeholder="Gõ để tìm kiếm..." autocomplete="off">
+                    <div id="orderSuggestions" class="autocomplete-list"></div>
+
+                    <select id="orderSelect" class="hidden-select">
                         <option value="">-- Vui lòng chọn phiếu --</option>
                         {% for order in orders %}
                             {% set result = order.ApprovalResult %}
@@ -159,13 +182,15 @@
                                     data-ratio="{{ result.ApprovalRatio | safe }}"
                                     data-is-pass="{{ is_pass | tojson }}"
                                     data-needs-override="{{ needs_override | tojson }}"
-                                    data-reason="{{ result.Reason }}">
+                                    data-reason="{{ result.Reason }}"
+                                    class="{% if is_failed_hard %}needs-fix{% elif needs_override %}needs-override{% endif %}">
                                 
                                 {{ order.OrderID }} - {{ order.ClientName }} (HS: {{ result.ApprovalRatio }})
                             </option>
                         {% endfor %}
                     </select>
                 </div>
+
                 <button id="approveOrderBtn" class="btn-approve btn-order">
                     <i class="fas fa-check-circle me-2"></i> Duyệt Đơn Hàng
                 </button>
@@ -182,15 +207,80 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- JAVASCRIPT LOGIC GIỮ NGUYÊN -->
     <script>
+        // --- HÀM XỬ LÝ AUTOCOMPLETE ---
+        function setupAutocomplete(inputId, listId, selectId) {
+            const input = document.getElementById(inputId);
+            const list = document.getElementById(listId);
+            const select = document.getElementById(selectId);
+            const options = Array.from(select.options).slice(1); // Bỏ option đầu tiên (placeholder)
+
+            // Sự kiện khi gõ phím
+            input.addEventListener('input', function() {
+                const term = this.value.toLowerCase();
+                list.innerHTML = '';
+                
+                if (term.length < 1) { 
+                    list.style.display = 'none'; 
+                    // Reset nếu xóa hết
+                    select.value = "";
+                    return; 
+                }
+
+                // Lọc options
+                const matches = options.filter(opt => opt.text.toLowerCase().includes(term));
+
+                if (matches.length > 0) {
+                    matches.forEach(opt => {
+                        const div = document.createElement('div');
+                        div.className = 'suggestion-item ' + opt.className; // Copy class màu sắc (vàng/đỏ)
+                        div.textContent = opt.text;
+                        
+                        div.onclick = function() {
+                            input.value = opt.text;
+                            select.value = opt.value; // Sync giá trị xuống select ẩn
+                            list.style.display = 'none';
+                        };
+                        
+                        list.appendChild(div);
+                    });
+                    list.style.display = 'block';
+                } else {
+                    list.innerHTML = '<div class="suggestion-item text-muted">Không tìm thấy kết quả.</div>';
+                    list.style.display = 'block';
+                }
+            });
+
+            // Sự kiện khi click vào input (để hiện lại list nếu có text)
+            input.addEventListener('focus', function() {
+                if(this.value.trim() !== "") {
+                    this.dispatchEvent(new Event('input'));
+                }
+            });
+
+            // Ẩn khi click ra ngoài
+            document.addEventListener('click', function(e) {
+                if (!input.contains(e.target) && !list.contains(e.target)) {
+                    list.style.display = 'none';
+                }
+            });
+        }
+
+        // Kích hoạt Autocomplete
+        document.addEventListener('DOMContentLoaded', function() {
+            setupAutocomplete('quoteSearchInput', 'quoteSuggestions', 'quoteSelect');
+            setupAutocomplete('orderSearchInput', 'orderSuggestions', 'orderSelect');
+        });
+
+        // --- GIỮ NGUYÊN LOGIC DUYỆT (Dựa trên Select ẩn) ---
         $(document).ready(function() {
 
             // --- XỬ LÝ NÚT DUYỆT BÁO GIÁ ---
             $('#approveQuoteBtn').on('click', function() {
                 const selected = $('#quoteSelect option:selected');
                 if (!selected.val()) {
-                    alert('Vui lòng chọn một Chào Giá.');
+                    alert('Vui lòng chọn một Chào Giá từ danh sách tìm kiếm.');
+                    $('#quoteSearchInput').focus();
                     return;
                 }
 
@@ -232,7 +322,9 @@
                 .then(({ ok, data }) => {
                     alert(data.message);
                     if (ok) {
-                        selected.remove(); // Xóa khỏi dropdown
+                        selected.remove(); // Xóa khỏi dropdown ẩn
+                        $('#quoteSearchInput').val(''); // Xóa text input
+                        $('#quoteSelect').val(''); // Reset value
                     }
                 })
                 .catch(error => {
@@ -247,7 +339,8 @@
             $('#approveOrderBtn').on('click', function() {
                 const selected = $('#orderSelect option:selected');
                 if (!selected.val()) {
-                    alert('Vui lòng chọn một Đơn Hàng Bán.');
+                    alert('Vui lòng chọn một Đơn Hàng từ danh sách tìm kiếm.');
+                    $('#orderSearchInput').focus();
                     return;
                 }
 
@@ -289,7 +382,9 @@
                 .then(({ ok, data }) => {
                     alert(data.message);
                     if (ok) {
-                        selected.remove(); // Xóa khỏi dropdown
+                        selected.remove();
+                        $('#orderSearchInput').val('');
+                        $('#orderSelect').val('');
                     }
                 })
                 .catch(error => {

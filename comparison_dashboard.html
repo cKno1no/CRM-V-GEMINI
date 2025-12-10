@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Phân tích So sánh Quản trị | Titan OS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+    <style>
+        :root {
+            --primary: #4318FF; --bg-light: #F4F7FE; --text-dark: #2B3674;
+            --success: #05CD99; --danger: #E31A1A; --card-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+        body { background-color: var(--bg-light); font-family: 'Inter', sans-serif; color: var(--text-dark); }
+        
+        .card-box {
+            background: white; border-radius: 16px; padding: 24px;
+            box-shadow: var(--card-shadow); border: none; height: 100%;
+        }
+        
+        .badge-trend {
+            padding: 5px 10px; border-radius: 20px; font-weight: 600; font-size: 0.8rem;
+            display: inline-flex; align-items: center; gap: 5px;
+        }
+        .trend-up { background-color: #E6FDF5; color: var(--success); }
+        .trend-down { background-color: #FFF5F5; color: var(--danger); }
+        
+        .filter-bar { background: white; padding: 15px 25px; border-radius: 16px; margin-bottom: 30px; box-shadow: var(--card-shadow); }
+        
+        .table-comp th { background-color: #FAFCFE; color: #A3AED0; font-weight: 600; border-bottom: 1px solid #eee; }
+        .table-comp td { vertical-align: middle; padding: 15px 10px; font-weight: 600; }
+        .col-highlight { background-color: #F4F7FE; }
+        
+        /* Hiệu ứng hover cho dòng có thể click */
+        .clickable-row { cursor: pointer; transition: background-color 0.2s; }
+        .clickable-row:hover { background-color: #f1f7ff !important; }
+        .clickable-row:hover td { color: var(--primary); }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4 px-4">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold m-0 text-dark">Phân tích So sánh</h2>
+                <p class="text-muted small mb-0">Đối chiếu hiệu quả hoạt động giữa các kỳ tài chính.</p>
+            </div>
+            <a href="/ceo_cockpit" class="btn btn-light fw-bold text-secondary border"><i class="fas fa-arrow-left me-2"></i>Về Cockpit</a>
+        </div>
+
+        <div class="filter-bar">
+            <form method="GET" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-secondary">Năm Gốc (Base Year)</label>
+                    <select name="year1" class="form-select fw-bold">
+                        {% for y in range(2020, 2030) %}
+                        <option value="{{ y }}" {% if y == year1 %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-1 text-center pb-2">
+                    <i class="fas fa-exchange-alt text-muted"></i>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-secondary">Năm So sánh (Target Year)</label>
+                    <select name="year2" class="form-select fw-bold text-primary">
+                        {% for y in range(2020, 2030) %}
+                        <option value="{{ y }}" {% if y == year2 %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="fas fa-sync-alt me-2"></i> Phân tích</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-12">
+                <div class="card-box p-0 overflow-hidden">
+                    <div class="table-responsive">
+                        <table class="table table-comp mb-0 text-center">
+                            <thead>
+                                <tr>
+                                    <th class="text-start ps-4">Chỉ tiêu (Đvt: Triệu VNĐ)</th>
+                                    <th>Năm {{ year1 }}</th>
+                                    <th class="col-highlight text-primary">Năm {{ year2 }}</th>
+                                    <th>Chênh lệch (+/-)</th>
+                                    <th>Tăng trưởng (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="clickable-row" onclick="showDetails('SALES', {{ year2 }}, 'Doanh số & LNG theo Nhóm hàng')">
+                                    <td class="text-start ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="icon-box bg-primary-subtle text-primary rounded p-2 me-3"><i class="fas fa-chart-line"></i></div>
+                                            <div>
+                                                <div class="text-dark">Doanh số Thuần <i class="fas fa-info-circle ms-1 text-muted small"></i></div>
+                                                <div class="small text-muted">Total Revenue</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-secondary">{{ "{:,.0f}".format(m1.Revenue/1000000) }}</td>
+                                    <td class="col-highlight fs-5">{{ "{:,.0f}".format(m2.Revenue/1000000) }}</td>
+                                    <td class="{{ 'text-success' if delta.Revenue.diff > 0 else 'text-danger' }}">
+                                        {{ "{:+,.0f}".format(delta.Revenue.diff/1000000) }}
+                                    </td>
+                                    <td>
+                                        <span class="badge-trend {{ 'trend-up' if delta.Revenue.percent > 0 else 'trend-down' }}">
+                                            <i class="fas fa-{{ 'arrow-up' if delta.Revenue.percent > 0 else 'arrow-down' }}"></i>
+                                            {{ "{:.1f}".format(delta.Revenue.percent | abs) }}%
+                                        </span>
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td class="text-start ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="icon-box bg-success-subtle text-success rounded p-2 me-3"><i class="fas fa-coins"></i></div>
+                                            <div>
+                                                <div class="text-dark">Lợi nhuận Gộp (LNG)</div>
+                                                <div class="small text-muted">Gross Profit</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-secondary">{{ "{:,.0f}".format(m1.GrossProfit/1000000) }}</td>
+                                    <td class="col-highlight fs-5">{{ "{:,.0f}".format(m2.GrossProfit/1000000) }}</td>
+                                    <td class="{{ 'text-success' if delta.GrossProfit.diff > 0 else 'text-danger' }}">
+                                        {{ "{:+,.0f}".format(delta.GrossProfit.diff/1000000) }}
+                                    </td>
+                                    <td>
+                                        <span class="badge-trend {{ 'trend-up' if delta.GrossProfit.percent > 0 else 'trend-down' }}">
+                                            <i class="fas fa-{{ 'arrow-up' if delta.GrossProfit.percent > 0 else 'arrow-down' }}"></i>
+                                            {{ "{:.1f}".format(delta.GrossProfit.percent | abs) }}%
+                                        </span>
+                                    </td>
+                                </tr>
+
+                                <tr class="clickable-row" onclick="showDetails('EXPENSE', {{ year2 }}, 'Chi tiết Chi phí Hoạt động')">
+                                    <td class="text-start ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="icon-box bg-warning-subtle text-warning rounded p-2 me-3"><i class="fas fa-file-invoice-dollar"></i></div>
+                                            <div>
+                                                <div class="text-dark">Chi phí Hoạt động <i class="fas fa-info-circle ms-1 text-muted small"></i></div>
+                                                <div class="small text-muted">OpEx (641, 642, 811)</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-secondary">{{ "{:,.0f}".format(m1.Expenses/1000000) }}</td>
+                                    <td class="col-highlight fs-5">{{ "{:,.0f}".format(m2.Expenses/1000000) }}</td>
+                                    <td class="{{ 'text-danger' if delta.Expenses.diff > 0 else 'text-success' }}">
+                                        {{ "{:+,.0f}".format(delta.Expenses.diff/1000000) }}
+                                    </td>
+                                    <td>
+                                        <span class="badge-trend {{ 'trend-down' if delta.Expenses.percent > 0 else 'trend-up' }}">
+                                            <i class="fas fa-{{ 'arrow-up' if delta.Expenses.percent > 0 else 'arrow-down' }}"></i>
+                                            {{ "{:.1f}".format(delta.Expenses.percent | abs) }}%
+                                        </span>
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td class="text-start ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="icon-box bg-primary-subtle text-primary rounded p-2 me-3"><i class="fas fa-piggy-bank"></i></div>
+                                            <div>
+                                                <div class="text-dark fw-bold">Lợi nhuận Ròng</div>
+                                                <div class="small text-muted">Net Profit</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-secondary">{{ "{:,.0f}".format(m1.NetProfit/1000000) }}</td>
+                                    <td class="col-highlight fs-5 fw-bold text-success">{{ "{:,.0f}".format(m2.NetProfit/1000000) }}</td>
+                                    <td class="{{ 'text-success' if delta.NetProfit.diff > 0 else 'text-danger' }}">
+                                        {{ "{:+,.0f}".format(delta.NetProfit.diff/1000000) }}
+                                    </td>
+                                    <td>
+                                        <span class="badge-trend {{ 'trend-up' if delta.NetProfit.percent > 0 else 'trend-down' }}">
+                                            <i class="fas fa-{{ 'arrow-up' if delta.NetProfit.percent > 0 else 'arrow-down' }}"></i>
+                                            {{ "{:.1f}".format(delta.NetProfit.percent | abs) }}%
+                                        </span>
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td class="text-start ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="icon-box bg-info-subtle text-info rounded p-2 me-3"><i class="fas fa-gem"></i></div>
+                                            <div>
+                                                <div class="text-dark">Lợi nhuận VIP</div>
+                                                <div class="small text-muted">Cross-sell Profit</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-secondary">{{ "{:,.0f}".format(m1.VIPProfit/1000000) }}</td>
+                                    <td class="col-highlight fs-5">{{ "{:,.0f}".format(m2.VIPProfit/1000000) }}</td>
+                                    <td class="{{ 'text-success' if delta.VIPProfit.diff > 0 else 'text-danger' }}">
+                                        {{ "{:+,.0f}".format(delta.VIPProfit.diff/1000000) }}
+                                    </td>
+                                    <td>
+                                        <span class="badge-trend {{ 'trend-up' if delta.VIPProfit.percent > 0 else 'trend-down' }}">
+                                            <i class="fas fa-{{ 'arrow-up' if delta.VIPProfit.percent > 0 else 'arrow-down' }}"></i>
+                                            {{ "{:.1f}".format(delta.VIPProfit.percent | abs) }}%
+                                        </span>
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td class="text-start ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="icon-box bg-secondary-subtle text-dark rounded p-2 me-3"><i class="fas fa-shipping-fast"></i></div>
+                                            <div>
+                                                <div class="text-dark">Giao hàng Đúng hạn (OTIF)</div>
+                                                <div class="small text-muted">Service Level</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-secondary">{{ "{:.1f}".format(m1.OTIF) }}%</td>
+                                    <td class="col-highlight fs-5">{{ "{:.1f}".format(m2.OTIF) }}%</td>
+                                    <td class="{{ 'text-success' if delta.OTIF.diff > 0 else 'text-danger' }}">
+                                        {{ "{:+.1f}".format(delta.OTIF.diff) }}%
+                                    </td>
+                                    <td>-</td>
+                                </tr>
+
+                                <tr class="clickable-row" onclick="showDetails('AR', {{ year2 }}, 'Phân tích Tuổi nợ Phải thu')">
+                                    <td class="text-start ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="icon-box bg-danger-subtle text-danger rounded p-2 me-3"><i class="fas fa-file-invoice-dollar"></i></div>
+                                            <div>
+                                                <div class="text-dark">Dư nợ Phải thu (131) <i class="fas fa-info-circle ms-1 text-muted small"></i></div>
+                                                <div class="small text-muted">Cuối kỳ</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-secondary">{{ "{:,.0f}".format(m1.AR_Balance/1000000) }}</td>
+                                    <td class="col-highlight fs-5 fw-bold">{{ "{:,.0f}".format(m2.AR_Balance/1000000) }}</td>
+                                    <td class="{{ 'text-success' if delta.AR_Balance.diff < 0 else 'text-danger' }}">
+                                        {{ "{:+,.0f}".format(delta.AR_Balance.diff/1000000) }}
+                                    </td>
+                                    <td>-</td>
+                                </tr>
+
+                                <tr class="clickable-row" onclick="showDetails('INVENTORY', {{ year2 }}, 'Phân tích Tuổi Tồn kho')">
+                                    <td class="text-start ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="icon-box bg-warning-subtle text-warning rounded p-2 me-3"><i class="fas fa-warehouse"></i></div>
+                                            <div>
+                                                <div class="text-dark">Giá trị Tồn kho <i class="fas fa-info-circle ms-1 text-muted small"></i></div>
+                                                <div class="small text-muted">Cuối kỳ</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-secondary">{{ "{:,.0f}".format(m1.Inv_Balance/1000000) }}</td>
+                                    <td class="col-highlight fs-5 fw-bold">{{ "{:,.0f}".format(m2.Inv_Balance/1000000) }}</td>
+                                    <td class="{{ 'text-success' if delta.Inv_Balance.diff < 0 else 'text-danger' }}">
+                                        {{ "{:+,.0f}".format(delta.Inv_Balance.diff/1000000) }}
+                                    </td>
+                                    <td>-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card-box">
+                    <h5 class="fw-bold mb-4">So sánh Xu hướng Doanh thu (Tháng)</h5>
+                    <div id="revenueTrendChart" style="height: 350px;"></div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card-box">
+                    <h5 class="fw-bold mb-4">Cơ cấu Lợi nhuận (Năm {{ year2 }})</h5>
+                    <div id="profitStructureChart" style="height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="modal fade" id="drilldownModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold text-primary" id="drilldownTitle">Chi tiết</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive" style="max-height: 500px;">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="ps-4 py-3">Hạng mục / Nhóm</th>
+                                    <th class="text-end py-3">Giá trị (VNĐ)</th>
+                                    <th class="text-end pe-4 py-3" id="colSubValue">...</th>
+                                </tr>
+                            </thead>
+                            <tbody id="drilldownBody">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 1. DỮ LIỆU CHART
+        const chartData = {{ chart_data | tojson }};
+        const m2 = {{ m2 | tojson }};
+        
+        // 2. BIỂU ĐỒ XU HƯỚNG
+        var optionsTrend = {
+            series: [
+                { name: 'Năm {{ year1 }}', data: chartData.y1 },
+                { name: 'Năm {{ year2 }}', data: chartData.y2 }
+            ],
+            chart: { type: 'area', height: 350, toolbar: { show: false }, fontFamily: 'Inter' },
+            colors: ['#A3AED0', '#4318FF'], // Năm cũ xám, năm mới xanh
+            stroke: { curve: 'smooth', width: 3, dashArray: [5, 0] }, 
+            fill: { type: 'gradient', gradient: { opacityFrom: 0.3, opacityTo: 0.05 } },
+            dataLabels: { enabled: false },
+            xaxis: { categories: ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'] },
+            yaxis: { labels: { formatter: (val) => (val/1000000000).toFixed(1) + ' Tỷ' } },
+            legend: { position: 'top' },
+            tooltip: { y: { formatter: (val) => new Intl.NumberFormat('vi-VN').format(val) + ' VNĐ' } }
+        };
+        new ApexCharts(document.querySelector("#revenueTrendChart"), optionsTrend).render();
+
+        // 3. BIỂU ĐỒ CƠ CẤU
+        var optionsPie = {
+            series: [m2.GrossProfit, m2.Expenses],
+            labels: ['Lợi nhuận Gộp', 'Chi phí HĐ'],
+            chart: { type: 'donut', height: 350, fontFamily: 'Inter' },
+            colors: ['#05CD99', '#FFB547'],
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '70%',
+                        labels: {
+                            show: true,
+                            total: {
+                                show: true, label: 'Lợi nhuận Ròng',
+                                formatter: function (w) {
+                                    const net = m2.NetProfit;
+                                    return (net / 1000000).toFixed(0) + "M";
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            legend: { position: 'bottom' },
+            dataLabels: { enabled: false }
+        };
+        new ApexCharts(document.querySelector("#profitStructureChart"), optionsPie).render();
+
+        // 4. HÀM DRILLDOWN
+        function showDetails(metricType, year, title) {
+            const modal = new bootstrap.Modal(document.getElementById('drilldownModal'));
+            const tbody = document.getElementById('drilldownBody');
+            const titleEl = document.getElementById('drilldownTitle');
+            const subHead = document.getElementById('colSubValue');
+            
+            titleEl.innerText = `${title} (Năm ${year})`;
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-3"></i><br>Đang tải dữ liệu chi tiết...</td></tr>';
+            
+            // Cấu hình tiêu đề cột phụ
+            if (metricType === 'SALES') subHead.innerText = 'Lợi nhuận Gộp';
+            else subHead.innerText = '';
+
+            modal.show();
+
+            fetch(`/api/executive/drilldown?metric=${metricType}&year=${year}`)
+                .then(r => r.json())
+                .then(data => {
+                    tbody.innerHTML = '';
+                    if (data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">Không có dữ liệu chi tiết.</td></tr>';
+                        return;
+                    }
+
+                    data.forEach(item => {
+                        let subValHtml = '';
+                        if (metricType === 'SALES') {
+                            const margin = (item.Value > 0) ? (item.SubValue / item.Value * 100) : 0;
+                            subValHtml = `
+                                <div class="fw-bold text-success">${new Intl.NumberFormat('vi-VN').format(item.SubValue)}</div>
+                                <small class="text-muted" style="font-size: 0.75rem;">Biên: ${margin.toFixed(1)}%</small>
+                            `;
+                        }
+
+                        const row = `
+                            <tr>
+                                <td class="ps-4 fw-medium text-dark">${item.Label}</td>
+                                <td class="text-end fw-bold text-primary font-monospace fs-6">
+                                    ${new Intl.NumberFormat('vi-VN').format(item.Value)}
+                                </td>
+                                <td class="text-end pe-4">${subValHtml}</td>
+                            </tr>
+                        `;
+                        tbody.insertAdjacentHTML('beforeend', row);
+                    });
+                })
+                .catch(err => {
+                    console.error(err);
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger py-4">Lỗi kết nối máy chủ.</td></tr>';
+                });
+        }
+    </script>
+</body>
+</html>

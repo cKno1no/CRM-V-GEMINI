@@ -1,4 +1,4 @@
-# db_manager.py
+﻿# db_manager.py
 
 import pyodbc
 import pandas as pd
@@ -76,11 +76,11 @@ class DBManager:
             else:
                  df = pd.read_sql(query, conn)
             
-            # Xử lý cột CAP TREN (Tránh lỗi NoneType đặc thù)
+            # Xử lý cột CAP TREN (Tránh LOI NoneType đặc thù)
             if config.TEN_BANG_NGUOI_DUNG.strip('[]') in query and 'CAP TREN' in df.columns:
                 df['CAP TREN'] = df['CAP TREN'].fillna('').astype(str) 
 
-            # LÀM SẠCH CHUỖI VÀ CHUYỂN VỀ DICT (FIX LỖI UNICODE TẠI ĐÂY)
+            # LÀM SẠCH CHUỖI VÀ CHUYỂN VỀ DICT (FIX LOI UNICODE TẠI ĐÂY)
             for col in df.select_dtypes(include=['object']).columns:
                  
                  # Hàm xử lý từng ô dữ liệu an toàn
@@ -93,7 +93,7 @@ class DBManager:
                                  return x.decode(encoding)
                              except UnicodeDecodeError:
                                  continue
-                         # Nếu tất cả thất bại, ép giải mã và bỏ qua ký tự lỗi
+                         # Nếu tất cả thất bại, ép giải mã và bỏ qua ký tự LOI
                          return x.decode('utf-8', errors='ignore')
                      return str(x).strip()
 
@@ -104,11 +104,19 @@ class DBManager:
 
         except pyodbc.Error as ex:
             sqlstate = ex.args[0]
-            print(f"LỖI SQL - CODE: {sqlstate}, QUERY: {query}")
+            print(f"LOI SQL - CODE: {sqlstate}, QUERY: {query}")
             return None
         except Exception as e:
-            print(f"LỖI HỆ THỐNG (get_data): {e}")
-            return None
+                # DÒNG GÂY LOI ĐANG LÀ:
+                # print(f"LOI HỆ THỐNG (get_data): {e}")
+                
+                # SỬA THÀNH: (Encode sang ascii để tránh LOI in ấn, hoặc bỏ tiếng Việt có dấu)
+                try:
+                    print(f"LOI HE THONG (get_data): {str(e).encode('utf-8', errors='ignore').decode('utf-8')}")
+                except:
+                    print("LOI HE THONG (get_data): Khong the in chi tiet loi unicode")
+                    
+                return None
         finally:
             if conn:
                 conn.close()
@@ -127,7 +135,7 @@ class DBManager:
             return True
         except pyodbc.Error as ex:
             sqlstate = ex.args[0]
-            print(f"LỖI SQL - CODE: {sqlstate}, QUERY: {query}")
+            print(f"LOI SQL - CODE: {sqlstate}, QUERY: {query}")
             return False
         finally:
             if conn:
@@ -168,7 +176,7 @@ class DBManager:
                     if data:
                         df = pd.DataFrame.from_records(data, columns=columns)
                         
-                        # Áp dụng logic làm sạch tương tự (FIX LỖI UNICODE CHO SP)
+                        # Áp dụng logic làm sạch tương tự (FIX LOI UNICODE CHO SP)
                         for col in df.select_dtypes(include=['object']).columns:
                              df[col] = df[col].apply(lambda x: str(x).strip() if x is not None else '').replace(['nan', 'None'], '')
                              
@@ -183,7 +191,7 @@ class DBManager:
             
         except pyodbc.Error as ex:
             sqlstate = ex.args[0]
-            print(f"LỖI SQL SP - CODE: {sqlstate}, SP: {sp_name}, Params: {params}")
+            print(f"LOI SQL SP - CODE: {sqlstate}, SP: {sp_name}, Params: {params}")
             return [[]] 
         finally:
             if conn:
@@ -193,7 +201,7 @@ class DBManager:
         try:
             return pyodbc.connect(self.conn_str)
         except pyodbc.Error as ex:
-            print(f"LỖI KẾT NỐI CSDL: {ex.args[0]}") 
+            print(f"LOI KẾT NỐI CSDL: {ex.args[0]}") 
             raise 
             
     def commit(self, conn):
@@ -213,7 +221,7 @@ class DBManager:
                 cursor.execute(query)
             return cursor.rowcount
         except pyodbc.Error as ex:
-            print(f"LỖI SQL TRADING: {ex.args[0]}")
+            print(f"LOI SQL TRADING: {ex.args[0]}")
             raise 
         
     def write_audit_log(self, user_code, action_type, severity, details, ip_address):
@@ -229,7 +237,7 @@ class DBManager:
             cursor.execute(query, (user_code, action_type, severity, details, ip_address))
             conn.commit()
         except Exception as e:
-            print(f"LỖI GHI AUDIT LOG (Bỏ qua): {e}")
+            print(f"LOI GHI AUDIT LOG (Bỏ qua): {e}")
         finally:
             if conn:
                 conn.close()
@@ -251,7 +259,7 @@ class DBManager:
             conn.commit()
             return int(log_id)
         except pyodbc.Error as ex:
-            print(f"LỖI SQL - TASK LOG: {ex.args[0]}")
+            print(f"LOI SQL - TASK LOG: {ex.args[0]}")
             return None
         finally:
             if conn:

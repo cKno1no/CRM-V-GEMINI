@@ -61,7 +61,7 @@ class ARAgingService:
             LEFT JOIN
                 {config.TEN_BANG_NGUOI_DUNG} AS T3 ON T2.[PHU TRACH DS] = T3.USERCODE
             WHERE 
-                T1.TotalDebt > 1 
+                T1.TotalDebt > {config.RISK_DEBT_VALUE} 
                 AND {where_clause}
             ORDER BY 
                 T1.TotalOverdueDebt DESC, T1.TotalDebt DESC

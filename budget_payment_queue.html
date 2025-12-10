@@ -8,53 +8,126 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { background-color: #F4F7FE; font-family: 'Inter', sans-serif; }
-        .table th { background-color: #e9ecef; font-size: 0.85rem; text-transform: uppercase; }
+        .table th { background-color: #e9ecef; font-size: 0.85rem; text-transform: uppercase; vertical-align: middle; }
+        .table td { vertical-align: middle; font-size: 0.9rem; }
+        
+        /* Status Badges */
+        .status-badge { font-size: 0.75rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; }
+        .bg-approved { background-color: #E6FDF5; color: #05CD99; border: 1px solid #05CD99; }
+        .bg-paid { background-color: #F1F2F4; color: #6C757D; border: 1px solid #DEE2E6; }
+
         .btn-pay { background-color: #05CD99; color: white; border: none; }
         .btn-pay:hover { background-color: #04b688; color: white; }
     </style>
 </head>
 <body>
     <div class="container-fluid p-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="text-primary fw-bold"><i class="fas fa-money-check-alt me-2"></i>Hàng Đợi Thanh Toán (Payment Queue)</h3>
-            <span class="badge bg-warning text-dark fs-6">Chờ chi: {{ pending_count }} phiếu</span>
+        
+        <div class="d-flex justify-content-between align-items-end mb-4">
+            <div>
+                <h3 class="text-primary fw-bold mb-1"><i class="fas fa-money-check-alt me-2"></i>Sổ Quỹ & Thanh Toán</h3>
+                <p class="text-muted small mb-0">Tra cứu và xác nhận chi tiền (Giới hạn tra cứu: 60 ngày).</p>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <a href="/budget/dashboard" class="btn btn-outline-secondary fw-bold">
+                    <i class="fas fa-arrow-left me-1"></i> Quay lại
+                </a>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body py-3">
+                <form method="GET" action="/budget/payment" class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold text-secondary">Từ ngày</label>
+                        <input type="date" name="from_date" class="form-control" value="{{ from_date }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold text-secondary">Đến ngày</label>
+                        <input type="date" name="to_date" class="form-control" value="{{ to_date }}">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">
+                            <i class="fas fa-filter me-1"></i> Lọc
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <div class="card border-0 shadow-sm rounded-4">
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
                             <tr>
-                                <th class="ps-4">Mã Phiếu</th>
+                                <th class="ps-4">Trạng thái</th>
                                 <th>Ngày duyệt</th>
+                                <th>Mã Phiếu</th>
                                 <th>Người đề nghị</th>
-                                <th>Khoản mục</th>
+                                <th>Mã Nhóm (ERP)</th>
                                 <th>Đối tượng</th>
                                 <th class="text-end">Số tiền</th>
-                                <th>Nội dung</th>
+                                <th>UNC / Ref</th>
                                 <th class="text-center">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for req in approved_list %}
-                            <tr id="row-{{ req.RequestID }}">
-                                <td class="ps-4 fw-bold text-primary">{{ req.RequestID }}</td>
-                                <td>{{ req.ApprovalDate.strftime('%d/%m %H:%M') }}</td>
-                                <td>{{ req.RequesterName }}</td>
-                                <td><span class="badge bg-light text-dark border">{{ req.BudgetCode }}</span></td>
-                                <td class="text-primary fw-bold">{{ req.ObjectID or '--' }}</td>
-                                <td class="text-end fw-bold fs-6 text-danger">{{ "{:,.0f}".format(req.Amount) }}</td>
-                                <td class="small text-muted" style="max-width: 250px;">{{ req.Reason }}</td>
+                            <tr id="row-{{ req.RequestID }}" class="{{ 'table-light text-muted' if req.Status == 'PAID' else '' }}">
+                                <td class="ps-4">
+                                    {% if req.Status == 'APPROVED' %}
+                                        <span class="status-badge bg-approved">CHỜ CHI</span>
+                                    {% else %}
+                                        <span class="status-badge bg-paid">ĐÃ CHI</span>
+                                    {% endif %}
+                                </td>
+                                
+                                <td>{{ req.ApprovalDate.strftime('%d/%m/%Y') }}</td>
+                                
+                                <td class="fw-bold font-monospace small">{{ req.RequestID }}</td>
+                                
+                                <td>
+                                    <div class="fw-bold small">{{ req.RequesterName }}</div>
+                                    <div class="text-muted small" style="font-size: 0.75rem;">{{ req.BudgetName }}</div>
+                                </td>
+                                
+                                <td>
+                                    <span class="badge bg-warning text-dark border border-warning-subtle">
+                                        {{ req.ParentCode }}
+                                    </span>
+                                </td>
+
+                                <td class="text-primary fw-bold small">{{ req.ObjectID or '--' }}</td>
+                                
+                                <td class="text-end fw-bold {{ 'text-danger' if req.Status == 'APPROVED' else 'text-secondary' }}">
+                                    {{ "{:,.0f}".format(req.Amount) }}
+                                </td>
+                                
+                                <td class="small font-monospace text-muted">
+                                    {% if req.Status == 'PAID' %}
+                                        <div>{{ req.PaymentRef }}</div>
+                                        <div style="font-size: 0.7rem;">{{ req.PaymentDate }}</div>
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+
                                 <td class="text-center">
-                                    <button class="btn btn-pay btn-sm px-3 py-1 rounded-pill fw-bold" 
-                                            onclick="openPayModal('{{ req.RequestID }}', {{ req.Amount }})">
-                                        <i class="fas fa-check me-1"></i> CHI TIỀN
-                                    </button>
+                                    {% if req.Status == 'APPROVED' %}
+                                        <button class="btn btn-pay btn-sm px-3 py-1 rounded-3 fw-bold" onclick="openPayModal('{{ req.RequestID }}', {{ req.Amount }})">
+                                            <i class="fas fa-file-invoice-dollar me-1"></i> Chi
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-light btn-sm px-3 py-1 rounded-3 border" disabled>
+                                            <i class="fas fa-check me-1"></i> Xong
+                                        </button>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="8" class="text-center py-5 text-muted">Không có phiếu nào đang chờ chi.</td></tr>
+                            <tr><td colspan="9" class="text-center py-5 text-muted">Không có dữ liệu trong khoảng thời gian này.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -64,35 +137,33 @@
     </div>
 
     <div class="modal fade" id="payModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title">Xác nhận Thực Chi</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title fw-bold">Xác nhận Thực chi</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <input type="hidden" id="payRequestId">
+                    
+                    <div class="mb-3 text-center">
+                        <div class="text-muted small mb-1">Số tiền chi trả</div>
+                        <h2 class="text-success fw-bold" id="payAmountDisplay">0 VNĐ</h2>
+                        <div class="badge bg-light text-dark border mt-1" id="payRequestDisplay">REQ-...</div>
+                    </div>
+
                     <div class="mb-3">
-                        <label class="form-label">Mã Phiếu:</label>
-                        <input type="text" id="payRequestDisplay" class="form-control-plaintext fw-bold" readonly>
+                        <label class="form-label fw-bold small">Số chứng từ (UNC/PC)</label>
+                        <input type="text" class="form-control" id="payRefNo" placeholder="VD: UNC12345">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Số tiền:</label>
-                        <input type="text" id="payAmountDisplay" class="form-control-plaintext fw-bold text-danger fs-5" readonly>
+                        <label class="form-label fw-bold small">Ngày thanh toán</label>
+                        <input type="date" class="form-control" id="payDate" value="{{ current_date }}">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Số chứng từ (UNC/PC) <span class="text-danger">*</span></label>
-                        <input type="text" id="payRefNo" class="form-control" placeholder="VD: UNC12345">
-                        <small class="text-muted">Nhập số phiếu chi hoặc UNC ngân hàng để tham chiếu.</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Ngày thực chi</label>
-                        <input type="date" id="payDate" class="form-control" value="{{ now.strftime('%Y-%m-%d') }}">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="button" class="btn btn-success fw-bold" onclick="submitPayment()">XÁC NHẬN ĐÃ CHI</button>
+                    
+                    <button type="button" class="btn btn-success w-100 fw-bold py-2 mt-2" onclick="submitPayment()">
+                        <i class="fas fa-check-circle me-2"></i> Xác nhận Đã chi
+                    </button>
                 </div>
             </div>
         </div>
@@ -104,9 +175,10 @@
 
         function openPayModal(reqId, amount) {
             document.getElementById('payRequestId').value = reqId;
-            document.getElementById('payRequestDisplay').value = reqId;
-            document.getElementById('payAmountDisplay').value = new Intl.NumberFormat('vi-VN').format(amount) + ' VNĐ';
+            document.getElementById('payRequestDisplay').innerText = reqId;
+            document.getElementById('payAmountDisplay').innerText = new Intl.NumberFormat('vi-VN').format(amount) + ' VNĐ';
             document.getElementById('payRefNo').value = '';
+            document.getElementById('payDate').value = new Date().toISOString().split('T')[0];
             payModal.show();
         }
 
@@ -115,7 +187,9 @@
             const refNo = document.getElementById('payRefNo').value.trim();
             const payDate = document.getElementById('payDate').value;
 
-            if (!refNo) { alert("Vui lòng nhập Số chứng từ (UNC/PC)."); return; }
+            if (!refNo) { alert("Vui lòng nhập Số chứng từ (UNC/PC) để đối chiếu."); return; }
+
+            if(!confirm("Xác nhận đã thực hiện thanh toán cho phiếu này?")) return;
 
             fetch('/api/budget/pay', {
                 method: 'POST',
@@ -125,13 +199,13 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    alert("Đã xác nhận chi thành công!");
-                    payModal.hide();
-                    document.getElementById('row-' + reqId).remove(); // Xóa dòng khỏi bảng
+                    alert("Thành công!");
+                    location.reload(); // Reload lại để cập nhật trạng thái
                 } else {
                     alert("Lỗi: " + data.message);
                 }
-            });
+            })
+            .catch(err => alert("Lỗi kết nối server."));
         }
     </script>
 </body>

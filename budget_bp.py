@@ -1,11 +1,31 @@
 # blueprints/budget_bp.py
 
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash
-
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash, current_app
 from utils import login_required
-from datetime import datetime
+from datetime import datetime, timedelta
+import os
+from werkzeug.utils import secure_filename
 import config
 budget_bp = Blueprint('budget_bp', __name__)
+
+# Helper lưu file (Tái sử dụng logic từ app.py hoặc định nghĩa tại đây)
+def save_budget_files(files):
+    if not files: return None
+    saved_filenames = []
+    upload_path = config.UPLOAD_FOLDER_PATH
+    if not os.path.exists(upload_path): os.makedirs(upload_path)
+    
+    now_str = datetime.now().strftime("%Y%m%d%H%M%S")
+    for file in files:
+        if file and file.filename:
+            filename = secure_filename(file.filename)
+            unique_filename = f"BUD_{now_str}_{filename}"
+            try:
+                file.save(os.path.join(upload_path, unique_filename))
+                saved_filenames.append(unique_filename)
+            except Exception as e:
+                print(f"Save file error: {e}")
+    return ";".join(saved_filenames) if saved_filenames else None
 
 @budget_bp.route('/budget/dashboard', methods=['GET'])
 @login_required
@@ -87,7 +107,7 @@ def api_search_objects(search_term):
 @budget_bp.route('/api/budget/check_balance', methods=['POST'])
 @login_required
 def api_check_balance():
-    """API: Kiểm tra số dư khi user chọn mã chi phí."""
+    """API: Kiểm tra số dư (Logic THÁNG) khi user tạo phiếu."""
     from app import budget_service
     data = request.json
     
@@ -102,17 +122,30 @@ def api_check_balance():
 @budget_bp.route('/api/budget/submit_request', methods=['POST'])
 @login_required
 def api_submit_request():
-    """API: Gửi đề nghị thanh toán."""
+    """
+    [UPDATED] API: Gửi đề nghị thanh toán (Hỗ trợ File Upload).
+    Lưu ý: Client phải gửi FormData thay vì JSON.
+    """
     from app import budget_service
-    data = request.json
+    
+    # Lấy dữ liệu từ Form (do gửi kèm file nên không dùng request.json)
+    budget_code = request.form.get('budget_code')
+    amount = float(request.form.get('amount', 0))
+    reason = request.form.get('reason')
+    object_id = request.form.get('object_id')
+    
+    # Xử lý File
+    files = request.files.getlist('attachments')
+    attachments_str = save_budget_files(files)
     
     result = budget_service.create_expense_request(
         user_code=session.get('user_code'),
         dept_code=session.get('bo_phan', 'KD'),
-        budget_code=data.get('budget_code'),
-        amount=float(data.get('amount')),
-        reason=data.get('reason'),
-        object_id=data.get('object_id') # [UPDATE] Lấy thêm ObjectID
+        budget_code=budget_code,
+        amount=amount,
+        reason=reason,
+        object_id=object_id,
+        attachments=attachments_str # Truyền chuỗi tên file
     )
     return jsonify(result)
 
@@ -144,29 +177,50 @@ def print_request_voucher(request_id):
 
 @budget_bp.route('/budget/payment', methods=['GET'])
 @login_required
-def budget_payment_queue():
-    """Giao diện Hàng đợi Thanh toán (Chỉ dành cho Admin & Kế toán trưởng)."""
+def payment_queue():
+    """Giao diện Hàng đợi Thanh toán (Payment Queue) cho Kế toán."""
     from app import budget_service
     
-    # 1. Lấy thông tin quyền hạn từ Session
-    user_role = session.get('user_role', '').strip().upper()
+    # 1. Xử lý khoảng thời gian (Mặc định 2 tuần)
+    today = datetime.now().date()
+    default_from = today - timedelta(days=14)
     
-    # Lấy chức vụ (vừa thêm ở Bước 1)
-    user_chuc_vu = session.get('chuc_vu', '').strip().upper()
+    from_date_str = request.args.get('from_date', default_from.strftime('%Y-%m-%d'))
+    to_date_str = request.args.get('to_date', today.strftime('%Y-%m-%d'))
     
-    # 2. KIỂM TRA QUYỀN (LOGIC MỚI)
-    # Chỉ cho phép nếu là ADMIN hoặc Chức vụ là 'KT TRUONG'
-    if user_role != config.ROLE_ADMIN and user_chuc_vu != 'KT TRUONG':
-        flash("Bạn không có quyền truy cập vào trang thực hiện thanh toán.", "danger")
-        return redirect(url_for('budget_bp.budget_dashboard'))
+    try:
+        from_date = datetime.strptime(from_date_str, '%Y-%m-%d').date()
+        to_date = datetime.strptime(to_date_str, '%Y-%m-%d').date()
         
-    # 3. Nếu đúng quyền, lấy dữ liệu và hiển thị
-    approved_list = budget_service.get_approved_requests_for_payment()
+        # 2. Validate khoảng cách tối đa 60 ngày
+        delta = to_date - from_date
+        if delta.days > 60:
+            flash("Khoảng thời gian tra cứu tối đa là 60 ngày. Đã tự động điều chỉnh.", "warning")
+            to_date = from_date + timedelta(days=60)
+            to_date_str = to_date.strftime('%Y-%m-%d')
+            
+        if from_date > to_date:
+            flash("Ngày bắt đầu không thể lớn hơn ngày kết thúc.", "danger")
+            from_date = default_from
+            to_date = today
+            from_date_str = from_date.strftime('%Y-%m-%d')
+            to_date_str = to_date.strftime('%Y-%m-%d')
+
+    except ValueError:
+        from_date = default_from
+        to_date = today
     
-    return render_template('budget_payment_queue.html', 
-                           approved_list=approved_list, 
-                           pending_count=len(approved_list),
-                           now=datetime.now())
+    # 3. Gọi Service
+    # Lưu ý: Đổi tên hàm gọi nếu bạn đã đổi trong service (get_payment_queue)
+    approved_list = budget_service.get_payment_queue(from_date, to_date)
+    
+    return render_template(
+        'budget_payment_queue.html',
+        approved_list=approved_list,
+        from_date=from_date_str,
+        to_date=to_date_str,
+        current_date=today.strftime('%Y-%m-%d')
+    )
 
 @budget_bp.route('/api/budget/pay', methods=['POST'])
 @login_required
