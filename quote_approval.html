@@ -97,7 +97,7 @@
         .modal-header.bg-primary .modal-title { color: white; }
 
         /* --- 5. DATA TABLES (Style mới) --- */
-        .master-table-scroll { max-height: 70vh; overflow-y: auto; }
+        .master-table-scroll { max-height: 90vh; overflow-y: auto; }
 
         .table-approval { border: 1px solid var(--primary-light); width: 100%; }
         .table-approval th { 
@@ -712,11 +712,13 @@
                 salesmanUpdateModalInstance.show();
             }
 
-            // Hàm gọi API để lưu
+            // --- CẬP NHẬT LOGIC LƯU THAY ĐỔI NVKD (FIX UI REFRESH) ---
             $('#saveSalesmanChangeBtn').on('click', function() {
                 const button = $(this);
                 const quoteId = $('#salesmanModalQuoteID').val();
                 const newSalesmanId = $('#newSalesmanSelect').val();
+                // Lấy QuoteNo hiện tại từ Modal title để dùng lại khi vẽ lại nút edit
+                const currentQuoteNo = $('#salesmanModalQuoteNo').text(); 
                 
                 if (!newSalesmanId) {
                     alert('Vui lòng chọn một NVKD mới.');
@@ -743,22 +745,49 @@
                     if (data.success) {
                         alert(data.message);
                         
-                        // Cập nhật tên NVKD mới trên giao diện (trong bảng DataTables)
-                        const newSalesmanName = $('#newSalesmanSelect option:selected').text().split('(')[0].trim();
-                        const table = $('#approval-table').DataTable();
-                        const cell = $(`#salesman-cell-${quoteId}`);
+                        // --- CẬP NHẬT UI NGAY LẬP TỨC MÀ KHÔNG CẦN RELOAD ---
                         
-                        // Cập nhật nội dung ô
-                        const newContent = `${newSalesmanName} 
-                            <button class="btn btn-xs btn-outline-primary p-0 px-1" style="font-size: 0.65rem;"
-                                    onclick="event.stopPropagation(); openSalesmanModal('${quoteId}', '...', '${newSalesmanId}', '${newSalesmanName}')">
-                                <i class="fas fa-edit"></i>
-                            </button>`;
+                        // 1. Lấy tên NVKD mới từ dropdown để hiển thị
+                        const newSalesmanText = $('#newSalesmanSelect option:selected').text();
+                        let newSalesmanName = newSalesmanText;
+                        // Tách tên hiển thị (VD: "Nguyễn Văn A (KD01)" -> "Nguyễn Văn A")
+                        if (newSalesmanText.includes('(')) {
+                            newSalesmanName = newSalesmanText.split('(')[0].trim();
+                        }
                         
-                        // Cập nhật DataTables mà không filter lại
-                        table.cell(cell).data(newContent).draw('page'); 
+                        // 2. Tìm ô (cell) cần update trong DataTable một cách an toàn
+                        // Sử dụng document.getElementById để tránh lỗi selector nếu ID có ký tự lạ
+                        const cellId = 'salesman-cell-' + quoteId;
+                        const cellNode = document.getElementById(cellId);
                         
+                        if (cellNode) {
+                            const table = $('#approval-table').DataTable();
+                            
+                            // 3. Tạo nội dung HTML mới cho ô (Giữ nguyên nút Edit)
+                            const newContent = `${newSalesmanName} 
+                                <button class="btn btn-xs btn-outline-primary p-0 px-1" style="font-size: 0.65rem;"
+                                        onclick="event.stopPropagation(); openSalesmanModal('${quoteId}', '${currentQuoteNo}', '${newSalesmanId}', '${newSalesmanName}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>`;
+                            
+                            // 4. Cập nhật dữ liệu vào DataTables và vẽ lại (giữ nguyên trang hiện tại)
+                            table.cell(cellNode).data(newContent).draw(false);
+                            
+                            // 5. QUAN TRỌNG: Cập nhật thuộc tính data-nvkd của hàng (row) 
+                            // Để nếu Sếp nhấn nút "Duyệt" ngay sau đó, hệ thống sẽ lấy đúng ID nhân viên mới
+                            const rowNode = $(cellNode).closest('tr');
+                            if (rowNode.length) {
+                                rowNode.attr('data-nvkd', newSalesmanId); // Cập nhật DOM attribute
+                                rowNode.data('nvkd', newSalesmanId);      // Cập nhật jQuery data cache
+                            }
+
+                        } else {
+                            console.warn("Không tìm thấy ô dữ liệu để cập nhật giao diện. (ID: " + cellId + ")");
+                        }
+                        
+                        // Đóng modal
                         salesmanUpdateModalInstance.hide();
+                        
                     } else {
                         alert('Lỗi cập nhật: ' + data.message);
                     }

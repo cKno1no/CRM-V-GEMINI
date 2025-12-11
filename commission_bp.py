@@ -1,6 +1,6 @@
 # blueprints/commission_bp.py
 
-from flask import Blueprint, render_template, request, jsonify, session
+from flask import Blueprint, render_template, request, jsonify, session, current_app
 from utils import login_required
 from datetime import datetime
 import config
@@ -24,7 +24,7 @@ def commission_request_page():
 @login_required
 def api_create_proposal():
     """API: Tạo phiếu mới và lấy danh sách hóa đơn."""
-    from app import db_manager
+    db_manager = current_app.db_manager
     from services.commission_service import CommissionService
     
     service = CommissionService(db_manager)
@@ -70,7 +70,7 @@ def api_create_proposal():
 @login_required
 def api_toggle_item():
     """API: Tick chọn/bỏ chọn hóa đơn."""
-    from app import db_manager
+    db_manager = current_app.db_manager
     from services.commission_service import CommissionService
     
     service = CommissionService(db_manager)
@@ -99,7 +99,7 @@ def api_toggle_item():
 @login_required
 def api_submit_proposal():
     """API: Gửi duyệt."""
-    from app import db_manager
+    db_manager = current_app.db_manager
     from services.commission_service import CommissionService
     
     service = CommissionService(db_manager)

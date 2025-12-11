@@ -31,8 +31,9 @@ def save_budget_files(files):
 @login_required
 def budget_dashboard():
     """Giao diện chính: Xem ngân sách & Tạo đề nghị."""
-    from app import budget_service, db_manager # Import cục bộ tránh vòng lặp
-    
+    budget_service  = current_app.budget_service # Import cục bộ tránh vòng lặp
+    db_manager = current_app.db_manager
+
     user_code = session.get('user_code')
     dept_code = session.get('bo_phan', 'KD') 
     
@@ -64,7 +65,7 @@ def budget_dashboard():
 @login_required
 def budget_approval():
     """Giao diện Duyệt cho Quản lý."""
-    from app import budget_service
+    budget_service  = current_app.budget_service 
     user_code = session.get('user_code')
     
     # Lấy thêm Role
@@ -81,7 +82,7 @@ def budget_approval():
 @login_required
 def api_search_objects(search_term):
     """API: Tra cứu Đối tượng (IT1202) cho đề nghị thanh toán."""
-    from app import db_manager
+    db_manager = current_app.db_manager
     import config
     
     # Tìm kiếm theo Mã, Tên, hoặc Tên tắt
@@ -108,7 +109,7 @@ def api_search_objects(search_term):
 @login_required
 def api_check_balance():
     """API: Kiểm tra số dư (Logic THÁNG) khi user tạo phiếu."""
-    from app import budget_service
+    budget_service  = current_app.budget_service 
     data = request.json
     
     status = budget_service.get_budget_status(
@@ -126,7 +127,7 @@ def api_submit_request():
     [UPDATED] API: Gửi đề nghị thanh toán (Hỗ trợ File Upload).
     Lưu ý: Client phải gửi FormData thay vì JSON.
     """
-    from app import budget_service
+    budget_service  = current_app.budget_service 
     
     # Lấy dữ liệu từ Form (do gửi kèm file nên không dùng request.json)
     budget_code = request.form.get('budget_code')
@@ -153,7 +154,7 @@ def api_submit_request():
 @login_required
 def api_approve_request():
     """API: Duyệt/Từ chối."""
-    from app import budget_service
+    budget_service  = current_app.budget_service 
     data = request.json
     success = budget_service.approve_request(
         data.get('request_id'),
@@ -167,7 +168,7 @@ def api_approve_request():
 @login_required
 def print_request_voucher(request_id):
     """Trang in phiếu."""
-    from app import budget_service
+    budget_service  = current_app.budget_service 
     req = budget_service.get_request_detail_for_print(request_id)
     if not req: return "Không tìm thấy", 404
     # Chỉ cho in nếu đã duyệt (Bảo mật quy trình)
@@ -179,7 +180,7 @@ def print_request_voucher(request_id):
 @login_required
 def payment_queue():
     """Giao diện Hàng đợi Thanh toán (Payment Queue) cho Kế toán."""
-    from app import budget_service
+    budget_service  = current_app.budget_service 
     
     # 1. Xử lý khoảng thời gian (Mặc định 2 tuần)
     today = datetime.now().date()
@@ -226,7 +227,7 @@ def payment_queue():
 @login_required
 def api_confirm_payment():
     """API: Xác nhận đã chi tiền."""
-    from app import budget_service
+    budget_service  = current_app.budget_service 
     data = request.json
     success = budget_service.process_payment(
         data.get('request_id'),
@@ -242,7 +243,7 @@ def api_confirm_payment():
 # KHÔNG CÓ @login_required Ở ĐÂY
 def public_verify_request(request_id):
     """Trang xác thực công khai (Dành cho quét QR)."""
-    from app import db_manager
+    db_manager = current_app.db_manager
     
     # Chỉ lấy các thông tin cơ bản để đối chiếu (Không lấy thông tin nhạy cảm quá sâu)
     query = """
@@ -280,7 +281,7 @@ def budget_ytd_report():
         return redirect(url_for('budget_bp.budget_dashboard'))
     """Báo cáo so sánh Ngân sách vs Thực tế (YTD)."""
     
-    from app import budget_service
+    budget_service  = current_app.budget_service 
     
     current_year = datetime.now().year
     current_month = datetime.now().month # Lấy tháng hiện tại để hiển thị trên header
@@ -341,7 +342,7 @@ def budget_ytd_report():
 @login_required
 def api_get_group_details():
     """API: Lấy chi tiết phiếu chi theo ReportGroup."""
-    from app import budget_service
+    budget_service  = current_app.budget_service 
     
     group_name = request.args.get('group_name')
     year = request.args.get('year', datetime.now().year, type=int)

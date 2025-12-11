@@ -1,9 +1,9 @@
 ﻿# db_manager.py
 
-import pyodbc
 import pandas as pd
-import re
-import config 
+from sqlalchemy import create_engine, text
+import config
+import time
 
 # =========================================================================
 # HÀM HELPER XỬ LÝ DỮ LIỆU
@@ -20,6 +20,7 @@ def safe_float(value):
 
 def parse_filter_string(filter_str):
     """Phân tích chuỗi điều kiện lọc (Ví dụ: '>100' -> ('>', 100))."""
+    import re
     if not filter_str:
         return None, None
     filter_str = filter_str.replace(' ', '')
@@ -44,233 +45,186 @@ def evaluate_condition(value, operator, threshold):
 # DATA ACCESS LAYER (DAL)
 # =========================================================================
 
+# --- Lớp DBManager Chính ---
 class DBManager:
-    """
-    Lớp Quản lý Truy cập Dữ liệu (DAL).
-    Xử lý tất cả các tương tác CSDL.
-    """
     def __init__(self):
-        self.conn_str = config.CONNECTION_STRING
+        # KHỞI TẠO SQLALCHEMY ENGINE VỚI CONNECTION POOL
+        print(f"--- Init DB Connection Pool to {config.DB_SERVER} ---")
+        self.engine = create_engine(
+            config.SQLALCHEMY_DATABASE_URI,
+            pool_size=10,
+            max_overflow=20,
+            pool_timeout=30,
+            pool_recycle=1800 
+        )
         
-    def _get_connection(self):
-        return pyodbc.connect(self.conn_str)
-
+    # 1. PHƯƠNG THỨC TỐI ƯU (Dùng cho Dashboard/Report - Chỉ đọc)
     def get_data(self, query, params=None):
         """
-        Thực thi truy vấn SELECT và trả về danh sách dict.
-        [FIX]: Đã thêm xử lý UnicodeDecodeError cho dữ liệu bẩn.
+        Thực thi SELECT dùng SQLAlchemy Pool + Pandas.
+        """
+        try:
+            # Tự động lấy kết nối từ Pool
+            with self.engine.connect() as conn:
+                if params:
+                    # Pandas read_sql hỗ trợ tốt việc truyền params qua SQLAlchemy driver
+                    df = pd.read_sql(query, conn, params=params)
+                else:
+                    df = pd.read_sql(query, conn)
+                
+                # Logic làm sạch dữ liệu
+                for col in df.select_dtypes(include=['object']).columns:
+                    def clean_cell(x):
+                        if x is None: return ''
+                        if isinstance(x, bytes):
+                            return x.decode('utf-8', errors='ignore')
+                        return str(x).strip()
+                    
+                    df[col] = df[col].apply(clean_cell)
+                
+                return df.to_dict('records')
+
+        except Exception as e:
+            print(f"Lỗi get_data (Hybrid): {e}")
+            return []
+
+    # 2. PHƯƠNG THỨC THỰC THI (QUAN TRỌNG: ĐÃ SỬA ĐỂ DÙNG RAW CONNECTION)
+    def execute_non_query(self, query, params=None):
+        """
+        Thực thi INSERT/UPDATE/DELETE.
+        Sử dụng Raw Connection để hỗ trợ cú pháp '?' của code cũ.
         """
         conn = None
         try:
-            conn = pyodbc.connect(self.conn_str)
+            # Lấy kết nối thô từ Pool
+            conn = self.engine.raw_connection()
             cursor = conn.cursor()
             
-            if params:
-                 cursor.execute(query, params)
-                 if cursor.description:
-                     columns = [column[0] for column in cursor.description]
-                     data = cursor.fetchall()
-                     df = pd.DataFrame.from_records(data, columns=columns)
-                 else:
-                     return []
-            else:
-                 df = pd.read_sql(query, conn)
-            
-            # Xử lý cột CAP TREN (Tránh LOI NoneType đặc thù)
-            if config.TEN_BANG_NGUOI_DUNG.strip('[]') in query and 'CAP TREN' in df.columns:
-                df['CAP TREN'] = df['CAP TREN'].fillna('').astype(str) 
-
-            # LÀM SẠCH CHUỖI VÀ CHUYỂN VỀ DICT (FIX LOI UNICODE TẠI ĐÂY)
-            for col in df.select_dtypes(include=['object']).columns:
-                 
-                 # Hàm xử lý từng ô dữ liệu an toàn
-                 def clean_cell_data(x):
-                     if x is None: return ''
-                     if isinstance(x, bytes):
-                         # Thử giải mã với các bảng mã phổ biến ở VN
-                         for encoding in ['utf-8', 'cp1252', 'cp1258', 'latin1']:
-                             try:
-                                 return x.decode(encoding)
-                             except UnicodeDecodeError:
-                                 continue
-                         # Nếu tất cả thất bại, ép giải mã và bỏ qua ký tự LOI
-                         return x.decode('utf-8', errors='ignore')
-                     return str(x).strip()
-
-                 # Áp dụng hàm xử lý thay vì dùng astype(str)
-                 df[col] = df[col].apply(clean_cell_data).replace(['nan', 'None'], '')
-                 
-            return df.to_dict('records')
-
-        except pyodbc.Error as ex:
-            sqlstate = ex.args[0]
-            print(f"LOI SQL - CODE: {sqlstate}, QUERY: {query}")
-            return None
-        except Exception as e:
-                # DÒNG GÂY LOI ĐANG LÀ:
-                # print(f"LOI HỆ THỐNG (get_data): {e}")
-                
-                # SỬA THÀNH: (Encode sang ascii để tránh LOI in ấn, hoặc bỏ tiếng Việt có dấu)
-                try:
-                    print(f"LOI HE THONG (get_data): {str(e).encode('utf-8', errors='ignore').decode('utf-8')}")
-                except:
-                    print("LOI HE THONG (get_data): Khong the in chi tiet loi unicode")
-                    
-                return None
-        finally:
-            if conn:
-                conn.close()
-
-    def execute_non_query(self, query, params=None):
-        """Thực thi INSERT/UPDATE/DELETE."""
-        conn = None
-        try:
-            conn = pyodbc.connect(self.conn_str)
-            cursor = conn.cursor()
             if params:
                 cursor.execute(query, params)
             else:
                 cursor.execute(query)
+                
             conn.commit()
             return True
-        except pyodbc.Error as ex:
-            sqlstate = ex.args[0]
-            print(f"LOI SQL - CODE: {sqlstate}, QUERY: {query}")
+        except Exception as e:
+            print(f"Lỗi execute_non_query: {e}")
             return False
         finally:
-            if conn:
-                conn.close()
+            if conn: conn.close()
 
-    def get_khachhang_by_ma(self, ma_doi_tuong):
-        """Hàm helper lấy tên khách hàng."""
-        query = f"""
-            SELECT TOP 1 [TEN DOI TUONG] AS FullName
-            FROM dbo.{config.TEN_BANG_KHACH_HANG}
-            WHERE [MA DOI TUONG] = ?
-        """
-        data = self.get_data(query, (ma_doi_tuong,))
-        if data:
-            return data[0]['FullName']
-        return None
-        
+    # 3. PHƯƠNG THỨC TƯƠNG THÍCH NGƯỢC (LEGACY SUPPORT)
+
+    def get_transaction_connection(self):
+        """Trả về kết nối thô (Raw PyODBC Connection) từ Pool."""
+        return self.engine.raw_connection()
+    
+    def commit(self, conn):
+        conn.commit()
+
+    def rollback(self, conn):
+        conn.rollback()
+
+    def execute_query_in_transaction(self, conn, query, params=None):
+        cursor = conn.cursor()
+        if params:
+            cursor.execute(query, params)
+        else:
+            cursor.execute(query)
+        return cursor
+
     def execute_sp_multi(self, sp_name, params=None):
-        """Thực thi SP và trả về tất cả các Result Set."""
+        """Thực thi Stored Procedure trả về NHIỀU bảng (Multi-ResultSet)."""
         conn = None
-        results = [] 
+        results = []
         try:
-            conn = pyodbc.connect(self.conn_str)
+            conn = self.engine.raw_connection() # Lấy kết nối từ Pool
             cursor = conn.cursor()
             
+            # Xây dựng câu lệnh EXEC
             param_placeholders = ', '.join(['?' for _ in params]) if params else ''
-            sql_command = f"EXEC {sp_name} {param_placeholders}"
+            sql = f"EXEC {sp_name} {param_placeholders}"
             
             if params:
-                cursor.execute(sql_command, params)
+                cursor.execute(sql, params)
             else:
-                cursor.execute(sql_command)
-                
-            while True: 
-                if cursor.description: 
+                cursor.execute(sql)
+            
+            # Loop qua từng Result Set
+            while True:
+                if cursor.description:
                     columns = [column[0] for column in cursor.description]
                     data = cursor.fetchall()
                     if data:
                         df = pd.DataFrame.from_records(data, columns=columns)
-                        
-                        # Áp dụng logic làm sạch tương tự (FIX LOI UNICODE CHO SP)
+                        # Clean data
                         for col in df.select_dtypes(include=['object']).columns:
-                             df[col] = df[col].apply(lambda x: str(x).strip() if x is not None else '').replace(['nan', 'None'], '')
-                             
+                             df[col] = df[col].fillna('').astype(str).str.strip()
                         results.append(df.to_dict('records'))
                     else:
-                         results.append([])
+                        results.append([])
                 
                 if not cursor.nextset():
-                    break 
-
-            return results
+                    break
             
-        except pyodbc.Error as ex:
-            sqlstate = ex.args[0]
-            print(f"LOI SQL SP - CODE: {sqlstate}, SP: {sp_name}, Params: {params}")
-            return [[]] 
+            conn.commit() # Commit nếu SP có ghi dữ liệu tạm
+            return results
+
+        except Exception as e:
+            print(f"Lỗi execute_sp_multi: {e}")
+            return [[]] # Trả về list rỗng an toàn
         finally:
             if conn:
-                conn.close()
-    
-    def get_transaction_connection(self):
-        try:
-            return pyodbc.connect(self.conn_str)
-        except pyodbc.Error as ex:
-            print(f"LOI KẾT NỐI CSDL: {ex.args[0]}") 
-            raise 
-            
-    def commit(self, conn):
-        if conn:
-            conn.commit()
+                conn.close() # Trả kết nối về Pool
 
-    def rollback(self, conn):
-        if conn:
-            conn.rollback()
+    # --- CÁC HÀM CỤ THỂ KHÁC ---
 
-    def execute_query_in_transaction(self, conn, query, params=None):
-        try:
-            cursor = conn.cursor()
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            return cursor.rowcount
-        except pyodbc.Error as ex:
-            print(f"LOI SQL TRADING: {ex.args[0]}")
-            raise 
-        
     def write_audit_log(self, user_code, action_type, severity, details, ip_address):
-        query = """
-            INSERT INTO dbo.AUDIT_LOGS 
-                (UserCode, ActionType, Severity, Details, IPAddress)
-            VALUES (?, ?, ?, ?, ?)
-        """
-        conn = None
+        """Ghi log hệ thống (Dùng raw_connection để an toàn)."""
         try:
-            conn = pyodbc.connect(self.conn_str)
+            conn = self.engine.raw_connection()
             cursor = conn.cursor()
+            query = "INSERT INTO dbo.AUDIT_LOGS (UserCode, ActionType, Severity, Details, IPAddress) VALUES (?, ?, ?, ?, ?)"
             cursor.execute(query, (user_code, action_type, severity, details, ip_address))
             conn.commit()
-        except Exception as e:
-            print(f"LOI GHI AUDIT LOG (Bỏ qua): {e}")
-        finally:
-            if conn:
-                conn.close()
+            conn.close()
+        except Exception:
+            pass # Log lỗi không nên làm crash app
 
     def log_progress_entry(self, task_id, user_code, progress_percent, content, log_type, helper_code=None):
-        query = f"""
-            INSERT INTO {config.TASK_LOG_TABLE} (
-                TaskID, UserCode, UpdateDate, ProgressPercentage, UpdateContent, TaskLogType, HelperRequestCode
-            )
-            OUTPUT INSERTED.LogID
-            VALUES (?, ?, GETDATE(), ?, ?, ?, ?);
-        """
+        """Ghi log Task (Dùng OUTPUT INSERTED -> Bắt buộc Raw Connection)."""
         conn = None
         try:
-            conn = pyodbc.connect(self.conn_str)
+            conn = self.engine.raw_connection()
             cursor = conn.cursor()
+            query = f"""
+                INSERT INTO {config.TASK_LOG_TABLE} (
+                    TaskID, UserCode, UpdateDate, ProgressPercentage, UpdateContent, TaskLogType, HelperRequestCode
+                )
+                OUTPUT INSERTED.LogID
+                VALUES (?, ?, GETDATE(), ?, ?, ?, ?);
+            """
             cursor.execute(query, (task_id, user_code, progress_percent, content, log_type, helper_code))
-            log_id = cursor.fetchone()[0] 
+            row = cursor.fetchone()
             conn.commit()
-            return int(log_id)
-        except pyodbc.Error as ex:
-            print(f"LOI SQL - TASK LOG: {ex.args[0]}")
+            return int(row[0]) if row else None
+        except Exception as e:
+            print(f"Lỗi log_progress_entry: {e}")
             return None
         finally:
-            if conn:
-                conn.close()
-                
+            if conn: conn.close()
+
     def execute_update_log_feedback(self, log_id, supervisor_code, feedback):
         query = f"""
             UPDATE {config.TASK_LOG_TABLE}
-            SET SupervisorFeedback = ?,
-                SupervisorCode = ?,
-                FeedbackDate = GETDATE()
+            SET SupervisorFeedback = ?, SupervisorCode = ?, FeedbackDate = GETDATE()
             WHERE LogID = ?
         """
+        # Tái sử dụng execute_non_query đã sửa
         return self.execute_non_query(query, (feedback, supervisor_code, log_id))
+    
+    def get_khachhang_by_ma(self, ma_doi_tuong):
+        """Helper lấy tên khách hàng."""
+        query = f"SELECT TOP 1 [TEN DOI TUONG] AS FullName FROM dbo.{config.TEN_BANG_KHACH_HANG} WHERE [MA DOI TUONG] = ?"
+        data = self.get_data(query, (ma_doi_tuong,))
+        return data[0]['FullName'] if data else None

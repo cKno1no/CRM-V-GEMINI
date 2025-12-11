@@ -1,4 +1,5 @@
-from flask import Blueprint, request, session, jsonify, Response, render_template, redirect, url_for, flash
+from flask import Blueprint, request, session, jsonify, Response, render_template, redirect, url_for, flash, current_app
+# FIX: Chỉ import các helper từ utils.py
 from utils import login_required
 from datetime import datetime
 import json
@@ -23,8 +24,10 @@ lookup_bp = Blueprint('lookup_bp', __name__, url_prefix='/sales')
 def sales_lookup_dashboard():
     """ROUTE: Dashboard tra cứu thông tin bán hàng. (Phục vụ /sales/sales_lookup)"""
     
-    # FIX: Import Services Cục bộ
-    from app import lookup_service, db_manager # ADD db_manager
+    # --- THAY ĐỔI QUAN TRỌNG: DÙNG current_app ---
+    # from app import lookup_service, db_manager <-- XÓA DÒNG NÀY
+    lookup_service = current_app.lookup_service
+    db_manager = current_app.db_manager
     
     user_role = session.get('user_role', '').strip().upper()
     is_admin_or_gm = user_role in [config.ROLE_ADMIN, config.ROLE_GM]
@@ -50,7 +53,7 @@ def sales_lookup_dashboard():
                 item_search, object_id 
             )
         
-        # LOG API_SALES_LOOKUP (Tra cứu Form) (BỔ SUNG)
+        # LOG API_SALES_LOOKUP
         try:
             db_manager.write_audit_log(
                 user_code=session.get('user_code'),
@@ -78,8 +81,8 @@ def total_replenishment_dashboard():
     """
     ROUTE: Hiển thị trang Báo cáo Dự phòng Tồn kho Tổng thể. (Phục vụ /sales/total_replenishment)
     """
-    # FIX: Import Services Cục bộ VÀ helper
-    from app import db_manager, get_user_ip 
+    # --- THAY ĐỔI QUAN TRỌNG ---
+    db_manager = current_app.db_manager
     
     # 1. Kiểm tra Quyền
     user_role = session.get('user_role', '').strip().upper()
@@ -116,14 +119,15 @@ def total_replenishment_dashboard():
 @login_required
 def export_total_replenishment():
     """ROUTE: Xử lý xuất dữ liệu dự phòng tồn kho ra Excel."""
-    from app import db_manager, get_user_ip # ADD get_user_ip
+    # --- THAY ĐỔI QUAN TRỌNG ---
+    db_manager = current_app.db_manager
     
     user_role = session.get('user_role', '').strip().upper()
     if user_role not in [config.ROLE_ADMIN, config.ROLE_GM]:
         flash("Bạn không có quyền truy cập chức năng này.", 'danger')
         return redirect(url_for('index'))
     
-    # LOG EXPORT_REPLENISHMENT (BỔ SUNG)
+    # LOG EXPORT_REPLENISHMENT
     try:
         db_manager.write_audit_log(
             user_code=session.get('user_code'),
@@ -149,8 +153,8 @@ def customer_replenishment_dashboard():
     """
     ROUTE: Hiển thị trang Dự báo Dự phòng Khách hàng. (Phục vụ /sales/customer_replenishment)
     """
-    # FIX: Import Services Cục bộ VÀ helper
-    from app import db_manager, get_user_ip 
+    # --- THAY ĐỔI QUAN TRỌNG ---
+    db_manager = current_app.db_manager
     
     # 1. Kiểm tra Quyền (Thêm quyền SALES vì đây là báo cáo KH)
     user_role = session.get('user_role', '').strip().upper()
@@ -181,8 +185,8 @@ def customer_replenishment_dashboard():
 def api_khachhang(ten_tat):
     """API tra cứu Khách hàng (Autocomplete)."""
     
-    # FIX: Import Services Cục bộ
-    from app import customer_service
+    # --- THAY ĐỔI QUAN TRỌNG ---
+    customer_service = current_app.customer_service
     
     data = customer_service.get_customer_by_name(ten_tat)
     return jsonify(data)
@@ -192,8 +196,9 @@ def api_khachhang(ten_tat):
 def api_multi_lookup():
     """API: Tra cứu Tồn kho/Giá QĐ/BO cho nhiều mã (Tra nhanh)."""
     
-    # FIX: Import Services Cục bộ
-    from app import lookup_service, db_manager # ADD db_manager
+    # --- THAY ĐỔI QUAN TRỌNG ---
+    lookup_service = current_app.lookup_service
+    db_manager = current_app.db_manager
     
     item_search = request.form.get('item_search', '').strip()
     
@@ -203,7 +208,7 @@ def api_multi_lookup():
     try:
         data = lookup_service.get_multi_lookup_data(item_search)
         
-        # LOG API_QUICK_LOOKUP (BỔ SUNG)
+        # LOG API_QUICK_LOOKUP
         db_manager.write_audit_log(
             user_code=session.get('user_code'),
             action_type='API_QUICK_LOOKUP',
@@ -221,8 +226,9 @@ def api_multi_lookup():
 def api_get_order_detail_drilldown(voucher_no):
     """API: Tra cứu chi tiết ĐH Bán bằng VoucherNo."""
     
-    # FIX: Import Services Cục bộ
-    from app import db_manager, sales_service
+    # --- THAY ĐỔI QUAN TRỌNG ---
+    sales_service = current_app.sales_service
+    db_manager = current_app.db_manager
     
     sorder_id_query = f"SELECT TOP 1 SOrderID FROM {config.ERP_OT2001} WHERE VoucherNo = ?"
     sorder_id_data = db_manager.get_data(sorder_id_query, (voucher_no,))
@@ -240,8 +246,9 @@ def api_get_order_detail_drilldown(voucher_no):
 def api_get_backorder_details(inventory_id):
     """API: Lấy chi tiết BackOrder (PO) cho một mã hàng."""
     
-    # FIX: Import Services Cục bộ
-    from app import lookup_service, db_manager # ADD db_manager
+    # --- THAY ĐỔI QUAN TRỌNG ---
+    lookup_service = current_app.lookup_service
+    db_manager = current_app.db_manager
     
     if not inventory_id:
         return jsonify({'error': 'Vui lòng cung cấp Mã Mặt hàng.'}), 400
@@ -249,7 +256,7 @@ def api_get_backorder_details(inventory_id):
     try:
         data = lookup_service.get_backorder_details(inventory_id)
         
-        # LOG API_BACKORDER_DETAIL (BỔ SUNG)
+        # LOG API_BACKORDER_DETAIL
         db_manager.write_audit_log(
             user_code=session.get('user_code'),
             action_type='API_BACKORDER_DETAIL',
@@ -267,8 +274,8 @@ def api_get_backorder_details(inventory_id):
 def api_get_replenishment_details(group_code):
     """API: Lấy chi tiết InventoryID cho một Nhóm Varchar05 (Req 1)."""
     
-    # FIX: Import Services Cục bộ
-    from app import db_manager
+    # --- THAY ĐỔI QUAN TRỌNG ---
+    db_manager = current_app.db_manager
     
     user_role = session.get('user_role', '').strip().upper()
     if user_role not in [config.ROLE_ADMIN, config.ROLE_GM]: # Chỉ Admin và GM mới được xem chi tiết tổng thể
@@ -280,7 +287,7 @@ def api_get_replenishment_details(group_code):
     try:
         data = db_manager.execute_sp_multi(config.SP_REPLENISH_GROUP, (group_code,))
         
-        # LOG VIEW_REPLENISH_DETAIL (BỔ SUNG)
+        # LOG VIEW_REPLENISH_DETAIL
         db_manager.write_audit_log(
             user_code=session.get('user_code'),
             action_type='VIEW_REPLENISH_DETAIL',
@@ -299,8 +306,8 @@ def api_get_customer_replenishment_data(customer_id):
     """
     API: Lấy dữ liệu Dự phòng Khách hàng (Nhóm hàng) cho một mã KH. (Phục vụ AJAX)
     """
-    # FIX: Import Services Cục bộ
-    from app import db_manager 
+    # --- THAY ĐỔI QUAN TRỌNG ---
+    db_manager = current_app.db_manager
     
     user_role = session.get('user_role', '').strip().upper()
     if user_role not in [config.ROLE_ADMIN, config.ROLE_GM, config.ROLE_MANAGER]:
@@ -313,7 +320,7 @@ def api_get_customer_replenishment_data(customer_id):
         # Giả định SP là 'dbo.sp_GetCustomerReplenishmentNeeds'
         sp_data = db_manager.execute_sp_multi(config.SP_CROSS_SELL_GAP, (customer_id,))
         
-        # LOG API_CUSTOMER_REPLENISH (BỔ SUNG)
+        # LOG API_CUSTOMER_REPLENISH
         db_manager.write_audit_log(
             user_code=session.get('user_code'),
             action_type='API_CUSTOMER_REPLENISH',

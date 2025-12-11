@@ -12,8 +12,8 @@ def portal_dashboard():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     
+    portal_service = current_app.portal_service
     db_manager = current_app.db_manager
-    portal_service = PortalService(db_manager)
 
     user_code = session.get('user_code')
     bo_phan = session.get('bo_phan', '').strip().upper()

@@ -21,8 +21,8 @@ def sales_lookup_dashboard():
     ROUTE: Dashboard tra cứu thông tin bán hàng.
     """
     
-    from app import lookup_service 
-    from app import db_manager # <-- THÊM VÀO ĐÂY
+    lookup_service  = current_app.lookup_service 
+    db_manager = current_app.db_manager
     # 1. Lấy thông tin người dùng
     user_code = session.get('user_code', 'GUEST') 
     
@@ -89,7 +89,7 @@ def api_quick_lookup():
     """
     API: Tra cứu nhanh Tồn kho/Giá QĐ (Không lọc KH)
     """
-    from app import lookup_service 
+    lookup_service  = current_app.lookup_service 
     
     item_search = request.form.get('item_search', '').strip()
     
@@ -108,8 +108,8 @@ def api_multi_lookup():
     """
     API: Tra cứu nhiều mã (ngăn cách bằng dấu phẩy)
     """
-    from app import lookup_service 
-    from app import db_manager # <-- THÊM VÀO ĐÂY
+    lookup_service  = current_app.lookup_service 
+    db_manager = current_app.db_manager # <-- THÊM VÀO ĐÂY
     item_search = request.form.get('item_search', '').strip()
     
     if not item_search:
@@ -137,8 +137,10 @@ def api_get_backorder_details(inventory_id):
     """
     API: Lấy chi tiết BackOrder (PO) cho một mã hàng
     """
-    from app import lookup_service, db_manager # Import tại chỗ
     
+    lookup_service = current_app.lookup_service
+    db_manager = current_app.db_manager
+
     if not inventory_id:
         return jsonify({'error': 'Vui lòng cung cấp Mã Mặt hàng.'}), 400
         

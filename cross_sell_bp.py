@@ -1,6 +1,6 @@
 # blueprints/cross_sell_bp.py
 
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, current_app
 from utils import login_required
 from datetime import datetime
 
@@ -12,7 +12,7 @@ def dashboard():
     """Giao diện chính Cross-Sell DNA."""
     
     # Import tại chỗ để tránh vòng lặp
-    from app import db_manager 
+    db_manager = current_app.db_manager 
     from services.cross_sell_service import CrossSellService
     
     service = CrossSellService(db_manager)
@@ -34,7 +34,7 @@ def dashboard():
 @login_required
 def api_detail(client_id):
     """API trả về chi tiết (cho phần mở rộng của bảng)."""
-    from app import db_manager
+    db_manager = current_app.db_manager
     from services.cross_sell_service import CrossSellService
     
     service = CrossSellService(db_manager)

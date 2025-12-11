@@ -1,6 +1,6 @@
 # blueprints/executive_bp.py
 
-from flask import Blueprint, render_template, session, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, session, redirect, url_for, flash, request, jsonify, current_app
 from utils import login_required
 from datetime import datetime
 import config
@@ -18,7 +18,7 @@ def ceo_cockpit_dashboard():
         flash("Bạn không có quyền truy cập CEO Cockpit.", "danger")
         return redirect(url_for('portal_bp.portal_dashboard'))
 
-    from app import db_manager
+    db_manager = current_app.db_manager
     from services.executive_service import ExecutiveService
     
     exec_service = ExecutiveService(db_manager)
@@ -29,41 +29,61 @@ def ceo_cockpit_dashboard():
     # A. Scorecards
     kpi_summary = exec_service.get_kpi_scorecards(current_year, current_month)
     
-    # B. Charts Data (Updated)
-    profit_chart_data = exec_service.get_profit_trend_chart()
-    inventory_chart_data = exec_service.get_inventory_aging_chart_data()
-    category_perf_data = exec_service.get_top_categories_performance(current_year)
-    sales_funnel_data = exec_service.get_sales_funnel_data()
-    
-    # C. Action & Leaderboard
-    pending_actions = exec_service.get_pending_actions_count()
-    top_sales = exec_service.get_top_sales_leaderboard(current_year)
+    # B. Charts Data (Giữ nguyên logic cũ)
+    # Lưu ý: Các hàm này phải tồn tại trong ExecutiveService
+    try:
+        profit_chart_data = exec_service.get_profit_trend_chart()
+        inventory_chart_data = exec_service.get_inventory_aging_chart_data()
+        category_perf_data = exec_service.get_top_categories_performance(current_year)
+        sales_funnel_data = exec_service.get_sales_funnel_data()
+        
+        pending_actions = exec_service.get_pending_actions_count()
+        top_sales = exec_service.get_top_sales_leaderboard(current_year)
+    except Exception as e:
+        print(f"Lỗi load chart data: {e}")
+        # Fallback data rỗng để không crash trang
+        profit_chart_data = {}
+        inventory_chart_data = {}
+        category_perf_data = {}
+        sales_funnel_data = {}
+        pending_actions = {}
+        top_sales = []
     
     return render_template(
         'ceo_cockpit.html',
         kpi_summary=kpi_summary,
+        
         # Object Profit (YTD)
         profit_summary={ 
-            'GrossProfit': kpi_summary['GrossProfit_YTD'], 
-            'AvgMargin': kpi_summary['AvgMargin_YTD'] 
+            'GrossProfit': kpi_summary.get('GrossProfit_YTD', 0), 
+            'AvgMargin': kpi_summary.get('AvgMargin_YTD', 0)
         },
+        
         # Object Finance
         finance_summary={
-            'TotalExpenses': kpi_summary['TotalExpenses_YTD'],
-            'CrossSellProfit': kpi_summary['CrossSellProfit_YTD']
+            'TotalExpenses': kpi_summary.get('TotalExpenses_YTD', 0),
+            'CrossSellProfit': kpi_summary.get('CrossSellProfit_YTD', 0)
         },
-        # Object Risk
+        
+        # Object Risk [UPDATED KEYS]
         risk_summary={
-            'Debt_Over_180': kpi_summary['Debt_Over_180'],
-            'TotalOverdueDebt': kpi_summary['TotalOverdueDebt'],
-            'Inventory_Over_2Y': kpi_summary['Inventory_Over_2Y']
+            # Tồn kho
+            'Inventory_Over_2Y': kpi_summary.get('Inventory_Over_2Y', 0),
+            
+            # Nợ Phải Thu (AR)
+            'AR_Debt_Over_180': kpi_summary.get('AR_Debt_Over_180', 0),
+            'AR_TotalOverdueDebt': kpi_summary.get('AR_TotalOverdueDebt', 0),
+            
+            # Nợ Phải Trả (AP)
+            'AP_Debt_Over_180': kpi_summary.get('AP_Debt_Over_180', 0),
+            'AP_TotalOverdueDebt': kpi_summary.get('AP_TotalOverdueDebt', 0),
         },
         
         # --- CHARTS DATA ---
-        chart_data=profit_chart_data,              # Biểu đồ xu hướng Tài chính
-        inventory_chart_data=inventory_chart_data, # Biểu đồ Tồn kho
-        category_perf_data=category_perf_data,     # Biểu đồ Nhóm hàng
-        sales_funnel_data=sales_funnel_data,       # Biểu đồ Phễu
+        chart_data=profit_chart_data,              
+        inventory_chart_data=inventory_chart_data, 
+        category_perf_data=category_perf_data,     
+        sales_funnel_data=sales_funnel_data,       
         
         # --- LISTS ---
         pending_actions=pending_actions,
@@ -74,7 +94,7 @@ def ceo_cockpit_dashboard():
 @login_required
 def comparison_dashboard():
     """Trang phân tích so sánh số liệu quản trị giữa 2 năm."""
-    from app import db_manager
+    db_manager = current_app.db_manager
     from services.executive_service import ExecutiveService
     
     exec_service = ExecutiveService(db_manager)
@@ -133,7 +153,7 @@ def api_executive_drilldown():
     except ValueError:
         year = datetime.now().year
     
-    from app import db_manager
+    db_manager = current_app.db_manager
     from services.executive_service import ExecutiveService
     exec_service = ExecutiveService(db_manager)
     

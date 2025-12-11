@@ -1,6 +1,6 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
 # FIX: Import login_required từ app.py
-from utils import login_required, truncate_content 
+from utils import login_required, truncate_content, save_uploaded_files
 from datetime import datetime, timedelta
 import config 
 from config import TEN_BANG_NGUOI_DUNG, TEN_BANG_LOAI_BAO_CAO, TEN_BANG_BAO_CAO, TEN_BANG_KHACH_HANG, TEN_BANG_NHAN_SU_LH
@@ -23,7 +23,7 @@ def dashboard_reports():
     """Hiển thị trang Dashboard - Danh sách báo cáo. (Đã chuyển logic)"""
     
     # FIX: Import Services Cần thiết NGAY TẠY ĐÂY
-    from app import db_manager 
+    db_manager = current_app.db_manager
 
     query_users = f"""
         SELECT [USERCODE], [USERNAME], [SHORTNAME] 
@@ -148,7 +148,10 @@ def dashboard_reports():
     
     # LOG VIEW_REPORT_DASHBOARD (BỔ SUNG)
     try:
-        from app import db_manager, get_user_ip
+        
+        db_manager  = current_app.db_manager
+        get_user_ip  = current_app.get_user_ip
+        
         details = f"Xem Dashboard: User={selected_user}, KH={kh_search_term}, Text={text_search_term}, Page={page}"
         db_manager.write_audit_log(
             session.get('user_code'), 'VIEW_REPORT_DASHBOARD', 'INFO', details, get_user_ip()
@@ -176,7 +179,7 @@ def report_detail_page(report_stt):
     """ROUTE: Render trang chi tiết sau khi click. (Đã chuyển logic)"""
     
     # FIX: Import Services Cần thiết NGAY TẠY ĐÂY
-    from app import db_manager 
+    db_manager = current_app.db_manager
     
     current_user_id = session.get('user_code')
     current_user_role = session.get('user_role').strip().upper() if session.get('user_role') else ''
@@ -226,7 +229,9 @@ def report_detail_page(report_stt):
     if report_data:
         # LOG VIEW_REPORT_DETAIL (BỔ SUNG)
         try:
-            from app import db_manager, get_user_ip
+            db_manager  = current_app.db_manager
+            get_user_ip  = current_app.get_user_ip
+
             db_manager.write_audit_log(
                 current_user_id, 'VIEW_REPORT_DETAIL', 'WARNING', 
                 f"Xem Chi tiết BC #{report_stt} của KH: {report_data[0].get('KH_FullName')}", 
@@ -236,7 +241,8 @@ def report_detail_page(report_stt):
             print(f"Lỗi ghi log VIEW_REPORT_DETAIL: {e}")
 
         report = report_data[0]
-        attachments_str = report.get('ATTACHMENTS')
+        # FIX: Gọi trực tiếp hàm đã import, KHÔNG dùng current_app.save_uploaded_files
+        attachments_str = save_uploaded_files(request.files.getlist('attachment_file'))
         file_names = [f for f in attachments_str.split(';') if f.strip()] if attachments_str else []
         report['ATTACHMENT_LIST'] = file_names
         return render_template('report_detail_page.html', report=report)
@@ -249,8 +255,10 @@ def nhap_lieu():
     """Hàm xử lý Form nhập liệu và logic INSERT/GET. (Đã chuyển logic)"""
     
     # FIX: Import Services Cần thiết NGAY TẠI ĐÂY
-    from app import db_manager, save_uploaded_files 
     
+    db_manager  = current_app.db_manager
+    
+
     query_users = f"""
         SELECT [USERCODE], [USERNAME], [SHORTNAME] 
         FROM {TEN_BANG_NGUOI_DUNG} 
@@ -312,7 +320,9 @@ def nhap_lieu():
             
             if db_manager.execute_non_query(insert_query, params):
                 # LOG REPORT CREATE (BỔ SUNG)
-                from app import db_manager, get_user_ip
+                db_manager  = current_app.db_manager
+                get_user_ip  = current_app.get_user_ip
+
                 db_manager.write_audit_log(
                     nguoi_bao_cao_code, 'REPORT_CREATE', 'INFO', 
                     f"Tạo báo cáo mới (Loại: {loai}, KH: {ma_khach_hang_value})", 
@@ -340,7 +350,7 @@ def nhansu_nhaplieu():
     """Hàm xử lý form nhập liệu Nhân sự Liên hệ. (Đã chuyển logic)"""
     
     # FIX: Import Services Cần thiết NGAY TẠY ĐÂY
-    from app import db_manager
+    db_manager = current_app.db_manager
     
     message = None
     default_ma_khachhang = None
@@ -373,7 +383,7 @@ def nhansu_nhaplieu():
 def api_get_reference_data(ma_doi_tuong):
     """API MỚI: Lấy thông tin tham chiếu (COUNT Nhân sự)."""
     # FIX: Import Services Cần thiết NGAY TẠY ĐÂY
-    from app import db_manager
+    db_manager = current_app.db_manager
     
     query_count = f"SELECT COUNT(T1.ID) AS CountNLH FROM dbo.{config.TEN_BANG_NHAN_SU_LH} AS T1 WHERE T1.[CONG TY] = ?"
     count_data = db_manager.get_data(query_count, (ma_doi_tuong,))
@@ -385,7 +395,7 @@ def api_get_reference_data(ma_doi_tuong):
 def api_nhansu_ddl_by_khachhang(ma_doi_tuong):
     """API MỚI: Lấy danh sách Nhân sự cho Dropdown."""
     # FIX: Import Services Cần thiết NGAY TẠY ĐÂY
-    from app import db_manager
+    db_manager = current_app.db_manager
     
     query = f"SELECT MA, [TEN THUONG GOI], [CHUC VU], [TEN HO] FROM dbo.{config.TEN_BANG_NHAN_SU_LH} WHERE [CONG TY] = ? ORDER BY [TEN HO]"
     data = db_manager.get_data(query, (ma_doi_tuong,))
@@ -404,7 +414,7 @@ def api_nhansu_ddl_by_khachhang(ma_doi_tuong):
 def api_defaults(loai_code):
     """API tra cứu DLOOKUP cho tiêu đề và nội dung mặc định."""
     # FIX: Import Services Cần thiết NGAY TẠY ĐÂY
-    from app import db_manager
+    db_manager = current_app.db_manager
     
     query = f"SELECT [LOAI], [MAC DINH], [TEN] FROM dbo.{config.TEN_BANG_NOI_DUNG_HD} WHERE [LOAI] LIKE ?"
     like_param = f'{loai_code}%'
@@ -424,7 +434,7 @@ def api_defaults(loai_code):
 @login_required
 def api_nhansu_list(ma_doi_tuong):
     """API: Lấy danh sách chi tiết nhân sự theo khách hàng (cho bảng tham chiếu)."""
-    from app import db_manager
+    db_manager = current_app.db_manager
     
     # Truy vấn đầy đủ các trường cần thiết cho bảng hiển thị
     query = f"""
@@ -455,7 +465,7 @@ def api_nhansu_list(ma_doi_tuong):
 @login_required
 def api_get_nhansu_list(ma_doi_tuong):
     """API: Lấy danh sách nhân sự chi tiết cho bảng tham chiếu (Đã sửa cột SO DTDD 1)."""
-    from app import db_manager
+    db_manager = current_app.db_manager
     import config # Đảm bảo đã import config
     
     # SỬA TÊN CỘT [DIEN THOAI...] THÀNH [SO DTDD 1]

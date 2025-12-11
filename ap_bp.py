@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, current_app
 from utils import login_required
 import config
 
@@ -8,7 +8,7 @@ ap_bp = Blueprint('ap_bp', __name__)
 @login_required
 def ap_aging_dashboard():
     """Giao diện Quản lý Nợ Phải Trả."""
-    from app import db_manager
+    db_manager = current_app.db_manager
     from services.ap_aging_service import APAgingService
     
     # Check quyền: Chỉ Admin, Kế toán, hoặc Mua hàng (Giả định)
@@ -54,7 +54,7 @@ def ap_aging_dashboard():
 @ap_bp.route('/api/ap_detail/<string:vendor_id>', methods=['GET'])
 @login_required
 def api_ap_detail(vendor_id):
-    from app import db_manager
+    db_manager = current_app.db_manager
     from services.ap_aging_service import APAgingService
     
     # Lấy debt_type từ query string (?type=BANK)

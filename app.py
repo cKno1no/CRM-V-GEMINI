@@ -1,101 +1,19 @@
-# app.py - FIX VÒNG LẶP IMPORT BẰNG CÁCH ĐỊNH NGHĨA DECORATOR SỚM
+# app.py
+# --- PHIÊN BẢN APPLICATION FACTORY (ĐÃ SỬA LỖI TRÙNG ROUTE) ---
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session, Response, Blueprint
-import pyodbc
-import pandas as pd
-from datetime import datetime, timedelta
-from functools import wraps # <--- CẦN CÓ WRAPS
-from operator import itemgetter
-from db_manager import safe_float, DBManager 
-from config import TEN_BANG_NGUOI_DUNG # Cần cho logic login
-
-import os
-import io 
-import redis 
-import json 
-from werkzeug.utils import secure_filename 
-
-# =========================================================================
-# I. ĐỊNH NGHĨA DECORATOR VÀ HÀM CỐT LÕI (FIXED POSITION)
-# =========================================================================
-
-# IMPORT DECORATOR TỪ UTILS
-from utils import login_required # <--- ĐÃ SỬA
-
-# =========================================================================
-# II. IMPORT CONFIG, BLUEPRINTS VÀ SERVICES (Sau khi login_required được định nghĩa)
-# =========================================================================
+from flask import render_template, request, redirect, url_for, flash, session
 import config
-from sales_service import SalesService, InventoryService
-from customer_service import CustomerService 
-from quotation_approval_service import QuotationApprovalService 
-from sales_order_approval_service import SalesOrderApprovalService 
-from services.sales_lookup_service import SalesLookupService 
-from services.task_service import TaskService
-from services.chatbot_service import ChatbotService 
-from services.ar_aging_service import ARAgingService 
-from services.delivery_service import DeliveryService 
-from services.budget_service import BudgetService
 
-# Import các Blueprints mới
-from blueprints.crm_bp import crm_bp
-from blueprints.kpi_bp import kpi_bp
-from blueprints.portal_bp import portal_bp # Import mới
-from blueprints.approval_bp import approval_bp
-from blueprints.delivery_bp import delivery_bp
-from blueprints.task_bp import task_bp
-from blueprints.chat_bp import chat_bp
-from blueprints.lookup_bp import lookup_bp
-from blueprints.budget_bp import budget_bp
-from blueprints.commission_bp import commission_bp
-from blueprints.executive_bp import executive_bp
-from blueprints.cross_sell_bp import cross_sell_bp
-from blueprints.ap_bp import ap_bp
-# =========================================================================
-# III. KHỞI TẠO ỨNG DỤNG VÀ DỊCH VỤ
-# =========================================================================
-app = Flask(__name__, static_url_path='/attachments', static_folder='attachments') 
-app.secret_key = config.APP_SECRET_KEY
-app.config['UPLOAD_FOLDER'] = config.UPLOAD_FOLDER_PATH
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=3)
+# 1. IMPORT TỪ FACTORY VÀ UTILS
+from factory import create_app
+from utils import login_required
 
-# Khởi tạo REDIS
-try:
-    redis_client = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, db=0, decode_responses=True)
-    redis_client.ping()
-except Exception as e:
-    redis_client = None 
-
-# Khởi tạo DB Manager
-db_manager = DBManager()
-# === THÊM DÒNG NÀY ===
-# Gắn db_manager vào app để các blueprint có thể truy cập qua current_app
-app.db_manager = db_manager
-
-print("="*50)
-print(f"!!! CHAN DOAN KET NOI (PYTHON) !!!")
-print(f"!!! SERVER: {config.DB_SERVER}")
-print(f"!!! DATABASE: {config.DB_NAME}")
-print(f"!!! USER: {config.DB_UID}")
-print("="*50)
-
-# Khởi tạo các Tầng Dịch vụ (Service Layer)
-sales_service = SalesService(db_manager)
-inventory_service = InventoryService(db_manager)
-customer_service = CustomerService(db_manager)
-approval_service = QuotationApprovalService(db_manager)
-order_approval_service = SalesOrderApprovalService(db_manager)
-lookup_service = SalesLookupService(db_manager)
-task_service = TaskService(db_manager)
-
-ar_aging_service = ARAgingService(db_manager)
-delivery_service = DeliveryService(db_manager)
-# Khởi tạo ChatbotService (TRUYỀN THÊM delivery_service)
-chatbot_service = ChatbotService(lookup_service, customer_service, delivery_service, redis_client) # <-- THÊM delivery_service
-budget_service = BudgetService(db_manager)
+# 2. KHỞI TẠO APP TỪ NHÀ MÁY
+# (Hàm này đã bao gồm việc đăng ký route /attachments/ và các service)
+app = create_app()
 
 # =========================================================================
-# IV. HÀM AUTH & HELPER CỐT LÕI (Giữ lại ở Core)
+# HELPER FUNCTIONS
 # =========================================================================
 
 def get_user_ip():
@@ -103,63 +21,17 @@ def get_user_ip():
        return request.headers.getlist("X-Forwarded-For")[0]
     else:
        return request.remote_addr
-# --- HÀM HELPER ---
-
-def allowed_file(filename):
-    """Kiểm tra đuôi file có hợp lệ không dựa trên config."""
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in config.ALLOWED_EXTENSIONS
-           
-def save_uploaded_files(files):
-    """Xử lý lưu các file và trả về chuỗi tên file ngăn cách bởi dấu phẩy."""
-    saved_filenames = []
-    
-    # Đảm bảo thư mục upload tồn tại
-    if not hasattr(config, 'UPLOAD_FOLDER') or not config.UPLOAD_FOLDER:
-        print("LỖI CẤU HÌNH: Thiếu config.UPLOAD_FOLDER")
-        return ""
-        
-    if not os.path.exists(config.UPLOAD_FOLDER):
-        os.makedirs(config.UPLOAD_FOLDER)
-        
-    now_str = datetime.now().strftime("%Y%m%d%H%M%S")
-
-    for file in files:
-        if file and allowed_file(file.filename):
-            # Tạo tên file duy nhất: TIMESTAMP_FILENAME
-            filename_clean = secure_filename(file.filename)
-            unique_filename = f"{now_str}_{filename_clean}"
-            
-            try:
-                file.save(os.path.join(config.UPLOAD_FOLDER, unique_filename))
-                saved_filenames.append(unique_filename)
-            except Exception as e:
-                print(f"LỖI LƯU FILE {filename_clean}: {e}")
-                # Tiếp tục với các file khác
-                
-    return ', '.join(saved_filenames)
 
 # =========================================================================
-# V. ROUTES CHÍNH (LOGIN, LOGOUT, INDEX)
+# ROUTES XÁC THỰC (LOGIN / LOGOUT / PASSWORD)
 # =========================================================================
-
-@app.context_processor
-def inject_user():
-    """Tạo đối tượng current_user giả để truy cập thông tin user trong template."""
-    return dict(current_user={'is_authenticated': session.get('logged_in', False),
-                             'usercode': session.get('user_code'),
-                             'username': session.get('username'),
-                             'shortname': session.get('user_shortname'),
-                             'role': session.get('user_role'),
-                             'cap_tren': session.get('cap_tren'),
-                             'bo_phan': session.get('bo_phan')})
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Nếu đã login, điều hướng luôn
     if session.get('logged_in'):
-        # Nếu đã login, điều hướng dựa trên quyền
         user_role = session.get('user_role', '').strip().upper()
-        if user_role in [config.ROLE_ADMIN]: # Thêm GM nếu muốn Giám đốc cũng vào Cockpit
+        if user_role in [config.ROLE_ADMIN]: 
             return redirect(url_for('executive_bp.ceo_cockpit_dashboard'))
         return redirect(url_for('portal_bp.portal_dashboard'))
 
@@ -169,38 +41,38 @@ def login():
         password = request.form.get('password')
         user_ip = get_user_ip() 
 
-        # Query lấy thông tin user
+        # --- SỬ DỤNG DB MANAGER ĐÃ ĐƯỢC INJECT VÀO APP ---
+        # Truy vấn user
         query = f"""
-            SELECT TOP 1 [USERCODE], [USERNAME], [SHORTNAME], [ROLE], [CAP TREN], [BO PHAN], [CHUC VU]
+            SELECT TOP 1 [USERCODE], [USERNAME], [SHORTNAME], [ROLE], [CAP TREN], [BO PHAN], [CHUC VU], [PASSWORD]
             FROM {config.TEN_BANG_NGUOI_DUNG}
             WHERE ([USERCODE] = ? OR [USERNAME] = ?) AND [PASSWORD] = ?
         """
-        user_data = db_manager.get_data(query, (username, username, password))
+        # Lưu ý: app.db_manager đã có sẵn từ factory
+        user_data = app.db_manager.get_data(query, (username, username, password))
 
         if user_data:
             user = user_data[0]
-            # --- CẬP NHẬT SESSION ---
+            
+            # Thiết lập Session
             session['logged_in'] = True
             session.permanent = True
             session['user_code'] = user.get('USERCODE')
             session['username'] = user.get('USERNAME')
             session['user_shortname'] = user.get('SHORTNAME')
             
-            # Lấy Role và chuẩn hóa
             user_role = str(user.get('ROLE') or '').strip().upper()
             session['user_role'] = user_role
             
             session['cap_tren'] = user.get('CAP TREN', '')
-            
-            bo_phan_raw = user.get('BO PHAN', '')
-            normalized_bo_phan = "".join(bo_phan_raw.split()).upper()
-            session['bo_phan'] = normalized_bo_phan
+            session['bo_phan'] = "".join((user.get('BO PHAN') or '').split()).upper()
             session['chuc_vu'] = str(user.get('CHUC VU') or '').strip().upper()
-            # [THÊM DÒNG NÀY] Lưu mật khẩu hiện tại vào session làm "Security Stamp"
-            # Lưu ý: Đây là mật khẩu đã hash hoặc text (tùy DB của bạn), dùng để đối chiếu
+            
+            # Security Stamp
             session['security_hash'] = user.get('PASSWORD')
+
             # Ghi Log
-            db_manager.write_audit_log(
+            app.db_manager.write_audit_log(
                 user_code=user.get('USERCODE'),
                 action_type='LOGIN_SUCCESS',
                 severity='INFO',
@@ -210,40 +82,53 @@ def login():
 
             flash(f"Đăng nhập thành công! Chào mừng {user.get('SHORTNAME')}.", 'success')
             
-            # --- [SỬA ĐỔI QUAN TRỌNG]: ĐIỀU HƯỚNG THEO ROLE ---
-            if user_role in [config.ROLE_ADMIN]: # Nếu là Sếp
+            # Điều hướng
+            if user_role in [config.ROLE_ADMIN]: 
                 return redirect(url_for('executive_bp.ceo_cockpit_dashboard'))
-            else: # Nếu là nhân viên
+            else:
                 return redirect(url_for('portal_bp.portal_dashboard'))
-            # ---------------------------------------------------
-            
         else:
             # Ghi log thất bại
-            db_manager.write_audit_log(
-                user_code=username,
-                action_type='LOGIN_FAILED',
-                severity='WARNING',
-                details=f"Sai mật khẩu",
+            app.db_manager.write_audit_log(
+                user_code=username, 
+                action_type='LOGIN_FAILED', 
+                severity='WARNING', 
+                details=f"Sai mật khẩu hoặc User không tồn tại", 
                 ip_address=user_ip
             )
-            message = "Tên đăng nhập đã bị xóa hoặc không tồn tại."
+            message = "Tên đăng nhập hoặc mật khẩu không đúng."
             flash(message, 'danger')
             
     return render_template('login.html', message=message)
 
+@app.route('/logout')
+def logout():
+    user_code = session.get('user_code', 'GUEST')
+    user_ip = get_user_ip()
+    
+    # Ghi log trước khi xóa session
+    app.db_manager.write_audit_log(
+        user_code=user_code, 
+        action_type='LOGOUT', 
+        severity='INFO', 
+        details="User đăng xuất", 
+        ip_address=user_ip
+    )
+    
+    session.clear() 
+    flash("Bạn đã đăng xuất thành công.", 'success')
+    return redirect(url_for('login'))
+
 @app.route('/change_password', methods=['GET', 'POST'])
 @login_required
 def change_password():
-    """Chức năng đổi mật khẩu (Lưu Text Thuần - Không Hash)."""
-    
     if request.method == 'POST':
         old_password = request.form.get('old_password')
         new_password = request.form.get('new_password')
         confirm_password = request.form.get('confirm_password')
-        
         user_code = session.get('user_code')
+        user_ip = get_user_ip()
         
-        # 1. Kiểm tra input
         if not old_password or not new_password:
             flash("Vui lòng nhập đầy đủ thông tin.", 'warning')
             return render_template('change_password.html')
@@ -252,29 +137,26 @@ def change_password():
             flash("Mật khẩu mới và xác nhận không khớp.", 'danger')
             return render_template('change_password.html')
             
-        # 2. Kiểm tra mật khẩu cũ (Truy vấn trực tiếp từ DB)
-        # Lưu ý: Sử dụng config.TEN_BANG_NGUOI_DUNG đã có sẵn trong app.py
+        # Kiểm tra pass cũ
         query_check = f"SELECT [PASSWORD] FROM {config.TEN_BANG_NGUOI_DUNG} WHERE USERCODE = ?"
-        user_data = db_manager.get_data(query_check, (user_code,))
+        user_data = app.db_manager.get_data(query_check, (user_code,))
         
         if user_data:
             current_db_pass = user_data[0]['PASSWORD']
             
-            # So sánh text thuần (Theo yêu cầu)
             if current_db_pass == old_password:
-                # 3. Cập nhật mật khẩu mới
+                # Cập nhật pass mới
                 update_query = f"UPDATE {config.TEN_BANG_NGUOI_DUNG} SET [PASSWORD] = ? WHERE USERCODE = ?"
                 
-                if db_manager.execute_non_query(update_query, (new_password, user_code)):
-                    # Ghi Log Audit
-                    db_manager.write_audit_log(
-                        user_code=user_code,
-                        action_type='CHANGE_PASSWORD',
-                        severity='INFO',
-                        details="Đổi mật khẩu thành công",
-                        ip_address=get_user_ip()
+                if app.db_manager.execute_non_query(update_query, (new_password, user_code)):
+                    # Ghi log
+                    app.db_manager.write_audit_log(
+                        user_code=user_code, 
+                        action_type='CHANGE_PASSWORD', 
+                        severity='INFO', 
+                        details="Đổi mật khẩu thành công", 
+                        ip_address=user_ip
                     )
-                    
                     flash("Đổi mật khẩu thành công!", 'success')
                     return redirect(url_for('index'))
                 else:
@@ -286,59 +168,18 @@ def change_password():
             
     return render_template('change_password.html')
 
-
-@app.route('/logout')
-def logout():
-    """Logic Đăng xuất."""
-
-    user_code = session.get('user_code', 'GUEST')
-    user_ip = get_user_ip() 
-    
-    # 1. GHI LOG LOGOUT (BỔ SUNG)
-    db_manager.write_audit_log(
-        user_code=user_code,
-        action_type='LOGOUT',
-        severity='INFO',
-        details="User đăng xuất",
-        ip_address=user_ip
-    )
-    # 1. Xóa tất cả các biến session
-    session.clear() 
-    
-    # 2. Hiển thị thông báo (tùy chọn)
-    flash("Bạn đã đăng xuất thành công.", 'success')
-    
-    # 3. LUÔN TRẢ VỀ CHUYỂN HƯỚNG
-    return redirect(url_for('login'))
-
 @app.route('/', methods=['GET'])
 @login_required
 def index():
-    """Trang chủ (Directory) hiển thị danh sách các Dashboard/Module."""
+    """Trang chủ (Directory)"""
     user_code = session.get('user_code')
     return render_template('index_redesign.html', user_code=user_code)
 
-
 # =========================================================================
-# VI. ĐĂNG KÝ BLUEPRINTS
+# MAIN
 # =========================================================================
-
-app.register_blueprint(crm_bp)
-app.register_blueprint(kpi_bp)
-app.register_blueprint(approval_bp)
-app.register_blueprint(delivery_bp)
-app.register_blueprint(task_bp)
-app.register_blueprint(lookup_bp)
-app.register_blueprint(chat_bp)
-app.register_blueprint(portal_bp) # Đăng ký
-app.register_blueprint(budget_bp)
-app.register_blueprint(commission_bp)
-app.register_blueprint(executive_bp)
-app.register_blueprint(cross_sell_bp)
-app.register_blueprint(ap_bp)
-
 if __name__ == '__main__':
-    
+    # Chạy ứng dụng
     app.run(debug=True, host='0.0.0.0', port=5000)
 
     #from waitress import serve

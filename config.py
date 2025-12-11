@@ -2,6 +2,7 @@
 # (PHIÊN BẢN CHUẨN HÓA TOÀN DIỆN - STDD)
 
 import os
+import urllib.parse
 from datetime import datetime
 
 # =========================================================================
@@ -25,12 +26,19 @@ REDIS_HOST = os.getenv('REDIS_HOST') or 'localhost'
 REDIS_PORT = int(os.getenv('REDIS_PORT') or 6379)
 REDIS_CHANNEL = 'crm_task_notifications_channel'
 
-# Database Driver
+# --- CẤU HÌNH KẾT NỐI CSDL (HYBRID) ---
+
+# 1. Chuỗi kết nối gốc (Legacy - dùng cho các script backup hoặc debug)
 DB_DRIVER = '{ODBC Driver 17 for SQL Server}' 
 CONNECTION_STRING = (
-    f"DRIVER={DB_DRIVER};" f"SERVER={DB_SERVER};" f"DATABASE={DB_NAME};"
-    f"UID={DB_UID};" f"PWD={DB_PWD};" f"Timeout=10;"
+    f"DRIVER={DB_DRIVER};SERVER={DB_SERVER};DATABASE={DB_NAME};"
+    f"UID={DB_UID};" f"PWD={DB_PWD};"
 )
+
+# 2. Chuỗi kết nối SQLAlchemy (NEW - Dùng cho App chính)
+# Mã hóa chuỗi kết nối để tương thích với SQLAlchemy
+params = urllib.parse.quote_plus(CONNECTION_STRING)
+SQLALCHEMY_DATABASE_URI = f"mssql+pyodbc:///?odbc_connect={params}"
 
 # =========================================================================
 # 2. CẤU HÌNH TÀI CHÍNH & KẾ TOÁN (ACCOUNT MAPPING)

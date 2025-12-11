@@ -175,29 +175,32 @@ class ExecutiveService:
             except Exception:
                 pass # Bỏ qua nếu lỗi (VD: thiếu cột CreateDate)
 
-            # --- D. RỦI RO: NỢ & TỒN KHO ---
-            # 1. Nợ
-            query_debt = f"""
-                SELECT SUM(TotalOverdueDebt) as TotalOverdue, SUM(Debt_Over_180) as RiskDebt 
+            # --- D. RỦI RO: NỢ & TỒN KHO (UPDATED) ---
+            
+            # 1. NỢ PHẢI THU (AR) - Từ view AR Aging
+            query_ar = f"""
+                SELECT 
+                    SUM(TotalOverdueDebt) as TotalOverdue, 
+                    SUM(Debt_Over_180) as RiskDebt 
                 FROM {config.CRM_AR_AGING_SUMMARY}
             """
-            debt_data = self.db.get_data(query_debt)
-            if debt_data:
-                kpi_data['TotalOverdueDebt'] = safe_float(debt_data[0]['TotalOverdue'])
-                kpi_data['Debt_Over_180'] = safe_float(debt_data[0]['RiskDebt'])
+            ar_data = self.db.get_data(query_ar)
+            if ar_data:
+                kpi_data['AR_TotalOverdueDebt'] = safe_float(ar_data[0]['TotalOverdue'])
+                kpi_data['AR_Debt_Over_180'] = safe_float(ar_data[0]['RiskDebt'])
 
-            # 4. RỦI RO: NỢ PHẢI TRẢ (AP Aging) - [FIXED]
-            # Thay thế logic NewBusiness bằng AP Aging (Nợ người bán)
-            query_debt = f"""
+            # 2. NỢ PHẢI TRẢ (AP) - [UPDATED: Chỉ lấy NCC (SUPPLIER)]
+            query_ap = f"""
                 SELECT 
                     SUM(TotalOverdueDebt) as TotalOverdue, 
                     SUM(Debt_Over_180) as RiskDebt 
                 FROM {config.CRM_AP_AGING_SUMMARY}
+                WHERE DebtType = 'SUPPLIER'  -- <-- ĐIỀU KIỆN LỌC MỚI
             """
-            debt_data = self.db.get_data(query_debt)
-            if debt_data:
-                kpi_data['TotalOverdueDebt'] = safe_float(debt_data[0]['TotalOverdue'])
-                kpi_data['Debt_Over_180'] = safe_float(debt_data[0]['RiskDebt'])
+            ap_data = self.db.get_data(query_ap)
+            if ap_data:
+                kpi_data['AP_TotalOverdueDebt'] = safe_float(ap_data[0]['TotalOverdue'])
+                kpi_data['AP_Debt_Over_180'] = safe_float(ap_data[0]['RiskDebt'])
             
             # 2. Tồn kho (Gọi SP)
             sp_inventory = f"{{CALL {config.SP_GET_INVENTORY_AGING} (?)}}"

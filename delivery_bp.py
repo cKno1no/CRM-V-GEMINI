@@ -1,8 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
-# FIX: Import login_required từ utils.py (và loại bỏ các import dịch vụ/helper từ app ở đây)
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
+# FIX: Chỉ import login_required từ utils.py
 from utils import login_required 
 from datetime import datetime, timedelta
 import config
+
 delivery_bp = Blueprint('delivery_bp', __name__)
 
 # [HÀM HELPER CẦN THIẾT]
@@ -18,7 +19,10 @@ def get_user_ip():
 @delivery_bp.route('/delivery_dashboard', methods=['GET'])
 @login_required
 def delivery_dashboard():
-    from app import delivery_service, db_manager
+    # --- THAY ĐỔI QUAN TRỌNG: DÙNG current_app ---
+    # from app import delivery_service, db_manager  <-- XÓA DÒNG NÀY
+    delivery_service = current_app.delivery_service
+    db_manager = current_app.db_manager
     
     # [CONFIG]: Chuẩn hóa Phân quyền
     user_role = session.get('user_role', '').strip().upper()
@@ -47,12 +51,13 @@ def delivery_dashboard():
     
     # Log access
     try:
-        from app import get_user_ip
+        # from app import get_user_ip <-- XÓA DÒNG NÀY (Dùng hàm local ở trên)
         db_manager.write_audit_log(
             session.get('user_code'), 'VIEW_DELIVERY_DASHBOARD', 'INFO', 
             "Truy cập Bảng Điều phối Giao vận", get_user_ip()
         )
-    except: pass
+    except Exception as e: 
+        print(f"Lỗi log: {e}")
 
     return render_template(
         'delivery_dashboard.html',
@@ -76,8 +81,10 @@ def delivery_dashboard():
 def api_delivery_set_day():
     """API: (Thư ký) Kéo thả 1 LXH hoặc 1 Nhóm KH vào 1 ngày kế hoạch."""
     
-    # FIX: Import Delivery Service Cục bộ
-    from app import delivery_service, db_manager
+    # --- THAY ĐỔI QUAN TRỌNG ---
+    delivery_service = current_app.delivery_service
+    db_manager = current_app.db_manager
+    
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
     if user_role not in [config.ROLE_ADMIN, config.ROLE_GM]:
@@ -116,8 +123,9 @@ def api_delivery_set_day():
 def api_delivery_set_status():
     """API: (Kho) Cập nhật trạng thái Đã Soạn/Đã Giao."""
     
-    # FIX: Import Delivery Service Cục bộ
-    from app import delivery_service, db_manager # ADD db_manager
+    # --- THAY ĐỔI QUAN TRỌNG ---
+    delivery_service = current_app.delivery_service
+    db_manager = current_app.db_manager
     
     user_role = session.get('user_role', '').strip().upper()
     user_bo_phan = session.get('bo_phan', '').strip()
@@ -157,8 +165,8 @@ def api_delivery_set_status():
 def api_delivery_get_items(voucher_id):
     """API: Lấy chi tiết mặt hàng LXH cho Modal xác nhận."""
     
-    # FIX: Import Delivery Service Cục bộ
-    from app import delivery_service
+    # --- THAY ĐỔI QUAN TRỌNG ---
+    delivery_service = current_app.delivery_service
     
     user_role = session.get('user_role', '').strip().upper()
     user_bo_phan = session.get('bo_phan', '').strip()

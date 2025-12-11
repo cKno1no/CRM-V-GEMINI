@@ -69,16 +69,20 @@ class PortalService:
         
         # --- LOGIC LỌC CHUNG ---
         # [CONFIG]: Dùng mã phòng ban từ Config
-        is_thu_ky = str(bo_phan).strip() == str(config.DEPT_THUKY).strip()
+        # Sử dụng getattr để tránh lỗi nếu config thiếu biến
+        dept_thuky = getattr(config, 'DEPT_THUKY', 'DEPT_3. THU KY')
+        is_thu_ky = str(bo_phan).strip() == str(dept_thuky).strip()
         col_filter_erp = "EmployeeID" if is_thu_ky else "SalesManID"
         
         TABLE_CUSTOMER_ERP = config.ERP_IT1202
 
+        # [FIX KẾT NỐI]: Thay thế pyodbc.connect bằng self.db.get_transaction_connection()
+        conn = None
         try:
-            conn = pyodbc.connect(self.db.conn_str)
+            conn = self.db.get_transaction_connection()
             cursor = conn.cursor()
         except Exception as e:
-            data['errors']['connection'] = str(e)
+            data['errors']['connection'] = f"Lỗi kết nối DB: {str(e)}"
             return data
 
         # --- 1. KPI: DOANH SỐ ---
@@ -269,10 +273,11 @@ class PortalService:
         except Exception as e:
             data['errors']['orders'] = str(e)
 
-        # --- 8. DỰ PHÒNG (Đã Sửa lỗi Syntax và tên biến Config) ---
+        # --- 8. DỰ PHÒNG ---
         try:
-            # [FIX]: Thêm chữ 'f' trước chuỗi và dùng đúng tên biến SP_REPLENISH_PORTAL
-            cursor.execute(f"{{CALL {config.SP_REPLENISH_PORTAL} (?, ?)}}", (user_code, current_year))
+            # Kiểm tra SP tồn tại trong config
+            sp_name = getattr(config, 'SP_REPLENISH_PORTAL', 'sp_GetCustomerReplenishmentSuggest')
+            cursor.execute(f"{{CALL {sp_name} (?, ?)}}", (user_code, current_year))
             
             if cursor.description:
                 cols = [c[0] for c in cursor.description]
@@ -297,5 +302,9 @@ class PortalService:
         except Exception as e:
             data['errors']['reports'] = str(e)
 
-        conn.close()
+        # Quan trọng: Trả kết nối về Pool (Dùng close() với Raw Connection cũng được nhưng an toàn hơn là gọi qua DBManager nếu có API)
+        # Vì đây là Raw Connection lấy từ pool, .close() sẽ trả nó về pool.
+        if conn:
+            conn.close()
+            
         return data

@@ -331,25 +331,18 @@
     <div class="container-fluid">
         <div class="page-header">
             <h1 class="page-title"><i class="fas fa-tasks me-2"></i> QUẢN LÝ ĐẦU VIỆC HÀNG NGÀY</h1>
-            
             <div class="d-flex gap-2">
-                <a href="{{ url_for('index') }}" class="btn-action btn-back">
-                    <i class="fas fa-home me-1"></i> Về Portal
-                </a>
+                <a href="{{ url_for('index') }}" class="btn-action btn-back"><i class="fas fa-home me-1"></i> Về Portal</a>
                 {% if can_manage_view %}
                     {% if view_mode == 'SUPERVISOR' %}
-                        <a href="{{ url_for('task_bp.task_dashboard', view='USER', filter=active_filter, search=text_search_term) }}" class="btn-action btn-view-user">
-                             <i class="fas fa-user-circle me-1"></i> View Cá nhân
-                        </a>
+                        <a href="{{ url_for('task_bp.task_dashboard', view='USER', filter=active_filter, search=text_search_term) }}" class="btn-action btn-view-user"><i class="fas fa-user-circle me-1"></i> View Cá nhân</a>
                     {% else %}
-                        <a href="{{ url_for('task_bp.task_dashboard', view='SUPERVISOR', filter=active_filter, search=text_search_term) }}" class="btn-action btn-view-admin">
-                            <i class="fas fa-user-tie me-1"></i> View Quản lý
-                        </a>
+                        <a href="{{ url_for('task_bp.task_dashboard', view='SUPERVISOR', filter=active_filter, search=text_search_term) }}" class="btn-action btn-view-admin"><i class="fas fa-user-tie me-1"></i> View Quản lý</a>
                     {% endif %}
                 {% endif %}
             </div>
         </div>
-        
+
         <div class="row g-4 mb-4">
             <div class="col-md-3 col-6">
                 <div class="kpi-tile bg-total {% if active_filter == 'ALL' %}kpi-active{% endif %}" onclick="filterTasks('ALL')">
@@ -379,12 +372,8 @@
 
         <div class="main-card">
             <div class="card-header-custom">
-                <div>
-                    <i class="fas fa-columns"></i> KANBAN BOARD (3 ngày vừa qua)
-                </div>
-                <button class="btn btn-primary btn-sm" onclick="openCreateTaskModal()">
-                    <i class="fas fa-plus me-1"></i> Tạo Task Mới
-                </button>
+                <div><i class="fas fa-columns"></i> KANBAN BOARD (3 ngày vừa qua)</div>
+                <button class="btn btn-primary btn-sm" onclick="openCreateTaskModal()"><i class="fas fa-plus me-1"></i> Tạo Task Mới</button>
             </div>
             <div class="card-body-custom">
                 <div class="kanban-container">
@@ -396,7 +385,6 @@
                             {% endfor %}
                         </div>
                     </div>
-                    
                     <div class="kanban-column" style="border-top: 5px solid var(--warning);">
                         <div class="kanban-column-header" style="color: var(--warning);">ĐANG XỬ LÝ (PENDING)</div>
                         <div class="task-list">
@@ -405,7 +393,6 @@
                             {% endfor %}
                         </div>
                     </div>
-                    
                     <div class="kanban-column" style="border-top: 5px solid var(--danger);">
                         <div class="kanban-column-header" style="color: var(--danger);">CẦN HỖ TRỢ/ GIAO VIỆC</div>
                         <div class="task-list">
@@ -414,7 +401,6 @@
                             {% endfor %}
                         </div>
                     </div>
-
                     <div class="kanban-column" style="border-top: 5px solid var(--success);">
                         <div class="kanban-column-header" style="color: var(--success);">HOÀN THÀNH (COMPLETED)</div>
                         <div class="task-list">
@@ -436,12 +422,8 @@
                     <div class="input-group">
                         <input type="text" name="search" class="form-control" placeholder="Lọc nhanh theo Tiêu đề, Nội dung hoặc Khách hàng..." 
                                    value="{{ text_search_term }}" aria-label="Lọc từ bất kỳ">
-                        <button class="btn btn-secondary" type="submit" style="border-radius: 0;">
-                            <i class="fas fa-search"></i> Lọc
-                        </button>
-                        <a href="{{ url_for('task_bp.task_dashboard', view=view_mode, filter=active_filter) }}" class="btn btn-outline-secondary" style="border-radius: 0 16px 16px 0;">
-                            <i class="fas fa-undo"></i> Reset
-                        </a>
+                        <button class="btn btn-secondary" type="submit" style="border-radius: 0;"><i class="fas fa-search"></i> Lọc</button>
+                        <a href="{{ url_for('task_bp.task_dashboard', view=view_mode, filter=active_filter) }}" class="btn btn-outline-secondary" style="border-radius: 0 16px 16px 0;"><i class="fas fa-undo"></i> Reset</a>
                     </div>
                 </form>
 
@@ -450,59 +432,36 @@
                         <table id="task-history-table" class="table table-hover table-sm table-task" style="width: 100%;">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Ngày</th>
-                                    <th>Loại</th>
-                                    <th>Tiêu đề</th>
-                                    <th>Đối tượng</th>
-                                    <th>Người tạo</th> 
-                                    <th>Nội dung chi tiết</th>
-                                    <th>Trạng thái</th>
-                                    <th>Note Cấp trên</th>
-                                    <th>Ưu tiên</th>
-                                    <th>Hành động</th>
+                                    <th>ID</th> <th>Ngày</th> <th>Loại</th> <th>Tiêu đề</th> <th>Đối tượng</th>
+                                    <th>Người tạo</th> <th>Nội dung chi tiết</th> <th>Trạng thái</th> <th>Note Cấp trên</th> <th>Ưu tiên</th> <th>Hành động</th>
                                 </tr>
                             </thead>
                             <tbody>
                                  {% for task in history_tasks %}
-                                    <tr data-task-id="{{ task.TaskID }}" class="{% if task.NoteCapTren %}task-new-note{% endif %}">
+                                    <tr data-task-id="{{ task.TaskID }}">
                                         <td>{{ task.TaskID }}</td>
                                         <td>{{ task.TaskDateDisplay }}</td>
                                         <td><span class="badge bg-secondary">{{ task.TaskType }}</span></td>
                                         <td>
                                             {{ task.Title }}
-                                            {% if task.Attachments %}
-                                                <a href="{{ task.Attachments }}" target="_blank" class="text-danger ms-1" title="Mở Link"><i class="fas fa-link"></i></a>
-                                            {% endif %}
-                                            <span class="badge bg-primary-subtle text-primary-emphasis rounded-pill ms-1" title="Số lượng log">
-                                                <i class="fas fa-stream fa-xs"></i> {{ task.LogCount | default(0) }}
-                                            </span>
+                                            {% if task.Attachments %}<a href="{{ task.Attachments }}" target="_blank" class="text-danger ms-1"><i class="fas fa-link"></i></a>{% endif %}
+                                            <span class="badge bg-primary-subtle text-primary-emphasis rounded-pill ms-1"><i class="fas fa-stream fa-xs"></i> {{ task.LogCount | default(0) }}</span>
                                         </td>
                                         <td class="text-start">{{ task.ClientName or task.ObjectID or '—' }}</td>
                                         <td>{{ task.AssigneeShortName or task.UserCode }}</td> 
                                         <td class="truncate-content">{{ task.DetailContent | default('—') }}</td>
                                         <td><span class="badge bg-{% if task.Status == 'COMPLETED' %}success{% elif task.Status == 'HELP_NEEDED' %}danger{% else %}warning{% endif %}">{{ task.Status | replace('HELP_NEEDED', 'CẦN HỖ TRỢ/GV') }}</span></td>
-                                        
                                         <td>
-                                            {% if task.NoteCapTren %}
-                                                <span class="badge bg-primary me-1">Note</span> 
-                                                <span class="small text-muted" title="{{ task.NoteCapTren }}">{{ task.NoteCapTren|truncate(30, True) }}</span>
-                                            {% else %}
-                                                —
-                                            {% endif %}
+                                            {% if task.NoteCapTren %}<span class="badge bg-primary me-1">Note</span> <span class="small text-muted" title="{{ task.NoteCapTren }}">{{ task.NoteCapTren|truncate(30, True) }}</span>{% else %}—{% endif %}
                                         </td>
                                         <td>
-                                            <button class="btn btn-sm btn-link p-0" 
-                                                        onclick="togglePriority({{ task.TaskID }}, this); event.stopPropagation();">
+                                            <button class="btn btn-sm btn-link p-0" onclick="togglePriority({{ task.TaskID }}, this); event.stopPropagation();">
                                                 <i class="fas fa-star" style="color: {% if task.Priority == 'HIGH' or task.Priority == 'ALERT' %}#ffc107{% else %}#ccc{% endif %};"></i>
                                             </button>
                                         </td>
-                                        
                                         <td>
                                             <button class="btn btn-sm btn-info" onclick="openUpdateModal({{ task.TaskID }})">Xem/Sửa</button>
-                                            {% if is_admin %}
-                                                <button class="btn btn-sm btn-secondary" onclick="openSupervisorNoteModal({{ task.TaskID }})">Note</button>
-                                            {% endif %}
+                                            {% if is_admin %}<button class="btn btn-sm btn-secondary" onclick="openSupervisorNoteModal({{ task.TaskID }})">Note</button>{% endif %}
                                         </td>
                                     </tr>
                                  {% endfor %}
@@ -514,7 +473,6 @@
                 {% endif %}
             </div>
         </div>
-        
     </div>
     
     <div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
@@ -526,7 +484,7 @@
                     <input type="hidden" name="filter" value="{{ active_filter }}">
 
                     <div class="modal-header">
-                        <h5 class="modal-title" id="createTaskModalLabel">Tạo Task Mới cho Ngày {{ current_date }}</h5>
+                        <h5 class="modal-title" id="createTaskModalLabel">Tạo Task Mới</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -538,7 +496,8 @@
                         <div class="mb-3 search-container">
                             <label for="create_object_id_input" class="form-label">Đối tượng/Khách hàng</label>
                             <input type="text" class="form-control" id="create_object_id_input" placeholder="Gõ tên KH để tìm kiếm...">
-                            <input type="hidden" name="object_id" id="create_object_id_selected"> <select id="create_kh_search_results" class="form-select search-results-dropdown" size="5" onchange="selectClient('create_kh_search_results', 'create_object_id_input', 'create_object_id_selected')"></select>
+                            <input type="hidden" name="object_id" id="create_object_id_selected"> 
+                            <select id="create_kh_search_results" class="form-select search-results-dropdown" size="5"></select>
                         </div>
 
                         <div class="mb-3">
@@ -556,7 +515,7 @@
                             <label for="task_email_link" class="form-label">Link Email / Tài liệu (URL)</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="fas fa-link"></i></span>
-                                <input type="url" class="form-control" id="task_email_link" name="task_email_link" placeholder="Paste link Gmail/Outlook hoặc Drive vào đây...">
+                                <input type="url" class="form-control" id="task_email_link" name="task_email_link" placeholder="Paste link...">
                             </div>
                         </div>
                     </div>
@@ -568,13 +527,13 @@
             </div>
         </div>
     </div>
-    
+
     <div class="modal fade" id="updateTaskModal" tabindex="-1" aria-labelledby="updateTaskModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl"> 
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="updateTaskModalLabel">Cập nhật Task #<span id="updateTaskIdDisplay"></span>: <span id="updateTaskTitleDisplay"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title">Cập nhật Task #<span id="updateTaskIdDisplay"></span>: <span id="updateTaskTitleDisplay"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row g-4">
@@ -611,43 +570,34 @@
                                     <div class="col-12 mb-3" id="helperSelectionBox" style="display: none;">
                                         <label class="form-label text-danger fw-bold">Chọn người/bộ phận hỗ trợ *</label>
                                         <select class="form-select" id="helper_code_select" multiple style="height: 150px; border: 2px solid var(--danger); background-color: #FFF5F5;">
-                                            </select>
-                                        <small class="text-muted d-block mt-1"><i class="fas fa-info-circle"></i> Giữ phím <strong>Ctrl</strong> (Windows) hoặc <strong>Command</strong> (Mac) để chọn nhiều người.</small>
+                                        </select>
+                                        <small class="text-muted d-block mt-1"><i class="fas fa-info-circle"></i> Giữ phím Ctrl/Command để chọn nhiều người.</small>
                                     </div>
                                 </div>
                             </form>
                             <div class="d-flex justify-content-end mt-3">
-                                <button type="button" class="btn btn-warning me-2" id="helpCallBtn">
-                                    <i class="fas fa-hand-paper me-1"></i> Kêu gọi Hỗ trợ
-                                </button>
-                                <button type="submit" class="btn btn-success" form="updateTaskForm" id="saveProgressBtn">
-                                    <i class="fas fa-save me-1"></i> Ghi nhận Log
-                                </button>
+                                <button type="button" class="btn btn-warning me-2" id="helpCallBtn"><i class="fas fa-hand-paper me-1"></i> Kêu gọi Hỗ trợ</button>
+                                <button type="submit" class="btn btn-success" form="updateTaskForm" id="saveProgressBtn"><i class="fas fa-save me-1"></i> Ghi nhận Log</button>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <h6 class="text-primary"><i class="fas fa-history me-1"></i> Lịch sử Tiến độ</h6>
-                            <div id="logHistoryContainer" style="max-height: 450px; overflow-y: auto;">
-                                <p class="text-center text-muted">Đang tải lịch sử...</p>
-                            </div>
+                            <div id="logHistoryContainer" style="max-height: 450px; overflow-y: auto;"></div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button></div>
             </div>
         </div>
     </div>
     
-    {% if is_admin %}
-    <div class="modal fade" id="supervisorNoteModal" tabindex="-1" aria-labelledby="supervisorNoteModalLabel" aria-hidden="true">
+    <div class="modal fade" id="supervisorNoteModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                  <form id="supervisorNoteForm">
                     <div class="modal-header">
                         <h5 class="modal-title">Phản hồi Log #<span id="noteLogIdDisplay"></span></h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                          <input type="hidden" id="note_log_id">
@@ -658,523 +608,51 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                        <button type="submit" class="btn btn-primary" id="saveNoteBtn">Lưu Phản hồi</button>
+                        <button type="submit" class="btn btn-primary">Lưu Phản hồi</button>
                     </div>
                  </form>
             </div>
         </div>
     </div>
-    {% endif %}
 
-    <div class="chatbot-toggle" id="chatbotToggle">
-        <i class="fas fa-robot"></i>
-    </div>
+    <div class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-robot"></i></div>
     <div class="chatbot-window" id="chatbotWindow">
         <div class="chatbot-header" id="chatbotHeader">
             <span>Trợ lý Ảo (AI)</span>
             <div class="chatbot-header-controls">
-                <button class="chatbot-control-btn" id="chatbotMaximizeBtn" title="Mở rộng">
-                    <i class="fas fa-expand-alt"></i>
-                </button>
-                <button class="chatbot-control-btn" id="chatbotClose" title="Đóng">
-                    <i class="fas fa-times"></i>
-                </button>
+                <button class="chatbot-control-btn" id="chatbotMaximizeBtn"><i class="fas fa-expand-alt"></i></button>
+                <button class="chatbot-control-btn" id="chatbotClose"><i class="fas fa-times"></i></button>
             </div>
         </div>
         <div class="chatbot-history" id="chatbotHistory">
             <div class="chat-message-container">
-                <div class="chat-message chat-bot">
-                    <br>Chào bạn, tôi có thể giúp gì?<br>                                       
-                    <br>1. <strong>22212 NSK C3</strong> (Tra nhanh tồn kho)
-                    <br>2. <strong>Giá 22214 cho Vina Kraft</strong> (Tra giá KH)
-                    <br>3. <strong>Takako mua spray nine chưa</strong> (Lịch sử mua hàng)
-                    <br>4. <strong>Dự phòng Kiswire mã AB</strong> (Đặt Dự phòng)
-                    <br>5. <strong>Giao hàng cho Takako chưa</strong> (Tiến độ giao hàng)
-                </div>
+                <div class="chat-message chat-bot"><br>Chào bạn, tôi có thể giúp gì?</div>
             </div>
         </div>
         <div class="chatbot-input-area">
             <input type="text" class="chatbot-input" id="chatbotInput" placeholder="Nhập câu hỏi...">
-            <button class="chatbot-send-btn" id="chatbotSendBtn">
-                <i class="fas fa-paper-plane"></i>
-            </button>
+            <button class="chatbot-send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
-    
+
+    <div id="task-context"
+         data-daily-tasks='{{ kanban_tasks | tojson | safe }}'
+         data-history-tasks='{{ history_tasks | tojson | safe }}'
+         data-is-admin='{{ is_admin | tojson | safe }}'
+         data-base-url="{{ url_for('task_bp.task_dashboard') }}"
+         data-view-mode="{{ view_mode }}"
+         data-active-filter="{{ active_filter }}"
+         data-search-term="{{ text_search_term }}">
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
-    <script>
-        
-        // BỔ SUNG: HÀM LỌC KPI
-        window.filterTasks = function(filterType) {
-            const urlParams = new URLSearchParams(window.location.search);
-            const currentView = urlParams.get('view') || 'USER';
-            const currentSearch = urlParams.get('search') || '';
-            
-            window.location.href = `{{ url_for('task_bp.task_dashboard') }}?view=${currentView}&filter=${filterType}&search=${currentSearch}`;
-        };
-        
-        // Lớp Task Management JS (Giữ nguyên)
-        class TaskManager {
-            constructor(tasks) {
-                this.tasks = tasks.daily_tasks.concat(tasks.history_tasks);
-                this.tasksMap = this.tasks.reduce((map, task) => {
-                    map[task.TaskID] = task;
-                    return map;
-                }, {});
-            }
-
-            getTask(id) {
-                return this.tasksMap[id];
-            }
-
-            openUpdateModal(taskId) {
-                loadEligibleHelpers(); 
-                const task = this.getTask(taskId);
-                if (!task) { alert('Task không tồn tại!'); return; }
-
-                $('#updateTaskIdDisplay').text(taskId);
-                $('#update_task_id').val(taskId);
-                $('#updateTaskTitleDisplay').text(task.Title || 'N/A'); // Hiển thị tiêu đề
-                
-                const objectIdInput = $('#update_object_id');
-                const isReadOnly = task.DetailContent || task.CompletedDate; 
-                
-                // ĐẶT READONLY CHO ObjectID
-                if (isReadOnly) {
-                    objectIdInput.attr('readonly', true).css('background-color', '#e9ecef');
-                } else {
-                    objectIdInput.attr('readonly', false).css('background-color', '');
-                }
-
-                if (task.ClientName) {
-                     objectIdInput.val(task.ObjectID + ' - ' + task.ClientName);
-                } else {
-                     objectIdInput.val(task.ObjectID || '');
-                }
-
-                // Cài đặt trạng thái Progress Ban đầu
-                $('#progress_percent').val(task.ProgressPercentage || 0); 
-                $('#update_detail_content').val(''); // Bắt đầu Log mới với nội dung trống
-                
-                // --- RESET UI (SHOW DROPDOWN, HIDE BADGE) ---
-                $('#log_type_select').show().val('PROGRESS');
-                $('#helpCallDisplay').css('display', 'none');
-                $('#helperSelectionBox').hide(); 
-                // ---------------------------------------------
-
-                // 2. Tải Lịch sử Log (API MỚI)
-                $('#logHistoryContainer').html('<p class="text-center text-muted">Đang tải lịch sử...</p>');
-                fetch(`/api/task/history/${taskId}`)
-                    .then(r => r.json())
-                    .then(logs => {
-                        renderLogHistory(logs, {{ is_admin | tojson }});
-                    })
-                    .catch(e => {
-                        $('#logHistoryContainer').html('<p class="alert alert-danger">Lỗi tải lịch sử Log.</p>');
-                    });
-                        
-                $('#updateTaskModal').modal('show'); 
-            }
-            
-            openSupervisorNoteModal(logId) {
-                 // Dành cho nút Note trên bảng lịch sử chi tiết (không phải Task Master)
-                 $('#noteLogIdDisplay').text(logId);
-                 $('#note_log_id').val(logId);
-                 $('#note_content').val(`[Phản hồi Log ${logId}]: `); 
-
-                 $('#supervisorNoteModal').modal('show');
-            }
-        }
-        
-        // Khởi tạo TaskManager với dữ liệu từ Flask
-        const taskManager = new TaskManager({
-            daily_tasks: {{ kanban_tasks|tojson }},
-            history_tasks: {{ history_tasks|tojson }}
-        });
-
-        // Hàm debounce
-        function debounce(func, timeout = 300) {
-            let timer;
-            return (...args) => {
-                clearTimeout(timer);
-                timer = setTimeout(() => { func.apply(this, args); }, timeout);
-            };
-        }
-        
-        let eligibleHelpers = []; 
-
-        // FIX: HÀM LOAD HELPERS MỚI (CÓ GROUP)
-        function loadEligibleHelpers() {
-            if (eligibleHelpers.length > 0) return;
-            
-            fetch('/api/get_eligible_helpers')
-                .then(response => response.json())
-                .then(data => {
-                    eligibleHelpers = data;
-                    const ddl = $('#helper_code_select');
-                    ddl.empty(); // Không cần option mặc định cho multiple select
-
-                    // 1. Thêm các lựa chọn BỘ PHẬN
-                    ddl.append('<optgroup label="--- GỬI CẢ BỘ PHẬN ---">');
-                    ddl.append('<option value="DEPT_2. KINH DOANH">⭐ TOÀN BỘ KINH DOANH</option>');
-                    ddl.append('<option value="DEPT_5. KHO">⭐ TOÀN BỘ KHO</option>');
-                    ddl.append('<option value="DEPT_3. THU KY">⭐ TOÀN BỘ THƯ KÝ</option>');
-                    ddl.append('</optgroup>');
-
-                    // 2. Thêm danh sách NHÂN VIÊN
-                    ddl.append('<optgroup label="--- NHÂN VIÊN ---">');
-                    data.forEach(h => {
-                        ddl.append(`<option value="${h.code}">${h.name}</option>`);
-                    });
-                    ddl.append('</optgroup>');
-                })
-                .catch(error => console.error("Error loading helpers:", error));
-        }
-        
-        // HÀM HIỂN THỊ LOG LỊCH SỬ (Request 1, 3)
-        function renderLogHistory(logs, isAdmin) {
-            const container = $('#logHistoryContainer');
-            container.empty();
-            
-            if (!logs || logs.length === 0) {
-                container.html('<p class="alert alert-info">Chưa có lịch sử cập nhật cho Task này.</p>');
-                return;
-            }
-
-            logs.forEach(log => {
-                let logClass = '';
-                let icon = '';
-                let actionBtn = '';
-
-                switch(log.TaskLogType) {
-                    case 'BLOCKED':
-                        logClass = 'bg-danger-subtle border-danger';
-                        icon = '<i class="fas fa-lock text-danger"></i> BLOCKED';
-                        break;
-                    case 'HELP_CALL':
-                        logClass = 'bg-warning-subtle border-warning';
-                        icon = `<i class="fas fa-headset text-warning"></i> HỖ TRỢ (${log.HelperRequestCode})`;
-                        break;
-                    case 'REQUEST_CLOSE':
-                        logClass = 'bg-success-subtle border-success';
-                        icon = '<i class="fas fa-check-circle text-success"></i> Y/C ĐÓNG';
-                        break;
-                    case 'SUPERVISOR_NOTE':
-                         logClass = 'bg-info-subtle border-info';
-                         icon = '<i class="fas fa-user-tie text-info"></i> FEEDBACK';
-                         break;
-                    default:
-                        logClass = 'bg-light border-secondary';
-                        icon = `<i class="fas fa-chart-line text-primary"></i> PROGRESS: ${log.ProgressPercentage}%`;
-                }
-
-                if (isAdmin && log.TaskLogType !== 'SUPERVISOR_NOTE') {
-                     // Nút Phản hồi cấp trên (liên kết với logID)
-                     actionBtn = `<button class="btn btn-sm btn-link p-0 float-end text-info" 
-                                    onclick="openSupervisorNoteModal(${log.LogID}, '${log.UpdateContent.replace(/'/g, "\\'")}')">
-                                        <i class="fas fa-comment-dots"></i> Phản hồi
-                                    </button>`;
-                }
-
-                let feedbackHtml = '';
-                if (log.SupervisorFeedback) { // REQUEST 3: Hiển thị phản hồi
-                    feedbackHtml = `
-                        <div class="mt-2 p-2 small border-top border-info">
-                            <i class="fas fa-reply me-1 text-info"></i> <strong>Cấp trên (${log.SupervisorCode || 'N/A'}):</strong> ${log.SupervisorFeedback}
-                        </div>
-                    `;
-                }
-                
-                const logItem = `
-                    <div class="card mb-2 ${logClass}">
-                        <div class="card-body p-3">
-                            ${actionBtn}
-                            <div class="small fw-bold mb-1">
-                                ${icon} 
-                                <span class="text-muted ms-3">LogID: ${log.LogID} - bởi ${log.UserShortName || log.UserCode} lúc ${new Date(log.UpdateDate).toLocaleString('vi-VN')}</span>
-                            </div>
-                            <p class="mb-0 ms-2 small">Nội dung: ${log.UpdateContent || 'N/A'}</p>
-                            ${feedbackHtml}
-                        </div>
-                    </div>
-                `;
-                container.append(logItem);
-            });
-        }
-
-        // HÀM XỬ LÝ KHÁCH HÀNG (AUTOSUGGEST)
-        // ... (giữ nguyên logic) ...
-        function timKhachHangAutocomplete(term, resultsDropdown) {
-             const cleanedTerm = String(term || '').trim();
-             if (cleanedTerm.length < 2) {
-                 resultsDropdown.hide().empty();
-                 return;
-             }
-             
-             resultsDropdown.empty().show();
-
-             fetch(`/sales/api/khachhang/${cleanedTerm}`)
-                 .then(response => {
-                     if (response.status === 404) return [];
-                     if (!response.ok) throw new Error('Lỗi Server.');
-                     return response.json(); 
-                 })
-                 .then(data => {
-                     if (data && data.length > 0) {
-                         data.forEach(kh => {
-                             const option = `<option value="${kh.ID}" data-fullname="${kh.FullName}">${kh.FullName} (${kh.ID})</option>`;
-                             resultsDropdown.append(option);
-                         });
-                         resultsDropdown.attr('size', Math.max(Math.min(data.length, 5), 2));
-                     } else {
-                         resultsDropdown.hide();
-                     }
-                 })
-                 .catch(error => {
-                     console.error("Fetch KH Error:", error);
-                     resultsDropdown.hide();
-                 });
-        }
-        
-        window.selectClient = function(dropdownId, inputId, hiddenId) {
-             const dropdown = $(`#${dropdownId}`);
-             const selectedOption = dropdown.find('option:selected');
-             
-             if (selectedOption.length) {
-                 const id = selectedOption.val();
-                 const fullName = selectedOption.data('fullname');
-                 const displayText = fullName + ' (' + id + ')';
-                 
-                 $(`#${hiddenId}`).val(id);
-                 $(`#${inputId}`).val(displayText);
-                 dropdown.hide();
-             }
-        };
-
-
-        // HÀM MỞ MODAL PHẢN HỒI (Request 3)
-        window.openSupervisorNoteModal = function(logId, currentContent) {
-             $('#noteLogIdDisplay').text(logId);
-             $('#note_log_id').val(logId);
-             $('#note_content').val(`[Phản hồi Log ${logId}]: ${currentContent.substring(0, 50)}...`); 
-
-             $('#supervisorNoteModal').modal('show');
-        };
-        
-        // FIX C: ĐỊNH NGHĨA HÀM TẠO TASK MỚI (FIX ReferenceError)
-        window.openCreateTaskModal = function() {
-            $('#createTaskModal').modal('show'); 
-        };
-
-        // --- ĐĂNG KÝ SỰ KIỆN VÀ LIÊN KẾT ---
-
-        // Kích hoạt Autocomplete khi gõ vào trường ObjectID (Tạo Task)
-        $('#create_object_id_input').on('input', debounce(function() {
-             const inputElement = $('#create_object_id_input');
-             const dropdown = $('#create_kh_search_results');
-             timKhachHangAutocomplete(inputElement.val(), dropdown);
-        }, 300));
-        
-        // Bắt sự kiện chọn Khách hàng từ droplist để lưu giá trị
-        $('#create_kh_search_results').on('change', function() {
-            selectClient('create_kh_search_results', 'create_object_id_input', 'create_object_id_selected');
-        });
-
-        // HÀM KÊU GỌI HỖ TRỢ (Nút riêng) - ĐÃ FIX UI SWAP
-        $('#helpCallBtn').on('click', function() {
-            // 1. Ẩn Select, Hiện Badge
-            $('#log_type_select').hide();
-            $('#helpCallDisplay').css('display', 'flex'); // Dùng flex để căn giữa
-            
-            // 2. Tự động thêm option HELP_CALL và chọn nó
-            if ($('#log_type_select option[value="HELP_CALL"]').length === 0) {
-                $('#log_type_select').append('<option value="HELP_CALL">HELP</option>');
-            }
-            $('#log_type_select').val('HELP_CALL');
-
-            // 3. Hiện ô chọn người và load
-            $('#helperSelectionBox').slideDown(); // Hiệu ứng trượt xuống
-            loadEligibleHelpers();
-            
-            // Focus vào ô chọn người
-            setTimeout(() => { $('#helper_code_select').focus(); }, 100);
-        });
-
-        // HÀM XỬ LÝ SỰ KIỆN GHI LOG TIẾN ĐỘ (Update Task)
-        $('#updateTaskForm').on('submit', function(e) {
-            e.preventDefault();
-            const form = $(this);
-            
-            // FIX: Lấy giá trị MULTIPLE SELECT
-            const selectedHelpers = form.find('#helper_code_select').val() || [];
-            const logType = form.find('#log_type_select').val();
-
-            // Validate Help Call
-            if (logType === 'HELP_CALL' && selectedHelpers.length === 0) {
-                 alert('Vui lòng chọn ít nhất 1 người hoặc bộ phận để gửi yêu cầu.');
-                 return;
-            }
-            
-            // LƯU Ý: Name của textarea đã được đổi thành 'content'
-            const payload = {
-                task_id: form.find('#update_task_id').val(),
-                object_id: form.find('#update_object_id').val().split(' - ')[0], 
-                content: form.find('#update_detail_content').val(), 
-                progress_percent: parseInt(form.find('#progress_percent').val()),
-                log_type: logType,
-                helper_codes: selectedHelpers // Gửi MẢNG helper_codes
-            };
-            
-            // API mới là /api/task/log_progress
-            fetch('/api/task/log_progress', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            })
-            .then(response => response.json())
-            .then(result => {
-                alert(result.message);
-                if (result.success) {
-                    window.location.reload(); 
-                }
-            })
-            .catch(error => {
-                console.error("Error logging progress:", error);
-                alert('Lỗi kết nối hoặc xử lý dữ liệu.');
-            });
-        });
-        // ĐĂNG KÝ SỰ KIỆN GLOBAL
-        window.openCreateTaskModal = function() {
-            $('#createTaskModal').modal('show'); 
-        };
-        
-        window.openUpdateModal = function(taskId) { taskManager.openUpdateModal(taskId); };
-        // HÀM GHI PHẢN HỒI CẤP TRÊN (Request 3)
-        $('#supervisorNoteForm').on('submit', function(e) {
-            e.preventDefault();
-            const logId = $('#note_log_id').val();
-            const feedback = $('#note_content').val();
-
-            fetch('/api/task/add_feedback', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ log_id: logId, feedback: feedback })
-            })
-            .then(response => response.json())
-            .then(result => {
-                alert(result.message);
-                if (result.success) {
-                    $('#supervisorNoteModal').modal('hide');
-                    window.location.reload();
-                }
-            })
-            .catch(error => {
-                console.error("Error saving feedback:", error);
-                alert('Lỗi khi lưu phản hồi.');
-            });
-        });
-        
-        // === LOGIC POLLING CẬP NHẬT GẦN NHẤT (MỚI) ===
-        function checkRecentUpdates() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const viewMode = urlParams.get('view') || 'USER';
-            const minutesAgo = 15;
-            
-            // Lấy TaskID từ các card trên Kanban và History (dùng TaskID làm ID duy nhất)
-            const allTaskCards = Array.from(document.querySelectorAll('.task-card, [data-task-id]'));
-            
-            fetch(`/api/task/recent_updates?view=${viewMode}&minutes=${minutesAgo}`)
-                .then(response => response.json())
-                .then(updatedTasks => {
-                    // 1. Xóa tất cả các dấu chấm đỏ cũ
-                    document.querySelectorAll('.new-update-marker').forEach(marker => marker.remove());
-
-                    if (updatedTasks && updatedTasks.length > 0) {
-                        
-                        updatedTasks.forEach(task => {
-                            const taskId = task.TaskID;
-                            
-                            // 2. Tìm thẻ Task
-                            // Task trên Kanban (không có data-task-id, dùng onclick)
-                            let taskCard = document.querySelector(`.kanban-container .task-card[onclick*="openUpdateModal(${taskId})"]`);
-                            // Task trên bảng lịch sử (có data-task-id)
-                            if (!taskCard) {
-                                taskCard = document.querySelector(`#task-history-table tr[data-task-id="${taskId}"]`);
-                            }
-
-                            if (taskCard) {
-                                // 3. Chèn dấu chấm đỏ
-                                const marker = document.createElement('div');
-                                marker.className = 'new-update-marker';
-                                
-                                // Chèn vào thẻ Task Card (cho Kanban)
-                                if (taskCard.classList.contains('task-card')) {
-                                    taskCard.appendChild(marker);
-                                } 
-                                // Chèn vào ô đầu tiên (TD) của hàng trong bảng lịch sử
-                                else if (taskCard.tagName === 'TR') {
-                                    const firstCell = taskCard.querySelector('td');
-                                    if (firstCell) {
-                                        firstCell.style.position = 'relative'; // Đặt relative cho cell chứa
-                                        firstCell.appendChild(marker);
-                                    }
-                                }
-                            }
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('[Polling Error] Lỗi khi kiểm tra cập nhật:', error);
-                });
-        }
-
-        function startPolling() {
-            // Chạy lần đầu ngay khi tải trang
-            checkRecentUpdates(); 
-            
-            // Đặt lịch lặp lại mỗi 15 phút (900000 ms)
-            const intervalMinutes = 15;
-            const intervalMs = intervalMinutes * 60 * 1000; 
-            
-            setInterval(checkRecentUpdates, intervalMs);
-            console.log(`[Polling] Bắt đầu kiểm tra cập nhật Task mới sau mỗi ${intervalMinutes} phút.`);
-        }
-
-        // Chạy polling sau khi DOM đã sẵn sàng
-        $(document).ready(function() {
-            
-            // Khởi tạo DataTables cho bảng Lịch sử Task
-            if ($('#task-history-table').length) {
-                $('#task-history-table').DataTable({
-                    "paging": true,
-                    "pageLength": 15, // THIẾT LẬP 15 DÒNG MỖI TRANG
-                    "lengthChange": true,
-                    "searching": false, // Giữ cho form lọc tùy chỉnh hoạt động
-                    "ordering": true,
-                    "info": true,
-                    "order": [[1, 'desc']], // Sắp xếp mặc định theo cột Ngày
-                    "dom": 'lfrtip', // Cấu trúc hiển thị phân trang/tìm kiếm
-                    "language": {
-                        "lengthMenu": "Hiển thị _MENU_ mục",
-                        "zeroRecords": "Không tìm thấy dữ liệu.",
-                        "info": "Hiển thị từ _START_ đến _END_ trong tổng số _TOTAL_ mục",
-                        "infoEmpty": "Không có dữ liệu",
-                        "paginate": { "next": "Sau", "previous": "Trước" }
-                    }
-                });
-            }
-            
-            // Bắt đầu Polling cho Task Updates
-            startPolling();
-        });
-
-    </script>
+    
+    <script src="{{ url_for('static', filename='js/task_dashboard.js') }}"></script>
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        
         const toggleBtn = document.getElementById('chatbotToggle');
         const closeBtn = document.getElementById('chatbotClose');
         const maximizeBtn = document.getElementById('chatbotMaximizeBtn'); 
@@ -1183,115 +661,57 @@
         const inputEl = document.getElementById('chatbotInput');
         const sendBtn = document.getElementById('chatbotSendBtn');
 
-        // Mở/Đóng cửa sổ chat
         if (toggleBtn && windowEl && closeBtn) {
             toggleBtn.addEventListener('click', () => windowEl.classList.toggle('active'));
             closeBtn.addEventListener('click', () => windowEl.classList.remove('active'));
         }
 
-
-        // --- LOGIC MAXIMIZE ---
         if (maximizeBtn && windowEl) {
             maximizeBtn.addEventListener('click', () => {
                 windowEl.classList.toggle('maximized');
                 const icon = maximizeBtn.querySelector('i');
                 if (windowEl.classList.contains('maximized')) {
-                    icon.classList.remove('fa-expand-alt');
-                    icon.classList.add('fa-compress-alt');
-                    maximizeBtn.title = "Thu nhỏ";
+                    icon.classList.remove('fa-expand-alt'); icon.classList.add('fa-compress-alt');
                 } else {
-                    icon.classList.add('fa-expand-alt');
-                    icon.classList.remove('fa-compress-alt');
-                    maximizeBtn.title = "Mở rộng";
+                    icon.classList.add('fa-expand-alt'); icon.classList.remove('fa-compress-alt');
                 }
             });
         }
 
-
-        // Hàm gửi tin nhắn
         const sendMessage = () => {
             if (!inputEl || !sendBtn || !historyEl) return;
-            
             const messageText = inputEl.value.trim();
             if (messageText === '') return;
-
             addMessageToHistory(messageText, 'user');
             inputEl.value = '';
-            addMessageToHistory('...', 'bot', true); // 'true' = loading
-            
-            // Gọi API (Backend)
+            addMessageToHistory('...', 'bot', true);
             fetch('/api/chatbot_query', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: messageText })
-            })
-            .then(response => response.json())
-            .then(data => {
-                updateBotMessage(data.response);
-            })
-            .catch(error => {
-                console.error('Chatbot API Error:', error);
-                updateBotMessage('Lỗi kết nối. Vui lòng thử lại.');
-            });
+            }).then(response => response.json()).then(data => { updateBotMessage(data.response); })
+            .catch(error => { updateBotMessage('Lỗi kết nối.'); });
         };
 
-        // Đăng ký sự kiện
         if (sendBtn) sendBtn.addEventListener('click', sendMessage);
-        if (inputEl) inputEl.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-
-        // --- Helper Functions ---
-        let messageContainer;
-        if (historyEl) {
-             messageContainer = document.createElement('div');
-             messageContainer.className = 'chat-message-container';
-             historyEl.appendChild(messageContainer);
-        }
+        if (inputEl) inputEl.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
 
         function addMessageToHistory(text, type, isLoading = false) {
-            if (!messageContainer || !historyEl) return;
-            
-            const msgDiv = document.createElement('div');
-            msgDiv.classList.add('chat-message');
-            
-            if (type === 'user') {
-                msgDiv.classList.add('chat-user');
-                msgDiv.textContent = text;
-            } else {
-                msgDiv.classList.add('chat-bot');
-                if (isLoading) {
-                    msgDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; 
-                    msgDiv.id = 'bot-loading-message';
-                } else {
-                    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                    text = text.replace(/\n/g, '<br>');
-                    msgDiv.innerHTML = text;
-                }
-            }
-            
-            messageContainer.appendChild(msgDiv);
+            const msgDiv = document.createElement('div'); msgDiv.classList.add('chat-message');
+            if (type === 'user') { msgDiv.classList.add('chat-user'); msgDiv.textContent = text; }
+            else { msgDiv.classList.add('chat-bot'); if (isLoading) { msgDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; msgDiv.id = 'bot-loading-message'; } else { msgDiv.innerHTML = text.replace(/\n/g, '<br>'); } }
+            historyEl.querySelector('.chat-message-container').appendChild(msgDiv);
             historyEl.scrollTop = historyEl.scrollHeight;
         }
-        
         function updateBotMessage(responseText) {
-            if (!historyEl) return;
-            
             const loadingMsg = document.getElementById('bot-loading-message');
             if (loadingMsg) {
-                responseText = responseText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                responseText = responseText.replace(/\n/g, '<br>');
-                loadingMsg.innerHTML = responseText;
-                loadingMsg.removeAttribute('id'); 
-            } else {
-                addMessageToHistory(responseText, 'bot');
-            }
+                loadingMsg.innerHTML = responseText.replace(/\n/g, '<br>');
+                loadingMsg.removeAttribute('id');
+            } else { addMessageToHistory(responseText, 'bot'); }
             historyEl.scrollTop = historyEl.scrollHeight;
         }
-
     });
     </script>
+
 </body>
 </html>

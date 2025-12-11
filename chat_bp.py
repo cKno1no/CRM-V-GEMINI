@@ -19,8 +19,10 @@ def api_chatbot_query():
     """API: Nhận tin nhắn từ Widget Chatbot và trả về phản hồi."""
     
     # FIX: Import Services Cục bộ
-    from app import chatbot_service, db_manager 
     
+    db_manager   = current_app.db_manager  
+    chatbot_service   = current_app.chatbot_service  
+
     data = request.json
     message = data.get('message', '').strip()
     

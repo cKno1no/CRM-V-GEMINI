@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
 # FIX: Chỉ import các helper từ utils.py (và get_user_ip nếu nó được chuyển từ app.py)
 from utils import login_required 
 from datetime import datetime, timedelta
@@ -26,8 +26,10 @@ def quote_approval_dashboard():
     """ROUTE: Dashboard Duyệt Chào Giá."""
     
     # FIX: Import Services Cần thiết Cục bộ
-    from app import approval_service, task_service
-    
+   
+    approval_service  = current_app.approval_service
+    task_service  = current_app.task_service
+
     user_code = session.get('user_code')
     today = datetime.now().strftime('%Y-%m-%d')
     seven_days_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
@@ -61,8 +63,9 @@ def sales_order_approval_dashboard():
     """ROUTE: Dashboard Duyệt Đơn hàng Bán."""
     
     # FIX: Import Services Cần thiết Cục bộ
-    from app import order_approval_service
     
+    order_approval_service  = current_app.order_approval_service
+
     user_code = session.get('user_code')
     today = datetime.now().strftime('%Y-%m-%d')
     seven_days_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
@@ -89,8 +92,12 @@ def quick_approval_form():
     """ROUTE: Form Phê duyệt Nhanh (Ghi đè) cho Giám đốc."""
     
     # FIX: Import Services Cần thiết Cục bộ
-    from app import approval_service, order_approval_service, db_manager # ADD db_manager
-    
+     # ADD db_manager
+    db_manager  = current_app.db_manager
+    approval_service  = current_app.approval_service 
+    order_approval_service = current_app.order_approval_service 
+
+
     user_role = session.get('user_role', '').strip().upper()
     user_code = session.get('user_code')
     
@@ -136,7 +143,9 @@ def api_approve_quote():
     """API: Thực hiện duyệt Chào Giá."""
     
     # FIX: Import Services Cần thiết Cục bộ
-    from app import approval_service, db_manager # ADD db_manager
+    db_manager  = current_app.db_manager
+    approval_service  = current_app.approval_service 
+     # ADD db_manager
     
     data = request.json
     quotation_no = data.get('quotation_no')
@@ -181,7 +190,8 @@ def api_approve_order():
     """API: Thực hiện duyệt Đơn hàng Bán."""
     
     # FIX: Import Services Cần thiết Cục bộ
-    from app import order_approval_service, db_manager # ADD db_manager
+    order_approval_service  = current_app.order_approval_service
+    db_manager = current_app.db_manager # ADD db_manager
     
     data = request.json
     order_id = data.get('order_id')         
@@ -229,7 +239,7 @@ def api_approve_order():
 def api_get_quote_details(quote_id):
     """API: Trả về chi tiết báo giá (mặt hàng)."""
     
-    from app import approval_service
+    approval_service  = current_app.approval_service
     
     try:
         details = approval_service.get_quote_details(quote_id)
@@ -244,7 +254,7 @@ def api_get_quote_details(quote_id):
 def api_get_quote_cost_details(quote_id):
     """API: Trả về chi tiết các mặt hàng cần bổ sung Cost Override."""
     
-    from app import approval_service
+    approval_service  = current_app.approval_service
     
     try:
         # Giả định hàm service này tồn tại
@@ -260,7 +270,7 @@ def api_get_order_details(sorder_id):
     """API: Trả về chi tiết Đơn hàng Bán (mặt hàng)."""
     
     # FIX: Import Services Cần thiết Cục bộ
-    from app import order_approval_service
+    order_approval_service  = current_app.order_approval_service
     
     try:
         details = order_approval_service.get_order_details(sorder_id)
@@ -275,7 +285,7 @@ def api_update_quote_salesman():
     """API: Cập nhật NVKD (SalesManID) cho một Chào giá."""
     
     # FIX: Import Service Cục bộ VÀ sửa route từ @app.route sang @approval_bp.route
-    from app import approval_service 
+    approval_service  = current_app.approval_service 
     
     data = request.json
     quotation_id = data.get('quotation_id')
@@ -308,7 +318,7 @@ def api_update_quote_salesman():
 def api_save_quote_cost_override():
     """API: Thực hiện lưu giá Cost override vào CSDL và tính toán lại ratio."""
     
-    from app import approval_service
+    approval_service  = current_app.approval_service
     
     data = request.json
     quote_id = data.get('quote_id')
@@ -337,8 +347,9 @@ def quote_input_table():
     """ROUTE: Bảng nhập liệu Bám sát Báo giá (Action Plan)."""
     
     # Import Service xử lý logic khách hàng
-    from app import customer_service 
-    
+     
+    customer_service   = current_app.customer_service
+
     user_code = session.get('user_code')
     
     # 1. Xử lý bộ lọc ngày (Mặc định 30 ngày)
@@ -385,7 +396,7 @@ def quote_input_table():
 @login_required
 def api_update_quote_status():
     """API: Cập nhật trạng thái/hành động cho Báo giá (Upsert)."""
-    from app import db_manager
+    db_manager = current_app.db_manager
     import config
     
     data = request.json

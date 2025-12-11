@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
 # FIX: Chỉ import login_required từ utils.py
 from utils import login_required 
 from datetime import datetime
@@ -21,7 +21,7 @@ def task_dashboard():
     """ROUTE: Dashboard Quản lý Đầu việc hàng ngày."""
     
     # FIX: Import Services Cục bộ
-    from app import task_service 
+    task_service   = current_app.task_service 
     
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
@@ -54,7 +54,7 @@ def task_dashboard():
             ):
                 # LOG TASK CREATION (BỔ SUNG)
                 try:
-                    from app import db_manager
+                    db_manager = current_app.db_manager
                     db_manager.write_audit_log(
                         user_code, 'TASK_CREATE', 'INFO', 
                         f"Tạo Task mới: {title} (Type: {task_type}, Obj: {object_id})", 
@@ -100,7 +100,8 @@ def api_log_task_progress():
     """API: Ghi Log Tiến độ mới và Tạo Task Hỗ trợ (Fan-out)."""
     
     # FIX: Import Services Cục bộ
-    from app import task_service, db_manager
+    task_service   = current_app.task_service 
+    db_manager     = current_app.db_manager 
     
     data = request.get_json(silent=True) or {} 
     user_code = session.get('user_code')
@@ -164,7 +165,7 @@ def api_get_task_history(task_id):
     """API: Lấy lịch sử Log tiến độ chi tiết cho Modal."""
     
     # FIX: Import Services Cục bộ
-    from app import task_service
+    task_service   = current_app.task_service 
     
     try:
         logs = task_service.get_task_history_logs(task_id)
@@ -179,7 +180,7 @@ def api_add_supervisor_feedback():
     """API: Cấp trên thêm phản hồi trên LogID cụ thể (Request 3)."""
     
     # FIX: Import Services Cục bộ
-    from app import task_service
+    task_service   = current_app.task_service 
     
     data = request.json
     supervisor_code = session.get('user_code')
@@ -208,7 +209,7 @@ def api_toggle_task_priority(task_id):
     """API: Thay đổi Priority thành HIGH (hoặc ngược lại) khi nhấn biểu tượng sao."""
     
     # FIX: Import Services Cục bộ
-    from app import task_service
+    task_service   = current_app.task_service 
     
     current_task_data = task_service.get_task_by_id(task_id) 
     if not current_task_data:
@@ -221,7 +222,7 @@ def api_toggle_task_priority(task_id):
     
     if success:
         # LOG TASK PRIORITY TOGGLE (BỔ SUNG)
-        from app import db_manager
+        db_manager = current_app.db_manager
         db_manager.write_audit_log(
             session.get('user_code'), 'TASK_PRIORITY_TOGGLE', 'WARNING', 
             f"Thay đổi ưu tiên Task #{task_id} thành {new_priority}", 
@@ -237,7 +238,7 @@ def api_get_eligible_helpers():
     """API: Trả về danh sách Helper đủ điều kiện (Usercode - Shortname)."""
     
     # FIX: Import Services Cục bộ
-    from app import task_service
+    task_service   = current_app.task_service 
     
     try:
         helpers = task_service.get_eligible_helpers()
@@ -253,7 +254,7 @@ def api_update_task():
     """API: WRAPPER CŨ (Để tránh lỗi API nếu vẫn còn gọi từ code cũ)"""
     
     # FIX: Import Services Cục bộ
-    from app import task_service
+    task_service   = current_app.task_service 
     
     data = request.json
     
@@ -302,7 +303,7 @@ def api_update_task():
 def api_task_recent_updates():
     """API: Trả về danh sách TaskID có cập nhật trong 15 phút gần nhất."""
     
-    from app import task_service
+    task_service   = current_app.task_service 
     
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()

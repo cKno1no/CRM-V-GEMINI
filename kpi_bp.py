@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 # FIX: Chỉ import các helper từ utils.py (Đã được định nghĩa sớm và không gây vòng lặp)
 from utils import login_required, truncate_content 
 from datetime import datetime, timedelta
@@ -27,7 +27,9 @@ def sales_dashboard():
     """ROUTE: Bảng Tổng hợp Hiệu suất Sales."""
     
     # FIX: Import Sales Service Cục bộ
-    from app import sales_service, db_manager # ADD db_manager
+    # --- CÁCH GỌI MỚI (DÙNG) ---
+    sales_service = current_app.sales_service
+    db_manager = current_app.db_manager
     
     current_year = datetime.now().year
     DIVISOR = 1000000.0 # Để chuyển đổi từ tiền tệ sang triệu đồng
@@ -100,8 +102,10 @@ def sales_detail(employee_id):
     """ROUTE: Chi tiết Hiệu suất theo Khách hàng."""
     
     # FIX: Import DBManager và Sales Service Cục bộ
-    from app import db_manager, sales_service
     
+    db_manager  = current_app.db_manager
+    sales_service  = current_app.sales_service 
+
     current_year = datetime.now().year
     DIVISOR = 1000000.0
     
@@ -149,8 +153,9 @@ def realtime_dashboard():
     """ROUTE: Dashboard KPI Bán hàng Thời gian thực."""
     
     # FIX: Import DBManager Cục bộ
-    from app import db_manager
-    
+    db_manager  = current_app.db_manager 
+
+
     current_year = datetime.now().year
     
     user_code = session.get('user_code')
@@ -234,8 +239,10 @@ def inventory_aging_dashboard():
     """ROUTE: Phân tích Tuổi hàng Tồn kho."""
     
     # FIX: Import Inventory Service Cục bộ
-    from app import inventory_service, db_manager # ADD db_manager
     
+    db_manager  = current_app.db_manager
+    inventory_service  = current_app.inventory_service
+
     DIVISOR = 1000000.0
     
     # Lấy điều kiện lọc từ form
@@ -287,8 +294,11 @@ def ar_aging_dashboard():
     """ROUTE: Hiển thị Dashboard Công nợ Quá hạn (AR Aging)."""
     
     # FIX: Import AR Aging Service Cục bộ
-    from app import ar_aging_service, db_manager # ADD db_manager
     
+    
+    ar_aging_service = current_app.ar_aging_service
+    db_manager = current_app.db_manager
+
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
     user_bo_phan = session.get('bo_phan', '').strip().upper() # <-- THÊM DÒNG NÀY
@@ -332,8 +342,12 @@ def ar_aging_dashboard():
 def ar_aging_detail_dashboard():
     """ROUTE: Hiển thị báo cáo chi tiết công nợ quá hạn theo VoucherNo."""
     
-    from app import ar_aging_service, db_manager, task_service # Thêm task_service
     
+    
+    ar_aging_service = current_app.ar_aging_service
+    db_manager = current_app.db_manager
+    task_service = current_app.task_service
+
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
     is_admin_or_manager = user_role in [config.ROLE_ADMIN, config.ROLE_GM, config.ROLE_MANAGER]
@@ -385,8 +399,11 @@ def ar_aging_detail_dashboard():
 def ar_aging_detail_single_customer():
     """ROUTE: Trang chi tiết công nợ cho MỘT KHÁCH HÀNG (Drill-down)."""
     
-    from app import ar_aging_service, db_manager, get_user_ip 
     
+    ar_aging_service = current_app.ar_aging_service
+    get_user_ip = current_app.get_user_ip 
+    db_manager = current_app.db_manager
+
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
     
@@ -435,7 +452,9 @@ def ar_aging_detail_single_customer():
 @login_required
 def profit_analysis_dashboard():
     """ROUTE: Dashboard Phân tích Lợi nhuận Gộp."""
-    from app import sales_service, db_manager
+    # --- CÁCH GỌI MỚI (DÙNG) ---
+    sales_service = current_app.sales_service
+    db_manager = current_app.db_manager
     
     user_code = session.get('user_code')
     is_admin = session.get('user_role', '').strip().upper() == config.ROLE_ADMIN
