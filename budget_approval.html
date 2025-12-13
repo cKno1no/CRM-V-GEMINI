@@ -21,7 +21,6 @@
             --warning: #FFB547;
             --bg-color: #F4F7FE;
             --card-radius: 20px;
-            --input-bg: #F4F7FE;
         }
         
         body { 
@@ -106,6 +105,19 @@
             width: 100%; margin-bottom: 15px;
         }
 
+        /* --- MOBILE RESPONSIVE --- */
+        @media (max-width: 768px) {
+            .page-header { flex-direction: column; align-items: flex-start !important; gap: 10px; }
+            .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 15px; }
+            .table-approval th, .table-approval td { white-space: nowrap; padding: 12px 10px; }
+            .table-approval td:nth-child(7) { white-space: normal; min-width: 200px; } /* Cột Lý do */
+            
+            .modal-dialog { margin: 10px; }
+            .info-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+            .budget-context-box .row.g-2 { display: flex; flex-wrap: wrap; }
+            .budget-context-box .col-4 { width: 100%; display: flex; justify-content: space-between; margin-bottom: 5px; border-bottom: 1px dashed #eee; padding-bottom: 5px; }
+            .budget-context-box .col-4.text-center, .budget-context-box .col-4.text-end { text-align: left !important; }
+        }
     </style>
 </head>
 <body>
@@ -130,7 +142,7 @@
                                 <th>Ngày tạo</th>
                                 <th>Mã Phiếu</th>
                                 <th>Người đề nghị</th>
-                                <th>Khoản mục</th>
+                                <th>Người duyệt</th> <th>Khoản mục</th>
                                 <th class="text-end">Số tiền</th>
                                 <th>Lý do & Hồ sơ</th>
                                 <th class="text-center">Hành động</th>
@@ -143,7 +155,11 @@
                                 <td class="fw-bold text-primary">{{ item.RequestID }}</td>
                                 <td>
                                     <div class="fw-bold">{{ item.RequesterName }}</div>
-                                    <div class="small text-muted">{{ item.DepartmentCode }}</div>
+                                    <div class="small text-muted">{{ item.UserCode }}</div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info text-dark">{{ item.CurrentApproverName }}</span>
+                                    <div class="small text-secondary font-monospace">{{ item.CurrentApprover }}</div>
                                 </td>
                                 <td>
                                     <div class="text-dark">{{ item.BudgetName }}</div>
@@ -174,7 +190,7 @@
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="7" class="text-center text-muted p-5">
+                                <td colspan="8" class="text-center text-muted p-5">
                                     <i class="fas fa-check-circle fa-3x mb-3 text-light"></i><br>
                                     Không có đề nghị nào cần duyệt lúc này.
                                 </td>
@@ -217,8 +233,7 @@
 
                     <div id="md_attachments_box" class="mb-3 d-none">
                         <span class="info-label d-block mb-1 text-primary fw-bold"><i class="fas fa-paperclip"></i> Tài liệu đính kèm:</span>
-                        <div class="d-flex flex-wrap gap-2" id="md_attachment_list">
-                            </div>
+                        <div class="d-flex flex-wrap gap-2" id="md_attachment_list"></div>
                     </div>
 
                     <div id="md_context_box" class="budget-context-box">
@@ -278,7 +293,6 @@
         }
 
         function openReviewModal(item) {
-            // DEBUG: Xem dữ liệu nhận được để kiểm tra trường Attachments
             console.log("Review Item Data:", item);
 
             document.getElementById('md_request_id').value = item.RequestID;
@@ -287,13 +301,12 @@
             document.getElementById('md_budget').innerText = `${item.BudgetName} (${item.BudgetCode})`;
             document.getElementById('md_reason').innerText = item.Reason;
 
-            // [UPDATED] Xử lý hiển thị file đính kèm (An toàn cho cả Attachments và attachments)
+            // Xử lý file đính kèm
             const attachBox = document.getElementById('md_attachments_box');
             const attachList = document.getElementById('md_attachment_list');
             attachList.innerHTML = '';
             
-            // Kiểm tra cả 2 trường hợp tên biến (hoa/thường)
-            const rawFiles = item.Attachments || item.attachments;
+            const rawFiles = item.Attachments || item.attachments; // Check cả 2 trường hợp tên biến
 
             if (rawFiles && rawFiles.trim() !== '') {
                 attachBox.classList.remove('d-none');
@@ -305,7 +318,6 @@
                         link.target = '_blank';
                         link.className = 'btn btn-sm btn-light border shadow-sm';
                         
-                        // Hiển thị tên file gọn gàng (Bỏ prefix timestamp BUD_xxxx_)
                         const displayName = file.split('_').slice(2).join('_') || file;
                         link.innerHTML = `<i class="fas fa-file-download me-1 text-primary"></i> ${displayName}`; 
                         
@@ -316,11 +328,10 @@
                 attachBox.classList.add('d-none');
             }
 
-            // --- LOGIC HIỂN THỊ YTD ---
+            // Xử lý Progress Bar YTD
             const ytdPlan = parseFloat(item.YTD_Plan) || 0;
             const ytdActual = parseFloat(item.YTD_Actual) || 0; 
             const currentAmount = parseFloat(item.Amount) || 0;
-            
             const totalUsage = ytdActual + currentAmount;
             const remaining = ytdPlan - totalUsage;
 
@@ -335,7 +346,6 @@
 
             document.getElementById('bar_actual').style.width = `${pctActual}%`;
             document.getElementById('bar_actual').setAttribute('title', `Đã chi: ${formatCurrency(ytdActual)}`);
-            
             document.getElementById('bar_current').style.width = `${pctCurrent}%`;
             document.getElementById('bar_current').setAttribute('title', `Đang duyệt: ${formatCurrency(currentAmount)}`);
 

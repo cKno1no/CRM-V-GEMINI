@@ -23,6 +23,9 @@ from services.ap_aging_service import APAgingService
 from services.commission_service import CommissionService
 # [FIX] Thêm import PortalService
 from services.portal_service import PortalService
+from services.user_service import UserService
+from services.customer_analysis_service import CustomerAnalysisService
+
 
 # 2. Import Blueprints
 from blueprints.crm_bp import crm_bp
@@ -38,6 +41,8 @@ from blueprints.commission_bp import commission_bp
 from blueprints.executive_bp import executive_bp
 from blueprints.cross_sell_bp import cross_sell_bp
 from blueprints.ap_bp import ap_bp
+from blueprints.user_bp import user_bp
+from blueprints.customer_analysis_bp import customer_analysis_bp
 
 def create_app():
     """Nhà máy khởi tạo ứng dụng Flask"""
@@ -84,9 +89,11 @@ def create_app():
     app.cross_sell_service = CrossSellService(db_manager)
     app.ap_aging_service = APAgingService(db_manager)
     app.commission_service = CommissionService(db_manager)
+    app.customer_analysis_service = CustomerAnalysisService(app.db_manager, app.redis_client)
     
     # [FIX] Khởi tạo và gắn PortalService
     app.portal_service = PortalService(db_manager)
+    app.user_service = UserService(db_manager)
     
     app.chatbot_service = ChatbotService(
         app.lookup_service, 
@@ -109,11 +116,23 @@ def create_app():
     app.register_blueprint(executive_bp)
     app.register_blueprint(cross_sell_bp)
     app.register_blueprint(ap_bp)
+    app.register_blueprint(user_bp)
+    app.register_blueprint(customer_analysis_bp) # Đường dẫn mặc định sẽ theo định nghĩa trong bp
 
     # 5. Inject User Context
     from flask import session
     @app.context_processor
     def inject_user():
+        def check_permission(feature_code):
+            user_role = session.get('user_role', '').strip().upper()
+            # 1. ADMIN luôn đúng (Quyền tối thượng)
+            if user_role == config.ROLE_ADMIN: 
+                return True
+            
+            # 2. Kiểm tra danh sách quyền
+            permissions = session.get('permissions', [])
+            return feature_code in permissions
+
         return dict(current_user={
             'is_authenticated': session.get('logged_in', False),
             'usercode': session.get('user_code'),
@@ -121,7 +140,8 @@ def create_app():
             'shortname': session.get('user_shortname'),
             'role': session.get('user_role'),
             'cap_tren': session.get('cap_tren'),
-            'bo_phan': session.get('bo_phan')
+            'bo_phan': session.get('bo_phan'),
+            'can': check_permission # Helper mới
         })
 
     return app

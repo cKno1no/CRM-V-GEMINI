@@ -43,80 +43,54 @@
         }
         .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
 
-        /* --- 3. LAYOUT CARD (Phong cách mới) --- */
+        /* --- 3. LAYOUT CARD --- */
         .main-card {
-            border: none;
-            background: white;
-            border-radius: var(--card-radius);
+            border: none; background: white; border-radius: var(--card-radius);
             box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
-            margin-bottom: 20px;
-            overflow: hidden;
+            margin-bottom: 20px; overflow: hidden;
         }
-        
         .card-header-custom {
-            background-color: white;
-            color: var(--text-dark);
-            font-weight: 700;
-            font-size: 1.1rem;
-            padding: 20px 25px;
-            border-bottom: 1px solid var(--primary-light);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background-color: white; color: var(--text-dark); font-weight: 700; font-size: 1.1rem;
+            padding: 20px 25px; border-bottom: 1px solid var(--primary-light);
+            display: flex; justify-content: space-between; align-items: center;
         }
-        .card-header-custom i {
-            font-size: 1.1rem;
-            margin-right: 12px;
-            color: var(--primary);
-        }
-        
+        .card-header-custom i { font-size: 1.1rem; margin-right: 12px; color: var(--primary); }
+        .card-body-custom { padding: 25px; background-color: white; }
+
         /* Header cho các mục kết quả */
-        .card-header-custom.result-header {
-            background-color: var(--primary-light);
-            color: var(--primary);
-        }
+        .card-header-custom.result-header { background-color: var(--primary-light); color: var(--primary); }
         .card-header-custom.result-header i { color: var(--primary); }
         .card-header-custom.result-header-2 i { color: var(--success); }
         .card-header-custom.result-header-3 i { color: var(--warning); }
 
-
-        .card-body-custom {
-            padding: 25px;
-            background-color: white;
-        }
-
-        /* --- 4. FORM INPUTS (Style mới) --- */
+        /* --- 4. FORM INPUTS --- */
         .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
         .form-control, .form-select {
             border: none; background-color: var(--input-bg); border-radius: 16px;
             padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none; transition: all 0.2s;
-            height: 48px; /* Giữ chiều cao cũ */
+            height: 48px;
         }
         .form-control:focus, .form-select:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
 
-        /* Nút bấm */
-        .btn-action {
-            padding: 12px 20px; border-radius: 16px; font-weight: 600; border: none;
-            height: 48px; transition: all 0.2s;
-        }
+        /* Buttons */
+        .btn-action { padding: 12px 20px; border-radius: 16px; font-weight: 600; border: none; height: 48px; transition: all 0.2s; }
         .btn-lookup-custom { background-color: var(--primary); color: white; }
         .btn-lookup-custom:hover { background-color: #3a14db; }
         .btn-quick-lookup { background-color: var(--warning); color: var(--text-dark); }
         .btn-quick-lookup:hover { background-color: #ffc44f; }
         
-        .button-column-fix { padding-top: 32px; } /* Căn chỉnh cho khớp label */
+        .button-column-fix { padding-top: 32px; }
 
-        /* Dropdown tìm kiếm (Giữ nguyên) */
+        /* Dropdown tìm kiếm */
         .search-container { position: relative; }
         .search-results-dropdown { 
             width: 100%; border-radius: 12px; border: 1px solid var(--primary);
             outline: none; display: none; position: absolute;
-            z-index: 1000; margin-top: 5px; 
-            background: white;
+            z-index: 1000; margin-top: 5px; background: white;
             box-shadow: 0 10px 30px rgba(0,0,0,0.15);
         }
 
-        /* --- 5. DATA TABLES (Style mới) --- */
+        /* --- 5. DATA TABLES --- */
         .data-table { width: 100% !important; border-collapse: collapse !important; margin-top: 10px; }
         .data-table th { 
             background-color: #FAFCFE !important; color: var(--secondary) !important;
@@ -129,7 +103,7 @@
         }
         .data-table tbody tr:hover { background-color: var(--primary-light); }
         
-        /* Bảng Lịch sử (Giữ nguyên logic, đổi màu) */
+        /* Bảng Lịch sử */
         .history-table { width: 100%; margin-top: 10px; font-size: 0.8rem; }
         .history-table th { 
             background-color: var(--primary-light); color: var(--primary); 
@@ -138,7 +112,7 @@
         }
         .history-table td { padding: 6px; border-bottom: 1px solid #eee; text-align: center; white-space: nowrap; }
         
-        /* CSS cho DataTables Toolbar */
+        /* DataTables Custom UI */
         .dataTables_wrapper .dataTables_paginate .paginate_button { 
             padding: 0.3em 0.6em; border-radius: 10px !important; border: none; margin: 0 3px;
             font-weight: 600; color: var(--secondary) !important;
@@ -157,19 +131,66 @@
         #block1-filter-toolbar .form-check-label { color: var(--secondary); font-weight: 500; }
         #block1-filter-toolbar .form-check-input { border-color: var(--secondary); }
         
-        /* Print block */
         @media print { body * { visibility: hidden !important; } #watermark-user-id, #watermark-user-id * { visibility: visible !important; } }
+
+        /* --- MOBILE RESPONSIVE: SALES LOOKUP --- */
+        @media (max-width: 768px) {
+            /* 1. Header: Căn giữa và xếp dọc */
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 15px;
+            }
+            
+            .page-title {
+                font-size: 1.5rem;
+            }
+
+            /* 2. Form Tra cứu: Xếp chồng các input */
+            #lookup-card .row.g-3 {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            #lookup-card .col-md-4, 
+            #lookup-card .col-md-5, 
+            #lookup-card .col-md-3 {
+                width: 100%;
+                padding-right: 0; /* Bỏ padding phải thừa */
+            }
+
+            /* 3. Nút bấm: Căn chỉnh lại padding top bị thừa do layout desktop */
+            .button-column-fix {
+                padding-top: 0 !important; /* Reset padding-top: 32px của desktop */
+                margin-top: 10px;
+            }
+            
+            .btn-action {
+                width: 100%; /* Nút full chiều rộng để dễ bấm */
+            }
+
+            /* 4. Bảng dữ liệu: Font chữ nhỏ lại và cuộn ngang */
+            .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch; /* Cuộn mượt trên iOS */
+            }
+            
+            .data-table th, .data-table td,
+            .history-table th, .history-table td {
+                font-size: 0.75rem; /* Giảm cỡ chữ */
+                padding: 8px 5px;   /* Giảm padding */
+                white-space: nowrap; /* Giữ dòng không bị ngắt lung tung */
+            }
+        }
+    
     </style>
 </head>
 <body>
     <div class="container">
         
-        <!-- HEADER (Style mới) -->
         <div class="page-header">
             <h1 class="page-title">Tra Cứu Thông Tin Bán Hàng</h1>
-            <a href="{{ url_for('index') }}" class="btn-back">
-                <i class="fas fa-home me-1"></i> Về Portal
-            </a>
+            <a href="{{ url_for('index') }}" class="btn-back"><i class="fas fa-home me-1"></i> Về Portal</a>
         </div>
         
         <p class="text-muted mb-3">
@@ -187,7 +208,6 @@
             {% endif %}
         {% endwith %}
 
-        <!-- LOOKUP CARD (Style mới) -->
         <div class="main-card" id="lookup-card">
             <div class="card-header-custom">
                 <span><i class="fas fa-search"></i> Thông tin Tra cứu</span>
@@ -210,7 +230,6 @@
                                value="{{ object_id_display | default('') }}">
                         <small id="kh_status" class="form-text text-muted mt-2 d-block">Để trống nếu muốn xem giá chung.</small>
 
-                        <!-- Các input hidden (Giữ nguyên) -->
                         <input type="hidden" name="object_id" id="kh_ma_selected" value="{{ object_id | default('') }}">
                         <input type="hidden" name="object_id_display" id="kh_display_selected" value="{{ object_id_display | default('') }}">
                         <select id="kh_search_results" class="form-select search-results-dropdown" size="5" onchange="chonKhachHang()"></select>
@@ -230,7 +249,6 @@
             </div>
         </div>
         
-        <!-- BLOCK 1 (Style mới) -->
         <div class="main-card" id="block1-container" {% if not results.block1 %}style="display: none;"{% endif %}>
             <div class="card-header-custom result-header">
                 <div>
@@ -243,7 +261,6 @@
                 </div>
             </div>
             <div class="card-body-custom">
-                <!-- Toolbar DataTables (Sẽ được JS dời vào đây) -->
                 <div id="block1-filter-toolbar" class="mb-3"></div>
                 
                 <div class="table-responsive">
@@ -261,8 +278,7 @@
                         </thead>
                         <tbody>
                             {% for item in results.block1 %}
-                            <tr style="cursor: pointer;" 
-                                onclick="showBackorderModal('{{ item.InventoryID }}', {{ item.InventoryName | tojson }})">
+                            <tr style="cursor: pointer;" onclick="showBackorderModal('{{ item.InventoryID }}', {{ item.InventoryName | tojson }})">
                                 <td class="text-start">{{ item.InventoryID }}</td>
                                 <td class="text-start">{{ item.InventoryName }}</td>
                                 <td class="text-end">{{ "{:,.0f}".format(item.Ton | float) }}</td>
@@ -278,7 +294,6 @@
             </div>
         </div>
             
-        <!-- BLOCK 2 (Style mới) -->
         {% if show_block_2 and results.block2 %}
         <div class="main-card" id="block2-container">
             <div class="card-header-custom result-header result-header-2">
@@ -328,7 +343,6 @@
         </div>
         {% endif %}
         
-        <!-- BLOCK 3 (Style mới) -->
         {% if show_block_3 and results.block3 %}
         <div class="main-card" id="block3-container">
             <div class="card-header-custom result-header result-header-3">
@@ -378,321 +392,32 @@
         </div>
         {% endif %}
         
-        <!-- Thông báo không tìm thấy -->
         {% if request.method == 'POST' and (not results.block1 and not results.block2 and not results.block3) %}
-             <p class="alert alert-warning rounded-4">Không tìm thấy mặt hàng nào phù hợp với điều kiện tra cứu (Khách hàng: {{ object_id_display or 'Tất cả' }}, Mặt hàng: '{{ item_search }}').</p>
+             <p class="alert alert-warning rounded-4 mt-3">Không tìm thấy mặt hàng nào phù hợp với điều kiện tra cứu (Khách hàng: {{ object_id_display or 'Tất cả' }}, Mặt hàng: '{{ item_search }}').</p>
         {% endif %}
 
     </div>
     
-<!-- MODAL (Giữ nguyên) -->
-<div class="modal fade" id="backorderModal" tabindex="-1" aria-labelledby="backorderModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content" style="border-radius: 16px;">
-            <div class="modal-header bg-primary text-white" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                <h5 class="modal-title" id="backorderModalTitle">Chi tiết BackOrder</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="backorderModalBody">
-                <p class="text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải...</p>
+    <div class="modal fade" id="backorderModal" tabindex="-1" aria-labelledby="backorderModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="border-radius: 16px;">
+                <div class="modal-header bg-primary text-white" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                    <h5 class="modal-title" id="backorderModalTitle">Chi tiết BackOrder</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="backorderModalBody">
+                    <p class="text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải...</p>
+                </div>
             </div>
         </div>
     </div>
-</div>
-<!-- WATERMARK (Giữ nguyên) -->
-<div id="watermark-user-id" data-user="{{ current_user.usercode }}">{{ current_user.usercode }}</div>
-
-<!-- JAVASCRIPT (Toàn bộ được giữ nguyên, chỉ sửa lại logic khởi tạo DataTable) -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
     
-    // Hàm định dạng số (để dùng trong JS)
-    function formatCurrency(num) {
-        return new Intl.NumberFormat('vi-VN').format(num || 0);
-    }
-    
-    let block1Table = null; // Biến global để giữ instance
-    
-    function initializeBlock1DataTable() {
-        // Khởi tạo instance mới
-        block1Table = $('#block1-table').DataTable({
-            "paging": true,
-            "pageLength": 15,
-            "lengthChange": false, // Ẩn "Show X entries"
-            "searching": true, 
-            "ordering": true,
-            "info": true,
-            "order": [[0, 'asc']],
-            // DOM MỚI: Chỉ hiển thị Info, Lọc, Bảng, Phân trang
-            "dom": '<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"f>>' + 
-                   '<"row"<"col-sm-12"tr>>' + 
-                   '<"row"<"col-sm-12"p>>',
-            "language": {
-                "search": "Lọc nhanh bảng này:",
-                "zeroRecords": "Không tìm thấy mặt hàng nào.",
-                "info": "Trang _PAGE_/_PAGES_ (Tổng _TOTAL_ mặt hàng)",
-                "infoEmpty": "Không có dữ liệu",
-                "infoFiltered": "", 
-                "paginate": { "next": "Sau", "previous": "Trước" },
-                "lengthMenu": "Hiển thị _MENU_ dòng"
-            }
-        });
+    <div id="watermark-user-id" data-user="{{ current_user.usercode }}" style="display:none;">{{ current_user.usercode }}</div>
 
-        // Di chuyển ô lọc vào vị trí tùy chỉnh (ID mới)
-        const searchInput = $('#block1-table_filter');
-        $('#block1-filter-toolbar').html(searchInput);
-        
-        // Căn chỉnh lại cho đẹp
-        $('#block1-table_filter input').addClass('form-control-sm');
-    }
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
+    <script src="{{ url_for('static', filename='js/sales_lookup.js') }}"></script>
 
-$(document).ready(function() {
-    
-    // (Toàn bộ logic JS từ đây trở xuống được giữ nguyên)
-    
-    if ($('#kh_display_selected').val()) {
-         $('#kh_status').html('✅ Khách hàng đã được chọn và xác nhận.');
-    }
-
-    function debounce(func, timeout = 300) {
-        let timer;
-        return (...args) => {
-            clearTimeout(timer);
-            timer = setTimeout(() => { func.apply(this, args); }, timeout);
-        };
-    }
-    
-    function timKhachHang() {
-        const term = $('#kh_search_input').val().trim();
-        const statusMsg = $('#kh_status');
-        const resultsDropdown = $('#kh_search_results');
-        
-        resultsDropdown.hide().empty();
-        $('#kh_ma_selected').val('');
-        $('#kh_display_selected').val('');
-        
-        if (term.length < 2) {
-            statusMsg.text('Nhập ít nhất 2 ký tự.');
-            return;
-        }
-
-        statusMsg.text('Đang tìm kiếm...');
-        
-        fetch(`/sales/api/khachhang/${term}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data && data.length > 0) {
-                    data.forEach(kh => {
-                        const option = `<option value="${kh.ID}" data-fullname="${kh.FullName}">${kh.ID} - ${kh.FullName}</option>`;
-                        resultsDropdown.append(option);
-                    });
-                    resultsDropdown.show().attr('size', Math.max(Math.min(data.length, 5), 2)); 
-                    statusMsg.html(`Tìm thấy ${data.length} kết quả. Vui lòng chọn.`);
-                } else {
-                    statusMsg.text('Không tìm thấy kết quả nào.');
-                }
-            })
-            .catch(error => {
-                statusMsg.text(`Lỗi tra cứu: ${error.message}`);
-            });
-    }
-
-    window.chonKhachHang = function() {
-        const selectedOption = $('#kh_search_results').find('option:selected');
-        
-        if (selectedOption.length) {
-            const id = selectedOption.val();
-            const fullName = selectedOption.data('fullname');
-            const displayText = id + ' - ' + fullName;
-            
-            $('#kh_search_results').hide();
-            $('#kh_ma_selected').val(id); 
-            $('#kh_display_selected').val(displayText); 
-            $('#kh_search_input').val(displayText); 
-            $('#kh_status').html('✅ Khách hàng đã được chọn và xác nhận.');
-        }
-    };
-    
-    $('#kh_search_input').on('input', debounce(timKhachHang, 300));
-    
-    $('#item_search_input, #kh_search_input').on('keydown', function(e) {
-         if (e.key === 'Enter') { e.preventDefault(); }
-    });
-    
-    $(document).on('click', function(e) {
-        if (!$(e.target).closest('.search-container').length) {
-            $('#kh_search_results').hide();
-        }
-    });
-
-    // KHỞI TẠO DATATABLES KHI TẢI TRANG
-    if ($('#block1-table tbody tr').length > 0) {
-        initializeBlock1DataTable();
-    }
-
-    $.fn.dataTable.ext.search.push(
-        function(settings, data, dataIndex) {
-            if (settings.nTable.id !== 'block1-table') {
-                return true;
-            }
-            const showOnlyStock = $('#toggleTonKho').is(':checked');
-            if (!showOnlyStock) {
-                return true; 
-            }
-            const tonKhoStr = data[2] || '0';
-            const tonKho = parseFloat(tonKhoStr.replace(/,/g, '')) || 0;
-            return tonKho > 0;
-        }
-    );
-
-    $('#toggleTonKho').on('change', function() {
-        if (block1Table) {
-            block1Table.draw(); 
-        }
-    });
-
-    $('#quickLookupBtn').on('click', function() {
-        const itemSearchTerm = $('#item_search_input').val().trim();
-        const button = $(this);
-        
-        if (!itemSearchTerm) {
-            alert('Vui lòng nhập Tên hoặc Mã Mặt hàng để tra cứu nhanh.');
-            return;
-        }
-
-        button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
-        
-        $('#block2-container, #block3-container').hide();
-        $('#block1-container').show(); 
-        
-        const formData = new FormData();
-        formData.append('item_search', itemSearchTerm);
-
-        fetch('/sales/api/multi_lookup', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if (!response.ok) { return response.json().then(err => { throw new Error(err.message || 'Lỗi server'); }); }
-            return response.json();
-        })
-        .then(data => {
-            
-            if (block1Table) {
-                block1Table.destroy();
-                $('#block1-filter-toolbar').empty(); 
-                block1Table = null; 
-            }
-            
-            const tbody = $('#block1-table tbody');
-            tbody.empty(); 
-            
-            $('#block1-container .card-header-custom span').text(`1. Tra cứu Tồn kho Nhanh (Khớp với '${itemSearchTerm}')`);
-            
-            if (data && data.length > 0) {
-                data.forEach(item => {
-                    const row = $(`<tr style="cursor: pointer;">
-                        <td class="text-start">${item.InventoryID}</td>
-                        <td class="text-start">${item.InventoryName}</td>
-                        <td class="text-end">${formatCurrency(item.Ton)}</td>
-                        <td class="text-end">${formatCurrency(item.BackOrder)}</td>
-                        <td class="text-end">${formatCurrency(item.GiaBanQuyDinh)}</td>
-                        <td class="text-end">—</td>
-                        <td class="text-end">—</td>
-                    </tr>`);
-
-                    row.on('click', function() {
-                        showBackorderModal(item.InventoryID, item.InventoryName);
-                    });
-                    
-                    tbody.append(row); 
-                });
-            } else {
-                tbody.append('<tr><td colspan="7" class="text-center">Không tìm thấy dữ liệu tra cứu nhanh.</td></tr>');
-            }
-            
-            initializeBlock1DataTable();
-
-            if (block1Table) {
-                block1Table.draw();
-            }
-        })
-        .catch(error => {
-            alert('Lỗi Tra cứu nhanh: ' + error.message);
-        })
-        .finally(() => {
-            button.prop('disabled', false).html('<i class="fas fa-bolt"></i> Tra nhanh Tồn');
-        });
-    });
-    
-    document.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-            e.preventDefault();
-            alert("Chức năng in đã bị khóa trên trang này.");
-        }
-    }, true); 
-
-    window.print = function() {
-        alert("Chức năng in đã bị khóa trên trang này.");
-    };
-    
-    document.addEventListener('contextmenu', e => e.preventDefault()); 
-
-}); 
-
-let backorderModalInstance = null; 
-
-function showBackorderModal(inventoryId, inventoryName) {
-    if (!backorderModalInstance) {
-        backorderModalInstance = new bootstrap.Modal(document.getElementById('backorderModal'));
-    }
-    
-    const modalTitle = document.getElementById('backorderModalTitle');
-    const modalBody = document.getElementById('backorderModalBody');
-    
-    modalTitle.innerText = `Chi tiết BackOrder: ${inventoryName} (${inventoryId})`;
-    modalBody.innerHTML = '<p class="text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết PO...</p>';
-    
-    backorderModalInstance.show();
-
-    fetch(`/sales/api/backorder_details/${inventoryId}`)
-        .then(response => {
-            if (!response.ok) throw new Error('Không thể tải dữ liệu BackOrder.');
-            return response.json();
-        })
-        .then(data => {
-            if (!data || data.length === 0) {
-                modalBody.innerHTML = '<p class="alert alert-info text-center">Không có dữ liệu BackOrder (PO) nào cho mã hàng này.</p>';
-                return;
-            }
-
-            let tableHtml = '<div class="table-responsive"><table class="table table-sm table-striped table-bordered small mb-0">';
-            tableHtml += '<thead class="table-primary"><tr>';
-            tableHtml += '<th>Mã PO (VoucherNo)</th>';
-            tableHtml += '<th>Ngày PO (OrderDate)</th>';
-            tableHtml += '<th class="text-end">SL Còn (con)</th>';
-            tableHtml += '<th>Ngày Dự kiến Về (ShipDate)</th>';
-            tableHtml += '</tr></thead><tbody>';
-
-            data.forEach(item => {
-                tableHtml += `<tr>
-                                <td>${item.VoucherNo}</td>
-                                <td>${item.OrderDate}</td>
-                                <td class="text-end fw-bold">${formatCurrency(item.con)}</td>
-                                <td class="fw-bold ${item.ShipDate === '—' ? 'text-danger' : 'text-success'}">${item.ShipDate}</td>
-                              </tr>`;
-            });
-
-            tableHtml += '</tbody></table></div>';
-            modalBody.innerHTML = tableHtml;
-        })
-        .catch(error => {
-            modalBody.innerHTML = `<p class="alert alert-danger text-center">Lỗi: ${error.message}</p>`;
-        });
-}
-</script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
 # FIX: Chỉ import login_required từ utils.py
-from utils import login_required 
+from utils import login_required, permission_required # Import thêm
 from datetime import datetime
 from db_manager import safe_float # Cần cho format/validation
 import config 
@@ -17,6 +17,7 @@ def get_user_ip():
 
 @task_bp.route('/task_dashboard', methods=['GET', 'POST'])
 @login_required
+@permission_required('VIEW_TASK')
 def task_dashboard():
     """ROUTE: Dashboard Quản lý Đầu việc hàng ngày."""
     

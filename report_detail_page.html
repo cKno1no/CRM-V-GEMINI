@@ -146,6 +146,51 @@
             background-color: var(--primary-light); color: var(--primary); transform: translateX(5px);
         }
 
+        /* --- MOBILE RESPONSIVE: REPORT DETAIL --- */
+        @media (max-width: 768px) {
+            /* 1. Header */
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 10px;
+            }
+            .page-title {
+                font-size: 1.5rem;
+            }
+
+            /* 2. Info Grid: Chuyển về 1 cột */
+            .info-grid {
+                grid-template-columns: 1fr; /* 1 cột duy nhất */
+                gap: 15px;
+            }
+            
+            .info-grid-item dt {
+                font-size: 0.8rem;
+            }
+            .info-grid-item dd {
+                font-size: 0.95rem;
+            }
+
+            /* 3. Card Content */
+            .main-card {
+                margin-bottom: 15px;
+                border-radius: 12px;
+            }
+            .card-header-custom {
+                padding: 15px;
+                font-size: 1rem;
+            }
+            .card-body-custom {
+                padding: 15px;
+            }
+            
+            /* 4. Tệp đính kèm */
+            .attachment-link {
+                font-size: 0.9rem;
+                padding: 10px;
+            }
+        }
+
     </style>
 </head>
 <body>

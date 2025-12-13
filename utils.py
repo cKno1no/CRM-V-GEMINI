@@ -1,11 +1,18 @@
 # utils.py
-from flask import session, redirect, url_for, flash, request, current_app
+from flask import session, redirect, url_for, flash, request, current_app, jsonify
 from functools import wraps
 import config
 import os
 from datetime import datetime
 from werkzeug.utils import secure_filename
 
+
+def get_user_ip():
+    """Lấy IP người dùng, hỗ trợ cả trường hợp qua Proxy/Load Balancer"""
+    if request.headers.getlist("X-Forwarded-For"):
+       return request.headers.getlist("X-Forwarded-For")[0]
+    else:
+       return request.remote_addr
 # --- Decorator Login ---
 def login_required(f):
     @wraps(f)
@@ -67,3 +74,36 @@ def save_uploaded_files(files):
                 print(f"Lỗi lưu file {filename_clean}: {e}")
                 
     return ', '.join(saved_filenames)
+
+def permission_required(feature_code):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not session.get('logged_in'):
+                return redirect(url_for('login'))
+            
+            # 1. ADMIN luôn qua
+            if session.get('user_role') == config.ROLE_ADMIN:
+                return f(*args, **kwargs)
+
+            # 2. Check quyền
+            if feature_code not in session.get('permissions', []):
+                msg = f"Bạn không có quyền truy cập chức năng này ({feature_code})."
+                
+                # [LOGIC MỚI QUAN TRỌNG]
+                # A. Nếu là API Call (AJAX/Fetch) -> Trả về JSON lỗi 403 Forbidden
+                # Giúp Frontend nhận biết lỗi mà không bị redirect sang trang HTML
+                if request.is_json or request.path.startswith('/api/'):
+                    return jsonify({'success': False, 'message': msg}), 403
+                
+                # B. Nếu là truy cập Trang (GET) -> Flash message và Reload lại trang trước đó
+                flash(msg, "danger")
+                
+                # request.referrer chứa URL của trang trước đó mà người dùng đang đứng
+                # Nếu có referrer -> Redirect về đó ("Load lại tại chỗ")
+                # [FIXED] Nếu không có referrer (gõ trực tiếp URL) -> Fallback về trang chủ (index)
+                return redirect(request.referrer or url_for('index'))
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator   

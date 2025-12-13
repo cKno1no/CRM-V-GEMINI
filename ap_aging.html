@@ -152,6 +152,69 @@
         .dataTables_wrapper .dataTables_paginate .paginate_button.current {
             background: var(--primary) !important; color: white !important;
         }
+
+        /* --- MOBILE RESPONSIVE: AP AGING --- */
+        @media (max-width: 992px) {
+            /* 1. Header */
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 15px;
+            }
+            .page-header .d-flex {
+                width: 100%;
+                flex-direction: column; /* Nút xếp dọc */
+                gap: 10px;
+            }
+            .btn-back, .btn-budget {
+                width: 100%;
+                text-align: center;
+            }
+
+            /* 2. KPI Cards: Xếp chồng */
+            .kpi-card {
+                padding: 15px;
+            }
+            
+            /* KPI con (Công nợ đặc thù) */
+            .kpi-card .row .col-6 {
+                width: 100%;
+                border-right: none !important;
+                border-bottom: 1px solid #eee;
+                padding-bottom: 5px;
+                margin-bottom: 5px;
+                padding-left: 0 !important;
+            }
+            .kpi-card .row .col-6:last-child {
+                border-bottom: none;
+                margin-bottom: 0;
+            }
+
+            /* 3. Form Lọc */
+            .main-card form.row {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .main-card .col-md-4, .main-card .col-md-3, .main-card .col-md-2 {
+                width: 100%;
+            }
+
+            /* 4. Bảng dữ liệu */
+            .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .table-aging th, .table-aging td {
+                white-space: nowrap;
+                font-size: 0.8rem;
+            }
+            
+            /* Tăng kích thước nút Chi/Trả để dễ bấm */
+            .btn-pay {
+                padding: 8px 16px;
+                font-size: 0.85rem;
+            }
+        }
     </style>
 </head>
 <body>

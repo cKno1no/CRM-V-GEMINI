@@ -1,7 +1,7 @@
 # blueprints/budget_bp.py
 
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash, current_app
-from utils import login_required
+from utils import login_required, permission_required # Import thêm
 from datetime import datetime, timedelta
 import os
 from werkzeug.utils import secure_filename
@@ -9,6 +9,13 @@ import config
 budget_bp = Blueprint('budget_bp', __name__)
 
 # Helper lưu file (Tái sử dụng logic từ app.py hoặc định nghĩa tại đây)
+
+def get_user_ip():
+    if request.headers.getlist("X-Forwarded-For"):
+       return request.headers.getlist("X-Forwarded-For")[0]
+    else:
+       return request.remote_addr
+
 def save_budget_files(files):
     if not files: return None
     saved_filenames = []
@@ -29,6 +36,7 @@ def save_budget_files(files):
 
 @budget_bp.route('/budget/dashboard', methods=['GET'])
 @login_required
+@permission_required('VIEW_BUDGET') # Áp dụng quyền mới
 def budget_dashboard():
     """Giao diện chính: Xem ngân sách & Tạo đề nghị."""
     budget_service  = current_app.budget_service # Import cục bộ tránh vòng lặp
@@ -55,7 +63,18 @@ def budget_dashboard():
         ORDER BY R.RequestDate DESC
     """
     my_requests = db_manager.get_data(query_history, (user_code,))
-    
+    # [MỚI] Ghi log truy cập
+    try:
+        current_app.db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='VIEW_BUDGET_DASHBOARD',
+            severity='INFO', # Mức độ thông tin thường
+            details='Truy cập màn hình Ngân sách & Lập đề nghị',
+            ip_address=get_user_ip()
+        )
+    except Exception as e:
+        print(f"Log Error: {e}")
+
     return render_template('budget_dashboard.html', 
                            budget_codes=budget_codes, 
                            my_requests=my_requests,
@@ -63,6 +82,7 @@ def budget_dashboard():
 
 @budget_bp.route('/budget/approval', methods=['GET'])
 @login_required
+@permission_required('APPROVE_BUDGET') # Áp dụng quyền mới
 def budget_approval():
     """Giao diện Duyệt cho Quản lý."""
     budget_service  = current_app.budget_service 
@@ -122,6 +142,7 @@ def api_check_balance():
 
 @budget_bp.route('/api/budget/submit_request', methods=['POST'])
 @login_required
+@permission_required('VIEW_BUDGET') # Áp dụng quyền mới
 def api_submit_request():
     """
     [UPDATED] API: Gửi đề nghị thanh toán (Hỗ trợ File Upload).
@@ -148,6 +169,19 @@ def api_submit_request():
         object_id=object_id,
         attachments=attachments_str # Truyền chuỗi tên file
     )
+    # [BỔ SUNG LOG]
+    if result.get('success'):
+        try:
+            current_app.db_manager.write_audit_log(
+                user_code=session.get('user_code'),
+                action_type='CREATE_EXPENSE_REQUEST',
+                severity='INFO',
+                details=f"Tạo đề nghị chi: {budget_code} - {amount:,.0f} - {result['request_id']}",
+                ip_address=get_user_ip()
+            )
+        except Exception as e:
+            print(f"Log Error: {e}")
+
     return jsonify(result)
 
 @budget_bp.route('/api/budget/approve', methods=['POST'])
@@ -156,12 +190,29 @@ def api_approve_request():
     """API: Duyệt/Từ chối."""
     budget_service  = current_app.budget_service 
     data = request.json
-    success = budget_service.approve_request(
-        data.get('request_id'),
-        session.get('user_code'),
-        data.get('action'), 
-        data.get('note')
-    )
+    # --- [SỬA] KHAI BÁO BIẾN action RÕ RÀNG Ở ĐÂY ---
+    request_id = data.get('request_id')
+    action = data.get('action')  # <--- Dòng này quan trọng để fix lỗi NameError
+    note = data.get('note')
+    approver_code = session.get('user_code')
+
+    # Gọi Service để xử lý logic duyệt
+    success = current_app.budget_service.approve_request(request_id, approver_code, action, note)
+    # [BỔ SUNG LOG]
+    if success:
+        log_action = 'APPROVE_EXPENSE' if action == 'APPROVE' else 'REJECT_EXPENSE'
+        log_severity = 'CRITICAL' if action == 'APPROVE' else 'WARNING'
+        try:
+            current_app.db_manager.write_audit_log(
+                user_code=session.get('user_code'),
+                action_type=log_action,
+                severity=log_severity,
+                details=f"{action} đề nghị chi: {request_id}",
+                ip_address=get_user_ip()
+            )
+        except Exception as e:
+            print(f"Log Error: {e}")
+
     return jsonify({'success': success})
 
 @budget_bp.route('/budget/print/<string:request_id>', methods=['GET'])
@@ -178,6 +229,7 @@ def print_request_voucher(request_id):
 
 @budget_bp.route('/budget/payment', methods=['GET'])
 @login_required
+@permission_required('EXECUTE_PAYMENT') # Áp dụng quyền mới
 def payment_queue():
     """Giao diện Hàng đợi Thanh toán (Payment Queue) cho Kế toán."""
     budget_service  = current_app.budget_service 
@@ -215,6 +267,17 @@ def payment_queue():
     # Lưu ý: Đổi tên hàm gọi nếu bạn đã đổi trong service (get_payment_queue)
     approved_list = budget_service.get_payment_queue(from_date, to_date)
     
+    try:
+        current_app.db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='VIEW_PAYMENT_QUEUE',
+            severity='WARNING', # Mức WARNING để dễ lọc ra ai hay vào xem tiền
+            details='Truy cập màn hình Thực chi (Payment Queue)',
+            ip_address=get_user_ip()
+        )
+    except Exception as e:
+        print(f"Log Error: {e}")
+
     return render_template(
         'budget_payment_queue.html',
         approved_list=approved_list,
@@ -235,6 +298,19 @@ def api_confirm_payment():
         data.get('payment_ref'),
         data.get('payment_date')
     )
+    # [BỔ SUNG LOG]
+    if success:
+        try:
+            current_app.db_manager.write_audit_log(
+                user_code=session.get('user_code'),
+                action_type='EXECUTE_PAYMENT',
+                severity='CRITICAL',
+                details=f"Xác nhận chi tiền {request_id} (Ref: {payment_ref})",
+                ip_address=get_user_ip()
+            )
+        except Exception as e:
+            print(f"Log Error: {e}")
+
     return jsonify({'success': success})
 
 # Trong blueprints/budget_bp.py
@@ -271,15 +347,13 @@ def public_verify_request(request_id):
 
 @budget_bp.route('/budget/report/ytd', methods=['GET'])
 @login_required
+@permission_required('VIEW_BUDGET_REPORT') # Áp dụng quyền mới
 def budget_ytd_report():
 
     # --- 1. BẢO MẬT: CHẶN USER KHÔNG PHẢI ADMIN ---
     user_role = session.get('user_role', '').strip().upper()
     
-    if user_role != config.ROLE_ADMIN:
-        flash("Bạn không có quyền truy cập Báo cáo này. Vui lòng liên hệ Admin.", "danger")
-        return redirect(url_for('budget_bp.budget_dashboard'))
-    """Báo cáo so sánh Ngân sách vs Thực tế (YTD)."""
+    
     
     budget_service  = current_app.budget_service 
     
@@ -301,6 +375,16 @@ def budget_ytd_report():
         # User thường chỉ xem được bộ phận của mình
         dept_filter = dept_code
 
+    # [BỔ SUNG LOG]
+    try:
+        current_app.db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='VIEW_BUDGET_REPORT',
+            severity='WARNING',
+            details=f"Xem báo cáo ngân sách YTD",
+            ip_address=get_user_ip()
+        )
+    except: pass
     # Lấy dữ liệu (đã được gom nhóm theo ReportGroup và chỉ trả về 1 dòng cho mỗi Group từ service)
     report_data = budget_service.get_ytd_budget_report(dept_filter, year_filter)
     

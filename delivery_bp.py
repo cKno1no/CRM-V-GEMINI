@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
 # FIX: Chỉ import login_required từ utils.py
-from utils import login_required 
+from utils import login_required, permission_required # Import thêm
 from datetime import datetime, timedelta
 import config
 
@@ -18,6 +18,7 @@ def get_user_ip():
 
 @delivery_bp.route('/delivery_dashboard', methods=['GET'])
 @login_required
+@permission_required('VIEW_DELIVERY') # Áp dụng quyền mới
 def delivery_dashboard():
     # --- THAY ĐỔI QUAN TRỌNG: DÙNG current_app ---
     # from app import delivery_service, db_manager  <-- XÓA DÒNG NÀY
@@ -78,6 +79,7 @@ def delivery_dashboard():
 
 @delivery_bp.route('/api/delivery/set_day', methods=['POST'])
 @login_required
+@permission_required('PLAN_DELIVERY') # Áp dụng quyền mới
 def api_delivery_set_day():
     """API: (Thư ký) Kéo thả 1 LXH hoặc 1 Nhóm KH vào 1 ngày kế hoạch."""
     
@@ -120,6 +122,7 @@ def api_delivery_set_day():
 
 @delivery_bp.route('/api/delivery/set_status', methods=['POST'])
 @login_required
+@permission_required('DISPATCH_DELIVERY') # Áp dụng quyền mới
 def api_delivery_set_status():
     """API: (Kho) Cập nhật trạng thái Đã Soạn/Đã Giao."""
     

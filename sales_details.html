@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        /* --- 1. CORE STYLES (Đồng bộ) --- */
+        /* --- 1. CORE STYLES --- */
         :root {
             --primary: #4318FF;
             --primary-light: #F4F7FE;
@@ -22,11 +22,7 @@
             --input-bg: #F4F7FE;
         }
         
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: var(--bg-color); 
-            color: var(--text-dark); 
-        }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-dark); }
         .container { max-width: 1200px; margin-top: 30px; }
 
         /* --- 2. HEADER --- */
@@ -41,24 +37,20 @@
         }
         .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
 
-        /* --- 3. KPI CARDS (Style Mới) --- */
+        /* --- 3. KPI CARDS --- */
         .kpi-card {
             background: white; border-radius: var(--card-radius); padding: 25px;
             box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); border: none;
             height: 100%; display: flex; align-items: center; transition: transform 0.2s;
         }
         .kpi-card:hover { transform: translateY(-5px); }
-        
         .kpi-icon-box {
-            width: 60px; height: 60px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
+            width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
             margin-right: 20px; font-size: 1.6rem; flex-shrink: 0;
         }
-        
         .icon-reg { background-color: #E6FDF5; color: var(--success); }
         .icon-ytd { background-color: var(--primary-light); color: var(--primary); }
         .icon-po { background-color: #FFF1F1; color: var(--danger); }
-
         .kpi-content { flex-grow: 1; }
         .kpi-label { color: var(--secondary); font-size: 0.8rem; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; }
         .kpi-value { color: var(--text-dark); font-size: 1.8rem; font-weight: 700; line-height: 1; }
@@ -77,13 +69,11 @@
         .card-header-custom i { color: var(--primary); margin-right: 10px; font-size: 1.2rem; }
         .card-body-custom { padding: 0; }
 
-        /* Table Styles */
         .table { margin-bottom: 0; width: 100%; border-collapse: collapse; }
         .table th { 
             background-color: #FAFCFE !important; color: var(--secondary) !important;
             font-weight: 700; font-size: 0.8rem; text-transform: uppercase; text-align: left;
-            padding: 15px 20px; border-bottom: 1px solid var(--primary-light);
-            vertical-align: middle;
+            padding: 15px 20px; border-bottom: 1px solid var(--primary-light); vertical-align: middle;
         }
         .table td { 
             vertical-align: middle; font-size: 0.9rem; padding: 12px 20px;
@@ -91,21 +81,19 @@
         }
         .table tbody tr:hover { background-color: var(--primary-light); }
 
-        /* Column Widths & Alignment */
+        /* Column Widths */
         .col-ma-kh { width: 10%; }
-        .col-name { width: 30%; }
+        .col-name { width: 25%; } /* Giảm từ 30% để nhường chỗ */
         .col-data-fixed { width: 12%; text-align: right !important; }
+        .col-action { width: 10%; text-align: center !important; } /* Cột mới */
         
-        /* Number Colors */
         .data-amount { font-weight: 600; color: var(--text-dark); }
         .pending-amount { color: var(--danger); font-weight: 600; }
 
-        /* Progress Bar */
         .progress-cell { padding: 8px 20px 8px 0 !important; }
         .progress-wrapper {
             position: relative; height: 24px; width: 100%;
-            background-color: #E0E5F2; border-radius: 6px; overflow: hidden;
-            display: flex; align-items: center;
+            background-color: #E0E5F2; border-radius: 6px; overflow: hidden; display: flex; align-items: center;
         }
         .progress-bar-fill { height: 100%; border-radius: 6px; transition: width 0.6s ease; }
         .progress-text {
@@ -114,14 +102,12 @@
         }
         .text-white-shadow { color: white; text-shadow: 0 0 2px rgba(0,0,0,0.5); }
 
-        /* Highlights */
-        .highlight-row { background-color: #FFF8E1 !important; } /* Vàng nhạt */
-        .group-row { background-color: #E3F2FD !important; font-weight: 600; } /* Xanh nhạt */
+        .highlight-row { background-color: #FFF8E1 !important; }
+        .group-row { background-color: #E3F2FD !important; font-weight: 600; }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- HEADER -->
         <div class="page-header">
             <div>
                 <h1 class="page-title">CHI TIẾT HIỆU SUẤT KHÁCH HÀNG</h1>
@@ -132,7 +118,6 @@
             </a>
         </div>
 
-        <!-- KPI CARDS -->
         <div class="row g-4 mb-4">
             <div class="col-md-4">
                 <div class="kpi-card">
@@ -166,7 +151,6 @@
             </div>
         </div>
 
-        <!-- MAIN TABLE -->
         <div class="main-card">
             <div class="card-header-custom">
                 <i class="fas fa-table"></i> Phân tích theo Khách hàng
@@ -183,6 +167,7 @@
                                 <th class="col-data-fixed">DS YTD</th>
                                 <th class="col-data-fixed">Số DHB</th>
                                 <th class="col-data-fixed">PO Tồn</th>
+                                <th class="col-action">Phân tích</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -234,6 +219,14 @@
                                 <td class="col-data-fixed pending-amount">
                                     {{ "{:,.0f}".format(row.PendingOrdersAmount | default(0)) }}
                                 </td>
+                                
+                                <td class="col-action">
+                                    <a href="/customer_360/{{ row.ClientID }}" target="_blank" 
+                                       class="btn btn-sm btn-white border shadow-sm text-primary"
+                                       data-bs-toggle="tooltip" title="Deep Analysis 360">
+                                        <i class="fas fa-microscope"></i>
+                                    </a>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -242,5 +235,16 @@
             </div>
         </div>
     </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Init Tooltips
+        document.addEventListener("DOMContentLoaded", function(){
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            })
+        });
+    </script>
 </body>
 </html>

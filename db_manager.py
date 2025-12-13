@@ -4,18 +4,30 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 import config
 import time
+import math
 
 # =========================================================================
 # HÀM HELPER XỬ LÝ DỮ LIỆU
 # =========================================================================
 
 def safe_float(value):
-    """Xử lý an toàn giá trị None, chuỗi rỗng hoặc chuỗi 'None' thành 0.0 float."""
-    if value is None or str(value).strip() == '' or str(value).strip().lower() == 'none':
+    """Xử lý an toàn giá trị None, chuỗi rỗng, 'None' hoặc 'nan' thành 0.0 float."""
+    if value is None:
         return 0.0
+    
+    # Chuyển về chuỗi và xử lý chữ thường để bắt 'nan', 'none', ''
+    str_val = str(value).strip().lower()
+    
+    if str_val in ['', 'none', 'nan']:
+        return 0.0
+        
     try:
-        return float(value)
-    except ValueError:
+        f_val = float(value)
+        # Kiểm tra thêm nếu giá trị là vô cực hoặc NaN của Python math
+        if math.isnan(f_val) or math.isinf(f_val):
+            return 0.0
+        return f_val
+    except (ValueError, TypeError):
         return 0.0
 
 def parse_filter_string(filter_str):
@@ -55,7 +67,8 @@ class DBManager:
             pool_size=10,
             max_overflow=20,
             pool_timeout=30,
-            pool_recycle=1800 
+            pool_recycle=1800,
+            fast_executemany=True 
         )
         
     # 1. PHƯƠNG THỨC TỐI ƯU (Dùng cho Dashboard/Report - Chỉ đọc)
@@ -85,7 +98,13 @@ class DBManager:
                 return df.to_dict('records')
 
         except Exception as e:
-            print(f"Lỗi get_data (Hybrid): {e}")
+            # Chỉ in mã lỗi dạng ASCII an toàn hoặc encode/replace
+            try:
+                error_msg = str(e).encode('utf-8', 'replace').decode('utf-8')
+                print(f"Lỗi get_data (Hybrid): {error_msg}") 
+            except:
+                print("Lỗi get_data (Hybrid): (Lỗi Unicode khi in log)")
+                
             return []
 
     # 2. PHƯƠNG THỨC THỰC THI (QUAN TRỌNG: ĐÃ SỬA ĐỂ DÙNG RAW CONNECTION)

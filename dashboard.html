@@ -123,6 +123,60 @@
 
         /* Print protection */
         @media print { body * { visibility: hidden; } #watermark-user-id { visibility: visible; } }
+
+        /* --- MOBILE RESPONSIVE: DASHBOARD REPORT --- */
+        @media (max-width: 768px) {
+            /* 1. Header */
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 15px;
+            }
+            .page-header .d-flex {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .btn-action {
+                width: 48%; /* Hai nút chia đôi màn hình */
+                text-align: center;
+                justify-content: center;
+            }
+
+            /* 2. Filter Form */
+            .main-card form.row {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .main-card .col-md-2, .main-card .col-md-3, .main-card .col-md-1 {
+                width: 100%;
+            }
+            .btn-filter {
+                margin-top: 10px;
+            }
+
+            /* 3. Table */
+            .table-container .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .report-table th {
+                padding: 10px 5px;
+                font-size: 0.75rem;
+            }
+            .report-table td {
+                white-space: nowrap; /* Giữ dòng không bị ngắt */
+                font-size: 0.8rem;
+                padding: 10px 5px;
+            }
+            
+            /* Riêng cột nội dung (Content) cho phép xuống dòng nhưng có min-width */
+            .content-cell {
+                white-space: normal !important;
+                min-width: 250px; /* Đảm bảo đủ rộng để đọc */
+                max-height: 100px;
+                overflow-y: hidden;
+            }
+        }
     </style>
 </head>
 <body>

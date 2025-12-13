@@ -18,6 +18,64 @@
 
         .btn-pay { background-color: #05CD99; color: white; border: none; }
         .btn-pay:hover { background-color: #04b688; color: white; }
+
+        /* --- MOBILE RESPONSIVE: PAYMENT QUEUE --- */
+        @media (max-width: 768px) {
+            /* 1. Header */
+            .d-flex.justify-content-between {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 15px;
+            }
+            
+            .btn-outline-secondary {
+                width: 100%;
+                margin-top: 5px;
+            }
+
+            /* 2. Filter Form */
+            .card-body form.row {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .col-md-3, .col-md-2 {
+                width: 100%;
+                padding: 0;
+            }
+            
+            /* Nút Lọc to ra */
+            button[type="submit"] {
+                width: 100%;
+                padding: 12px;
+            }
+
+            /* 3. Bảng Thanh Toán */
+            .table-responsive {
+                overflow-x: auto;
+            }
+            
+            .table th, .table td {
+                white-space: nowrap;
+                font-size: 0.8rem;
+            }
+            
+            /* Nút Chi (Pay) */
+            .btn-pay, .btn-light {
+                padding: 6px 12px !important;
+                font-size: 0.75rem !important;
+            }
+
+            /* 4. Modal Payment */
+            .modal-body {
+                padding: 20px;
+            }
+            
+            /* Làm nổi bật số tiền cần chi */
+            #payAmountDisplay {
+                font-size: 1.8rem !important;
+            }
+        }
     </style>
 </head>
 <body>

@@ -76,6 +76,80 @@
         .form-control { border-radius: 12px; border: 1px solid #E0E5F2; background: #F4F7FE; }
         .form-control:focus { background: white; border-color: var(--primary); box-shadow: none; }
         .btn-filter { background: var(--primary); color: white; border-radius: 12px; font-weight: 600; }
+
+        /* --- MOBILE RESPONSIVE: INVENTORY AGING --- */
+        @media (max-width: 992px) {
+            /* 1. Header & KPI */
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 10px;
+            }
+            
+            .kpi-card {
+                padding: 15px;
+            }
+            .kpi-icon-box {
+                width: 40px; height: 40px; font-size: 1.2rem;
+            }
+            .kpi-value { font-size: 1.3rem; }
+
+            /* 2. Form Lọc: Xếp chồng */
+            .main-card form.row {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .col-md-3, .col-md-2 {
+                width: 100%;
+            }
+            
+            /* 3. Bảng Aging */
+            .table-responsive {
+                overflow-x: auto;
+                border: 1px solid #E0E5F2;
+                border-radius: 12px;
+            }
+            
+            .table-aging th, .table-aging td {
+                white-space: nowrap;
+                font-size: 0.8rem;
+                padding: 10px 8px;
+            }
+
+            /* Sticky cột Tên hàng/Mã nhóm */
+            .table-aging th.text-start,
+            .row-master td:nth-child(2),
+            .row-detail td:nth-child(2) {
+                position: sticky;
+                left: 0;
+                z-index: 5;
+                background-color: #fff; /* Che nội dung trôi qua */
+                box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+                max-width: 150px; /* Giới hạn chiều rộng tên */
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            
+            /* Điều chỉnh màu nền cho Sticky column của dòng Master */
+            .row-master td:nth-child(2) {
+                background-color: #F4F7FE;
+            }
+            .row-master:hover td:nth-child(2) {
+                background-color: #E3F2FD;
+            }
+            
+            /* Dòng Detail: Ẩn cột rỗng đầu tiên để tiết kiệm chỗ */
+            .row-detail td:first-child {
+                display: none;
+            }
+            .table-aging th:first-child,
+            .row-master td:first-child {
+                /* Giữ cột icon mũi tên nhưng nhỏ lại */
+                width: 30px;
+                min-width: 30px;
+                padding: 10px 0;
+            }
+        }
     </style>
 </head>
 <body>

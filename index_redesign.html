@@ -37,20 +37,20 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(255, 255, 255, 0.7);
+            background-color: rgba(255, 255, 255, 0.85); /* Tăng độ mờ nền để chữ rõ hơn */
             z-index: -1;
         }
 
         .content-wrapper {
             position: relative;
             z-index: 1;
-            padding: 50px 0;
+            padding: 40px 0;
             max-width: 900px;
             margin: auto;
         }
 
         /* ======================================= */
-        /* PHONG CÁCH MUZ.LI (Giữ nguyên) */
+        /* PHONG CÁCH MUZ.LI */
         /* ======================================= */
         h1 {
             font-weight: 900;
@@ -74,10 +74,11 @@
         .accordion-button:not(.collapsed) {
             background-color: #F8F9FA !important; 
             color: #3C4043 !important;
+            border-bottom: 1px solid #dee2e6;
         }
         .accordion-item {
             border: none;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
@@ -87,30 +88,34 @@
         .menu-link {
             display: flex;
             align-items: center;
-            padding: 12px 1.5rem;
+            padding: 14px 1.5rem;
             text-decoration: none;
             color: #3C4043;
-            transition: background-color 0.15s;
-            border-left: 3px solid transparent;
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
             font-weight: 500;
+            background: white;
+            border-bottom: 1px solid #f1f3f5;
         }
 
         .menu-link:hover {
-            background-color: #F8F9FA;
+            background-color: #F1F3F4;
             color: #1A73E8;
-            border-left: 3px solid #1A73E8;
+            border-left: 4px solid #1A73E8;
+            padding-left: 2rem; /* Hiệu ứng đẩy sang phải */
         }
 
         .menu-link i {
-            font-size: 1rem;
-            width: 30px;
+            font-size: 1.1rem;
+            width: 35px;
             color: #6C757D;
         }
 
         /* Màu sắc module đặc biệt */
-        .module-crm i { color: #34A853; }
-        .module-kpi i { color: #DB4437; } 
-        .module-ceq i { color: #F4B400; }
+        .module-crm i { color: #34A853; }      /* Green */
+        .module-kpi i { color: #DB4437; }      /* Red */
+        .module-ceq i { color: #F4B400; }      /* Yellow */
+        
         .module-title-crm i { color: #34A853; }
         .module-title-kpi i { color: #DB4437; }
         .module-title-ceq i { color: #F4B400; }
@@ -118,11 +123,10 @@
         /* Chữ mờ cho Dự kiến */
         .menu-link.planned {
             color: #ADB5BD;
-            cursor: default;
+            cursor: not-allowed;
+            background-color: #f8f9fa;
         }
-        .menu-link.planned i {
-            color: #ADB5BD;
-        }
+        .menu-link.planned i { color: #ADB5BD; }
     </style>
 </head>
 <body>
@@ -130,29 +134,52 @@
     <div class="overlay"></div>
 
     <div class="content-wrapper">
-        <header class="d-flex justify-content-between align-items-center mb-5">
+        <header class="d-flex justify-content-between align-items-center mb-4">
             <div class="logo-box">
                 </div>
             <div class="d-flex gap-2">
-                <a href="{{ url_for('change_password') }}" class="btn btn-sm btn-outline-primary">
+                {% if current_user.role == 'ADMIN' %}
+                <a href="/user_management" class="btn btn-sm btn-danger shadow-sm fw-bold">
+                    <i class="fas fa-users-cog me-2"></i>Quản trị User
+                </a>
+                {% endif %}
+
+                <a href="{{ url_for('change_password') }}" class="btn btn-sm btn-outline-primary bg-white">
                     <i class="fas fa-key me-2"></i>Đổi mật khẩu
                 </a>
                 
-                <a href="/logout" class="btn btn-sm btn-outline-secondary">
+                <a href="/logout" class="btn btn-sm btn-outline-secondary bg-white">
                     <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
                 </a>
             </div>
         </header>
 
         <h1><i class="fas fa-sitemap me-3"></i> PORTAL ĐIỀU HÀNH</h1>
-        <p class="text-muted">Chào mừng, <strong>{{ current_user.shortname }}</strong> ({{ current_user.usercode }}).</p>
+        
+        <div class="mb-4">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm border-0" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-info-circle me-3 fs-4"></i>
+                        <div><strong>Thông báo:</strong> {{ message }}</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+        </div>
+
+        <p class="text-muted mb-4">Chào mừng, <strong>{{ current_user.shortname }}</strong> ({{ current_user.usercode }}) - Bộ phận: {{ current_user.bo_phan }}</p>
 
         <div class="accordion" id="mainAccordion">
 
             <div class="accordion-item">
                 <h2 class="accordion-header" id="headingCRM">
                     <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCRM" aria-expanded="true" aria-controls="collapseCRM">
-                        <i class="fas fa-users me-3"></i> CUSTOMER RELATIONSHIP MANAGEMENT
+                        <i class="fas fa-users me-3 module-title-crm"></i> CUSTOMER RELATIONSHIP MANAGEMENT
                     </button>
                 </h2>
                 <div id="collapseCRM" class="accordion-collapse collapse show" aria-labelledby="headingCRM" data-bs-parent="#mainAccordion">
@@ -169,32 +196,29 @@
                         <a href="/delivery_dashboard" class="menu-link module-crm" target="_blank">
                             <i class="fas fa-shipping-fast me-3"></i> Hoạch định & Thực thi giao vận
                         </a>
-                        <a href="/#" class="menu-link module-crm" target="_blank">
-                            <i class="fas fa-user-clock me-3"></i> Dự phòng & Đặt hàng tồn kho
-                        </a>
                     </div>
                 </div>
             </div>
 
             <div class="accordion-item">
                 <h2 class="accordion-header" id="headingKPI">
-                    <button class="accordion-button collapsed module-title-kpi" type="button" data-bs-toggle="collapse" data-bs-target="#collapseKPI" aria-expanded="false" aria-controls="collapseKPI">
-                        <i class="fas fa-chart-bar me-3"></i> KEY PERFORMANCE INDICATOR & APPROVAL
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseKPI" aria-expanded="false" aria-controls="collapseKPI">
+                        <i class="fas fa-chart-bar me-3 module-title-kpi"></i> KEY PERFORMANCE INDICATOR & APPROVAL
                     </button>
                 </h2>
                 <div id="collapseKPI" class="accordion-collapse collapse" aria-labelledby="headingKPI" data-bs-parent="#mainAccordion">
                     <div class="accordion-body p-0">
                         
                         <a href="/quote_approval" class="menu-link module-kpi" target="_blank">
-                            <i class="fas fa-certificate me-3"></i> Theo dõi & Phê duyệt
+                            <i class="fas fa-certificate me-3"></i> Theo dõi & Phê duyệt Báo giá
                         </a>
                         
                         <a href="/sales/sales_lookup" class="menu-link module-kpi" target="_blank">
-                            <i class="fas fa-search-dollar me-3"></i> Tra cứu & truy xuất
+                            <i class="fas fa-search-dollar me-3"></i> Tra cứu Giá & Tồn kho
                         </a>
 
                         <a href="/realtime_dashboard" class="menu-link module-kpi" target="_blank">
-                            <i class="fas fa-tachometer-alt me-3"></i> Chỉ số kinh doanh - Realtime Dashboard
+                            <i class="fas fa-tachometer-alt me-3"></i> Chỉ số kinh doanh - Realtime
                         </a>
 
                         <a href="/quote_input_table" class="menu-link module-kpi" target="_blank">
@@ -205,36 +229,46 @@
                             <i class="fas fa-wallet me-3"></i> Ngân sách & Chi tiêu
                         </a>
                         
-                        {# Dữ liệu đã được chuẩn hóa trong app.py, chỉ cần so sánh trực tiếp #}
-                        {% set is_finance_user = current_user.role|upper == 'ADMIN' or current_user.bo_phan == '6.KTTC' %}
-                        <a href="{% if is_finance_user %}{{ url_for('kpi_bp.ar_aging_dashboard') }}{% else %}#{% endif %}" 
+                        {% set is_finance_user = current_user.role|upper == 'ADMIN' or 'KTTC' in current_user.bo_phan %}
+                        <a href="{% if is_finance_user %}/ar_aging{% else %}#{% endif %}" 
                            class="menu-link module-kpi {% if not is_finance_user %}planned{% endif %}" 
+                           {% if not is_finance_user %}onclick="alert('Bạn không có quyền truy cập module Tài chính.'); return false;"{% endif %}
                            target="{% if is_finance_user %}_blank{% else %}_self{% endif %}">
-                            <i class="fas fa-hand-holding-usd me-3"></i> Nhắc nợ & Thu tiền
+                            <i class="fas fa-hand-holding-usd me-3"></i> Nhắc nợ & Thu tiền (AR)
                         </a>
-                        
                     </div>
                 </div>
             </div>
 
-            {% if current_user.role|upper == 'ADMIN' %}
+            {% if current_user.role|upper in ['ADMIN', 'GM'] or 'KTTC' in current_user.bo_phan %}
             <div class="accordion-item">
                 <h2 class="accordion-header" id="headingCEQ">
-                    <button class="accordion-button collapsed module-title-ceq" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCEQ" aria-expanded="false" aria-controls="collapseCEQ">
-                        <i class="fas fa-chart-pie me-3"></i> CAPITAL EFFICIENCY GOVERNANCE (CEQ)
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCEQ" aria-expanded="false" aria-controls="collapseCEQ">
+                        <i class="fas fa-chart-pie me-3 module-title-ceq"></i> CAPITAL EFFICIENCY & ANALYSIS (CEQ)
                     </button>
                 </h2>
                 <div id="collapseCEQ" class="accordion-collapse collapse" aria-labelledby="headingCEQ" data-bs-parent="#mainAccordion">
                     <div class="accordion-body p-0">
                         <a href="/inventory_aging" class="menu-link module-ceq" target="_blank">
-                            <i class="fas fa-warehouse me-3"></i> Phân tích Tuổi hàng Tồn kho (Aging)
-                        </a>
-                        <a href="/ar_aging" class="menu-link module-ceq" target="_blank">
-                             <i class="fas fa-dollar-sign me-3"></i> Phân tích Công nợ (AR Aging)
+                            <i class="fas fa-warehouse me-3"></i> Phân tích Tuổi hàng Tồn kho
                         </a>
                         <a href="/sales/total_replenishment" class="menu-link module-ceq" target="_blank">
                              <i class="fas fa-boxes me-3"></i> Dự báo Tồn kho Tổng thể
                         </a>
+
+                        <a href="/ap_aging" class="menu-link module-ceq" target="_blank">
+                             <i class="fas fa-file-invoice-dollar me-3"></i> Quản lý Nợ phải trả (AP Aging)
+                        </a>
+                        <a href="/sales/profit_analysis" class="menu-link module-ceq" target="_blank">
+                             <i class="fas fa-chart-line me-3"></i> Lãi biên đơn hàng và khách hàng
+                        </a>
+                        <a href="/analysis/comparison" class="menu-link module-ceq" target="_blank">
+                             <i class="fas fa-balance-scale me-3"></i> Hiệu quả KD qua các kỳ
+                        </a>
+                        <a href="/budget/report/ytd" class="menu-link module-ceq" target="_blank">
+                             <i class="fas fa-chart-area me-3"></i> Ngân sách vs Thực chi
+                        </a>
+
                     </div>
                 </div>
             </div>
@@ -242,305 +276,121 @@
 
         </div>
     </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-        <style>
-        /* Nút nổi (Chat Toggle) */
+    <style>
         .chatbot-toggle {
-            position: fixed;
-            bottom: 25px;
-            right: 25px;
-            width: 60px;
-            height: 60px;
-            background-color: #4285F4;
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1.8rem;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            z-index: 9998;
+            position: fixed; bottom: 25px; right: 25px; width: 60px; height: 60px;
+            background-color: #4285F4; color: white; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center; font-size: 1.8rem;
+            cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 9998;
             transition: transform 0.2s, background-color 0.2s;
         }
-        .chatbot-toggle:hover {
-            transform: scale(1.1);
-            background-color: #1a73e8;
-        }
-
-        /* Cửa sổ Chat (Ẩn mặc định) */
+        .chatbot-toggle:hover { transform: scale(1.1); background-color: #1a73e8; }
+        
         .chatbot-window {
-            position: fixed;
-            bottom: 100px;
-            right: 25px;
-            width: 350px;
-            max-width: 90vw; /* Giới hạn cho mobile */
-            height: 450px;
-            max-height: 70vh; /* Giới hạn cho mobile */
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            z-index: 9999;
-            display: none; 
-            flex-direction: column;
-            overflow: hidden;
-            transition: width 0.3s, height 0.3s, bottom 0.3s, right 0.3s;
+            position: fixed; bottom: 100px; right: 25px; width: 350px;
+            max-width: 90vw; height: 450px; max-height: 70vh;
+            background-color: white; border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2); z-index: 9999;
+            display: none; flex-direction: column; overflow: hidden;
+            transition: all 0.3s;
         }
-        .chatbot-window.active {
-            display: flex; 
-        }
+        .chatbot-window.active { display: flex; }
+        .chatbot-window.maximized { width: 95vw; height: 85vh; max-height: 85vh; bottom: 2.5vh; right: 2.5vw; }
 
-        /* --- YÊU CẦU 7: CSS MAXIMIZE --- */
-        .chatbot-window.maximized {
-            width: 95vw;
-            height: 85vh;
-            max-height: 85vh;
-            bottom: 2.5vh;
-            right: 2.5vw;
-        }
-        /* --- KẾT THÚC YÊU CẦU 7 --- */
-
-
-        /* Header */
         .chatbot-header {
-            background-color: #4285F4;
-            color: white;
-            padding: 10px 15px;
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: grab;
+            background-color: #4285F4; color: white; padding: 10px 15px; font-weight: 600;
+            display: flex; justify-content: space-between; align-items: center;
         }
-        .chatbot-header-controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .chatbot-control-btn {
-            cursor: pointer; 
-            font-size: 1.1rem;
-            color: #E8F0FE;
-            background: none;
-            border: none;
-            padding: 0 5px;
-        }
-        .chatbot-control-btn:hover {
-            color: white;
-        }
-
-
-        /* Lịch sử Chat */
-        .chatbot-history {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 15px;
-            background-color: #F8F9FA;
-            display: flex; /* Dùng flex để tin nhắn căn bottom */
-            flex-direction: column; /* Tin nhắn xếp chồng lên nhau */
-        }
-        /* Đẩy tin nhắn lên trên */
-        .chat-message-container {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-        }
-
-        .chat-message {
-            margin-bottom: 12px;
-            padding: 8px 12px;
-            border-radius: 18px;
-            max-width: 85%;
-            word-wrap: break-word;
-            white-space: pre-wrap; 
-            line-height: 1.5;
-        }
-        .chat-user {
-            background-color: #E8F0FE;
-            color: #1A73E8;
-            align-self: flex-end; /* Đẩy sang phải */
-            margin-left: 15%;
-        }
-        .chat-bot {
-            background-color: #E9ECEF;
-            color: #3C4043;
-            align-self: flex-start; /* Đẩy sang trái */
-            margin-right: 15%;
-        }
-        .chat-bot strong, .chat-bot b {
-            color: #1A73E8;
-        }
-        .chat-bot i {
-            color: #5F6368;
-        }
-
-        /* Khung nhập liệu */
-        .chatbot-input-area {
-            display: flex;
-            padding: 10px;
-            border-top: 1px solid #E0E0E0;
-        }
-        .chatbot-input {
-            flex-grow: 1;
-            border: 1px solid #ccc;
-            border-radius: 20px;
-            padding: 8px 15px;
-            outline: none;
-        }
-        .chatbot-send-btn {
-            background: none;
-            border: none;
-            color: #4285F4;
-            font-size: 1.5rem;
-            margin-left: 10px;
-            cursor: pointer;
-        }
+        .chatbot-history { flex-grow: 1; overflow-y: auto; padding: 15px; background-color: #F8F9FA; display: flex; flex-direction: column; }
+        .chat-message-container { display: flex; flex-direction: column; width: 100%; }
+        
+        .chat-message { margin-bottom: 12px; padding: 8px 12px; border-radius: 18px; max-width: 85%; word-wrap: break-word; }
+        .chat-user { background-color: #E8F0FE; color: #1A73E8; align-self: flex-end; margin-left: 15%; }
+        .chat-bot { background-color: #E9ECEF; color: #3C4043; align-self: flex-start; margin-right: 15%; }
+        
+        .chatbot-input-area { display: flex; padding: 10px; border-top: 1px solid #E0E0E0; }
+        .chatbot-input { flex-grow: 1; border: 1px solid #ccc; border-radius: 20px; padding: 8px 15px; outline: none; }
+        .chatbot-send-btn { background: none; border: none; color: #4285F4; font-size: 1.5rem; margin-left: 10px; cursor: pointer; }
     </style>
 
-    <div class="chatbot-toggle" id="chatbotToggle">
-        <i class="fas fa-robot"></i>
-    </div>
+    <div class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-robot"></i></div>
 
     <div class="chatbot-window" id="chatbotWindow">
-        <div class="chatbot-header" id="chatbotHeader">
+        <div class="chatbot-header">
             <span>Trợ lý Ảo (AI)</span>
-            <div class="chatbot-header-controls">
-                <button class="chatbot-control-btn" id="chatbotMaximizeBtn" title="Mở rộng">
-                    <i class="fas fa-expand-alt"></i>
-                </button>
-                <button class="chatbot-control-btn" id="chatbotClose" title="Đóng">
-                    <i class="fas fa-times"></i>
-                </button>
+            <div>
+                <button class="btn btn-sm text-white" id="chatbotMaximizeBtn"><i class="fas fa-expand-alt"></i></button>
+                <button class="btn btn-sm text-white" id="chatbotClose"><i class="fas fa-times"></i></button>
             </div>
         </div>
-        
-        <div class="chatbot-history" id="chatbotHistory">
-            <div class="chat-message-container">
-                <div class="chat-message chat-bot">
-                    <br>Chào bạn, tôi có thể giúp gì?<br>                                       
-                    <br>1. <strong>22212 NSK C3</strong> (Tra nhanh tồn kho)
-                    <br>2. <strong>Giá 22214 cho Vina Kraft</strong> (Tra giá KH)
-                    <br>3. <strong>Takako mua spray nine chưa</strong> (Lịch sử mua hàng)
-                    <br>4. <strong>Dự phòng Kiswire mã AB</strong> (Đặt Dự phòng)
-                    <br>5. <strong>Giao hàng cho Takako chưa</strong> (Tiến độ giao hàng)
-                </div>
-            </div>
-        </div>
-        
+        <div class="chatbot-history" id="chatbotHistory"></div>
         <div class="chatbot-input-area">
-            <input type="text" class="chatbot-input" id="chatbotInput" placeholder="Nhập câu hỏi...">
-            <button class="chatbot-send-btn" id="chatbotSendBtn">
-                <i class="fas fa-paper-plane"></i>
-            </button>
+            <input type="text" class="chatbot-input" id="chatbotInput" placeholder="Hỏi tôi về tồn kho, giá...">
+            <button class="chatbot-send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        
+        // --- LOGIC CHATBOT (Giữ nguyên) ---
         const toggleBtn = document.getElementById('chatbotToggle');
         const closeBtn = document.getElementById('chatbotClose');
-        const maximizeBtn = document.getElementById('chatbotMaximizeBtn'); // (Yêu cầu 7)
+        const maximizeBtn = document.getElementById('chatbotMaximizeBtn');
         const windowEl = document.getElementById('chatbotWindow');
         const historyEl = document.getElementById('chatbotHistory');
         const inputEl = document.getElementById('chatbotInput');
         const sendBtn = document.getElementById('chatbotSendBtn');
-
-        // Mở/Đóng cửa sổ chat
-        toggleBtn.addEventListener('click', () => windowEl.classList.toggle('active'));
-        closeBtn.addEventListener('click', () => windowEl.classList.remove('active'));
-
-        // --- YÊU CẦU 7: LOGIC MAXIMIZE ---
-        maximizeBtn.addEventListener('click', () => {
-            windowEl.classList.toggle('maximized');
-            const icon = maximizeBtn.querySelector('i');
-            if (windowEl.classList.contains('maximized')) {
-                icon.classList.remove('fa-expand-alt');
-                icon.classList.add('fa-compress-alt');
-                maximizeBtn.title = "Thu nhỏ";
-            } else {
-                icon.classList.add('fa-expand-alt');
-                icon.classList.remove('fa-compress-alt');
-                maximizeBtn.title = "Mở rộng";
-            }
-        });
-        // --- KẾT THÚC YÊU CẦU 7 ---
-
-        // Hàm gửi tin nhắn
-        const sendMessage = () => {
-            const messageText = inputEl.value.trim();
-            if (messageText === '') return;
-
-            addMessageToHistory(messageText, 'user');
-            inputEl.value = '';
-            addMessageToHistory('...', 'bot', true); // 'true' = loading
-            
-            // Gọi API (Backend)
-            fetch('/api/chatbot_query', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: messageText })
-            })
-            .then(response => response.json())
-            .then(data => {
-                updateBotMessage(data.response);
-            })
-            .catch(error => {
-                console.error('Chatbot API Error:', error);
-                updateBotMessage('Lỗi kết nối. Vui lòng thử lại.');
-            });
-        };
-
-        // Đăng ký sự kiện
-        sendBtn.addEventListener('click', sendMessage);
-        inputEl.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-
-        // --- Helper Functions ---
+        
+        // Init default message
         const messageContainer = document.createElement('div');
         messageContainer.className = 'chat-message-container';
         historyEl.appendChild(messageContainer);
-        
+        addMessageToHistory('Chào bạn, tôi có thể giúp gì?\n1. Tra tồn kho\n2. Tra giá\n3. Lịch sử mua hàng', 'bot');
+
+        toggleBtn.addEventListener('click', () => windowEl.classList.toggle('active'));
+        closeBtn.addEventListener('click', () => windowEl.classList.remove('active'));
+        maximizeBtn.addEventListener('click', () => {
+            windowEl.classList.toggle('maximized');
+            maximizeBtn.innerHTML = windowEl.classList.contains('maximized') ? '<i class="fas fa-compress-alt"></i>' : '<i class="fas fa-expand-alt"></i>';
+        });
+
+        function sendMessage() {
+            const text = inputEl.value.trim();
+            if (!text) return;
+            addMessageToHistory(text, 'user');
+            inputEl.value = '';
+            addMessageToHistory('...', 'bot', true);
+
+            fetch('/api/chatbot_query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            })
+            .then(r => r.json())
+            .then(data => updateBotMessage(data.response))
+            .catch(() => updateBotMessage('Lỗi kết nối server.'));
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        inputEl.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
+
         function addMessageToHistory(text, type, isLoading = false) {
             const msgDiv = document.createElement('div');
-            msgDiv.classList.add('chat-message');
-            
-            if (type === 'user') {
-                msgDiv.classList.add('chat-user');
-                msgDiv.textContent = text;
-            } else {
-                msgDiv.classList.add('chat-bot');
-                if (isLoading) {
-                    msgDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; 
-                    msgDiv.id = 'bot-loading-message';
-                } else {
-                    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                    text = text.replace(/\n/g, '<br>');
-                    msgDiv.innerHTML = text;
-                }
-            }
-            
+            msgDiv.classList.add('chat-message', type === 'user' ? 'chat-user' : 'chat-bot');
+            if(isLoading) { msgDiv.id = 'bot-loading'; msgDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+            else msgDiv.innerHTML = text.replace(/\n/g, '<br>');
             messageContainer.appendChild(msgDiv);
             historyEl.scrollTop = historyEl.scrollHeight;
         }
-        
-        function updateBotMessage(responseText) {
-            const loadingMsg = document.getElementById('bot-loading-message');
-            if (loadingMsg) {
-                responseText = responseText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                responseText = responseText.replace(/\n/g, '<br>');
-                loadingMsg.innerHTML = responseText;
-                loadingMsg.removeAttribute('id'); 
-            } else {
-                addMessageToHistory(responseText, 'bot');
-            }
-            historyEl.scrollTop = historyEl.scrollHeight;
-        }
 
+        function updateBotMessage(text) {
+            const loading = document.getElementById('bot-loading');
+            if(loading) loading.remove();
+            addMessageToHistory(text, 'bot');
+        }
     });
     </script>
 </body>

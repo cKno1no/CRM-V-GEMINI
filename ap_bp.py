@@ -1,11 +1,12 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, current_app
-from utils import login_required
+from utils import login_required, permission_required # Import thêm
 import config
 
 ap_bp = Blueprint('ap_bp', __name__)
 
 @ap_bp.route('/ap_aging', methods=['GET', 'POST'])
 @login_required
+@permission_required('VIEW_AP_AGING')
 def ap_aging_dashboard():
     """Giao diện Quản lý Nợ Phải Trả."""
     db_manager = current_app.db_manager

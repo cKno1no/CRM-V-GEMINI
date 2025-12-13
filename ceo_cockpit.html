@@ -170,6 +170,55 @@
         .modal-header { border-bottom: 1px solid #E0E5F2; padding: 20px 25px; }
         .modal-title { font-weight: 700; color: var(--text-dark); }
         .modal-body { padding: 25px; }
+
+        /* --- MOBILE RESPONSIVE: CEO COCKPIT --- */
+        @media (max-width: 992px) {
+            /* 1. Header: Xếp dọc */
+            .d-flex.justify-content-between.align-items-end {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 15px;
+            }
+            .d-flex.gap-3 {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            /* 2. KPI Scorecards: Tự động xuống dòng (đã được Bootstrap Grid lo) */
+            /* Chỉ cần chỉnh lại margin nếu cần */
+            .card-box {
+                margin-bottom: 15px;
+            }
+
+            /* 3. Charts: Đảm bảo chiều cao hợp lý trên mobile */
+            #inventoryChart, #categoryChart, #financialTrendChart, #funnelChart {
+                height: 300px !important;
+            }
+
+            /* 4. Action Center Items: Xếp dọc nội dung bên trong */
+            .action-item {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .action-item > div {
+                display: flex;
+                align-items: center;
+                width: 100%; /* Chiếm hết dòng */
+            }
+            .btn-go {
+                margin-left: auto; /* Đẩy nút sang phải */
+            }
+
+            /* 5. Leaderboard Table */
+            .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .table-leaderboard th, .table-leaderboard td {
+                white-space: nowrap;
+                font-size: 0.8rem;
+            }
+        }
     </style>
 </head>
 <body>

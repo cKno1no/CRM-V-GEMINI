@@ -52,12 +52,13 @@ class ExecutiveService:
             # --- B. TÀI CHÍNH: CHI PHÍ & HIỆU QUẢ BÁN CHÉO ---
             
             # 1. Chi phí YTD (Thực tế)
-            # [UPDATED]: Lấy toàn bộ Ana03ID hợp lệ (trừ mã kết chuyển), BỎ lọc tài khoản đầu 6/8
+            # [FIXED]: Thêm điều kiện lọc tài khoản đầu 6 và 8 để khớp với Budget Report
             query_exp_actual = f"""
                 SELECT SUM(ConvertedAmount) 
                 FROM {config.ERP_GIAO_DICH}
                 WHERE TranYear = ? AND TranMonth <= ?
                 AND Ana03ID IS NOT NULL AND Ana03ID <> '{config.EXCLUDE_ANA03_CP2014}'
+                AND (DebitAccountID LIKE '6%' OR DebitAccountID LIKE '8%') -- <--- THÊM DÒNG NÀY
             """
             act_data = self.db.get_data(query_exp_actual, (current_year, current_month))
             kpi_data['TotalExpenses_YTD'] = safe_float(act_data[0].get('') or list(act_data[0].values())[0]) if act_data else 0
@@ -71,7 +72,8 @@ class ExecutiveService:
             plan_data = self.db.get_data(query_exp_plan, (current_year, current_month))
             kpi_data['BudgetPlan_YTD'] = safe_float(plan_data[0].get('') or list(plan_data[0].values())[0]) if plan_data else 0
 
-            # 3. Đếm số khoản vượt ngân sách (So sánh theo từng Ana03ID)
+            # 3. Đếm số khoản vượt ngân sách
+            # [FIXED]: Cũng cần thêm điều kiện lọc tài khoản ở đây
             query_over_budget = f"""
                 SELECT COUNT(*) as OverCount FROM (
                     SELECT T.Ana03ID, SUM(T.ConvertedAmount) as Actual, ISNULL(P.PlanAmount, 0) as PlanAmount
@@ -84,6 +86,7 @@ class ExecutiveService:
                     ) P ON T.Ana03ID = P.BudgetCode
                     WHERE T.TranYear = ? AND T.TranMonth <= ? 
                     AND T.Ana03ID IS NOT NULL AND T.Ana03ID <> '{config.EXCLUDE_ANA03_CP2014}'
+                    AND (T.DebitAccountID LIKE '6%' OR T.DebitAccountID LIKE '8%') -- <--- THÊM DÒNG NÀY
                     GROUP BY T.Ana03ID, P.PlanAmount
                 ) AS Comparison
                 WHERE Actual > PlanAmount

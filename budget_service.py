@@ -4,6 +4,15 @@ from db_manager import DBManager, safe_float
 from datetime import datetime
 import config
 
+# [NEW] Import hàm gửi mail từ utils (Cần đảm bảo file utils.py đã có hàm này)
+# Nếu chưa có, bạn cần thêm hàm send_notification_email vào utils.py trước
+try:
+    from utils import send_notification_email
+except ImportError:
+    # Fallback nếu chưa cấu hình utils để tránh lỗi crash app
+    def send_notification_email(*args, **kwargs):
+        print("WARNING: send_notification_email not found in utils.py")
+
 class BudgetService:
     def __init__(self, db_manager: DBManager):
         self.db = db_manager
@@ -130,7 +139,7 @@ class BudgetService:
 
     def create_expense_request(self, user_code, dept_code, budget_code, amount, reason, object_id=None, attachments=None):
         """
-        [UPDATED] Tạo đề nghị thanh toán mới (Có đính kèm file).
+        [UPDATED] Tạo đề nghị thanh toán mới (Có đính kèm file + Gửi Email Notification).
         """
         now = datetime.now()
         
@@ -164,7 +173,7 @@ class BudgetService:
             else:
                 approver = parent_approver or config.ROLE_ADMIN
 
-        # 4. Lưu vào DB (Có Attachments)
+        # 4. Lưu vào DB
         req_id = f"REQ-{now.strftime('%y%m')}-{int(datetime.now().timestamp())}"
         
         insert_query = f"""
@@ -173,10 +182,52 @@ class BudgetService:
             VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
         """
         
-        # Đảm bảo cột Attachments đã được thêm vào bảng EXPENSE_REQUEST trong SQL Server
-        # ALTER TABLE dbo.EXPENSE_REQUEST ADD Attachments NVARCHAR(MAX);
-        
-        if self.db.execute_non_query(insert_query, (req_id, user_code, dept_code, budget_code, amount, reason, approver, object_id, attachments)):
+        success = self.db.execute_non_query(insert_query, (req_id, user_code, dept_code, budget_code, amount, reason, approver, object_id, attachments))
+
+        # 5. [NEW] Gửi Email Thông báo nếu lưu thành công
+        if success:
+            try:
+                # 5.1 Lấy Email của Người duyệt
+                email_query = f"SELECT Email, SHORTNAME FROM {config.TEN_BANG_NGUOI_DUNG} WHERE USERCODE = ?"
+                approver_data = self.db.get_data(email_query, (approver,))
+                
+                if approver_data and approver_data[0]['Email']:
+                    to_email = approver_data[0]['Email']
+                    approver_name = approver_data[0]['SHORTNAME'] or approver
+                    
+                    # 5.2 Nội dung Email
+                    subject = f"[DUYỆT CHI] Đề nghị #{req_id} từ {user_code}"
+                    body_html = f"""
+                    <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+                        <h3 style="color: #4318FF;">Kính gửi anh/chị {approver_name},</h3>
+                        <p>Hệ thống vừa nhận được đề nghị thanh toán mới:</p>
+                        <table style="border-collapse: collapse; width: 100%; max-width: 600px;">
+                            <tr style="background-color: #f8f9fa;">
+                                <td style="padding: 10px; border: 1px solid #ddd;"><b>Người đề nghị:</b></td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">{user_code}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #ddd;"><b>Số tiền:</b></td>
+                                <td style="padding: 10px; border: 1px solid #ddd; color: #dc3545; font-weight: bold;">{amount:,.0f} VNĐ</td>
+                            </tr>
+                            <tr style="background-color: #f8f9fa;">
+                                <td style="padding: 10px; border: 1px solid #ddd;"><b>Lý do:</b></td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">{reason}</td>
+                            </tr>
+                        </table>
+                        <br>
+                        <p>Vui lòng truy cập hệ thống để phê duyệt.</p>
+                        <hr>
+                        <small style="color: gray;">Email tự động từ Titan OS.</small>
+                    </div>
+                    """
+                    
+                    # 5.3 Gửi (Chạy ngầm không đợi)
+                    send_notification_email(to_email, subject, body_html)
+                    print(f"📧 Notification sent to {to_email}")
+            except Exception as e:
+                print(f"⚠️ Failed to send email: {e}")
+
             return {'success': True, 'message': 'Đã gửi đề nghị thành công.', 'request_id': req_id}
             
         return {'success': False, 'message': 'Lỗi CSDL khi lưu đề nghị.'}
@@ -184,10 +235,12 @@ class BudgetService:
     def get_requests_for_approval(self, approver_code, user_role=''):
         """
         Lấy danh sách phiếu chờ duyệt (kèm thông tin kiểm tra YTD).
+        Cột CurrentApproverName được lấy ở đây để hiển thị lên Dashboard.
         """
         query_params = []
         role_check = str(user_role).strip().upper()
         
+        # Admin/GM thấy hết, còn lại thấy phiếu của mình duyệt
         if role_check in [config.ROLE_ADMIN, config.ROLE_GM]:
             where_clause = "R.Status = 'PENDING'"
         else:
@@ -199,7 +252,7 @@ class BudgetService:
                 R.*, 
                 M.BudgetName, M.ParentCode,
                 U.SHORTNAME as RequesterName,
-                U2.SHORTNAME as CurrentApproverName
+                U2.SHORTNAME as CurrentApproverName -- <--- Cột này dùng để hiển thị Người duyệt
             FROM {config.TABLE_EXPENSE_REQUEST} R
             LEFT JOIN {config.TABLE_BUDGET_MASTER} M ON R.BudgetCode = M.BudgetCode
             LEFT JOIN {config.TEN_BANG_NGUOI_DUNG} U ON R.UserCode = U.USERCODE
@@ -254,7 +307,7 @@ class BudgetService:
 
     def get_payment_queue(self, from_date, to_date):
         """
-        [UPDATED] Lấy danh sách phiếu Chờ chi & Đã chi (Đã thêm xử lý safe_float).
+        Lấy danh sách phiếu Chờ chi & Đã chi.
         """
         query = f"""
             SELECT 
@@ -274,7 +327,6 @@ class BudgetService:
         """
         data = self.db.get_data(query, (from_date, to_date))
         
-        # [FIX QUAN TRỌNG]: Chuyển đổi số liệu an toàn để tránh lỗi Template
         if data:
             for row in data:
                 row['Amount'] = safe_float(row.get('Amount'))
@@ -295,76 +347,145 @@ class BudgetService:
 
     def get_ytd_budget_report(self, department_code, year):
         """
-        Lấy báo cáo YTD gom nhóm theo ReportGroup.
+        [FIXED] Báo cáo YTD theo logic:
+        1. Plan: Sum từ BudgetPlan (Detail) -> Join Master -> Group by ReportGroup.
+        2. Actual: Sum từ GT9000 (Ana03ID) -> Map Ana03ID = ParentCode -> Group by ReportGroup.
+        3. Loại trừ mã kết chuyển CP2014 để số liệu không bị sai lệch.
         """
-        # 1. Plan YTD (Theo ReportGroup)
+        # --- BƯỚC 1: TẠO MAPPING (Ana03ID/ParentCode -> ReportGroup) ---
+        # Lấy danh sách ParentCode và ReportGroup tương ứng từ bảng Master
+        query_map = f"""
+            SELECT DISTINCT ParentCode, ReportGroup 
+            FROM {config.TABLE_BUDGET_MASTER} 
+            WHERE ParentCode IS NOT NULL AND ParentCode <> ''
+        """
+        mapping_data = self.db.get_data(query_map)
+        
+        # Tạo Dictionary: Key=ParentCode (tức Ana03ID), Value=ReportGroup
+        # Ví dụ: {'CP_BH': 'Chi phí Bán Hàng', 'CP_QL': 'Chi phí Quản lý'}
+        ana03_to_group = {row['ParentCode']: (row['ReportGroup'] or 'Khác') for row in mapping_data}
+
+        # --- BƯỚC 2: LẤY SỐ LIỆU PLAN (NGÂN SÁCH) ---
+        # Logic: Ngân sách được lập chi tiết (BudgetCode), ta cần sum lên theo ReportGroup
         query_plan = f"""
             SELECT 
-                M.ReportGroup, PL.[Month], SUM(PL.BudgetAmount) as PlanAmount
-            FROM {config.TABLE_BUDGET_PLAN} PL
-            JOIN {config.TABLE_BUDGET_MASTER} M ON PL.BudgetCode = M.BudgetCode
-            WHERE PL.FiscalYear = ? 
-            GROUP BY M.ReportGroup, PL.[Month]
+                M.ReportGroup, 
+                P.[Month], 
+                SUM(P.BudgetAmount) as PlanAmount
+            FROM {config.TABLE_BUDGET_PLAN} P
+            INNER JOIN {config.TABLE_BUDGET_MASTER} M ON P.BudgetCode = M.BudgetCode
+            WHERE P.FiscalYear = ?
+            GROUP BY M.ReportGroup, P.[Month]
         """
         plan_raw = self.db.get_data(query_plan, (year,))
 
-        # 2. Actual YTD (Theo Ana03ID = ParentCode)
-        # Vì Ana03ID trong GT9000 là ParentCode, cần map về ReportGroup
+        # --- BƯỚC 3: LẤY SỐ LIỆU ACTUAL (THỰC TẾ) ---
+        # Logic: Lấy từ GT9000 theo Ana03ID.
+        # [QUAN TRỌNG]: Phải loại trừ mã kết chuyển (CP2014) và chỉ lấy TK chi phí (6*, 8*)
         query_actual = f"""
-            SELECT Ana03ID, TranMonth, SUM(ConvertedAmount) as ActualAmount
+            SELECT 
+                Ana03ID, 
+                TranMonth, 
+                SUM(ConvertedAmount) as ActualAmount
             FROM {config.ERP_GIAO_DICH}
             WHERE TranYear = ? 
               AND Ana03ID IS NOT NULL 
-              AND (DebitAccountID LIKE '64%' OR DebitAccountID LIKE '811%')
+              AND Ana03ID <> ''
+              AND Ana03ID <> '{config.EXCLUDE_ANA03_CP2014}' -- Loại bỏ bút toán kết chuyển
+              AND (DebitAccountID LIKE '6%' OR DebitAccountID LIKE '8%') -- Chỉ lấy các đầu tài khoản chi phí
             GROUP BY Ana03ID, TranMonth
         """
         actual_raw = self.db.get_data(query_actual, (year,))
-        
-        # 3. Mapping ParentCode -> ReportGroup
-        query_map = f"SELECT DISTINCT ParentCode, ReportGroup FROM {config.TABLE_BUDGET_MASTER} WHERE ParentCode IS NOT NULL"
-        mapping_raw = self.db.get_data(query_map)
-        ana03_to_group = {row['ParentCode']: row['ReportGroup'] for row in mapping_raw if row['ParentCode']} if mapping_raw else {}
 
-        # 4. Aggregate
+        # --- BƯỚC 4: TỔNG HỢP DỮ LIỆU (AGGREGATION) ---
         groups_data = {}
-        def get_entry(g):
-            if g not in groups_data: groups_data[g] = {'GroupName': g, 'Plan_Month': {}, 'Actual_Month': {}}
-            return groups_data[g]
 
+        # Helper để khởi tạo cấu trúc dữ liệu cho 1 nhóm
+        def get_group_entry(g_name):
+            if g_name not in groups_data: 
+                groups_data[g_name] = {
+                    'GroupName': g_name, 
+                    'Plan_Month': {},   # {1: 100, 2: 200...}
+                    'Actual_Month': {}  # {1: 90, 2: 210...}
+                }
+            return groups_data[g_name]
+
+        # 4.1. Đổ dữ liệu Plan vào
         if plan_raw:
             for p in plan_raw:
-                g = p['ReportGroup'] or 'Khác'
-                get_entry(g)['Plan_Month'][p['Month']] = get_entry(g)['Plan_Month'].get(p['Month'], 0) + safe_float(p['PlanAmount'])
+                g_name = p['ReportGroup'] or 'Chưa phân nhóm'
+                month = p['Month']
+                amount = safe_float(p['PlanAmount'])
+                
+                entry = get_group_entry(g_name)
+                entry['Plan_Month'][month] = entry['Plan_Month'].get(month, 0) + amount
 
+        # 4.2. Đổ dữ liệu Actual vào (Có Mapping)
         if actual_raw:
             for a in actual_raw:
-                g = ana03_to_group.get(a['Ana03ID'], 'Khác')
-                get_entry(g)['Actual_Month'][a['TranMonth']] = get_entry(g)['Actual_Month'].get(a['TranMonth'], 0) + safe_float(a['ActualAmount'])
+                ana03_id = a['Ana03ID']
+                month = a['TranMonth']
+                amount = safe_float(a['ActualAmount'])
+                
+                # Tìm ReportGroup tương ứng với Ana03ID này
+                # Nếu không tìm thấy trong mapping -> Cho vào nhóm "Chi phí khác (ERP)"
+                g_name = ana03_to_group.get(ana03_id, 'Chi phí khác (Chưa mapping)')
+                
+                entry = get_group_entry(g_name)
+                entry['Actual_Month'][month] = entry['Actual_Month'].get(month, 0) + amount
 
-        # 5. Calculate
+        # --- BƯỚC 5: TÍNH TOÁN YTD & FORMAT BÁO CÁO ---
         current_month = datetime.now().month
+        # Nếu đang xem năm cũ, YTD là full 12 tháng. Nếu năm nay, YTD là đến tháng hiện tại.
         ytd_limit = 12 if year < datetime.now().year else current_month
         
         final_report = []
+        
         for g_name, data in groups_data.items():
-            row = {'GroupName': g_name, 'Month_Plan': 0, 'Month_Actual': 0, 'Month_Diff': 0, 'YTD_Plan': 0, 'YTD_Actual': 0, 'YTD_Diff': 0, 'Year_Plan': 0, 'UsagePercent': 0}
-            for m in range(1, 13):
-                p = data['Plan_Month'].get(m, 0); a = data['Actual_Month'].get(m, 0)
-                row['Year_Plan'] += p
-                if m <= ytd_limit: row['YTD_Plan'] += p; row['YTD_Actual'] += a
-                if m == current_month: row['Month_Plan'] = p; row['Month_Actual'] = a
+            row = {
+                'GroupName': g_name,
+                'Month_Plan': 0, 'Month_Actual': 0, 'Month_Diff': 0,
+                'YTD_Plan': 0, 'YTD_Actual': 0, 'YTD_Diff': 0,
+                'Year_Plan': 0, 'UsagePercent': 0
+            }
             
+            # Duyệt qua 12 tháng để cộng dồn
+            for m in range(1, 13):
+                p_val = data['Plan_Month'].get(m, 0)
+                a_val = data['Actual_Month'].get(m, 0)
+                
+                # Tổng Plan cả năm
+                row['Year_Plan'] += p_val
+                
+                # Tính YTD (Lũy kế)
+                if m <= ytd_limit:
+                    row['YTD_Plan'] += p_val
+                    row['YTD_Actual'] += a_val
+                
+                # Tính tháng hiện tại (Current Month)
+                if m == current_month:
+                    row['Month_Plan'] = p_val
+                    row['Month_Actual'] = a_val
+
+            # Tính chênh lệch
             row['Month_Diff'] = row['Month_Plan'] - row['Month_Actual']
             row['YTD_Diff'] = row['YTD_Plan'] - row['YTD_Actual']
-            row['UsagePercent'] = (row['YTD_Actual'] / row['YTD_Plan'] * 100) if row['YTD_Plan'] > 0 else (0 if row['YTD_Actual'] == 0 else 100)
+            
+            # Tính % sử dụng YTD
+            if row['YTD_Plan'] > 0:
+                row['UsagePercent'] = (row['YTD_Actual'] / row['YTD_Plan']) * 100
+            else:
+                row['UsagePercent'] = 0 if row['YTD_Actual'] == 0 else 100 # Nếu không có plan mà có chi -> 100% (hoặc cảnh báo đỏ)
+
             final_report.append(row)
 
+        # Sắp xếp: Nhóm nào Plan năm cao nhất lên đầu
         final_report.sort(key=lambda x: x['Year_Plan'], reverse=True)
+        
         return final_report
     
     def get_expense_details_by_group(self, report_group, year):
         """Lấy chi tiết phiếu chi theo ReportGroup."""
-        # Update: Lấy theo ParentCode
         ana_query = f"SELECT DISTINCT ParentCode FROM {config.TABLE_BUDGET_MASTER} WHERE ReportGroup = ?"
         ana_data = self.db.get_data(ana_query, (report_group,))
         

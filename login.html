@@ -142,7 +142,32 @@
             .welcome-panel { display: none; }
             .login-panel { width: 100%; }
         }
+        
+        /* --- MOBILE RESPONSIVE CHO LOGIN --- */
+        @media (max-width: 768px) {
+            /* Ẩn cột trái (Welcome) trên mobile */
+            .welcome-panel {
+                display: none;
+            }
 
+            /* Căn giữa form đăng nhập và thêm khoảng cách lề */
+            .login-panel {
+                width: 100%;
+                padding: 20px;
+                background-color: rgba(0, 0, 0, 0.6); /* Nền tối hơn để dễ đọc chữ */
+            }
+
+            .login-form-container {
+                max-width: 100%; /* Form full chiều rộng */
+                padding: 25px 20px;
+                box-shadow: none; /* Bỏ bóng cho nhẹ */
+            }
+
+            /* Giảm kích thước chữ tiêu đề */
+            .login-form-container h2 {
+                font-size: 1.5rem;
+            }
+        }
     </style>
 </head>
 <body>

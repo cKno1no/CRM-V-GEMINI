@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        /* --- 1. CORE STYLES (Đồng bộ nhaplieu_new) --- */
+        /* --- 1. CORE STYLES --- */
         :root {
             --primary: #4318FF;
             --primary-light: #F4F7FE;
@@ -29,7 +29,6 @@
             font-family: 'Inter', sans-serif; 
             color: var(--text-dark); 
             overflow-y: auto !important;
-            max-height: none !important;
         }
         .container-fluid { max-width: 98%; margin-top: 30px; }
         
@@ -46,37 +45,20 @@
         .btn-portal { background-color: var(--primary); color: white; }
         .btn-so-approve { background-color: var(--success); color: white; }
 
-        /* --- 3. MAIN CARDS (Style mới) --- */
+        /* --- 3. MAIN CARDS --- */
         .main-card {
-            border: none;
-            background: white;
-            border-radius: var(--card-radius);
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
-            margin-bottom: 25px;
-            overflow: hidden;
+            border: none; background: white; border-radius: var(--card-radius);
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); margin-bottom: 25px; overflow: hidden;
         }
         .card-header-custom {
-            background-color: white;
-            color: var(--text-dark);
-            font-weight: 700;
-            font-size: 1.1rem;
-            padding: 20px 25px;
-            border-bottom: 1px solid var(--primary-light);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background-color: white; color: var(--text-dark); font-weight: 700; font-size: 1.1rem;
+            padding: 20px 25px; border-bottom: 1px solid var(--primary-light);
+            display: flex; justify-content: space-between; align-items: center;
         }
-        .card-header-custom i {
-            font-size: 1.1rem;
-            margin-right: 12px;
-            color: var(--primary);
-        }
-        .card-body-custom {
-            padding: 25px;
-            background-color: white;
-        }
+        .card-header-custom i { font-size: 1.1rem; margin-right: 12px; color: var(--primary); }
+        .card-body-custom { padding: 25px; background-color: white; }
         
-        /* --- 4. FORMS & MODALS (Style mới) --- */
+        /* --- 4. FORMS & MODALS --- */
         .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
         .form-control, .form-select {
             border: none; background-color: var(--input-bg); border-radius: 16px;
@@ -96,99 +78,43 @@
         .modal-header.bg-warning .modal-title { color: var(--text-dark); }
         .modal-header.bg-primary .modal-title { color: white; }
 
-        /* --- 5. DATA TABLES (Style mới) --- */
+        /* --- 5. DATA TABLES --- */
         .master-table-scroll { max-height: 90vh; overflow-y: auto; }
-
         .table-approval { border: 1px solid var(--primary-light); width: 100%; }
-        .table-approval th { 
-            font-size: 0.95rem;
-        }
+        .table-approval th { font-size: 0.95rem; }
         
-        /* Thanh Lọc (Style mới) - SỬA LẠI */
-        #custom-filter-box { 
-            display: flex; align-items: center; 
-            justify-content: flex-end; gap: 10px; 
-            flex-grow: 1; 
-        }
+        /* Thanh Lọc */
+        #custom-filter-box { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-grow: 1; }
+        .custom-filter-wrapper { display: flex; align-items: center; gap: 10px; flex-grow: 1; justify-content: flex-end; }
+        .custom-filter-wrapper label { font-weight: 600; color: var(--text-dark); font-size: 0.95rem; margin-bottom: 0; white-space: nowrap; }
+        .custom-filter-wrapper input { width: 300px; border: none; background: var(--input-bg); border-radius: 16px; padding: 8px 15px; height: 40px; font-size: 0.95rem; }
+        .btn-reset-filter { height: 40px; width: 40px; border-radius: 12px; font-size: 1rem; padding: 0; line-height: 1; }
+        div.dataTables_wrapper div.dataTables_filter { display: none !important; }
         
-        /* Bọc ngoài của input và label */
-        .custom-filter-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 10px; /* Khoảng cách giữa label, input, reset */
-            flex-grow: 1;
-            justify-content: flex-end;
-        }
-
-        .custom-filter-wrapper label {
-            font-weight: 600; color: var(--text-dark);
-            font-size: 0.95rem;
-            margin-bottom: 0; /* Ghi đè bootstrap */
-            white-space: nowrap;
-        }
-        
-        .custom-filter-wrapper input { 
-            width: 300px; 
-            border: none; background: var(--input-bg);
-            border-radius: 16px; /* Bo tròn giống input */
-            padding: 8px 15px; /* Padding giống input */
-            height: 40px; /* Chiều cao mới */
-            font-size: 0.95rem;
-        }
-        
-        .btn-reset-filter {
-            height: 40px;
-            width: 40px;
-            border-radius: 12px;
-            font-size: 1rem;
-            padding: 0;
-            line-height: 1;
-        }
-        
-        /* ẨN BỘ LỌC DATATABLES MẶC ĐỊNH */
-        div.dataTables_wrapper div.dataTables_filter { 
-            display: none !important; 
-        }
-        
-        /* Bảng Chi tiết trong Modal (Style mới) */
-        .table-detail th {
-            background-color: var(--primary) !important; color: white;
-        }
-        .table-detail td { font-size: 0.9rem; }
-        .text-danger { color: var(--danger) !important; }
+        /* Style Status */
+        .status-pass { border-left: 5px solid var(--success) !important; }
+        .status-fail { border-left: 5px solid var(--danger) !important; }
+        .status-pending { border-left: 5px solid var(--secondary) !important; }
+        .ratio-alert { color: var(--danger); }
+        .bg-highlight { background-color: #d4edda !important; transition: background-color 1s; }
 
         /* Responsive */
         @media (max-width: 768px) {
             .table-responsive { overflow-x: auto; }
-            .table-approval th, .table-approval td {
-                font-size: 0.75rem; padding: 6px 4px;
-            }
-            .card-header-custom {
-                flex-direction: column; align-items: flex-start;
-            }
-            #custom-filter-box {
-                margin-top: 10px; width: 100%;
-                justify-content: flex-start;
-            }
-            div.dataTables_wrapper div.dataTables_filter {
-                width: 100%; justify-content: flex-start; margin-bottom: 10px;
-            }
-            div.dataTables_wrapper div.dataTables_filter input { width: 100%; }
+            .table-approval th, .table-approval td { font-size: 0.75rem; padding: 6px 4px; }
+            .card-header-custom { flex-direction: column; align-items: flex-start; }
+            #custom-filter-box { margin-top: 10px; width: 100%; justify-content: flex-start; }
+            .col-nguoi-lap { display: none; }
         }
     </style>
 </head>
 <body>
     <div class="container-fluid">
-        <!-- HEADER (Style mới) -->
         <div class="page-header">
             <h1 class="page-title"><i class="fas fa-certificate me-2"></i> PHÊ DUYỆT BÁO GIÁ</h1>
             <div class="d-flex gap-2">
-                <a href="{{ url_for('index') }}" class="btn-action btn-portal">
-                    <i class="fas fa-home me-1"></i> Về Portal
-                </a>
-                <a href="{{ url_for('approval_bp.sales_order_approval_dashboard') }}" target="_blank" class="btn-action btn-so-approve">
-                    <i class="fas fa-file-invoice-dollar me-1"></i> Duyệt ĐH Bán
-                </a>
+                <a href="{{ url_for('index') }}" class="btn-action btn-portal"><i class="fas fa-home me-1"></i> Về Portal</a>
+                <a href="{{ url_for('approval_bp.sales_order_approval_dashboard') }}" target="_blank" class="btn-action btn-so-approve"><i class="fas fa-file-invoice-dollar me-1"></i> Duyệt ĐH Bán</a>
             </div>
         </div>
 
@@ -199,7 +125,6 @@
             <p class="text-muted small">Mặc định hiển thị Báo giá trong 7 ngày. Click Mã BG để xem chi tiết.</p>
         </div>
 
-        <!-- FILTER CARD (Style mới) -->
         <div class="main-card mb-3">
             <div class="card-body-custom" style="padding: 20px 25px;">
                 <form method="POST" action="{{ url_for('approval_bp.quote_approval_dashboard') }}" class="row g-3 align-items-end">
@@ -212,26 +137,21 @@
                         <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
                     </div>
                     <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-search me-1"></i> Lọc Ngày
-                        </button>
+                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search me-1"></i> Lọc Ngày</button>
                     </div>
                 </form>
             </div>
         </div>
         
-        <!-- MASTER TABLE (Style mới) -->
         <div class="row g-3 align-items-start">
             <div class="col-lg-12">
                 <div class="main-card master-panel">
                     <div class="card-header-custom">
                         <div><i class="fas fa-list-ul"></i> DANH SÁCH CHÀO GIÁ</div>
-                        <!-- Thanh lọc DataTables sẽ được JS chuyển vào đây -->
                         <div id="custom-filter-box"></div>
                     </div>
                     <div class="card-body-custom p-3">
                         <div class="table-responsive master-table-scroll">
-                            <!-- BẢNG GIỮ NGUYÊN HTML & LOGIC -->
                             <table id="approval-table" class="table table-hover table-approval"> 
                                 <thead>
                                     <tr>
@@ -291,18 +211,14 @@
                                         
                                         <td class="text-end col-gt">{{ "{:,.0f}".format(quote.SaleAmount | float) }}</td>
                                         
-                                        <td class="col-result">
-                                            {{ result.Reason }}
-                                        </td>
+                                        <td class="col-result">{{ result.Reason }}</td>
                                         
                                         <td class="action-cell">
                                             <div class="action-box mx-auto">
-                                                
                                                 {% if quote.NeedsCostOverride == 1 and not quote.HasCostOverrideData %}
                                                     <button class="btn btn-warning btn-sm" onclick="event.stopPropagation(); openCostOverrideForm('{{ quote.QuotationID }}', '{{ quote.QuotationNo }}')">
                                                         <i class="fas fa-money-bill-wave me-1"></i> Cost
                                                     </button>
-                                                
                                                 {% elif status and current_user_code in approver_id %}
                                                     <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); approveQuote(this)">
                                                         <i class="fas fa-check"></i> Duyệt
@@ -314,84 +230,70 @@
                                         </td>
                                     </tr>
                                     {% endfor %}
-                                    {% if not quotes %}
-                                    <tr><td colspan="9" class="text-center text-muted">Không có báo giá nào cần duyệt.</td></tr>
-                                    {% endif %}
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- BỎ CỘT DETAIL BÊN PHẢI (đã chuyển qua Modal) -->
         </div>
     </div>
     
-    <!-- MODALS (Giữ nguyên HTML, CSS mới tự áp dụng) -->
-    <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+    <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="detailModalLabel"><i class="fas fa-info-circle me-2"></i> Chi tiết Báo giá #<span id="quoteDetailNo"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title"><i class="fas fa-info-circle me-2"></i> Chi tiết Báo giá #<span id="quoteDetailNo"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-0">
                     <div id="detail-container">
                         <p class="p-3 text-muted text-center">Đang tải chi tiết...</p>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button></div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="costOverrideModal" tabindex="-1" aria-labelledby="costOverrideModalLabel" aria-hidden="true">
+    <div class="modal fade" id="costOverrideModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header bg-warning">
-                    <h5 class="modal-title text-dark" id="costOverrideModalLabel"><i class="fas fa-money-bill-wave me-2"></i> Bổ sung Giá nhập (Cost) cho Báo giá #<span id="quoteNoDisplay"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title text-dark"><i class="fas fa-money-bill-wave me-2"></i> Bổ sung Giá nhập (Cost) #<span id="quoteNoDisplay"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="overrideQuoteId" value="">
-                    
-                    <div id="costOverrideDetail" class="table-responsive">
-                        <p class="text-center text-muted">Đang tải chi tiết...</p>
-                    </div>
-                    
-                    <div class="alert alert-info mt-3 small">
-                        *Lưu ý: Chỉ cần nhập giá trị ước lượng vào cột **Giá Cost (Nhập)** cho các mặt hàng bị thiếu thông tin. Hệ thống sẽ sử dụng giá trị này để tính toán Tỷ số Duyệt.
-                    </div>
+                    <div id="costOverrideDetail" class="table-responsive"><p class="text-center text-muted">Đang tải...</p></div>
+                    <div class="alert alert-info mt-3 small">*Lưu ý: Chỉ cần nhập giá trị ước lượng vào cột **Giá Cost (Nhập)**.</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="button" class="btn btn-success" id="saveCostOverrideBtn"><i class="fas fa-save me-1"></i> Lưu và Tính lại Ratio</button>
+                    <button type="button" class="btn btn-success" id="saveCostOverrideBtn"><i class="fas fa-save me-1"></i> Lưu</button>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="modal fade" id="salesmanUpdateModal" tabindex="-1" aria-labelledby="salesmanUpdateModalLabel" aria-hidden="true">
+    <div class="modal fade" id="salesmanUpdateModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="salesmanUpdateModalLabel">Thay đổi NVKD cho Báo giá</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title">Thay đổi NVKD cho Báo giá</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Bạn đang thay đổi NVKD cho Báo giá: <strong id="salesmanModalQuoteNo">...</strong></p>
+                    <p>Báo giá: <strong id="salesmanModalQuoteNo">...</strong></p>
                     <input type="hidden" id="salesmanModalQuoteID" value="">
                     
                     <div class="mb-3">
-                        <label for="currentSalesman" class="form-label">NVKD Hiện tại:</label>
+                        <label class="form-label">NVKD Hiện tại:</label>
                         <input type="text" id="currentSalesman" class="form-control" readonly disabled>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="newSalesmanSelect" class="form-label">Chọn NVKD Mới:</label>
+                        <label class="form-label">Chọn NVKD Mới:</label>
                         <select id="newSalesmanSelect" class="form-select" required>
                             <option value="">-- Vui lòng chọn --</option>
                             {% for salesman in salesman_list %}
@@ -408,58 +310,36 @@
         </div>
     </div>
     
-    <!-- ======================================================== -->
-    <!-- TOÀN BỘ JAVASCRIPT ĐƯỢC GIỮ NGUYÊN 100% -->
-    <!-- ======================================================== -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
     
     <script>
-        let currentQuoteId = null;
         let lastClickedRow = null;
 
-        // FIX: Hàm formatCurrency sử dụng dấu phẩy (,) làm phân cách ngàn
         function formatCurrency(value) {
             if (value === null || value === undefined || value === '—' || String(value).trim() === '') return '—';
-            // Sửa lỗi: Bỏ dấu chấm (.), chỉ thay dấu phẩy (,)
             const num = parseFloat(String(value).replace(/,/g, '')); 
             if (isNaN(num)) return '—';
-            
             return num.toFixed(0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         }
 
+        // --- RENDER DETAIL TABLE ---
         function renderDetailTable(details, container) {
             let tableHtml = '<div class="table-responsive p-3"><table class="table table-sm table-striped table-bordered small mb-0 table-detail">';
-            // STYLE MỚI CHO HEADER MODAL
-            tableHtml += '<thead><tr>'; 
-            tableHtml += '<th class="text-center" style="height: 40px;">Mã hàng</th><th style="height: 40px;">Tên hàng</th><th class="text-end" style="height: 40px;">SL</th>';
-            tableHtml += '<th class="text-end" style="height: 40px;">Đơn giá</th><th class="text-end" style="height: 40px;">Đơn giá QĐ</th>';
-            tableHtml += '<th class="text-end" style="height: 40px;">Thành tiền</th><th style="height: 40px;">Ghi chú</th></tr></thead><tbody>';
+            tableHtml += '<thead><tr><th>Mã hàng</th><th>Tên hàng</th><th class="text-end">SL</th><th class="text-end">Đơn giá</th><th class="text-end">Đơn giá QĐ</th><th class="text-end">Thành tiền</th><th>Ghi chú</th></tr></thead><tbody>';
 
             details.forEach(item => {
                 const DonGiaQuyDinh = formatCurrency(item.DonGiaQuyDinh || 0);
                 const DonGia = formatCurrency(item.DonGia || 0);
-
-                // Sửa lỗi: Chỉ so sánh số, không so sánh chuỗi đã format
                 const price_ratio_color = (parseFloat(String(item.DonGia).replace(/,/g, '')) < parseFloat(String(item.DonGiaQuyDinh).replace(/,/g, ''))) ? 'text-danger' : 'text-success';
                 
-                tableHtml += '<tr>';
-                tableHtml += `<td class="text-center">${item.MaHang}</td>`; 
-                tableHtml += `<td class="text-start">${item.TenHang || '—'}</td>`;
-                tableHtml += `<td class="text-end">${formatCurrency(item.SoLuong)}</td>`; 
-                tableHtml += `<td class="text-end">${DonGia}</td>`;
-                tableHtml += `<td class="text-end ${price_ratio_color}">${DonGiaQuyDinh}</td>`; 
-                tableHtml += `<td class="text-end fw-bold">${formatCurrency(item.ThanhTien)}</td>`;
-                tableHtml += `<td class="text-start">${item.Notes || '—'}</td>`;
-                tableHtml += '</tr>';
+                tableHtml += `<tr><td class="text-center">${item.MaHang}</td><td>${item.TenHang || '—'}</td><td class="text-end">${formatCurrency(item.SoLuong)}</td><td class="text-end">${DonGia}</td><td class="text-end ${price_ratio_color}">${DonGiaQuyDinh}</td><td class="text-end fw-bold">${formatCurrency(item.ThanhTien)}</td><td>${item.Notes || '—'}</td></tr>`;
             });
-
             tableHtml += '</tbody></table></div>';
             container.innerHTML = tableHtml;
         }
 
-        // HÀM HIỂN THỊ CHI TIẾT (Mở Modal)
         function showDetails(quoteId, rowElement) {
              const detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
              const container = document.getElementById('detail-container');
@@ -467,341 +347,171 @@
              
              $('#quoteDetailNo').text(quoteNo); 
              container.innerHTML = '<p class="p-3 text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết...</p>';
-
              detailModal.show();
              
-             // Highlight row
              if(lastClickedRow) $(lastClickedRow).removeClass('row-selected');
              $(rowElement).addClass('row-selected');
              lastClickedRow = rowElement;
 
-             fetch(`/api/get_quote_details/${quoteId}`, { method: 'GET', headers: { 'Content-Type': 'application/json' } })
-             .then(response => { if (!response.ok) throw new Error('Lỗi truy vấn chi tiết báo giá (HTTP ' + response.status + ')'); return response.json(); })
-             .then(details => { 
+             fetch(`/api/get_quote_details/${quoteId}`).then(r => r.json()).then(details => { 
                  if (details.error) throw new Error(details.error); 
                  renderDetailTable(details, container); 
-             })
-             .catch(error => { 
-                 container.innerHTML = `<p class="p-3 text-danger text-center"><i class="fas fa-times-circle me-2"></i> LỖI: ${error.message}</p>`; 
-                 console.error(error); 
-             });
+             }).catch(e => container.innerHTML = `<p class="text-danger text-center">LỖI: ${e.message}</p>`);
         }
         
-        // HÀM XỬ LÝ DUYỆT BÁO GIÁ
         function approveQuote(buttonElement) {
             const row = $(buttonElement).closest('tr');
-            const quotationNo = row.data('quotationno');       
-            const quotationId = row.data('quotation-id');     
-            const objId = row.data('objectid');               
-            const employeeId = row.data('nvkd');              
-            const currentRatio = row.data('ratio');           
-
-            if (!confirm(`Xác nhận duyệt Chào Giá số ${quotationNo}? Hệ thống sẽ cập nhật trạng thái trong ERP và lưu log.`)) { return; }
-
-            const ratioValue = parseFloat(currentRatio) || 0.0;
-            buttonElement.disabled = true;
-            $(buttonElement).html('<i class="fas fa-spinner fa-spin"></i>');
-
-            fetch('/api/approve_quote', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    quotation_no: quotationNo,
-                    quotation_id: quotationId, 
-                    object_id: objId,
-                    employee_id: employeeId,
-                    approval_ratio: ratioValue
-                })
+            if (!confirm(`Xác nhận duyệt Chào Giá số ${row.data('quotationno')}?`)) return;
+            
+            buttonElement.disabled = true; $(buttonElement).html('<i class="fas fa-spinner fa-spin"></i>');
+            fetch('/api/approve_quote', { 
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    quotation_no: row.data('quotationno'), quotation_id: row.data('quotation-id'), 
+                    object_id: row.data('objectid'), employee_id: row.data('nvkd'), 
+                    approval_ratio: parseFloat(row.data('ratio') || 0) 
+                }) 
             })
-            .then(response => {
-                if (!response.ok) { 
-                    return response.json().then(err => { throw new Error(err.message || 'Lỗi không xác định'); }); 
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    alert(`${data.message}`);
-                    $('#approval-table').DataTable().row(row).remove().draw();
-                } else {
-                    alert('Lỗi duyệt: ' + data.message);
-                    buttonElement.disabled = false;
-                    $(buttonElement).html('<i class="fas fa-check"></i> Duyệt');
-                }
-            })
-            .catch(error => {
-                console.error('Lỗi kết nối:', error);
-                alert('Lỗi kết nối hoặc xử lý API: ' + error.message);
-                buttonElement.disabled = false;
-                $(buttonElement).html('<i class="fas fa-check"></i> Duyệt');
-            });
+            .then(r => r.json()).then(data => {
+                if (data.success) { alert(data.message); $('#approval-table').DataTable().row(row).remove().draw(); } 
+                else { alert('Lỗi: ' + data.message); buttonElement.disabled = false; $(buttonElement).html('<i class="fas fa-check"></i> Duyệt'); }
+            }).catch(e => { alert('Lỗi kết nối'); buttonElement.disabled = false; });
         }
         
-        // HÀM HIỂN THỊ MODAL BỔ SUNG COST
+        // --- COST OVERRIDE ---
         function openCostOverrideForm(quoteId, quoteNo) {
              const modal = new bootstrap.Modal(document.getElementById('costOverrideModal'));
-             $('#quoteNoDisplay').text(quoteNo);
-             $('#overrideQuoteId').val(quoteId);
-             $('#costOverrideDetail').html('<p class="p-3 text-center text-muted"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải danh sách mặt hàng cần bổ sung...</p>');
+             $('#quoteNoDisplay').text(quoteNo); $('#overrideQuoteId').val(quoteId);
+             $('#costOverrideDetail').html('<p class="text-center">Đang tải...</p>');
              modal.show();
-             fetchCostOverrideDetails(quoteId);
-        }
-
-        // HÀM LẤY CHI TIẾT COST OVERRIDE
-        function fetchCostOverrideDetails(quoteId) {
-            fetch(`/api/get_quote_cost_details/${quoteId}`)
-                .then(response => { if (!response.ok) throw new Error('Lỗi truy vấn chi tiết Cost Override.'); return response.json(); })
-                .then(details => {
-                    let tableHtml = '<table class="table table-sm table-striped table-bordered small">';
-                    tableHtml += '<thead><tr><th>Mã hàng</th><th>Tên hàng</th><th>SL</th><th>Giá bán</th><th>Giá Cost (Nhập)</th><th>Ghi chú</th></tr></thead><tbody>'; 
-                    
-                    details.forEach(item => {
-                        const costValue = item.Cost || ''; 
-                        // SỬA LỖI: Dùng style mới cho input
-                        const costInput = `<input type="text" class="form-control form-control-sm cost-input text-end" 
-                                                 data-transaction-id="${item.TransactionID}" 
-                                                 value="${formatCurrency(costValue)}" 
-                                                 placeholder="Giá nhập ước lượng" 
-                                                 oninput="this.value = formatCurrency(this.value.replace(/,/g, ''))">`;
-                        const unitPriceDisplay = formatCurrency(item.UnitPrice);
-
-                        tableHtml += `<tr data-tx-id="${item.TransactionID}">
-                                            <td>${item.InventoryID}</td>
-                                            <td class="text-start">${item.InventoryName}</td>
-                                            <td class="text-end">${formatCurrency(item.QuoQuantity)}</td> 
-                                            <td class="text-end">${formatCurrency(item.UnitPrice)}</td>
-                                            <td class="bg-warning-subtle">${costInput}</td>
-                                            <!-- SỬA LỖI: Dùng style mới cho input -->
-                                            <td><input type="text" class="form-control form-control-sm note-input" value="${item.NOTE || ''}"></td>
-                                          </tr>`;
-                    });
-                    
-                    tableHtml += '</tbody></table>';
-                    $('#costOverrideDetail').html(tableHtml);
-                })
-                .catch(error => { $('#costOverrideDetail').html(`<p class="p-3 text-center text-danger">LỖI TẢI CHI TIẾT: ${error.message}</p>`); });
+             fetch(`/api/get_quote_cost_details/${quoteId}`).then(r => r.json()).then(details => {
+                let html = '<table class="table table-sm table-bordered"><thead><tr><th>Mã</th><th>Tên</th><th>SL</th><th>Giá bán</th><th>Cost</th><th>Note</th></tr></thead><tbody>';
+                details.forEach(i => { html += `<tr data-tx-id="${i.TransactionID}"><td>${i.InventoryID}</td><td>${i.InventoryName}</td><td>${i.QuoQuantity}</td><td>${formatCurrency(i.UnitPrice)}</td><td><input class="form-control form-control-sm cost-input" value="${formatCurrency(i.Cost)}"></td><td><input class="form-control form-control-sm note-input" value="${i.NOTE||''}"></td></tr>`; });
+                html += '</tbody></table>'; $('#costOverrideDetail').html(html);
+             });
         }
         
-        // HÀM LƯU COST OVERRIDE
         $('#saveCostOverrideBtn').on('click', function() {
-             const quoteId = $('#overrideQuoteId').val();
              const updates = [];
-             
-             $('#costOverrideDetail table tbody tr').each(function() {
-                 const txId = $(this).data('tx-id');
-                 const costInput = $(this).find('.cost-input');
-                 const noteInput = $(this).find('.note-input');
-                 
-                 const rawCostString = costInput.val().replace(/,/g, ''); 
-                 const rawCostValue = parseFloat(rawCostString || 0);
-
-                 if (rawCostValue > 0 || noteInput.val().trim() !== '') {
-                      updates.push({
-                        transaction_id: txId,
-                        cost: rawCostValue, 
-                        note: noteInput.val().trim()
-                    });
-                 }
+             $('#costOverrideDetail tbody tr').each(function() {
+                 const cost = parseFloat($(this).find('.cost-input').val().replace(/,/g, '') || 0);
+                 const note = $(this).find('.note-input').val();
+                 if(cost > 0 || note) updates.push({ transaction_id: $(this).data('tx-id'), cost: cost, note: note });
              });
+             if(!updates.length) return alert('Không có thay đổi.');
+             fetch('/api/save_quote_cost_override', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ quote_id: $('#overrideQuoteId').val(), updates: updates }) })
+             .then(r => r.json()).then(res => { if(res.success) { alert('Thành công!'); window.location.reload(); } else alert(res.message); });
+        });
 
-             if (updates.length === 0) { alert("Không có thay đổi nào để lưu."); return; }
-
-             fetch('/api/save_quote_cost_override', { 
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ quote_id: quoteId, updates: updates })
-             })
-             .then(response => {
-                 if (!response.ok) {
-                     return response.json().then(err => { throw new Error(err.message || 'Lỗi Server không xác định'); });
-                 }
-                 return response.json();
-             })
-             .then(result => {
-                 if (result.success) { 
-                     alert('Lưu Cost thành công! Hệ thống sẽ tải lại để tính Ratio.'); 
-                     window.location.reload(); 
-                 } 
-                 else { alert(`Lỗi lưu: ${result.message}`); }
-             })
-             .catch(error => { alert('Lỗi kết nối hoặc xử lý: ' + error.message); });
-         });
-
-
+        // --- CẬP NHẬT LOGIC JS CHO NÚT LƯU SALESMAN ---
         $(document).ready(function() {
-            function initializeDataTable() {
-                if ($.fn.DataTable.isDataTable('#approval-table')) { $('#approval-table').DataTable().destroy(); }
+            // Init DataTables (Giữ nguyên)
+            const table = $('#approval-table').DataTable({
+                "paging": true, "pageLength": 25, "searching": true, "ordering": true, "info": true, 
+                "scrollY": "70vh", "scrollCollapse": true, 
+                "dom": 'rt<"row mt-3"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>', 
+                "order": [[1, 'asc']], 
+                "language": { "zeroRecords": "Không tìm thấy.", "info": "_START_ - _END_ / _TOTAL_", "paginate": { "next": "Sau", "previous": "Trước" } }
+            });
 
-                const table = $('#approval-table').DataTable({
-                    "paging": true, "pageLength": 25, "searching": true, "ordering": true, "info": true, 
-                    "scrollY": "70vh", "scrollCollapse": true, 
-                    // SỬA DOM: Bỏ 'l', 'f'. 'f' sẽ được thêm thủ công
-                    "dom": 'rt<"row mt-3"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>', 
-                    "order": [[1, 'asc']], 
-                    "language": {
-                        // "search" không còn dùng nữa
-                        "zeroRecords": "Không tìm thấy báo giá nào phù hợp.",
-                        "info": "Hiển thị từ _START_ đến _END_ trong tổng số _TOTAL_ mục",
-                        "paginate": { "next": "Sau", "previous": "Trước" },
-                        "lengthMenu": "Hiển thị _MENU_ dòng"
-                    },
-                    "fnDrawCallback": function(oSettings) { $('th .fa-sort').show(); }
-                });
+            // Filter (Giữ nguyên)
+            const customFilter = $('<div class="custom-filter-wrapper"><label>Lọc:</label><input type="search" id="customSearchInput" placeholder="Tìm kiếm..."></div>');
+            customFilter.find('input').on('keyup', function() { table.search(this.value).draw(); });
+            const resetBtn = $('<button class="btn btn-secondary btn-reset-filter"><i class="fas fa-undo-alt"></i></button>').on('click', function() { customFilter.find('input').val(''); table.search('').columns().search('').draw(); });
+            $('#custom-filter-box').empty().append(customFilter).append(resetBtn);
 
-                // TẠO BỘ LỌC TÙY CHỈNH MỚI
-                const customFilter = $(
-                    '<div class="custom-filter-wrapper">' +
-                        '<label for="customSearchInput">Lọc nhanh:</label>' +
-                        '<input type="search" class="" id="customSearchInput" placeholder="Tìm kiếm BG, KH, NVKD...">' +
-                    '</div>'
-                );
-                
-                const searchInput = customFilter.find('input');
-                
-                // Gán sự kiện keyup
-                searchInput.on('keyup', function() {
-                    table.search(this.value).draw();
-                });
-
-                // TẠO NÚT RESET MỚI (Style đẹp hơn)
-                const resetButton = $('<button class="btn btn-secondary btn-reset-filter" type="button" title="Reset lọc">' +
-                                        '<i class="fas fa-undo-alt"></i>' +
-                                      '</button>');
-                resetButton.on('click', function() { 
-                    searchInput.val('');
-                    table.search('').columns().search('').draw(); 
-                });
-
-                // CHUYỂN VÀO TOOLBAR
-                $('#custom-filter-box')
-                    .empty() // Xóa code cũ
-                    .append(customFilter)
-                    .append(resetButton);
-            }
-
-            initializeDataTable();
-
-            // Khóa in/sao chép
-            document.addEventListener('keydown', function(e) {
-                if ((e.ctrlKey || e.metaKey) && e.key === 'p') { e.preventDefault(); e.stopPropagation(); alert("Chức năng in đã bị khóa trên trang này."); }
-            }, true); 
-            window.print = function() { alert("Chức năng in đã bị khóa trên trang này."); };
-            document.addEventListener('contextmenu', e => e.preventDefault()); 
-            document.addEventListener('copy', e => { e.preventDefault(); alert("Sao chép nội dung bị cấm."); });
-            
-            
-            // --- LOGIC MỚI ĐỂ CẬP NHẬT NVKD ---
+            // Logic Update Salesman
             let salesmanUpdateModalInstance = null;
             
-            // Hàm mở Modal và truyền dữ liệu
             window.openSalesmanModal = function(quoteId, quoteNo, currentSalesmanId, currentSalesmanName) {
-                if (!salesmanUpdateModalInstance) {
-                    salesmanUpdateModalInstance = new bootstrap.Modal(document.getElementById('salesmanUpdateModal'));
-                }
-                
-                $('#salesmanModalQuoteNo').text(quoteNo);
-                $('#salesmanModalQuoteID').val(quoteId);
-                
-                // Hiển thị tên hoặc ID nếu không có tên
-                const displayName = (currentSalesmanName && currentSalesmanName !== 'N/A' && currentSalesmanName.trim() !== '') ? `${currentSalesmanName} (${currentSalesmanId})` : currentSalesmanId;
-                $('#currentSalesman').val(displayName);
-                
-                // Reset dropdown
-                $('#newSalesmanSelect').val('');
-                
+                if (!salesmanUpdateModalInstance) salesmanUpdateModalInstance = new bootstrap.Modal(document.getElementById('salesmanUpdateModal'));
+                $('#salesmanModalQuoteNo').text(quoteNo); $('#salesmanModalQuoteID').val(quoteId);
+                const displayName = (currentSalesmanName && currentSalesmanName !== 'N/A') ? `${currentSalesmanName} (${currentSalesmanId})` : currentSalesmanId;
+                $('#currentSalesman').val(displayName); $('#newSalesmanSelect').val('');
                 salesmanUpdateModalInstance.show();
             }
 
-            // --- CẬP NHẬT LOGIC LƯU THAY ĐỔI NVKD (FIX UI REFRESH) ---
             $('#saveSalesmanChangeBtn').on('click', function() {
                 const button = $(this);
                 const quoteId = $('#salesmanModalQuoteID').val();
                 const newSalesmanId = $('#newSalesmanSelect').val();
-                // Lấy QuoteNo hiện tại từ Modal title để dùng lại khi vẽ lại nút edit
                 const currentQuoteNo = $('#salesmanModalQuoteNo').text(); 
                 
-                if (!newSalesmanId) {
-                    alert('Vui lòng chọn một NVKD mới.');
-                    return;
-                }
+                if (!newSalesmanId) return alert('Vui lòng chọn NVKD mới.');
 
                 button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Đang lưu...');
 
                 fetch('/api/quote/update_salesman', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        quotation_id: quoteId,
-                        new_salesman_id: newSalesmanId
-                    })
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quotation_id: quoteId, new_salesman_id: newSalesmanId })
                 })
-                .then(response => {
-                    if (!response.ok) { 
-                        return response.json().then(err => { throw new Error(err.message || 'Lỗi không xác định'); }); 
-                    }
-                    return response.json();
-                })
-                .then(data => {
+                .then(r => r.json()).then(data => {
                     if (data.success) {
                         alert(data.message);
                         
-                        // --- CẬP NHẬT UI NGAY LẬP TỨC MÀ KHÔNG CẦN RELOAD ---
-                        
-                        // 1. Lấy tên NVKD mới từ dropdown để hiển thị
+                        const resultData = data.data || {};
                         const newSalesmanText = $('#newSalesmanSelect option:selected').text();
-                        let newSalesmanName = newSalesmanText;
-                        // Tách tên hiển thị (VD: "Nguyễn Văn A (KD01)" -> "Nguyễn Văn A")
-                        if (newSalesmanText.includes('(')) {
-                            newSalesmanName = newSalesmanText.split('(')[0].trim();
-                        }
+                        let newSalesmanName = resultData.NewSalesmanName || newSalesmanText.split('(')[0].trim();
                         
-                        // 2. Tìm ô (cell) cần update trong DataTable một cách an toàn
-                        // Sử dụng document.getElementById để tránh lỗi selector nếu ID có ký tự lạ
+                        // 1. CẬP NHẬT Ô NVKD TRÊN BẢNG
                         const cellId = 'salesman-cell-' + quoteId;
                         const cellNode = document.getElementById(cellId);
                         
                         if (cellNode) {
-                            const table = $('#approval-table').DataTable();
-                            
-                            // 3. Tạo nội dung HTML mới cho ô (Giữ nguyên nút Edit)
                             const newContent = `${newSalesmanName} 
                                 <button class="btn btn-xs btn-outline-primary p-0 px-1" style="font-size: 0.65rem;"
                                         onclick="event.stopPropagation(); openSalesmanModal('${quoteId}', '${currentQuoteNo}', '${newSalesmanId}', '${newSalesmanName}')">
                                     <i class="fas fa-edit"></i>
                                 </button>`;
                             
-                            // 4. Cập nhật dữ liệu vào DataTables và vẽ lại (giữ nguyên trang hiện tại)
-                            table.cell(cellNode).data(newContent).draw(false);
-                            
-                            // 5. QUAN TRỌNG: Cập nhật thuộc tính data-nvkd của hàng (row) 
-                            // Để nếu Sếp nhấn nút "Duyệt" ngay sau đó, hệ thống sẽ lấy đúng ID nhân viên mới
+                            table.cell(cellNode).data(newContent);
                             const rowNode = $(cellNode).closest('tr');
-                            if (rowNode.length) {
-                                rowNode.attr('data-nvkd', newSalesmanId); // Cập nhật DOM attribute
-                                rowNode.data('nvkd', newSalesmanId);      // Cập nhật jQuery data cache
+
+                            // 2. CẬP NHẬT TRẠNG THÁI & LÝ DO
+                            if (resultData.AnalysisMsg) {
+                                const resultCell = rowNode.find('.col-result');
+                                if (resultCell.length) table.cell(resultCell[0]).data(resultData.AnalysisMsg);
                             }
 
-                        } else {
-                            console.warn("Không tìm thấy ô dữ liệu để cập nhật giao diện. (ID: " + cellId + ")");
+                            // 3. CẬP NHẬT MÀU DÒNG
+                            rowNode.removeClass('status-pass status-fail status-pending');
+                            if (resultData.NewStatus === true) rowNode.addClass('status-pass');
+                            else rowNode.addClass('status-pending');
+
+                            // 4. [QUAN TRỌNG] CẬP NHẬT NÚT HÀNH ĐỘNG (ACTION BUTTON)
+                            // Tìm ô chứa nút hành động (.action-cell hoặc div .action-box)
+                            const actionBox = rowNode.find('.action-box'); 
+                            
+                            if (resultData.NewStatus === true) {
+                                // Nếu Trạng thái mới là Pass -> Hiện nút DUYỆT XANH
+                                actionBox.html(`
+                                    <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); approveQuote(this)">
+                                        <i class="fas fa-check"></i> Duyệt
+                                    </button>
+                                `);
+                            } else {
+                                // Nếu không Pass -> Hiện chữ Chờ xử lý
+                                actionBox.html(`
+                                    <span class="status-badge-action text-muted small">Chờ xử lý</span>
+                                `);
+                            }
+
+                            // 5. CẬP NHẬT DATA ATTRIBUTE
+                            rowNode.attr('data-nvkd', newSalesmanId);
+                            rowNode.data('nvkd', newSalesmanId);
+
+                            table.draw(false);
+                            rowNode.addClass('bg-highlight');
+                            setTimeout(() => rowNode.removeClass('bg-highlight'), 1500);
                         }
-                        
-                        // Đóng modal
                         salesmanUpdateModalInstance.hide();
-                        
                     } else {
-                        alert('Lỗi cập nhật: ' + data.message);
+                        alert('Lỗi: ' + data.message);
                     }
                 })
-                .catch(error => {
-                    console.error('Lỗi kết nối:', error);
-                    alert('Lỗi kết nối hoặc xử lý API: ' + error.message);
-                })
-                .finally(() => {
-                    button.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Lưu Thay đổi');
-                });
+                .catch(e => { alert('Lỗi kết nối: ' + e.message); })
+                .finally(() => { button.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Lưu Thay đổi'); });
             });
-            // --- KẾT THÚC LOGIC MỚI ---
-
         });
     </script>
 </body>

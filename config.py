@@ -52,7 +52,8 @@ ACC_CHI_PHI_KHAC = '811%'     # Chi phí Khác
 ACC_TIEN = '11%'              # Tiền mặt/Ngân hàng (111, 112...)
 ACC_PHAI_THU_KH = '13111'     # Phải thu khách hàng
 ACC_PHAI_TRA_NB = '331%' # Dùng cho các truy vấn ad-hoc nếu có
-
+ORDER_TYPE_STOCK = ['SO', 'SIG']  # Hàng có sẵn
+ORDER_TYPE_ORDER = ['DDH']        # Hàng đặt
 
 
 # Các mã loại trừ
@@ -117,6 +118,8 @@ DEPT_THUKY = '3.THU KY'
 DEPT_KTTC = '6.KTTC'
 DEPT_KINHDOANH = '2. KINH DOANH'
 
+# --- CẤU HÌNH BẢO MẬT CUSTOMER 360 ---
+CUSTOMER_360_VIEW_LIMIT = 7  # Giới hạn số lần xem/ngày
 # =========================================================================
 # 7. CẤU HÌNH DATABASE OBJECTS (TABLES, VIEWS, SPs)
 # =========================================================================
@@ -124,6 +127,60 @@ DEPT_KINHDOANH = '2. KINH DOANH'
 # --- A. BẢNG HỆ THỐNG (CRM_STDD) ---
 # (Các biến này KHÔNG CÓ [dbo]. vì app.py đang xử lý thêm thủ công,
 # tuy nhiên các Service mới sẽ dùng trực tiếp nên cần lưu ý khi gọi)
+# Bảng Hệ thống mới
+TABLE_SYS_PERMISSIONS = '[dbo].[SYS_PERMISSIONS]'
+
+# Cấu trúc: 'TÊN NHÓM': { 'MÃ_QUYỀN': 'Tên hiển thị' }
+SYSTEM_FEATURES_GROUPS = {
+    "1. QUẢN TRỊ & HỆ THỐNG": {
+        'MANAGE_USER': 'Quản lý User & Phân quyền',
+        'VIEW_CEO_COCKPIT': 'Xem CEO Cockpit (Tổng hợp)',
+        'VIEW_COMPARISON': 'Phân tích So sánh Kỳ này/Kỳ trước'
+    },
+    "2. CRM & BÁO CÁO THỊ TRƯỜNG": {
+        'VIEW_PORTAL': 'Truy cập Portal Cá nhân',
+        'CREATE_REPORT': 'Tạo Báo cáo Khách hàng',
+        'VIEW_REPORT_LIST': 'Xem Dashboard Danh sách Báo cáo',
+        'VIEW_ALL_REPORTS': 'Xem Báo cáo của Tất cả nhân viên (Manager)',
+        'CREATE_CONTACT': 'Tạo mới Nhân sự liên hệ'
+    },
+    "3. KPI & HIỆU SUẤT KINH DOANH": {
+        'VIEW_SALES_DASHBOARD': 'Xem Bảng Tổng hợp Hiệu suất Sales',
+        'VIEW_REALTIME_KPI': 'Xem Dashboard Sales Real-time',
+        'VIEW_PROFIT_ANALYSIS': 'Phân tích Lợi nhuận gộp',
+        'VIEW_CROSS_SELL': 'Phân tích Bán chéo (Cross-sell DNA)',
+        'VIEW_SALES_LOOKUP': 'Tra cứu Thông tin Bán hàng (Giá/Tồn)'
+    },
+    "4. QUYỀN PHÊ DUYỆT (APPROVAL)": {
+        'APPROVE_QUOTE': 'Duyệt Báo giá',
+        'APPROVE_ORDER': 'Duyệt Đơn hàng Bán',
+        'VIEW_QUICK_APPROVAL': 'Truy cập Form Duyệt Nhanh',
+        'OVERRIDE_QUOTE_COST': 'Sửa giá vốn (Cost) Báo giá',
+        'CHANGE_QUOTE_SALESMAN': 'Đổi NVKD cho Báo giá'
+    },
+    "5. TÀI CHÍNH & NGÂN SÁCH": {
+        'VIEW_BUDGET': 'Xem Ngân sách & Tạo Đề nghị',
+        'APPROVE_BUDGET': 'Duyệt Đề nghị Thanh toán',
+        'EXECUTE_PAYMENT': 'Thực chi / Lệnh chi (Kế toán)',
+        'VIEW_BUDGET_REPORT': 'Xem Báo cáo Ngân sách YTD',
+        'CREATE_COMMISSION': 'Tạo Đề xuất Hoa hồng',
+        'VIEW_AR_AGING': 'Xem Công nợ Phải thu (AR)',
+        'VIEW_AP_AGING': 'Xem Nợ Phải trả (AP)'
+    },
+    "6. KHO VẬN & CHUỖI CUNG ỨNG": {
+        'VIEW_INVENTORY_AGING': 'Phân tích Tuổi hàng Tồn kho',
+        'VIEW_TOTAL_REPLENISH': 'Xem Dự báo Dự phòng Tổng thể',
+        'VIEW_CUST_REPLENISH': 'Xem Dự báo Dự phòng theo KH',
+        'VIEW_DELIVERY': 'Xem Bảng Điều phối Giao vận',
+        'PLAN_DELIVERY': 'Lập Kế hoạch Giao (Thư ký)',
+        'DISPATCH_DELIVERY': 'Thực thi Xuất hàng (Thủ kho)'
+    },
+    "7. QUẢN LÝ CÔNG VIỆC (TASK)": {
+        'VIEW_TASK': 'Sử dụng Task Dashboard',
+        'VIEW_TASK_TEAM': 'Xem Task của nhân viên cấp dưới'
+    }
+}
+
 TEN_BANG_BAO_CAO = '[HD_BAO CAO]'       
 TEN_BANG_NGUOI_DUNG = '[GD - NGUOI DUNG]'
 TEN_BANG_KHACH_HANG = '[HD_KHACH HANG]' 

@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 # FIX: Chỉ import các helper từ utils.py (Đã được định nghĩa sớm và không gây vòng lặp)
-from utils import login_required, truncate_content 
+from utils import login_required, truncate_content, permission_required # Import thêm 
 from datetime import datetime, timedelta
 # Import các thư viện tiêu chuẩn không phụ thuộc vào app.py
 from db_manager import safe_float 
@@ -23,6 +23,7 @@ def get_user_ip():
 
 @kpi_bp.route('/sales_dashboard', methods=['GET', 'POST'])
 @login_required
+@permission_required('VIEW_SALES_DASHBOARD') # Áp dụng quyền mới
 def sales_dashboard():
     """ROUTE: Bảng Tổng hợp Hiệu suất Sales."""
     
@@ -149,6 +150,7 @@ def sales_detail(employee_id):
 
 @kpi_bp.route('/realtime_dashboard', methods=['GET', 'POST'])
 @login_required
+@permission_required('VIEW_REALTIME_KPI') # Áp dụng quyền mới
 def realtime_dashboard():
     """ROUTE: Dashboard KPI Bán hàng Thời gian thực."""
     
@@ -235,6 +237,7 @@ def realtime_dashboard():
 
 @kpi_bp.route('/inventory_aging', methods=['GET', 'POST'])
 @login_required
+@permission_required('VIEW_INVENTORY_AGING') # Áp dụng quyền mới
 def inventory_aging_dashboard():
     """ROUTE: Phân tích Tuổi hàng Tồn kho."""
     
@@ -290,6 +293,7 @@ def inventory_aging_dashboard():
     
 @kpi_bp.route('/ar_aging', methods=['GET', 'POST'])
 @login_required
+@permission_required('VIEW_AR_AGING') # Áp dụng quyền mới
 def ar_aging_dashboard():
     """ROUTE: Hiển thị Dashboard Công nợ Quá hạn (AR Aging)."""
     
@@ -339,6 +343,7 @@ def ar_aging_dashboard():
 
 @kpi_bp.route('/ar_aging_detail', methods=['GET', 'POST'])
 @login_required
+@permission_required('VIEW_AR_AGING') # Áp dụng quyền mới
 def ar_aging_detail_dashboard():
     """ROUTE: Hiển thị báo cáo chi tiết công nợ quá hạn theo VoucherNo."""
     
@@ -450,6 +455,7 @@ def ar_aging_detail_single_customer():
 
 @kpi_bp.route('/sales/profit_analysis', methods=['GET', 'POST'])
 @login_required
+@permission_required('VIEW_PROFIT_ANALYSIS') # Áp dụng quyền mới
 def profit_analysis_dashboard():
     """ROUTE: Dashboard Phân tích Lợi nhuận Gộp."""
     # --- CÁCH GỌI MỚI (DÙNG) ---

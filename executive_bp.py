@@ -1,22 +1,22 @@
 # blueprints/executive_bp.py
 
 from flask import Blueprint, render_template, session, redirect, url_for, flash, request, jsonify, current_app
-from utils import login_required
+from utils import login_required, permission_required, get_user_ip # Import thêm
 from datetime import datetime
 import config
+
 
 executive_bp = Blueprint('executive_bp', __name__)
 
 @executive_bp.route('/ceo_cockpit', methods=['GET'])
 @login_required
+@permission_required('VIEW_CEO_COCKPIT') # Áp dụng quyền mới
 def ceo_cockpit_dashboard():
     """
     ROUTE: Bảng điều hành trung tâm dành cho CEO/GM.
     """
     user_role = session.get('user_role', '').strip().upper()
-    if user_role not in [config.ROLE_ADMIN]:
-        flash("Bạn không có quyền truy cập CEO Cockpit.", "danger")
-        return redirect(url_for('portal_bp.portal_dashboard'))
+    
 
     db_manager = current_app.db_manager
     from services.executive_service import ExecutiveService
@@ -48,7 +48,15 @@ def ceo_cockpit_dashboard():
         sales_funnel_data = {}
         pending_actions = {}
         top_sales = []
-    
+    try:
+        current_app.db_manager.write_audit_log(
+            user_code=session.get('user_code'),
+            action_type='VIEW_CEO_DASHBOARD',
+            severity='WARNING',
+            details='Xem báo cáo CEO Cockpit',
+            ip_address=get_user_ip()
+        )
+    except: pass
     return render_template(
         'ceo_cockpit.html',
         kpi_summary=kpi_summary,
@@ -92,6 +100,7 @@ def ceo_cockpit_dashboard():
 
 @executive_bp.route('/analysis/comparison', methods=['GET'])
 @login_required
+@permission_required('VIEW_COMPARISON') # Áp dụng quyền mới
 def comparison_dashboard():
     """Trang phân tích so sánh số liệu quản trị giữa 2 năm."""
     db_manager = current_app.db_manager
@@ -145,6 +154,7 @@ def comparison_dashboard():
 
 @executive_bp.route('/api/executive/drilldown', methods=['GET'])
 @login_required
+@permission_required('VIEW_CEO_COCKPIT')
 def api_executive_drilldown():
     """API trả về dữ liệu chi tiết cho Modal."""
     metric = request.args.get('metric')

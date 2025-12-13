@@ -82,6 +82,70 @@
             box-shadow: 0 5px 15px rgba(67, 24, 255, 0.25); /* Bóng đổ sâu hơn khi hover */
         }
         .btn-quick i { margin-right: 8px; }
+
+        /* --- MOBILE RESPONSIVE CHO PORTAL --- */
+        @media (max-width: 768px) {
+            /* 1. Header: Đẩy nút hành động xuống dưới lời chào */
+            .header-area {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 15px;
+            }
+            
+            .quick-actions {
+                width: 100%;
+                display: grid; /* Dùng Grid để chia đều nút */
+                grid-template-columns: repeat(3, 1fr); /* 3 cột đều nhau */
+                gap: 8px;
+            }
+
+            .btn-quick {
+                justify-content: center;
+                padding: 10px 5px;
+                font-size: 0.8rem;
+                text-align: center;
+            }
+            
+            .btn-quick i { margin-right: 5px; }
+
+            /* 2. KPI Cards: Tự động xuống dòng 1 cột (Bootstrap đã xử lý col-md-6, nhưng chỉnh padding cho đẹp) */
+            .stat-card {
+                padding: 15px;
+            }
+            .stat-value {
+                font-size: 1.3rem;
+            }
+
+            /* 3. Accordion List Items: Tinh chỉnh cho gọn */
+            .clean-item {
+                padding: 10px 0;
+            }
+            
+            /* Ẩn bớt mô tả dài dòng nếu cần hoặc cho xuống dòng */
+            .item-content {
+                margin-left: 10px;
+            }
+            
+            /* Chỉnh lại layout của dòng item trong accordion */
+            .clean-item .d-flex.justify-content-between {
+                flex-direction: column;
+                align-items: flex-start !important;
+            }
+            
+            .clean-item .d-flex.justify-content-between .text-end {
+                text-align: left !important;
+                margin-top: 5px;
+            }
+
+            /* 4. Chatbot: Thu nhỏ lại trên mobile */
+            .chatbot-window {
+                width: 100%;
+                right: 0;
+                bottom: 0;
+                border-radius: 20px 20px 0 0; /* Bo tròn góc trên */
+                max-height: 80vh;
+            }
+        }
     </style>
 </head>
 <body>

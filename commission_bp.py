@@ -1,13 +1,14 @@
 # blueprints/commission_bp.py
 
 from flask import Blueprint, render_template, request, jsonify, session, current_app
-from utils import login_required
+from utils import login_required, permission_required # Import thêm
 from datetime import datetime
 import config
 commission_bp = Blueprint('commission_bp', __name__)
 
 @commission_bp.route('/commission/request', methods=['GET'])
 @login_required
+@permission_required('CREATE_COMMISSION')
 def commission_request_page():
     """Giao diện tạo đề xuất hoa hồng."""
     today = datetime.now()

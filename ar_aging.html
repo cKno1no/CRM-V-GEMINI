@@ -124,6 +124,73 @@
         .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_info { 
             font-size: 0.9rem; color: var(--secondary); padding: 15px;
         }
+
+        /* --- MOBILE RESPONSIVE: AR AGING --- */
+        @media (max-width: 992px) {
+            /* 1. Header */
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 15px;
+            }
+            .page-title {
+                font-size: 1.5rem;
+            }
+            .btn-back {
+                width: 100%;
+                text-align: center;
+            }
+
+            /* 2. KPI Tiles */
+            .kpi-card {
+                margin-bottom: 10px;
+                padding: 15px;
+            }
+            .kpi-value {
+                font-size: 1.5rem;
+            }
+            
+            /* 3. Form Lọc */
+            .main-card form.row {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .main-card .col-md-4, .main-card .col-md-2 {
+                width: 100%;
+            }
+            .input-group {
+                width: 100%;
+            }
+
+            /* 4. Bảng dữ liệu: Cuộn ngang */
+            .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                border: 1px solid #E0E5F2; /* Thêm viền để biết giới hạn bảng */
+                border-radius: 12px;
+            }
+            
+            .table-aging th, .table-aging td {
+                white-space: nowrap; /* Bắt buộc không xuống dòng để giữ form số liệu */
+                padding: 10px 5px;
+                font-size: 0.8rem;
+            }
+            
+            /* Cố định cột Tên KH (Sticky Left) để dễ đối chiếu khi cuộn */
+            .table-aging th:nth-child(2),
+            .table-aging td:nth-child(2) {
+                position: sticky;
+                left: 0;
+                background-color: #fff; /* Nền trắng để che text trôi qua */
+                z-index: 5;
+                box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+            }
+            /* Header của cột Sticky */
+            .table-aging th:nth-child(2) {
+                background-color: #FAFCFE !important;
+                z-index: 11; /* Cao hơn header thường */
+            }
+        }
     </style>
 </head>
 <body>

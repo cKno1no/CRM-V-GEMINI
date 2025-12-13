@@ -171,6 +171,47 @@
             padding: 5px 10px; margin-left: 5px;
         }
         
+        /* --- MOBILE RESPONSIVE: SALES ORDER APPROVAL --- */
+        @media (max-width: 992px) { /* Áp dụng cho cả Tablet dọc */
+            /* 1. Layout Master-Detail: Chồng lên nhau */
+            .row.g-3 {
+                flex-direction: column;
+            }
+            
+            .col-lg-7, .col-lg-5 {
+                width: 100%;
+            }
+
+            /* 2. Giới hạn chiều cao bảng để không chiếm hết màn hình */
+            .master-table-scroll {
+                max-height: 40vh; /* Master chiếm 40% màn hình */
+            }
+            
+            .detail-table-scroll {
+                max-height: 40vh; /* Detail chiếm 40% màn hình */
+            }
+
+            /* 3. Filter Date Form */
+            .card-body-custom form.row {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .col-md-3, .col-md-2 {
+                width: 100%;
+            }
+
+            /* 4. Tinh chỉnh bảng */
+            .table-approval th, .table-approval td {
+                white-space: nowrap;
+                font-size: 0.75rem;
+            }
+            
+            /* Ẩn cột Loại (VType) để tiết kiệm chỗ */
+            .col-vtype {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>

@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
 # FIX: Import login_required từ app.py
-from utils import login_required, truncate_content, save_uploaded_files
+from utils import login_required, truncate_content, save_uploaded_files, permission_required # Import thêm
 from datetime import datetime, timedelta
 import config 
 from config import TEN_BANG_NGUOI_DUNG, TEN_BANG_LOAI_BAO_CAO, TEN_BANG_BAO_CAO, TEN_BANG_KHACH_HANG, TEN_BANG_NHAN_SU_LH
@@ -19,6 +19,7 @@ def get_user_ip():
 
 @crm_bp.route('/dashboard', methods=['GET', 'POST'])
 @login_required
+@permission_required('VIEW_REPORT_LIST') # Áp dụng quyền mới
 def dashboard_reports():
     """Hiển thị trang Dashboard - Danh sách báo cáo. (Đã chuyển logic)"""
     

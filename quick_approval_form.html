@@ -107,6 +107,55 @@
         /* Hidden Select used for Logic */
         .hidden-select { display: none; }
 
+        /* --- MOBILE RESPONSIVE: QUICK APPROVAL --- */
+        @media (max-width: 768px) {
+            .container {
+                padding-left: 15px;
+                padding-right: 15px;
+                margin-top: 20px;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+            }
+
+            /* 1. Thẻ Card */
+            .main-card {
+                margin-bottom: 20px;
+            }
+            
+            .card-header-custom {
+                padding: 15px;
+                font-size: 1rem;
+            }
+            
+            .card-body-custom {
+                padding: 15px;
+            }
+
+            /* 2. Input & Button: To ra cho dễ bấm */
+            .search-input {
+                padding: 12px;
+                font-size: 1rem; /* Font to để không bị zoom trên iOS */
+            }
+            
+            .btn-approve {
+                padding: 15px;
+                font-size: 1rem;
+                margin-top: 15px;
+            }
+
+            /* 3. Danh sách gợi ý (Autocomplete List) */
+            .autocomplete-list {
+                max-height: 200px; /* Giảm chiều cao để không che hết màn hình */
+            }
+            
+            .suggestion-item {
+                padding: 15px; /* Tăng vùng chạm */
+                font-size: 0.9rem;
+            }
+        }
+
     </style>
 </head>
 <body>

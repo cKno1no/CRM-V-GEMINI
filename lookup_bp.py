@@ -1,6 +1,6 @@
 from flask import Blueprint, request, session, jsonify, Response, render_template, redirect, url_for, flash, current_app
 # FIX: Chỉ import các helper từ utils.py
-from utils import login_required
+from utils import login_required, permission_required # Import thêm
 from datetime import datetime
 import json
 import config 
@@ -21,6 +21,7 @@ lookup_bp = Blueprint('lookup_bp', __name__, url_prefix='/sales')
 
 @lookup_bp.route('/sales_lookup', methods=['GET', 'POST'])
 @login_required
+@permission_required('VIEW_SALES_LOOKUP') # Áp dụng quyền mới
 def sales_lookup_dashboard():
     """ROUTE: Dashboard tra cứu thông tin bán hàng. (Phục vụ /sales/sales_lookup)"""
     
@@ -77,6 +78,7 @@ def sales_lookup_dashboard():
 
 @lookup_bp.route('/total_replenishment', methods=['GET'])
 @login_required
+@permission_required('VIEW_TOTAL_REPLENISH') # Áp dụng quyền mới
 def total_replenishment_dashboard():
     """
     ROUTE: Hiển thị trang Báo cáo Dự phòng Tồn kho Tổng thể. (Phục vụ /sales/total_replenishment)
@@ -149,6 +151,7 @@ def export_total_replenishment():
 
 @lookup_bp.route('/customer_replenishment', methods=['GET'])
 @login_required
+@permission_required('VIEW_CUST_REPLENISH') # Áp dụng quyền mới
 def customer_replenishment_dashboard():
     """
     ROUTE: Hiển thị trang Dự báo Dự phòng Khách hàng. (Phục vụ /sales/customer_replenishment)

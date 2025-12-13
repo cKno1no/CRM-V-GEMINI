@@ -1,13 +1,14 @@
 # blueprints/cross_sell_bp.py
 
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, current_app
-from utils import login_required
+from utils import login_required, permission_required # Import thêm
 from datetime import datetime
 
 cross_sell_bp = Blueprint('cross_sell_bp', __name__)
 
 @cross_sell_bp.route('/cross_sell_dashboard', methods=['GET'])
 @login_required
+@permission_required('VIEW_CROSS_SELL')
 def dashboard():
     """Giao diện chính Cross-Sell DNA."""
     

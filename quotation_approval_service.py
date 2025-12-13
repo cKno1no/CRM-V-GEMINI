@@ -24,12 +24,14 @@ class QuotationApprovalService:
 
     def is_user_admin(self, user_code):
         """Kiểm tra xem user_code có vai trò Admin hay không."""
+        # SỬA LỖI: Thay 'config.ROLE_ADMIN' bằng dấu '?' và truyền giá trị vào tuple tham số
         query = f"""
             SELECT 1 
             FROM {config.TEN_BANG_NGUOI_DUNG}
-            WHERE USERCODE = ? AND Role = config.ROLE_ADMIN
+            WHERE USERCODE = ? AND Role = ?
         """
-        return bool(self.db.get_data(query, (user_code,)))
+        # Truyền user_code và config.ROLE_ADMIN vào hàm get_data
+        return bool(self.db.get_data(query, (user_code, config.ROLE_ADMIN)))
 
     
     def get_quotes_for_approval(self, user_code, date_from, date_to):
@@ -430,3 +432,62 @@ class QuotationApprovalService:
         except Exception as e:
             print(f"LỖI UPDATE SALESMAN (SERVICE): {e}")
             return {"success": False, "message": f"Lỗi hệ thống: {str(e)}"}
+
+    def get_quote_refresh_data(self, quote_id, user_code):
+        """
+        [NEW] Hàm rút gọn để lấy dữ liệu làm mới giao diện sau khi đổi NVKD.
+        Chỉ trả về: Tên NVKD mới & Trạng thái duyệt mới (Passed/Reason).
+        """
+        # 1. Truy vấn lại thông tin cơ bản của báo giá (đủ để chạy check_criteria)
+        # Lưu ý: Cần lấy lại TotalSale, TotalCost để tính toán
+        query = f"""
+            SELECT 
+                T1.QuotationID, T1.SalesManID, T1.SaleAmount, T1.VoucherTypeID,
+                ISNULL(T2.O05ID, 'N/A') AS CustomerClass,
+                ISNULL(T7.SHORTNAME, 'N/A') AS NVKDName,
+                
+                -- Tính lại tổng (để chạy logic duyệt)
+                SUM(T4.ConvertedAmount) AS TotalSaleAmount, 
+                SUM(T4.QuoQuantity * COALESCE(T8.Cost, T5.Recievedprice, 0)) AS TotalCost,
+
+                -- Check cờ Cost Override
+                MIN(CASE WHEN (T5.SalePrice01 <= 1 OR T5.Recievedprice <= 2) THEN 1 ELSE 0 END) AS NeedsCostOverride,
+                MAX(CASE WHEN T8.Cost > 0 THEN 1 ELSE 0 END) AS HasCostOverrideData
+
+            FROM {config.ERP_QUOTES} AS T1
+            LEFT JOIN {config.ERP_IT1202} AS T2 ON T1.ObjectID = T2.ObjectID
+            LEFT JOIN {config.TEN_BANG_NGUOI_DUNG} AS T7 ON T1.SalesManID = T7.USERCODE
+            LEFT JOIN {config.ERP_QUOTE_DETAILS} AS T4 ON T1.QuotationID = T4.QuotationID 
+            LEFT JOIN {config.ERP_ITEM_PRICING} AS T5 ON T4.InventoryID = T5.InventoryID 
+            LEFT JOIN {config.BOSUNG_CHAOGIA_TABLE} AS T8 ON T4.TransactionID = T8.TransactionID
+
+            WHERE T1.QuotationID = ? 
+            GROUP BY T1.QuotationID, T1.SalesManID, T1.SaleAmount, T1.VoucherTypeID, T2.O05ID, T7.SHORTNAME
+        """
+        
+        data = self.db.get_data(query, (quote_id,))
+        if not data:
+            return {'NewSalesmanName': 'N/A', 'NewStatus': False, 'AnalysisMsg': 'Không tìm thấy dữ liệu.'}
+
+        quote_data = data[0]
+
+        # 2. Chạy lại logic kiểm tra duyệt
+        # Hàm _check_approval_criteria cần 'SalesManID', 'TotalSaleAmount'... đã có trong quote_data
+        
+        # Xử lý logic Cost Override trước (giống hàm get_quotes_for_approval)
+        if quote_data.get('NeedsCostOverride') == 1 and quote_data.get('HasCostOverrideData') != 1:
+            return {
+                'NewSalesmanName': quote_data['NVKDName'],
+                'NewStatus': False,
+                'AnalysisMsg': 'PENDING: Thiếu Giá QD. Cần Bổ sung!'
+            }
+
+        # Gọi hàm check chính
+        result_quote = self._check_approval_criteria(quote_data, user_code)
+        approval_result = result_quote.get('ApprovalResult', {})
+
+        return {
+            'NewSalesmanName': quote_data['NVKDName'],
+            'NewStatus': approval_result.get('Passed', False),
+            'AnalysisMsg': approval_result.get('Reason', '')
+        }

@@ -71,6 +71,15 @@ def login():
             # Security Stamp
             session['security_hash'] = user.get('PASSWORD')
 
+            # [NEW] TẢI QUYỀN HẠN
+            # Nếu là ADMIN thì không cần tải danh sách (vì mặc định full quyền)
+            if user_role == config.ROLE_ADMIN:
+                session['permissions'] = ['__ALL__'] 
+            else:
+                perm_query = f"SELECT FeatureCode FROM {config.TABLE_SYS_PERMISSIONS} WHERE RoleID = ?"
+                perms_data = app.db_manager.get_data(perm_query, (user_role,))
+                session['permissions'] = [row['FeatureCode'] for row in perms_data]
+
             # Ghi Log
             app.db_manager.write_audit_log(
                 user_code=user.get('USERCODE'),

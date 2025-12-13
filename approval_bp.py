@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
 # FIX: Chỉ import các helper từ utils.py (và get_user_ip nếu nó được chuyển từ app.py)
-from utils import login_required 
+from utils import login_required, permission_required, get_user_ip # Import thêm
 from datetime import datetime, timedelta
 from db_manager import safe_float # Cần cho format/validation
 # LƯU Ý: Không import các service như approval_service, order_approval_service TỪ app ở đây.
@@ -11,17 +11,11 @@ approval_bp = Blueprint('approval_bp', __name__)
 
 # [HÀM HELPER CHUYỂN TỪ APP.PY]
 # Hàm này cần được định nghĩa ở đây hoặc chuyển sang utils.py
-def get_user_ip():
-    """Lấy địa chỉ IP của người dùng. (Nếu nó nằm trong app.py, cần chuyển nó)"""
-    if request.headers.getlist("X-Forwarded-For"):
-       return request.headers.getlist("X-Forwarded-For")[0]
-    else:
-       return request.remote_addr
 
-# [ROUTES]
 
 @approval_bp.route('/quote_approval', methods=['GET', 'POST'])
 @login_required
+@permission_required('APPROVE_QUOTE')
 def quote_approval_dashboard():
     """ROUTE: Dashboard Duyệt Chào Giá."""
     
@@ -59,6 +53,7 @@ def quote_approval_dashboard():
 
 @approval_bp.route('/sales_order_approval', methods=['GET', 'POST'])
 @login_required
+@permission_required('APPROVE_ORDER')
 def sales_order_approval_dashboard():
     """ROUTE: Dashboard Duyệt Đơn hàng Bán."""
     
@@ -88,6 +83,7 @@ def sales_order_approval_dashboard():
 
 @approval_bp.route('/quick_approval', methods=['GET'])
 @login_required
+@permission_required('VIEW_QUICK_APPROVAL')
 def quick_approval_form():
     """ROUTE: Form Phê duyệt Nhanh (Ghi đè) cho Giám đốc."""
     
@@ -139,6 +135,7 @@ def quick_approval_form():
 
 @approval_bp.route('/api/approve_quote', methods=['POST'])
 @login_required
+@permission_required('APPROVE_QUOTE')
 def api_approve_quote():
     """API: Thực hiện duyệt Chào Giá."""
     
@@ -186,6 +183,7 @@ def api_approve_quote():
 
 @approval_bp.route('/api/approve_order', methods=['POST'])
 @login_required
+@permission_required('APPROVE_ORDER')
 def api_approve_order():
     """API: Thực hiện duyệt Đơn hàng Bán."""
     
@@ -281,40 +279,45 @@ def api_get_order_details(sorder_id):
 
 @approval_bp.route('/api/quote/update_salesman', methods=['POST'])
 @login_required
+@permission_required('CHANGE_QUOTE_SALESMAN')
 def api_update_quote_salesman():
     """API: Cập nhật NVKD (SalesManID) cho một Chào giá."""
     
-    # FIX: Import Service Cục bộ VÀ sửa route từ @app.route sang @approval_bp.route
-    approval_service  = current_app.approval_service 
+    approval_service = current_app.approval_service 
     
     data = request.json
     quotation_id = data.get('quotation_id')
     new_salesman_id = data.get('new_salesman_id')
     
+    # [QUAN TRỌNG] Lấy user code hiện tại để check quyền duyệt lại
+    current_user_code = session.get('user_code')
+    
     if not quotation_id or not new_salesman_id:
         return jsonify({'success': False, 'message': 'Thiếu QuotationID hoặc NVKD mới.'}), 400
         
     try:
-        # Tên hàm được giả định là trong approval_service (vì nó liên quan đến quote)
-        result = approval_service.update_quote_salesman(quotation_id, new_salesman_id)
+        # 1. Update DB
+        update_result = approval_service.update_quote_salesman(quotation_id, new_salesman_id)
         
-        if result['success']:
-            return jsonify({'success': True, 'message': result['message']})
+        if update_result['success']:
+            # 2. [MỚI] Lấy dữ liệu refresh giao diện
+            refresh_data = approval_service.get_quote_refresh_data(quotation_id, current_user_code)
+            
+            return jsonify({
+                'success': True, 
+                'message': update_result['message'],
+                'data': refresh_data # Trả về NVKD mới và Status mới
+            })
         else:
-            # FIX: Cần phải import app (hoặc logger) nếu muốn ghi log ở đây
-            # from app import app 
-            # app.logger.error(...)
-            return jsonify({'success': False, 'message': result['message']}), 500
+            return jsonify({'success': False, 'message': update_result['message']}), 500
             
     except Exception as e:
-        # FIX: Cần phải import app (hoặc logger) nếu muốn ghi log ở đây
-        # from app import app 
-        # app.logger.error(f"Lỗi API cập nhật NVKD: {e}")
         return jsonify({'success': False, 'message': f'Lỗi hệ thống: {str(e)}'}), 500
 
 # === API BỊ THIẾU GÂY LỖI 404 NÀY ===
 @approval_bp.route('/api/save_quote_cost_override', methods=['POST'])
 @login_required
+@permission_required('OVERRIDE_QUOTE_COST')
 def api_save_quote_cost_override():
     """API: Thực hiện lưu giá Cost override vào CSDL và tính toán lại ratio."""
     

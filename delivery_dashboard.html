@@ -125,6 +125,78 @@
         .btn-status-dasoan { background-color: var(--warning); color: var(--text-dark); border: none; border-radius: 12px; font-weight: 600; }
         .btn-status-dagiao { background-color: var(--success); color: white; border: none; border-radius: 12px; font-weight: 600; }
         .btn-secondary { background-color: #f0f0f0; color: var(--secondary); border: none; border-radius: 12px; font-weight: 600; }
+
+        /* --- MOBILE RESPONSIVE: DELIVERY DASHBOARD --- */
+        @media (max-width: 992px) {
+            /* 1. Header & Tabs */
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 15px;
+            }
+            
+            .nav-tabs {
+                display: flex;
+                flex-wrap: nowrap; /* Giữ trên 1 dòng */
+                overflow-x: auto;  /* Cho phép cuộn nếu tab quá dài */
+                white-space: nowrap;
+                border-bottom: none; /* Bỏ viền dưới để đỡ rối */
+                gap: 10px;
+            }
+            
+            .nav-tabs .nav-link {
+                border: 1px solid #E0E5F2;
+                border-radius: 20px; /* Bo tròn như nút */
+                padding: 10px 15px;
+                font-size: 0.9rem;
+                background-color: white;
+            }
+            
+            .nav-tabs .nav-link.active {
+                background-color: var(--primary);
+                color: white;
+                border-color: var(--primary);
+            }
+
+            /* 2. Kanban Board: Chuyển sang xếp dọc (Vertical Stack) */
+            .kanban-board-container {
+                flex-direction: column;
+                overflow-x: hidden; /* Tắt cuộn ngang */
+                height: auto;
+                min-height: auto;
+                padding: 0;
+            }
+            
+            .kanban-column {
+                width: 100%;
+                max-width: 100%;
+                margin-bottom: 20px;
+                max-height: 400px; /* Giới hạn chiều cao mỗi cột */
+                flex-basis: auto;
+            }
+            
+            .task-list {
+                padding: 5px; /* Giảm padding để tận dụng không gian */
+            }
+
+            /* 3. Thẻ Giao hàng (Card) */
+            .delivery-card {
+                margin-bottom: 8px;
+                padding: 12px;
+            }
+            
+            .item-title { font-size: 1rem; } /* Tăng font tiêu đề */
+            
+            /* 4. Bộ lọc (Dispatch View) */
+            .tab-pane .d-flex.justify-content-between {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 10px;
+            }
+            #dispatchSearchInput {
+                width: 100%; /* Input full màn hình */
+            }
+        }
     </style>
 </head>
 <body>
