@@ -1,204 +1,155 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phê duyệt Ngân sách</title>
+{% extends "base.html" %}
+
+{% block title %}Phê duyệt Ngân sách | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* TABLE APPROVAL */
+    .table-approval { width: 100%; border-collapse: separate; border-spacing: 0; }
     
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    .table-approval th { 
+        background-color: var(--input-bg) !important; color: var(--secondary); font-weight: 700; 
+        font-size: 0.85rem; text-transform: uppercase; padding: 15px; 
+        border-bottom: 2px solid var(--border-color); text-align: left; white-space: nowrap;
+        position: sticky; top: 0; z-index: 10;
+    }
     
-    <style>
-        /* --- 1. CORE STYLES --- */
-        :root {
-            --primary: #4318FF;
-            --primary-light: #F4F7FE;
-            --secondary: #A3AED0;
-            --text-dark: #2B3674;
-            --danger: #E31A1A;
-            --success: #05CD99;
-            --warning: #FFB547;
-            --bg-color: #F4F7FE;
-            --card-radius: 20px;
-        }
-        
-        body { 
-            background-color: var(--bg-color); 
-            font-family: 'Inter', sans-serif; 
-            color: var(--text-dark); 
-        }
-        .container { max-width: 1200px; padding: 30px 20px; }
+    .table-approval td { 
+        padding: 15px; border-bottom: 1px solid var(--border-color); 
+        font-size: 0.95rem; color: var(--text-dark); vertical-align: middle;
+    }
+    
+    .table-approval tbody tr { transition: background-color 0.2s; cursor: pointer; }
+    .table-approval tbody tr:hover td { background-color: var(--input-bg); }
 
-        /* HEADER */
-        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
-        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
-        
-        .btn-back {
-            background-color: white; color: var(--secondary); border: 1px solid #E0E5F2;
-            padding: 10px 20px; border-radius: 14px; font-weight: 600; text-decoration: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: all 0.2s;
-        }
-        .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
+    /* BADGES & BUTTONS */
+    .amount-highlight { font-weight: 700; color: var(--primary); }
+    .badge-warning-custom { 
+        background-color: rgba(255, 181, 71, 0.1); color: #B71C1C; 
+        border: 1px solid rgba(255, 181, 71, 0.5); padding: 4px 8px; border-radius: 6px;
+    }
+    
+    .btn-action-sm {
+        padding: 6px 12px; border-radius: 10px; font-size: 0.85rem; font-weight: 600; border: none;
+    }
+    .btn-review { background-color: var(--primary); color: white; box-shadow: var(--shadow-sm); }
+    .btn-review:hover { background-color: var(--primary-dark); transform: translateY(-1px); }
 
-        /* CARDS & TABLES */
-        .main-card {
-            border: none; background: white; border-radius: var(--card-radius);
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
-            margin-bottom: 25px; overflow: hidden;
-        }
-        .card-header-custom {
-            background-color: white; color: var(--text-dark);
-            font-weight: 700; font-size: 1.1rem; padding: 20px 25px;
-            border-bottom: 1px solid var(--primary-light);
-            display: flex; align-items: center;
-        }
-        .card-body-custom { padding: 0; }
+    /* MODAL STYLES */
+    .modal-header { background-color: var(--input-bg); border-bottom: 1px solid var(--border-color); }
+    .modal-title { color: var(--text-dark); font-weight: 700; }
+    .modal-body { padding: 25px; background-color: var(--card-bg); color: var(--text-dark); }
+    .modal-footer { background-color: var(--card-bg); border-top: 1px solid var(--border-color); }
+    
+    .info-row { display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--border-color); }
+    .info-label { color: var(--secondary); font-size: 0.9rem; }
+    .info-val { color: var(--text-dark); font-weight: 600; }
+    
+    /* Progress Box */
+    .budget-context-box {
+        background-color: var(--input-bg); border-radius: 16px; padding: 15px; margin-bottom: 20px;
+        border: 1px solid var(--border-color);
+    }
+    .budget-context-box.warning { background-color: rgba(227, 26, 26, 0.05); border-color: rgba(227, 26, 26, 0.2); }
+    
+    .context-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: var(--secondary); margin-bottom: 10px; }
+    
+    .progress-custom {
+        height: 12px; border-radius: 6px; background-color: var(--border-color); overflow: hidden; margin-top: 5px;
+    }
+    
+    .form-control-modal {
+        border: 1px solid var(--border-color); background-color: var(--input-bg); border-radius: 12px; padding: 12px;
+        width: 100%; margin-bottom: 15px; color: var(--text-dark);
+    }
+    .form-control-modal:focus { background-color: var(--card-bg); border-color: var(--primary); outline: none; }
 
-        .table-approval { width: 100%; border-collapse: collapse; }
-        .table-approval th { 
-            background-color: #FAFCFE; color: var(--secondary); font-weight: 600; 
-            font-size: 0.85rem; text-transform: uppercase; padding: 15px; 
-            border-bottom: 1px solid #E0E5F2; text-align: left;
-        }
-        .table-approval td { 
-            padding: 15px; border-bottom: 1px solid var(--primary-light); 
-            font-size: 0.95rem; color: var(--text-dark); vertical-align: middle;
-        }
-        .table-approval tbody tr:hover { background-color: var(--primary-light); cursor: pointer; }
+    /* Mobile */
+    @media (max-width: 768px) {
+        .table-responsive { overflow-x: auto; margin-bottom: 15px; border: 1px solid var(--border-color); border-radius: 12px; }
+        .table-approval th, .table-approval td { white-space: nowrap; padding: 12px 10px; }
+        .info-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+    }
+</style>
+{% endblock %}
 
-        /* BADGES & BUTTONS */
-        .amount-highlight { font-weight: 700; color: var(--primary); }
-        .badge-warning-custom { background-color: #FFF8E1; color: #B71C1C; border: 1px solid #FFCC80; }
-        
-        .btn-action-sm {
-            padding: 6px 12px; border-radius: 10px; font-size: 0.85rem; font-weight: 600; border: none; margin-right: 5px;
-        }
-        .btn-review { background-color: var(--primary); color: white; }
-        .btn-review:hover { background-color: #3a14db; color: white; }
+{% block page_title %}<i class="fas fa-check-double me-2 text-success"></i> PHÊ DUYỆT NGÂN SÁCH{% endblock %}
+{% block page_sub %}Danh sách các đề nghị thanh toán đang chờ duyệt.{% endblock %}
 
-        /* MODAL STYLES */
-        .modal-content { border-radius: 20px; border: none; }
-        .modal-header { background-color: var(--primary-light); border-bottom: none; padding: 20px 25px; }
-        .modal-title { color: var(--text-dark); font-weight: 700; }
-        .modal-body { padding: 25px; }
-        
-        .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #E0E5F2; }
-        .info-label { color: var(--secondary); font-size: 0.9rem; }
-        .info-val { color: var(--text-dark); font-weight: 600; }
-        
-        /* Progress Box */
-        .budget-context-box {
-            background-color: #F4F7FE; border-radius: 16px; padding: 15px; margin-bottom: 20px;
-            border: 1px solid #E0E5F2;
-        }
-        .budget-context-box.warning { background-color: #FFF5F5; border-color: #FECACA; }
-        .context-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: var(--secondary); margin-bottom: 10px; }
-        
-        .progress-custom {
-            height: 12px; border-radius: 6px; background-color: #E0E5F2; overflow: hidden; margin-top: 5px;
-        }
-        .progress-bar-custom { height: 100%; transition: width 0.5s ease; }
-        
-        .form-control-modal {
-            border: 1px solid #E0E5F2; background-color: white; border-radius: 12px; padding: 12px;
-            width: 100%; margin-bottom: 15px;
-        }
+{% block header_actions %}
+<a href="/" class="btn btn-back"><i class="fas fa-home me-2"></i>Portal</a>
+{% endblock %}
 
-        /* --- MOBILE RESPONSIVE --- */
-        @media (max-width: 768px) {
-            .page-header { flex-direction: column; align-items: flex-start !important; gap: 10px; }
-            .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 15px; }
-            .table-approval th, .table-approval td { white-space: nowrap; padding: 12px 10px; }
-            .table-approval td:nth-child(7) { white-space: normal; min-width: 200px; } /* Cột Lý do */
-            
-            .modal-dialog { margin: 10px; }
-            .info-row { flex-direction: column; align-items: flex-start; gap: 2px; }
-            .budget-context-box .row.g-2 { display: flex; flex-wrap: wrap; }
-            .budget-context-box .col-4 { width: 100%; display: flex; justify-content: space-between; margin-bottom: 5px; border-bottom: 1px dashed #eee; padding-bottom: 5px; }
-            .budget-context-box .col-4.text-center, .budget-context-box .col-4.text-end { text-align: left !important; }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="page-header">
-            <div>
-                <h1 class="page-title"><i class="fas fa-check-double me-2 text-success"></i> Phê Duyệt Ngân Sách</h1>
-                <p class="text-muted mb-0 small">Danh sách các đề nghị thanh toán đang chờ bạn duyệt.</p>
-            </div>
-            <a href="/" class="btn-back"><i class="fas fa-home me-2"></i>Về Portal</a>
+{% block content %}
+    <div class="main-card">
+        <div class="card-header-custom d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-list-ul me-2 text-primary"></i> DANH SÁCH CHỜ DUYỆT</span>
+            <span class="badge bg-light text-dark border">{{ pending_list|length }} phiếu</span>
         </div>
-
-        <div class="main-card">
-            <div class="card-header-custom">
-                <span><i class="fas fa-list-ul"></i> Danh sách Chờ Duyệt ({{ pending_list|length }})</span>
-            </div>
-            <div class="card-body-custom">
-                <div class="table-responsive">
-                    <table class="table-approval">
-                        <thead>
-                            <tr>
-                                <th>Ngày tạo</th>
-                                <th>Mã Phiếu</th>
-                                <th>Người đề nghị</th>
-                                <th>Người duyệt</th> <th>Khoản mục</th>
-                                <th class="text-end">Số tiền</th>
-                                <th>Lý do & Hồ sơ</th>
-                                <th class="text-center">Hành động</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in pending_list %}
-                            <tr onclick='openReviewModal({{ item | tojson }})'>
-                                <td class="text-muted small">{{ item.RequestDate.strftime('%d/%m %H:%M') }}</td>
-                                <td class="fw-bold text-primary">{{ item.RequestID }}</td>
-                                <td>
-                                    <div class="fw-bold">{{ item.RequesterName }}</div>
-                                    <div class="small text-muted">{{ item.UserCode }}</div>
-                                </td>
-                                <td>
-                                    <span class="badge bg-info text-dark">{{ item.CurrentApproverName }}</span>
-                                    <div class="small text-secondary font-monospace">{{ item.CurrentApprover }}</div>
-                                </td>
-                                <td>
-                                    <div class="text-dark">{{ item.BudgetName }}</div>
-                                    <div class="small text-secondary font-monospace">{{ item.BudgetCode }}</div>
-                                </td>
-                                <td class="text-end amount-highlight">
-                                    {{ "{:,.0f}".format(item.Amount|float) }}
-                                </td>
-                                <td>
-                                    {% if item.IsWarning %}
-                                        <span class="badge badge-warning-custom mb-1"><i class="fas fa-exclamation-triangle"></i> Vượt NS</span><br>
-                                    {% endif %}
-                                    <span class="text-muted small">{{ item.Reason | truncate(30) }}</span>
-                                    
-                                    {% if item.Attachments %}
-                                        <div class="mt-1">
-                                            <span class="badge bg-light text-primary border border-primary-subtle">
-                                                <i class="fas fa-paperclip me-1"></i> Có đính kèm
-                                            </span>
-                                        </div>
-                                    {% endif %}
-                                </td>
-                                <td class="text-center">
-                                    <button class="btn-action-sm btn-review">
-                                        <i class="fas fa-eye"></i> Xem
-                                    </button>
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="8" class="text-center text-muted p-5">
-                                    <i class="fas fa-check-circle fa-3x mb-3 text-light"></i><br>
-                                    Không có đề nghị nào cần duyệt lúc này.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+        <div class="card-body-custom p-0">
+            <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
+                <table class="table-approval">
+                    <thead>
+                        <tr>
+                            <th>Ngày tạo</th>
+                            <th>Mã Phiếu</th>
+                            <th>Người đề nghị</th>
+                            <th>Người duyệt</th> 
+                            <th>Khoản mục</th>
+                            <th class="text-end">Số tiền</th>
+                            <th>Lý do & Hồ sơ</th>
+                            <th class="text-center">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in pending_list %}
+                        <tr onclick='openReviewModal({{ item | tojson }})'>
+                            <td class="text-secondary small">{{ item.RequestDate | format_date }}</td>
+                            <td class="fw-bold text-primary">{{ item.RequestID }}</td>
+                            <td>
+                                <div class="fw-bold">{{ item.RequesterName }}</div>
+                                <div class="small text-muted">{{ item.UserCode }}</div>
+                            </td>
+                            <td>
+                                <span class="badge bg-info bg-opacity-10 text-info border border-info">{{ item.CurrentApproverName }}</span>
+                            </td>
+                            <td>
+                                <div class="text-dark">{{ item.BudgetName }}</div>
+                                <div class="small text-secondary font-monospace">{{ item.BudgetCode }}</div>
+                            </td>
+                            <td class="text-end amount-highlight">
+                                {{ item.Amount | format_tr }}
+                            </td>
+                            <td>
+                                {% if item.IsWarning %}
+                                    <span class="badge badge-warning-custom mb-1"><i class="fas fa-exclamation-triangle"></i> Vượt NS</span><br>
+                                {% endif %}
+                                <span class="text-muted small">{{ item.Reason | truncate(40) }}</span>
+                                
+                                {% if item.Attachments %}
+                                    <div class="mt-1">
+                                        <span class="badge bg-light text-secondary border">
+                                            <i class="fas fa-paperclip me-1"></i> File
+                                        </span>
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <button class="btn-action-sm btn-review">
+                                    <i class="fas fa-eye me-1"></i> Xem
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted p-5">
+                                <i class="fas fa-check-circle fa-3x mb-3 opacity-25"></i><br>
+                                Không có đề nghị nào cần duyệt lúc này.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -228,7 +179,7 @@
                     
                     <div class="mb-3">
                         <span class="info-label d-block mb-1">Lý do chi:</span>
-                        <div class="p-2 bg-light rounded small" id="md_reason">...</div>
+                        <div class="p-3 rounded small" style="background: var(--input-bg); color: var(--text-dark);" id="md_reason">...</div>
                     </div>
 
                     <div id="md_attachments_box" class="mb-3 d-none">
@@ -238,43 +189,43 @@
 
                     <div id="md_context_box" class="budget-context-box">
                         <div class="context-title d-flex justify-content-between align-items-center">
-                            <span><i class="fas fa-chart-pie me-1"></i> NGÂN SÁCH LŨY KẾ (<span id="md_parent_code"></span>)</span>
-                            <span id="md_warning_badge" class="badge bg-danger d-none">NGUY CƠ VƯỢT</span>
+                            <span><i class="fas fa-chart-pie me-1"></i> NGÂN SÁCH (<span id="md_parent_code"></span>)</span>
+                            <span id="md_warning_badge" class="badge bg-danger d-none">CẢNH BÁO</span>
                         </div>
                         
-                        <div class="progress-custom mb-2" style="height: 20px; background-color: #e9ecef;">
+                        <div class="progress-custom mb-2">
                             <div id="bar_actual" class="progress-bar bg-secondary" style="width: 0%" title="Đã chi (ERP)"></div>
                             <div id="bar_current" class="progress-bar bg-primary progress-bar-striped progress-bar-animated" style="width: 0%" title="Phiếu này"></div>
                         </div>
                         
                         <div class="row g-2 small mb-2">
                             <div class="col-4">
-                                <span class="d-block text-muted">Tổng NS Năm</span>
-                                <strong class="text-dark" id="md_plan">0</strong>
+                                <span class="d-block text-muted">Tổng NS</span>
+                                <strong style="color: var(--text-dark);" id="md_plan">0</strong>
                             </div>
                             <div class="col-4 text-center">
-                                <span class="d-block text-muted">Thực chi YTD</span>
+                                <span class="d-block text-muted">Đã dùng</span>
                                 <strong class="text-secondary" id="md_used">0</strong>
                             </div>
                             <div class="col-4 text-end">
-                                <span class="d-block text-muted">Còn lại YTD</span>
+                                <span class="d-block text-muted">Còn lại</span>
                                 <strong class="text-success" id="md_remaining">0</strong>
                             </div>
                         </div>
 
                         <div id="md_alert_msg" class="alert alert-danger py-2 px-3 mt-2 mb-0 small fw-bold d-none">
-                            <i class="fas fa-exclamation-circle me-1"></i> Duyệt phiếu này sẽ gây lố ngân sách!
+                            <i class="fas fa-exclamation-circle me-1"></i> Cảnh báo: Duyệt phiếu này sẽ vượt ngân sách!
                         </div>
                     </div>
 
                     <label class="form-label small fw-bold text-secondary">Ghi chú duyệt / Lý do từ chối:</label>
-                    <textarea id="md_note" class="form-control-modal" rows="2" placeholder="Nhập ghi chú (nếu có)..."></textarea>
+                    <textarea id="md_note" class="form-control-modal" rows="2" placeholder="Nhập ghi chú..."></textarea>
 
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
                         <button type="button" class="btn btn-outline-danger me-md-2 px-4" onclick="submitDecision('REJECT')">
                             <i class="fas fa-times me-1"></i> Từ chối
                         </button>
-                        <button type="button" class="btn btn-success px-4" onclick="submitDecision('APPROVE')">
+                        <button type="button" class="btn btn-success px-4 text-white" onclick="submitDecision('APPROVE')">
                             <i class="fas fa-check me-1"></i> Duyệt Chi
                         </button>
                     </div>
@@ -282,45 +233,47 @@
             </div>
         </div>
     </div>
+{% endblock %}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}
     <script>
         const reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
 
-        function formatCurrency(num) {
+        // Hàm format số chuẩn (1,234,567) cho Modal chi tiết
+        function formatNumberExact(num) {
             if (num === undefined || num === null) return '0';
-            return new Intl.NumberFormat('vi-VN').format(num);
+            return new Intl.NumberFormat('en-US').format(num);
+        }
+
+        // Hàm format số rút gọn cho context (1.2M)
+        function formatNumberCompact(num) {
+            if (!num) return '0';
+            return new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(num);
         }
 
         function openReviewModal(item) {
-            console.log("Review Item Data:", item);
-
             document.getElementById('md_request_id').value = item.RequestID;
             document.getElementById('md_requester').innerText = item.RequesterName;
-            document.getElementById('md_amount').innerText = formatCurrency(item.Amount) + ' VNĐ';
+            document.getElementById('md_amount').innerText = formatNumberExact(item.Amount) + ' VNĐ';
             document.getElementById('md_budget').innerText = `${item.BudgetName} (${item.BudgetCode})`;
             document.getElementById('md_reason').innerText = item.Reason;
 
-            // Xử lý file đính kèm
+            // Attachments
             const attachBox = document.getElementById('md_attachments_box');
             const attachList = document.getElementById('md_attachment_list');
             attachList.innerHTML = '';
             
-            const rawFiles = item.Attachments || item.attachments; // Check cả 2 trường hợp tên biến
-
+            const rawFiles = item.Attachments || item.attachments;
             if (rawFiles && rawFiles.trim() !== '') {
                 attachBox.classList.remove('d-none');
-                const files = rawFiles.split(';');
-                files.forEach(file => {
+                rawFiles.split(';').forEach(file => {
                     if(file.trim()) {
                         const link = document.createElement('a');
                         link.href = `/attachments/${file}`;
                         link.target = '_blank';
-                        link.className = 'btn btn-sm btn-light border shadow-sm';
-                        
-                        const displayName = file.split('_').slice(2).join('_') || file;
-                        link.innerHTML = `<i class="fas fa-file-download me-1 text-primary"></i> ${displayName}`; 
-                        
+                        link.className = 'btn btn-sm btn-light border shadow-sm text-primary';
+                        const name = file.split('_').slice(2).join('_') || file;
+                        link.innerHTML = `<i class="fas fa-file-download me-1"></i> ${name}`; 
                         attachList.appendChild(link);
                     }
                 });
@@ -328,7 +281,7 @@
                 attachBox.classList.add('d-none');
             }
 
-            // Xử lý Progress Bar YTD
+            // Budget Context (Logic Progress bar)
             const ytdPlan = parseFloat(item.YTD_Plan) || 0;
             const ytdActual = parseFloat(item.YTD_Actual) || 0; 
             const currentAmount = parseFloat(item.Amount) || 0;
@@ -340,34 +293,25 @@
 
             if (pctActual + pctCurrent > 100) {
                 const scale = 100 / (pctActual + pctCurrent);
-                pctActual *= scale;
-                pctCurrent *= scale;
+                pctActual *= scale; pctCurrent *= scale;
             }
 
             document.getElementById('bar_actual').style.width = `${pctActual}%`;
-            document.getElementById('bar_actual').setAttribute('title', `Đã chi: ${formatCurrency(ytdActual)}`);
             document.getElementById('bar_current').style.width = `${pctCurrent}%`;
-            document.getElementById('bar_current').setAttribute('title', `Đang duyệt: ${formatCurrency(currentAmount)}`);
 
-            document.getElementById('md_plan').innerText = formatCurrency(ytdPlan);
-            document.getElementById('md_used').innerText = formatCurrency(ytdActual);
-            document.getElementById('md_parent_code').innerText = item.ParentCode || '...';
+            document.getElementById('md_plan').innerText = formatNumberCompact(ytdPlan);
+            document.getElementById('md_used').innerText = formatNumberCompact(ytdActual);
+            document.getElementById('md_parent_code').innerText = item.ParentCode || '';
 
             const alertMsg = document.getElementById('md_alert_msg');
             const badge = document.getElementById('md_warning_badge');
             const elRemaining = document.getElementById('md_remaining');
             
-            if (remaining < 0) {
-                elRemaining.innerText = "(" + formatCurrency(Math.abs(remaining)) + ")";
-                elRemaining.className = "text-danger fw-bold";
-            } else {
-                elRemaining.innerText = formatCurrency(remaining);
-                elRemaining.className = "text-success fw-bold";
-            }
+            elRemaining.innerText = formatNumberCompact(remaining);
+            elRemaining.className = remaining < 0 ? "text-danger fw-bold" : "text-success fw-bold";
 
             if (item.IsWarning) {
                 alertMsg.classList.remove('d-none');
-                if(item.WarningMsg) alertMsg.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i> ${item.WarningMsg}`;
                 badge.classList.remove('d-none');
                 document.getElementById('md_context_box').classList.add('warning');
             } else {
@@ -384,33 +328,17 @@
             const reqId = document.getElementById('md_request_id').value;
             const note = document.getElementById('md_note').value;
 
-            if (action === 'REJECT' && !note.trim()) {
-                alert("Vui lòng nhập lý do từ chối.");
-                return;
-            }
-
-            if(!confirm(`Bạn chắc chắn muốn ${action === 'APPROVE' ? 'DUYỆT' : 'TỪ CHỐI'} đề nghị này?`)) return;
+            if (action === 'REJECT' && !note.trim()) { alert("Vui lòng nhập lý do từ chối."); return; }
+            if(!confirm(`Xác nhận ${action === 'APPROVE' ? 'DUYỆT' : 'TỪ CHỐI'} đề nghị này?`)) return;
 
             fetch('/api/budget/approve', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    request_id: reqId,
-                    action: action,
-                    note: note
-                })
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ request_id: reqId, action: action, note: note })
             })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    reviewModal.hide();
-                    window.location.reload();
-                } else {
-                    alert("Lỗi: " + data.message);
-                }
-            })
-            .catch(err => alert("Lỗi kết nối server."));
+            .then(r => r.json()).then(data => {
+                if (data.success) { reviewModal.hide(); location.reload(); } 
+                else { alert("Lỗi: " + data.message); }
+            }).catch(() => alert("Lỗi kết nối server."));
         }
     </script>
-</body>
-</html>
+{% endblock %}

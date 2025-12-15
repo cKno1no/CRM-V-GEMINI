@@ -1,188 +1,148 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tạo Mới Nhân Sự Liên Hệ</title>
+{% extends "base.html" %}
+
+{% block title %}Thêm Mới Nhân Sự | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
+    .form-control, .form-select {
+        border: 1px solid var(--border-color); background-color: var(--input-bg); border-radius: 12px;
+        padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); transition: all 0.2s;
+    }
+    .form-control:focus, .form-select:focus { 
+        border-color: var(--primary); background-color: var(--card-bg); 
+        box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1); 
+    }
     
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <style>
-        /* --- 1. CORE STYLES (Đồng bộ nhaplieu_new) --- */
-        :root {
-            --primary: #4318FF;
-            --primary-light: #F4F7FE;
-            --secondary: #A3AED0;
-            --text-dark: #2B3674;
-            --danger: #E31A1A;
-            --success: #05CD99;
-            --warning: #FFB547;
-            --bg-color: #F4F7FE;
-            --card-radius: 20px;
-            --input-bg: #F4F7FE;
-        }
-        
-        body { background-color: var(--bg-color); font-family: 'Inter', sans-serif; color: var(--text-dark); }
-        .container { max-width: 900px; padding: 40px 20px; }
+    #kh_search_results { 
+        position: absolute; width: 100%; z-index: 1000; border-radius: 12px; 
+        box-shadow: var(--shadow-md); margin-top: 5px; border: 1px solid var(--border-color);
+        background-color: var(--card-bg); color: var(--text-dark);
+    }
+    .search-wrapper { position: relative; }
 
-        /* HEADER */
-        .page-header { margin-bottom: 30px; text-align: center; }
-        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--primary); margin-bottom: 10px; }
-        
-        /* CARD */
-        .main-card {
-            background: white; border-radius: var(--card-radius); padding: 30px;
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); border: none;
-        }
+    .btn-save { 
+        background-color: var(--primary); color: white; border: none; padding: 12px 40px; 
+        border-radius: 16px; font-weight: 600; width: 100%; transition: all 0.3s; 
+    }
+    .btn-save:hover { background-color: var(--primary-dark); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
 
-        /* FORM INPUTS */
-        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
-        .form-control, .form-select {
-            border: 1px solid #E0E5F2; background-color: white; border-radius: 12px;
-            padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); transition: all 0.2s;
-        }
-        .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1); }
-        
-        /* SEARCH BOX */
-        #kh_search_results { position: absolute; width: 100%; z-index: 1000; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 5px; }
-        .search-wrapper { position: relative; }
+    /* TABLE */
+    .table-custom th { 
+        background-color: var(--input-bg) !important; color: var(--primary); 
+        font-weight: 700; border: none; text-transform: uppercase; font-size: 0.8rem; padding: 12px 15px;
+    }
+    .table-custom td { 
+        vertical-align: middle; font-size: 0.95rem; padding: 12px 15px;
+        border-bottom: 1px solid var(--border-color); color: var(--text-dark);
+    }
+    .empty-state { text-align: center; padding: 30px; color: var(--secondary); font-style: italic; }
+</style>
+{% endblock %}
 
-        /* BUTTONS */
-        .btn-save { background-color: var(--primary); color: white; border: none; padding: 12px 40px; border-radius: 16px; font-weight: 600; width: 100%; transition: all 0.3s; }
-        .btn-save:hover { background-color: #3311db; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(67, 24, 255, 0.2); }
+{% block page_title %}<i class="fas fa-user-plus me-2 text-success"></i> Thêm Mới Nhân Sự{% endblock %}
+{% block page_sub %}Nhập thông tin người liên hệ mới cho khách hàng.{% endblock %}
 
-        /* TABLE STYLE (MỚI - GỌN GÀNG) */
-        .table-custom th { 
-            background-color: var(--primary-light); 
-            color: var(--primary); 
-            font-weight: 600; 
-            border: none; 
-            text-transform: uppercase;
-            font-size: 0.8rem;
-            padding: 12px 15px;
-        }
-        .table-custom td { 
-            vertical-align: middle; 
-            font-size: 0.95rem; 
-            padding: 12px 15px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        .empty-state { text-align: center; padding: 30px; color: var(--secondary); font-style: italic; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        
-        <div class="page-header">
-            <h1 class="page-title"><i class="fas fa-user-plus me-2"></i>Thêm Mới Nhân Sự</h1>
-            <p class="text-muted">Nhập thông tin người liên hệ mới cho khách hàng</p>
-        </div>
+{% block header_actions %}
+<a href="javascript:window.close();" class="btn btn-back"><i class="fas fa-times me-2"></i>Đóng</a>
+{% endblock %}
 
-        <div class="main-card">
-            {% if message %}
-            <div class="alert alert-{{ 'success' if 'success' in message else 'danger' }} rounded-4 mb-4">
-                <i class="fas fa-{{ 'check-circle' if 'success' in message else 'exclamation-circle' }} me-2"></i> {{ message }}
+{% block content %}
+    <div class="main-card">
+        <form method="POST" action="/nhansu_nhaplieu">
+            <div class="mb-4 search-wrapper">
+                <label class="form-label">Khách hàng (Công ty) <span class="text-danger">*</span></label>
+                <div class="input-group">
+                    <span class="input-group-text border-end-0" style="background-color: var(--input-bg); border-color: var(--border-color); color: var(--primary);"><i class="fas fa-building"></i></span>
+                    <input type="text" id="kh_ten_tat" placeholder="Nhập tên viết tắt để tìm..." class="form-control border-start-0 ps-0" autocomplete="off">
+                    <input type="hidden" name="ma_cong_ty_kh" id="kh_ma_cong_ty" required>
+                    <input type="hidden" name="ten_cong_ty_kh" id="kh_ten_cong_ty">
+                </div>
+                <small id="kh_status" class="mt-1 ms-1" style="font-size: 0.8rem; color: var(--secondary);">
+                    {% if default_ma_khachhang %}
+                        <span class="text-success fw-bold"><i class="fas fa-lock me-1"></i>Đã khóa theo: {{ default_ma_khachhang }}</span>
+                    {% else %}
+                        Gõ từ khóa để tìm kiếm...
+                    {% endif %}
+                </small>
+                <select id="kh_search_results" class="form-select" size="5" style="display:none;"></select>
             </div>
-            {% endif %}
 
-            <form method="POST" action="/nhansu_nhaplieu">
-                <div class="mb-4 search-wrapper">
-                    <label class="form-label">Khách hàng (Công ty) <span class="text-danger">*</span></label>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Họ và Tên đệm</label>
+                    <input type="text" name="ten_ho" class="form-control" placeholder="Ví dụ: Nguyễn Văn">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Tên thường gọi <span class="text-danger">*</span></label>
+                    <input type="text" name="ten_thuong_goi" class="form-control" placeholder="Ví dụ: An" required>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Chức vụ</label>
+                    <input type="text" name="chuc_vu" class="form-control" placeholder="Ví dụ: Trưởng phòng mua hàng">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Số ĐTDĐ 1 <span class="text-danger">*</span></label>
                     <div class="input-group">
-                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-building text-primary"></i></span>
-                        <input type="text" id="kh_ten_tat" placeholder="Nhập tên viết tắt để tìm..." class="form-control border-start-0 ps-0" autocomplete="off">
-                        <input type="hidden" name="ma_cong_ty_kh" id="kh_ma_cong_ty" required>
-                        <input type="hidden" name="ten_cong_ty_kh" id="kh_ten_cong_ty">
+                        <span class="input-group-text" style="background-color: var(--input-bg); border-color: var(--border-color); color: var(--success);"><i class="fas fa-phone"></i></span>
+                        <input type="text" name="so_dtdd_1" class="form-control" required>
                     </div>
-                    <small id="kh_status" class="text-muted mt-1 ms-1" style="font-size: 0.8rem;">
-                        {% if default_ma_khachhang %}
-                            <span class="text-success fw-bold"><i class="fas fa-lock me-1"></i>Đã khóa theo: {{ default_ma_khachhang }}</span>
-                        {% else %}
-                            Gõ từ khóa để tìm kiếm...
-                        {% endif %}
-                    </small>
-                    <select id="kh_search_results" class="form-select" size="5" style="display:none;"></select>
                 </div>
 
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Họ và Tên đệm</label>
-                        <input type="text" name="ten_ho" class="form-control" placeholder="Ví dụ: Nguyễn Văn">
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <div class="input-group">
+                        <span class="input-group-text" style="background-color: var(--input-bg); border-color: var(--border-color); color: var(--warning);"><i class="fas fa-envelope"></i></span>
+                        <input type="email" name="dia_chi_email" class="form-control">
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Tên thường gọi <span class="text-danger">*</span></label>
-                        <input type="text" name="ten_thuong_goi" class="form-control" placeholder="Ví dụ: An" required>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label">Chức vụ</label>
-                        <input type="text" name="chuc_vu" class="form-control" placeholder="Ví dụ: Trưởng phòng mua hàng">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Số ĐTDĐ 1 <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white"><i class="fas fa-phone text-success"></i></span>
-                            <input type="text" name="so_dtdd_1" class="form-control" required>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label">Email</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white"><i class="fas fa-envelope text-warning"></i></span>
-                            <input type="email" name="dia_chi_email" class="form-control">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Quê quán (Tỉnh/TP)</label>
-                        <select name="que_quan_ddl" id="que_quan_ddl" class="form-select">
-                            <option value="">-- Chọn Tỉnh/TP --</option>
-                        </select>
-                    </div>
-
-                    <div class="col-12">
-                        <label class="form-label">Ghi chú chung</label>
-                        <input type="text" name="ghi_chu" class="form-control" placeholder="Ghi chú thêm...">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Đặc điểm cá nhân (Sở thích, Gia đình...)</label>
-                        <textarea name="gia_dinh" class="form-control" rows="2" placeholder="Thông tin phụ trợ để chăm sóc khách hàng..."></textarea>
-                    </div>
-                    <input type="hidden" name="ghi_chu_dac_biet">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Quê quán (Tỉnh/TP)</label>
+                    <select name="que_quan_ddl" id="que_quan_ddl" class="form-select">
+                        <option value="">-- Chọn Tỉnh/TP --</option>
+                    </select>
                 </div>
 
-                <div class="mt-4">
-                    <button type="submit" class="btn-save shadow">
-                        <i class="fas fa-save me-2"></i>Lưu Nhân Sự Mới
-                    </button>
+                <div class="col-12">
+                    <label class="form-label">Ghi chú chung</label>
+                    <input type="text" name="ghi_chu" class="form-control" placeholder="Ghi chú thêm...">
                 </div>
-            </form>
-        </div>
-
-        <div class="mt-5">
-            <h5 class="fw-bold text-secondary mb-3"><i class="fas fa-users me-2"></i>Nhân sự đã có của khách hàng này</h5>
-            <div class="table-responsive bg-white rounded-4 shadow-sm p-3">
-                <table class="table table-custom table-hover mb-0" id="tbl_existing_contacts">
-                    <thead>
-                        <tr>
-                            <th style="width: 60%;">Họ Tên</th>
-                            <th style="width: 40%;">Chức vụ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td colspan="2" class="empty-state">Vui lòng chọn khách hàng để xem danh sách.</td></tr>
-                    </tbody>
-                </table>
+                <div class="col-12">
+                    <label class="form-label">Đặc điểm cá nhân (Sở thích, Gia đình...)</label>
+                    <textarea name="gia_dinh" class="form-control" rows="2" placeholder="Thông tin phụ trợ để chăm sóc khách hàng..."></textarea>
+                </div>
+                <input type="hidden" name="ghi_chu_dac_biet">
             </div>
-        </div>
 
+            <div class="mt-4">
+                <button type="submit" class="btn-save shadow">
+                    <i class="fas fa-save me-2"></i>Lưu Nhân Sự Mới
+                </button>
+            </div>
+        </form>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="mt-5">
+        <h5 class="fw-bold mb-3" style="color: var(--secondary);"><i class="fas fa-users me-2"></i>Nhân sự đã có của khách hàng này</h5>
+        <div class="table-responsive rounded-4 shadow-sm p-0 border" style="background-color: var(--card-bg); border-color: var(--border-color);">
+            <table class="table table-custom table-hover mb-0" id="tbl_existing_contacts">
+                <thead>
+                    <tr>
+                        <th style="width: 60%;">Họ Tên</th>
+                        <th style="width: 40%;">Chức vụ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="2" class="empty-state">Vui lòng chọn khách hàng để xem danh sách.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
     <script>
-        // --- CẤU HÌNH TỪ SERVER ---
         const defaultMaKhachHang = "{{ default_ma_khachhang or '' }}";
         const defaultTenKhachHang = "{{ default_ten_khachhang or '' }}";
 
@@ -191,142 +151,83 @@
             return (...args) => { clearTimeout(timer); timer = setTimeout(() => { func.apply(this, args); }, timeout); };
         }
 
-        // 1. TÌM KHÁCH HÀNG
         function timKhachHang() {
             const ten_tat = document.getElementById('kh_ten_tat').value.trim();
             const resultsDropdown = document.getElementById('kh_search_results');
-            
-            if (ten_tat.length < 2) { 
-                resultsDropdown.style.display = 'none'; 
-                return; 
-            }
+            if (ten_tat.length < 2) { resultsDropdown.style.display = 'none'; return; }
             
             fetch(`/sales/api/khachhang/${ten_tat}`)
-                .then(r => r.json())
-                .then(data => {
+                .then(r => r.json()).then(data => {
                     resultsDropdown.innerHTML = '';
                     if (data && data.length > 0) {
                         data.forEach(kh => {
                             const option = document.createElement('option');
-                            option.value = kh.ID;
-                            option.textContent = `${kh.FullName} (${kh.ID})`;
+                            option.value = kh.ID; option.textContent = `${kh.FullName} (${kh.ID})`;
                             option.setAttribute('data-fullname', kh.FullName);
                             resultsDropdown.appendChild(option);
                         });
-                        resultsDropdown.style.display = 'block';
-                        resultsDropdown.size = Math.min(data.length, 5) + 1;
-                    } else {
-                        resultsDropdown.style.display = 'none';
-                    }
-                })
-                .catch(e => console.error("Lỗi tìm KH:", e));
+                        resultsDropdown.style.display = 'block'; resultsDropdown.size = Math.min(data.length, 5) + 1;
+                    } else { resultsDropdown.style.display = 'none'; }
+                }).catch(console.error);
         }
 
-        // 2. CHỌN KHÁCH HÀNG
         function chonKhachHang() {
             const resultsDropdown = document.getElementById('kh_search_results');
             const selectedOption = resultsDropdown.options[resultsDropdown.selectedIndex];
-            
             if (selectedOption) {
                 const maDoiTuong = selectedOption.value;
-                const tenDayDu = selectedOption.getAttribute('data-fullname');
-
-                document.getElementById('kh_ten_tat').value = tenDayDu; 
+                document.getElementById('kh_ten_tat').value = selectedOption.getAttribute('data-fullname'); 
                 document.getElementById('kh_ma_cong_ty').value = maDoiTuong;
-                document.getElementById('kh_ten_cong_ty').value = tenDayDu;
-
+                document.getElementById('kh_ten_cong_ty').value = selectedOption.getAttribute('data-fullname');
                 resultsDropdown.style.display = 'none';
                 loadExistingContacts(maDoiTuong);
             }
         }
 
-        // 3. TẢI DANH SÁCH NHÂN SỰ (TINH GỌN)
         function loadExistingContacts(maDoiTuong) {
             const tbody = document.querySelector('#tbl_existing_contacts tbody');
             tbody.innerHTML = '<tr><td colspan="2" class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>';
-
             fetch(`/api/nhansu_by_khachhang/${maDoiTuong}`)
-                .then(r => r.json())
-                .then(data => {
+                .then(r => r.json()).then(data => {
                     tbody.innerHTML = '';
                     if (data && data.length > 0) {
                         data.forEach(item => {
                             const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td>
-                                    <span class="fw-bold text-primary me-2">${item.ShortName}</span>
-                                    <span class="text-dark">${item.FullName}</span>
-                                </td>
-                                <td class="text-secondary fw-medium">${item.Title || ''}</td>
-                            `;
+                            row.innerHTML = `<td><span class="fw-bold text-primary me-2">${item.ShortName}</span> <span style="color: var(--text-dark);">${item.FullName}</span></td><td style="color: var(--secondary);">${item.Title || ''}</td>`;
                             tbody.appendChild(row);
                         });
-                    } else {
-                        tbody.innerHTML = '<tr><td colspan="2" class="empty-state">Chưa có nhân sự nào.</td></tr>';
-                    }
-                })
-                .catch(e => {
-                    console.error("Lỗi tải NS:", e);
-                    tbody.innerHTML = '<tr><td colspan="2" class="text-danger text-center">Lỗi kết nối dữ liệu.</td></tr>';
-                });
+                    } else { tbody.innerHTML = '<tr><td colspan="2" class="empty-state">Chưa có nhân sự nào.</td></tr>'; }
+                }).catch(e => { tbody.innerHTML = '<tr><td colspan="2" class="text-danger text-center">Lỗi kết nối dữ liệu.</td></tr>'; });
         }
 
-        // 4. TẢI TỈNH THÀNH
         function loadTinhThanhDropdown() {
-            fetch('/api/tinh_thanh')
-                .then(r => r.json())
-                .then(data => {
-                    const ddl = document.getElementById('que_quan_ddl');
-                    if (data && data.length > 0) {
-                        data.forEach(tinh => {
-                            ddl.appendChild(new Option(tinh, tinh));
-                        });
-                    }
-                })
-                .catch(e => console.error("Lỗi tải tỉnh thành:", e));
+            fetch('/api/tinh_thanh').then(r => r.json()).then(data => {
+                const ddl = document.getElementById('que_quan_ddl');
+                if (data) data.forEach(tinh => ddl.appendChild(new Option(tinh, tinh)));
+            });
         }
 
-        // 5. INIT
         function initializeDefaultKhachHang() {
             const tenTatInput = document.getElementById('kh_ten_tat');
-            
             if (defaultMaKhachHang) {
                 tenTatInput.value = defaultTenKhachHang || defaultMaKhachHang;
                 document.getElementById('kh_ma_cong_ty').value = defaultMaKhachHang;
                 document.getElementById('kh_ten_cong_ty').value = defaultTenKhachHang;
-                
                 tenTatInput.readOnly = true; 
-                tenTatInput.classList.add('bg-light');
                 loadExistingContacts(defaultMaKhachHang);
-                
                 document.getElementById('kh_status').innerHTML = '<span class="text-success fw-bold"><i class="fas fa-check-circle"></i> Đã chọn từ báo cáo.</span>';
                 document.getElementById('kh_search_results').style.display = 'none';
-            } else {
-                 tenTatInput.readOnly = false;
-                 document.getElementById('kh_status').textContent = 'Nhập tên để tìm kiếm tự động.';
             }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
             const tenTatInput = document.getElementById('kh_ten_tat');
             const resultsDropdown = document.getElementById('kh_search_results');
+            loadTinhThanhDropdown(); initializeDefaultKhachHang();
             
-            loadTinhThanhDropdown();
-            initializeDefaultKhachHang();
-            
-            tenTatInput.addEventListener('input', debounce(function() {
-                if (!this.readOnly) timKhachHang();
-            }, 300)); 
-
-            tenTatInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !tenTatInput.readOnly) {
-                    e.preventDefault(); 
-                    timKhachHang();
-                }
-            });
-
+            tenTatInput.addEventListener('input', debounce(function() { if (!this.readOnly) timKhachHang(); }, 300)); 
+            tenTatInput.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !tenTatInput.readOnly) { e.preventDefault(); timKhachHang(); } });
             resultsDropdown.addEventListener('change', chonKhachHang);
         });
     </script>
-</body>
-</html>
+{% endblock %}

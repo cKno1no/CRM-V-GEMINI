@@ -1,299 +1,275 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Báo cáo Chi tiết Công nợ Quá hạn</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
-    <style>
-        /* CSS MỚI: Đồng bộ với customer_replenishment.html */
-        body { font-family: 'Roboto', sans-serif; background-color: #F8F9FA; color: #3C4043; }
-        
-        /* Đảm bảo container không bị tràn khung hình (giống dashboard.html) */
-        .container-fluid { max-width: 95%; margin-top: 30px; }
-        .container-main { max-width: 1200px; margin: auto; } /* Container ràng buộc độ rộng */
+{% extends "base.html" %}
 
-        h1 { font-weight: 700; color: #4285F4; border-bottom: 3px solid #E8F0FE; padding-bottom: 10px; margin-bottom: 25px; }
-        .card { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 12px; border: none; }
-        
-        /* Style Bảng */
-        .table-detail th { 
-            position: sticky !important; top: 0; z-index: 10; 
-            background-color: #d6e8ff !important; 
-            color: #333 !important; 
-            font-weight: 600; text-align: center !important; font-size: 0.8rem;
-        }
-        .table-detail td { vertical-align: middle; text-align: right; font-size: 0.85rem; }
-        .text-start { text-align: left !important; }
-        .text-center { text-align: center !important; }
-        
-        /* CSS Cột (Giữ trong CSS để đặt độ rộng tương đối) */
-        .col-stt { width: 4%; }
-        .col-kh-name { width: 20%; }
-        .col-nvkd { width: 8%; }
-        
-        .debt-overdue { color: #DB4437; font-weight: 700; }
-        .debt-current { color: #34A853; font-weight: 600; }
-        .subtotal-row td { background-color: #FEF0C8 !important; font-weight: 700; font-size: 1.1rem !important; }
-        .toggle-label { font-weight: 600; color: #495057; font-size: 0.85rem; margin-bottom: 0 !important; }
+{% block title %}Báo cáo Chi tiết Công nợ Quá hạn | Titan OS{% endblock %}
 
-        /* Autocomplete Style */
-        .search-container { position: relative; }
-        .search-results-dropdown { 
-            width: 100%; border-radius: 8px; border: 1px solid #4285F4;
-            outline: none; display: none; position: absolute;
-            z-index: 1000; margin-top: 0px; 
-            background-color: white;
-        }
-    </style>
-</head>
-<body>
-    <div class="container-fluid container-main">
-        <div class="d-flex justify-content-between align-items-center">
-            <h1><i class="fas fa-file-invoice-dollar me-2"></i> BÁO CÁO CHI TIẾT CÔNG NỢ QUÁ HẠN</h1>
-            <a href="{{ url_for('kpi_bp.ar_aging_dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i>Về Dashboard Tổng hợp</a>
+{% block extra_css %}
+<style>
+    /* CONTAINER & HEADER */
+    .container-main { max-width: 1400px; margin: auto; padding: 20px; }
+
+    /* CARD STYLES */
+    .main-card {
+        border: none; background: var(--card-bg); border-radius: 20px;
+        box-shadow: var(--shadow-sm); margin-bottom: 25px; overflow: hidden;
+        border: 1px solid var(--border-color);
+    }
+    
+    .card-header-custom {
+        padding: 20px 25px; border-bottom: 1px solid var(--border-color); background-color: var(--card-bg);
+        display: flex; justify-content: space-between; align-items: center;
+    }
+
+    /* TABLE DETAIL */
+    .table-detail th { 
+        position: sticky !important; top: 0; z-index: 10; 
+        background-color: var(--input-bg) !important; 
+        color: var(--secondary) !important; 
+        font-weight: 700; text-align: center !important; font-size: 0.8rem;
+        border-bottom: 2px solid var(--border-color); white-space: nowrap;
+        padding: 15px 10px;
+    }
+    .table-detail td { 
+        vertical-align: middle; text-align: right; font-size: 0.9rem; 
+        padding: 10px; border-bottom: 1px solid var(--border-color); color: var(--text-dark);
+    }
+    .table-detail tbody tr:hover td { background-color: var(--input-bg); }
+    
+    /* COLUMNS */
+    .text-start { text-align: left !important; }
+    .text-center { text-align: center !important; }
+    
+    /* HIGHLIGHTS */
+    .debt-overdue { color: var(--danger); font-weight: 700; background-color: rgba(227, 26, 26, 0.1); padding: 4px 8px; border-radius: 6px; }
+    .debt-current { color: var(--success); font-weight: 600; }
+    
+    /* Subtotal Row */
+    .subtotal-row td { background-color: var(--input-bg) !important; font-weight: 800; font-size: 1.1rem !important; color: var(--text-dark); border-top: 2px solid var(--border-color); }
+    
+    /* TOGGLE SWITCH */
+    .form-check-input { background-color: var(--input-bg); border-color: var(--border-color); cursor: pointer; }
+    .form-check-input:checked { background-color: var(--danger); border-color: var(--danger); }
+    .toggle-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; }
+
+    /* AUTOCOMPLETE */
+    .search-container { position: relative; }
+    .search-results-dropdown { 
+        width: 100%; border-radius: 12px; border: 1px solid var(--primary);
+        outline: none; display: none; position: absolute;
+        z-index: 1000; margin-top: 5px; background-color: var(--card-bg); color: var(--text-dark);
+        box-shadow: var(--shadow-md);
+    }
+
+    /* DataTables Theme Override */
+    .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_info { color: var(--secondary) !important; padding: 10px; }
+    .dataTables_wrapper .dataTables_paginate .paginate_button { color: var(--secondary) !important; }
+    .dataTables_wrapper .dataTables_filter input { background-color: var(--input-bg); color: var(--text-dark); border: 1px solid var(--border-color); }
+</style>
+{% endblock %}
+
+{% block page_title %}<i class="fas fa-file-invoice-dollar me-2 text-primary"></i> CHI TIẾT CÔNG NỢ QUÁ HẠN{% endblock %}
+{% block page_sub %}Theo dõi chi tiết hóa đơn quá hạn của từng khách hàng.{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('kpi_bp.ar_aging_dashboard') }}" class="btn btn-back"><i class="fas fa-arrow-left me-2"></i>Dashboard Tổng</a>
+{% endblock %}
+
+{% block content %}
+    <div class="alert alert-danger d-flex justify-content-between align-items-center mb-4 rounded-4 shadow-sm" style="background-color: rgba(227, 26, 26, 0.1); border: 1px solid rgba(227, 26, 26, 0.2); color: var(--danger);">
+        <h5 class="mb-0 fw-bold">
+            <i class="fas fa-exclamation-triangle me-2"></i> Tổng Nợ Quá Hạn: 
+            <span style="font-size: 1.2em;">{{ total_overdue | format_tr }}</span>
+        </h5>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="toggleOverdue">
+            <label class="form-check-label toggle-label text-danger" for="toggleOverdue">Chỉ hiện Nợ Quá Hạn</label>
         </div>
-        
-        <div class="alert alert-info d-flex justify-content-between align-items-center mb-4">
-            <h5 class="mb-0">
-                <i class="fas fa-exclamation-triangle me-2 text-danger"></i> Tổng Nợ Quá Hạn (Bộ lọc hiện tại): 
-                <span class="text-danger">{{ "{:,.0f}".format(total_overdue | default(0) | float) }}</span> VNĐ
-            </h5>
-            <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" role="switch" id="toggleOverdue">
-                <label class="form-check-label toggle-label" for="toggleOverdue">Chỉ hiện Nợ Quá Hạn</label>
-            </div>
-        </div>
+    </div>
 
-        <div class="card mb-4">
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('kpi_bp.ar_aging_detail_dashboard') }}" class="row g-3 align-items-end">
-                    
-                    <div class="col-md-3 search-container">
-                        <label for="kh_search_input" class="form-label small text-muted">Chọn Khách hàng</label>
-                        <input type="text" id="kh_search_input" name="kh_search_text" placeholder="Gõ Mã/Tên Khách hàng..." class="form-control"
-                               value="{{ customer_name_filter | default('') }}">
-                        <small id="kh_status" class="form-text text-muted">Tìm kiếm theo Mã/Tên ngắn/Tên đầy đủ.</small>
-                        
-                        <input type="hidden" name="customer_id" id="kh_ma_selected">
-                        <select id="kh_search_results" class="form-select search-results-dropdown" size="5" onchange="selectClient('kh_search_results', 'kh_search_input', 'kh_ma_selected')"></select>
-                    </div>
-                    
-                    {% if is_admin_or_manager %}
-                    <div class="col-md-3">
-                         <label for="salesman_filter" class="form-label small text-muted">Lọc theo NVKD</label>
-                         <select name="salesman_filter" id="salesman_filter" class="form-select">
-                            <option value="">-- Tất cả NVKD --</option>
-                            {% for user in salesman_list %}
-                            <option value="{{ user.USERCODE }}" 
-                                    {% if filter_salesman_id == user.USERCODE %} selected {% endif %}>
-                                {{ user.SHORTNAME }} ({{ user.USERCODE }})
-                            </option>
-                            {% endfor %}
-                         </select>
-                    </div>
-                    {% endif %}
-                    
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-danger w-100">
-                            <i class="fas fa-search me-1"></i> Lọc
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <div class="card" style="background-color: white;">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table id="ar-aging-detail-table" class="table table-sm table-bordered table-hover mb-0 table-detail">
-                        <thead>
-                            <tr>
-                                <th class="col-stt">STT</th>
-                                <th class="text-start col-kh-name">Tên Khách hàng</th>
-                                <th class="col-nvkd">Số Hóa Đơn</th>
-                                <th class="col-nvkd">Ngày CT</th>
-                                <th class="col-nvkd" data-toggle="tooltip" title="Số ngày Quá Hạn (Âm nếu còn trong hạn)">Số ngày Q.H</th>
-                                <th class="col-10-pc">Nợ Quá Hạn</th>
-                                <th class="col-10-pc">Nợ Trong Hạn</th>
-                                <th class="text-start col-nvkd">NVKD</th>
-                                <th class="text-start col-nvkd">Mã KH</th>
-                            </tr>
-                        </thead>
-                        <tbody id="aging-detail-body">
-                            {% for row in aging_details %}
-                            <tr data-is-overdue="{{ 'true' if row.Debt_Total_Overdue > 0 else 'false' }}">
-                                <td class="text-center"></td> <td class="text-start">{{ row.ObjectName | default(row.ShortObjectName) | default('N/A') }}</td>
-                                <td>{{ row.InvoiceNo }}</td>
-                                <td>{{ row.VoucherDate | default('N/A') }}</td>
-                                <td class="text-center {% if row.OverdueDays > 0 %}debt-overdue{% endif %}">{{ row.OverdueDays }}</td>
-                                <td class="debt-overdue">{{ "{:,.0f}".format(row.Debt_Total_Overdue | float) }}</td>
-                                <td class="debt-current">{{ "{:,.0f}".format(row.Debt_In_Term | float) }}</td>
-                                <td class="text-start">{{ row.SalesManID | default('N/A') }}</td> <td class="text-start">{{ row.ObjectID }}</td>
-                            </tr>
-                            {% else %}
-                            <tr class="data-table-empty">
-                                <td colspan="9" class="text-center text-muted">Không tìm thấy chi tiết công nợ theo tiêu chí lọc.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                        <tfoot>
-                            <tr class="subtotal-row">
-                                <td colspan="5" class="text-end">TỔNG NỢ QUÁ HẠN (Subtotal):</td>
-                                <td colspan="4" class="text-danger">{{ "{:,.0f}".format(total_overdue | default(0) | float) }} VNĐ</td>
-                            </tr>
-                        </tfoot>
-                    </table>
+    <div class="main-card mb-4">
+        <div class="card-body-custom" style="padding: 25px;">
+            <form method="POST" action="{{ url_for('kpi_bp.ar_aging_detail_dashboard') }}" class="row g-3 align-items-end">
+                
+                <div class="col-md-4 search-container">
+                    <label for="kh_search_input" class="form-label small text-muted text-uppercase fw-bold">Chọn Khách hàng</label>
+                    <input type="text" id="kh_search_input" name="kh_search_text" placeholder="Gõ Mã/Tên Khách hàng..." class="form-control"
+                           value="{{ customer_name_filter | default('') }}">
+                    <input type="hidden" name="customer_id" id="kh_ma_selected">
+                    <select id="kh_search_results" class="form-select search-results-dropdown" size="5" onchange="selectClient('kh_search_results', 'kh_search_input', 'kh_ma_selected')"></select>
                 </div>
+                
+                {% if is_admin_or_manager %}
+                <div class="col-md-3">
+                     <label for="salesman_filter" class="form-label small text-muted text-uppercase fw-bold">Lọc theo NVKD</label>
+                     <select name="salesman_filter" id="salesman_filter" class="form-select">
+                        <option value="">-- Tất cả NVKD --</option>
+                        {% for user in salesman_list %}
+                        <option value="{{ user.USERCODE }}" 
+                                {% if filter_salesman_id == user.USERCODE %} selected {% endif %}>
+                            {{ user.SHORTNAME }} ({{ user.USERCODE }})
+                        </option>
+                        {% endfor %}
+                     </select>
+                </div>
+                {% endif %}
+                
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-danger w-100 fw-bold shadow-sm" style="border-radius: 12px; padding: 10px;">
+                        <i class="fas fa-filter me-2"></i> Lọc
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="main-card">
+        <div class="card-body-custom p-0">
+            <div class="table-responsive">
+                <table id="ar-aging-detail-table" class="table table-hover mb-0 table-detail">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">STT</th>
+                            <th class="text-start">Tên Khách hàng</th>
+                            <th>Số Hóa Đơn</th>
+                            <th>Ngày CT</th>
+                            <th data-toggle="tooltip" title="Số ngày Quá Hạn (Âm nếu còn trong hạn)">Số ngày Q.H</th>
+                            <th>Nợ Quá Hạn</th>
+                            <th>Nợ Trong Hạn</th>
+                            <th class="text-start">NVKD</th>
+                            <th class="text-start">Mã KH</th>
+                        </tr>
+                    </thead>
+                    <tbody id="aging-detail-body">
+                        {% for row in aging_details %}
+                        <tr data-is-overdue="{{ 'true' if row.Debt_Total_Overdue > 0 else 'false' }}">
+                            <td class="text-center"></td> 
+                            <td class="text-start fw-bold text-truncate" style="max-width: 250px;" title="{{ row.ObjectName }}">{{ row.ObjectName | default(row.ShortObjectName) | default('N/A') }}</td>
+                            <td class="text-center font-monospace text-primary">{{ row.InvoiceNo }}</td>
+                            <td class="text-center small">{{ row.VoucherDate | format_date }}</td>
+                            
+                            <td class="text-center">
+                                {% if row.OverdueDays > 0 %}
+                                    <span class="badge bg-danger">{{ row.OverdueDays }}</span>
+                                {% else %}
+                                    <span class="text-success fw-bold">{{ row.OverdueDays }}</span>
+                                {% endif %}
+                            </td>
+                            
+                            <td class="text-end">
+                                {% if row.Debt_Total_Overdue > 0 %}
+                                    <span class="debt-overdue">{{ row.Debt_Total_Overdue | format_number }}</span>
+                                {% else %} - {% endif %}
+                            </td>
+                            
+                            <td class="text-end debt-current">{{ row.Debt_In_Term | format_number }}</td>
+                            
+                            <td class="text-start small">{{ row.SalesManID | default('N/A') }}</td> 
+                            <td class="text-start small font-monospace">{{ row.ObjectID }}</td>
+                        </tr>
+                        {% else %}
+                        <tr class="data-table-empty">
+                            <td colspan="9" class="text-center text-muted py-5">
+                                <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i><br>
+                                Không tìm thấy chi tiết công nợ theo tiêu chí lọc.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="subtotal-row">
+                            <td colspan="5" class="text-end text-uppercase text-secondary" style="font-size: 0.9rem;">Tổng Nợ Quá Hạn:</td>
+                            <td colspan="4" class="text-danger fw-bold" style="font-size: 1.2rem;">{{ total_overdue | format_tr }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
         </div>
     </div>
-    
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+{% endblock %}
+
+{% block scripts %}
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
 
     <script>
         let arAgingTable;
 
-        // Hàm debounce
         function debounce(func, timeout = 300) {
             let timer;
-            return (...args) => {
-                clearTimeout(timer);
-                timer = setTimeout(() => { func.apply(this, args); }, timeout);
-            };
+            return (...args) => { clearTimeout(timer); timer = setTimeout(() => { func.apply(this, args); }, timeout); };
         }
         
         // HÀM TÌM KIẾM KHÁCH HÀNG (Autocomplete)
         function timKhachHangAutocomplete(term, resultsDropdown) {
              const cleanedTerm = String(term || '').trim();
-             if (cleanedTerm.length < 2) {
-                 resultsDropdown.hide().empty();
-                 return;
-             }
+             if (cleanedTerm.length < 2) { resultsDropdown.hide().empty(); return; }
              
              resultsDropdown.empty().show();
 
-             // Gọi API tra cứu khách hàng (Sử dụng API đã có trong lookup_bp)
              fetch(`/sales/api/khachhang/${cleanedTerm}`)
-                 .then(response => {
-                     if (response.status === 404) return [];
-                     if (!response.ok) throw new Error('Lỗi Server.');
-                     return response.json(); 
-                 })
+                 .then(response => response.ok ? response.json() : [])
                  .then(data => {
                      if (data && data.length > 0) {
                          data.forEach(kh => {
-                             const displayName = kh.LongName || kh.FullName || kh.ID; // Ưu tiên FullName (LongName)
+                             const displayName = kh.LongName || kh.FullName || kh.ID;
                              const option = `<option value="${kh.ID}" data-fullname="${displayName}">${displayName} (${kh.ID})</option>`;
                              resultsDropdown.append(option);
                          });
-                         resultsDropdown.attr('size', Math.max(Math.min(data.length, 5), 2));
-                     } else {
-                         resultsDropdown.hide();
-                     }
+                         resultsDropdown.attr('size', Math.min(data.length, 5) + 1);
+                     } else { resultsDropdown.hide(); }
                  })
-                 .catch(error => {
-                     console.error("Fetch KH Error:", error);
-                     resultsDropdown.hide();
-                 });
+                 .catch(() => resultsDropdown.hide());
         }
         
-        // HÀM CHỌN KHÁCH HÀNG (Gán vào Hidden Field và Submit Form)
         window.selectClient = function(dropdownId, inputId, hiddenId) {
              const dropdown = $(`#${dropdownId}`);
              const selectedOption = dropdown.find('option:selected');
              
              if (selectedOption.length) {
-                 const id = selectedOption.val();
-                 const fullName = selectedOption.data('fullname');
-                 const displayText = fullName + ' (' + id + ')';
-                 
-                 $(`#${hiddenId}`).val(id); // Mã KH được submit
-                 $(`#${inputId}`).val(displayText); // Hiển thị trên Input
+                 $(`#${hiddenId}`).val(selectedOption.val());
+                 $(`#${inputId}`).val(selectedOption.data('fullname'));
                  dropdown.hide();
-                 
-                 // TỰ ĐỘNG SUBMIT FORM SAU KHI CHỌN KHÁCH HÀNG
-                 $(`#salesman_filter`).closest('form').submit();
+                 $(`#salesman_filter`).closest('form').submit(); // Auto submit
              }
         };
-
 
         $(document).ready(function() {
             const khSearchInput = $('#kh_search_input');
             const khSearchResults = $('#kh_search_results');
             
-            // 1. KÍCH HOẠT AUTOCOMPLETE
             khSearchInput.on('input', debounce(function() {
                  timKhachHangAutocomplete(khSearchInput.val(), khSearchResults);
             }, 300));
             
-            // Đóng dropdown khi click ra ngoài
             $(document).on('click', function(e) {
-                if (!$(e.target).closest('.search-container').length) {
-                    khSearchResults.hide();
-                }
+                if (!$(e.target).closest('.search-container').length) khSearchResults.hide();
             });
 
-
-            // 2. KHỞI TẠO DATATABLES
+            // DATA TABLE INIT
             const hasDataRows = $('#aging-detail-body tr:not(.data-table-empty)').length > 0;
             
             if (hasDataRows) {
                 arAgingTable = $('#ar-aging-detail-table').DataTable({
-                    "paging": true,
-                    "pageLength": 25,
-                    "lengthChange": true,
-                    "searching": true, 
-                    "ordering": true,
-                    "info": true,
-                    "order": [[4, 'desc']], // Cột 4 là 'Số ngày Q.H' (index 4)
-                    "language": {
-                        "search": "Lọc Hóa Đơn:",
-                        "lengthMenu": "Hiển thị _MENU_ mục",
-                        "zeroRecords": "Không tìm thấy dữ liệu.",
-                        "info": "Hiển thị từ _START_ đến _END_ / Tổng _TOTAL_ Voucher",
-                        "infoEmpty": "Không có dữ liệu",
-                        "paginate": { "next": "Sau", "previous": "Trước" }
-                    },
+                    "paging": true, "pageLength": 25, "lengthChange": true, "searching": true, 
+                    "ordering": true, "info": true, "order": [[4, 'desc']], 
+                    "language": { "search": "Lọc nhanh:", "paginate": { "next": ">", "previous": "<" } },
                     "columnDefs": [
-                        // Gán hàm render cho cột STT
-                        { "width": "4%", "targets": 0,
-                          "orderable": false, 
-                          "className": "text-center",
-                          "render": function (data, type, row, meta) {
-                            return meta.row + meta.settings._iDisplayStart + 1;
-                          }
-                        }
+                        { "width": "4%", "targets": 0, "orderable": false, "className": "text-center",
+                          "render": function (data, type, row, meta) { return meta.row + meta.settings._iDisplayStart + 1; } }
                     ]
                 });
             
-                // 3. LOGIC LỌC CHỈ NỢ QUÁ HẠN (Yêu cầu 1)
+                // Custom Filter Overdue
                 $.fn.dataTable.ext.search.push(
                     function(settings, data, dataIndex) {
-                        if (settings.nTable.id !== 'ar-aging-detail-table') {
-                            return true;
-                        }
-                        
-                        const showOnlyOverdue = $('#toggleOverdue').is(':checked');
-                        if (!showOnlyOverdue) {
-                            return true; 
-                        }
-
-                        // Lấy thuộc tính data-is-overdue từ hàng
+                        if (settings.nTable.id !== 'ar-aging-detail-table') return true;
+                        if (!$('#toggleOverdue').is(':checked')) return true;
                         const rowNode = arAgingTable.row(dataIndex).node();
                         return $(rowNode).data('is-overdue') === true;
                     }
                 );
 
-                // Gắn sự kiện cho nút toggle
-                $('#toggleOverdue').on('change', function() {
-                    arAgingTable.draw(); 
-                });
+                $('#toggleOverdue').on('change', function() { arAgingTable.draw(); });
             }
         });
     </script>
-</body>
-</html>
+{% endblock %}

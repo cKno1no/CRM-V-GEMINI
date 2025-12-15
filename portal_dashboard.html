@@ -1,470 +1,403 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Action Center - Dashboard</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% extends "base.html" %}
+
+{% block title %}Action Center | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* --- THEME COMPATIBLE STYLES --- */
     
-    <style>
-        :root {
-            --primary: #4318FF;
-            --primary-light: #F4F7FE;
-            --secondary: #A3AED0;
-            --text-dark: #2B3674;
-            --danger: #E31A1A;
-            --success: #05CD99;
-            --warning: #FFB547;
-            --bg-color: #F4F7FE;
-            --card-radius: 20px;
-        }
-        body { background-color: var(--bg-color); font-family: 'Inter', sans-serif; color: var(--text-dark); }
-        .container-fluid { max-width: 1400px; padding: 30px; }
-        .header-area { margin-bottom: 30px; }
-        .greeting-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin-bottom: 5px; }
-        .greeting-sub { color: var(--secondary); font-size: 0.95rem; }
-        .stat-card { background: white; border-radius: var(--card-radius); padding: 20px; box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); border: none; height: 100%; display: flex; align-items: center; transition: transform 0.2s; }
-        .stat-card:hover { transform: translateY(-5px); }
-        .stat-icon-box { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 18px; font-size: 1.5rem; }
-        .icon-primary { background-color: var(--primary-light); color: var(--primary); }
-        .icon-danger { background-color: #FEEEEE; color: var(--danger); }
-        .icon-success { background-color: #E6FDF5; color: var(--success); }
-        .icon-warning { background-color: #FFF8E1; color: var(--warning); }
-        .stat-label { color: var(--secondary); font-size: 0.85rem; font-weight: 500; margin-bottom: 2px; }
-        .stat-value { color: var(--text-dark); font-size: 1.5rem; font-weight: 700; line-height: 1; }
-        .stat-sub { font-size: 0.75rem; margin-top: 5px; }
-        .custom-accordion .accordion-item { border: none; background: white; border-radius: var(--card-radius) !important; box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); margin-bottom: 20px; overflow: hidden; }
-        .custom-accordion .accordion-button { background-color: white; color: var(--text-dark); font-weight: 700; font-size: 1.1rem; padding: 20px 25px; box-shadow: none !important; }
-        .custom-accordion .accordion-button:not(.collapsed) { background-color: var(--primary-light); color: var(--primary); }
-        .custom-accordion .accordion-body { padding: 0 25px 25px 25px; background-color: white; }
-        .section-title { font-size: 0.85rem; font-weight: 700; color: var(--secondary); text-transform: uppercase; letter-spacing: 1px; margin-top: 20px; margin-bottom: 15px; display: block; }
-        .clean-list { list-style: none; padding: 0; margin: 0; }
-        .clean-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0; transition: background 0.2s; }
-        .clean-item:last-child { border-bottom: none; }
-        .clean-item:hover { background-color: #fafafa; border-radius: 8px; padding-left: 10px; padding-right: 10px;}
-        .item-content { flex-grow: 1; margin-left: 15px; min-width: 0; }
-        .item-title { font-weight: 600; color: var(--text-dark); font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .item-desc { color: var(--secondary); font-size: 0.8rem; }
-        .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
-        .pill-high { background-color: #FEEEEE; color: var(--danger); }
-        .pill-medium { background-color: #FFF8E1; color: var(--warning); }
-        .pill-low { background-color: var(--primary-light); color: var(--primary); }
-        .pill-success { background-color: #E6FDF5; color: var(--success); }
-        
-        /* CUSTOM STYLE CHO GROUP CUSTOMER */
-        .group-header { transition: background-color 0.2s; }
-        .group-header:hover { background-color: #e9ecef !important; }
-        .group-item:last-child { margin-bottom: 0 !important; }
-        
-        /* CSS CHO NÚT QUICK ACTIONS */
-        .quick-actions { display: flex; gap: 10px; }
-        .btn-quick { 
-            background: white; 
-            border: 1px solid #E0E5F2; 
-            color: var(--primary); 
-            font-weight: 600; 
-            padding: 8px 20px; /* Tăng padding cho nút to rõ hơn */
-            border-radius: 12px; 
-            transition: all 0.2s ease; 
-            font-size: 0.95rem; 
-            box-shadow: 0 2px 6px rgba(112, 144, 176, 0.08); /* Thêm bóng nhẹ để nút 'nổi' lên */
-            display: inline-flex;
-            align-items: center;
-            text-decoration: none;
-        }
-        .btn-quick:hover { 
-            background: var(--primary); 
-            color: white !important; 
-            border-color: var(--primary); 
-            transform: translateY(-3px); /* Nảy lên khi di chuột */
-            box-shadow: 0 5px 15px rgba(67, 24, 255, 0.25); /* Bóng đổ sâu hơn khi hover */
-        }
-        .btn-quick i { margin-right: 8px; }
+    /* Header Area */
+    .greeting-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin-bottom: 5px; }
+    .greeting-sub { color: var(--secondary); font-size: 0.95rem; }
 
-        /* --- MOBILE RESPONSIVE CHO PORTAL --- */
-        @media (max-width: 768px) {
-            /* 1. Header: Đẩy nút hành động xuống dưới lời chào */
-            .header-area {
-                flex-direction: column;
-                align-items: flex-start !important;
-                gap: 15px;
-            }
-            
-            .quick-actions {
-                width: 100%;
-                display: grid; /* Dùng Grid để chia đều nút */
-                grid-template-columns: repeat(3, 1fr); /* 3 cột đều nhau */
-                gap: 8px;
-            }
+    /* Stat Cards */
+    .stat-card { 
+        background: var(--card-bg); border-radius: 20px; padding: 20px; 
+        box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); 
+        height: 100%; display: flex; align-items: center; transition: transform 0.2s; 
+    }
+    .stat-card:hover { transform: translateY(-5px); border-color: var(--primary); }
+    
+    .stat-icon-box { 
+        width: 56px; height: 56px; border-radius: 50%; 
+        display: flex; align-items: center; justify-content: center; 
+        margin-right: 18px; font-size: 1.5rem; flex-shrink: 0;
+    }
+    
+    .icon-primary { background-color: var(--input-bg); color: var(--primary); }
+    .icon-danger { background-color: rgba(227, 26, 26, 0.1); color: var(--danger); }
+    .icon-success { background-color: rgba(5, 205, 153, 0.1); color: var(--success); }
+    .icon-warning { background-color: rgba(255, 181, 71, 0.1); color: var(--warning); }
+    
+    .stat-label { color: var(--secondary); font-size: 0.85rem; font-weight: 600; margin-bottom: 2px; }
+    .stat-value { color: var(--text-dark); font-size: 1.5rem; font-weight: 800; line-height: 1; }
+    .stat-sub { font-size: 0.75rem; margin-top: 5px; }
 
-            .btn-quick {
-                justify-content: center;
-                padding: 10px 5px;
-                font-size: 0.8rem;
-                text-align: center;
-            }
-            
-            .btn-quick i { margin-right: 5px; }
+    /* Accordion Custom */
+    .custom-accordion .accordion-item { 
+        border: 1px solid var(--border-color); background: var(--card-bg); 
+        border-radius: 20px !important; box-shadow: var(--shadow-sm); 
+        margin-bottom: 20px; overflow: hidden; 
+    }
+    .custom-accordion .accordion-button { 
+        background-color: var(--card-bg); color: var(--text-dark); 
+        font-weight: 700; font-size: 1.1rem; padding: 20px 25px; box-shadow: none !important; 
+    }
+    .custom-accordion .accordion-button:not(.collapsed) { 
+        background-color: var(--input-bg); color: var(--primary); border-bottom: 1px solid var(--border-color);
+    }
+    .custom-accordion .accordion-body { padding: 0 25px 25px 25px; background-color: var(--card-bg); }
 
-            /* 2. KPI Cards: Tự động xuống dòng 1 cột (Bootstrap đã xử lý col-md-6, nhưng chỉnh padding cho đẹp) */
-            .stat-card {
-                padding: 15px;
-            }
-            .stat-value {
-                font-size: 1.3rem;
-            }
+    /* Lists */
+    .section-title { 
+        font-size: 0.85rem; font-weight: 700; color: var(--secondary); 
+        text-transform: uppercase; letter-spacing: 1px; margin-top: 20px; margin-bottom: 15px; display: block; 
+    }
+    .clean-list { list-style: none; padding: 0; margin: 0; }
+    .clean-item { 
+        display: flex; align-items: center; padding: 12px 0; 
+        border-bottom: 1px solid var(--border-color); transition: background 0.2s; 
+    }
+    .clean-item:last-child { border-bottom: none; }
+    .clean-item:hover { background-color: var(--input-bg); border-radius: 12px; padding-left: 10px; padding-right: 10px;}
+    
+    .item-content { flex-grow: 1; margin-left: 15px; min-width: 0; }
+    .item-title { font-weight: 600; color: var(--text-dark); font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item-desc { color: var(--secondary); font-size: 0.8rem; }
 
-            /* 3. Accordion List Items: Tinh chỉnh cho gọn */
-            .clean-item {
-                padding: 10px 0;
-            }
-            
-            /* Ẩn bớt mô tả dài dòng nếu cần hoặc cho xuống dòng */
-            .item-content {
-                margin-left: 10px;
-            }
-            
-            /* Chỉnh lại layout của dòng item trong accordion */
-            .clean-item .d-flex.justify-content-between {
-                flex-direction: column;
-                align-items: flex-start !important;
-            }
-            
-            .clean-item .d-flex.justify-content-between .text-end {
-                text-align: left !important;
-                margin-top: 5px;
-            }
+    /* Quick Actions */
+    .quick-actions { display: flex; gap: 10px; }
+    .btn-quick { 
+        background: var(--card-bg); border: 1px solid var(--border-color); 
+        color: var(--primary); font-weight: 600; padding: 8px 20px; 
+        border-radius: 12px; transition: all 0.2s ease; font-size: 0.95rem; 
+        box-shadow: var(--shadow-sm); display: inline-flex; align-items: center; text-decoration: none;
+    }
+    .btn-quick:hover { 
+        background: var(--primary); color: white !important; border-color: var(--primary); 
+        transform: translateY(-3px); 
+    }
+    
+    /* Group Header inside Accordion */
+    .group-header { transition: background-color 0.2s; background-color: var(--input-bg) !important; color: var(--text-dark) !important; }
+    .group-header:hover { background-color: var(--border-color) !important; }
 
-            /* 4. Chatbot: Thu nhỏ lại trên mobile */
-            .chatbot-window {
-                width: 100%;
-                right: 0;
-                bottom: 0;
-                border-radius: 20px 20px 0 0; /* Bo tròn góc trên */
-                max-height: 80vh;
-            }
-        }
-    </style>
-</head>
-<body>
+    /* Responsive */
+    @media (max-width: 768px) {
+        .header-area { flex-direction: column; align-items: flex-start !important; gap: 15px; }
+        .quick-actions { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .btn-quick { justify-content: center; padding: 10px 5px; font-size: 0.8rem; text-align: center; }
+        .stat-card { padding: 15px; }
+        .clean-item .d-flex.justify-content-between { flex-direction: column; align-items: flex-start !important; }
+        .clean-item .d-flex.justify-content-between .text-end { text-align: left !important; margin-top: 5px; }
+    }
+</style>
+{% endblock %}
 
-    <div class="container-fluid">
-        
-        {% if errors %}
-        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
-            <h4 class="alert-heading"><i class="fas fa-bug me-2"></i>Có lỗi xảy ra khi tải dữ liệu!</h4>
-            <ul class="mb-0 small">
-                {% for key, val in errors.items() %}
-                <li><strong>{{ key|upper }}:</strong> {{ val }}</li>
-                {% endfor %}
-            </ul>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+{% block content %}
+    {% if errors %}
+    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+        <h4 class="alert-heading"><i class="fas fa-bug me-2"></i>Có lỗi xảy ra khi tải dữ liệu!</h4>
+        <ul class="mb-0 small">
+            {% for key, val in errors.items() %}
+            <li><strong>{{ key|upper }}:</strong> {{ val }}</li>
+            {% endfor %}
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
+    <div class="header-area d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <h1 class="greeting-title">Xin chào, {{ user.shortname }}! 👋</h1>
+            <p class="greeting-sub">Tổng quan công việc hôm nay ({{ now_date }}).</p>
         </div>
-        {% endif %}
-
-        <div class="header-area d-flex justify-content-between align-items-end">
-            <div>
-                <h1 class="greeting-title">Xin chào, {{ user.shortname }}! 👋</h1>
-                <p class="greeting-sub">Đây là tổng quan công việc của bạn hôm nay ({{ now_date }}).</p>
-            </div>
-            <div class="quick-actions">
-                <a href="/nhaplieu" target="_blank" class="btn btn-quick">
-                    <i class="fas fa-plus"></i> Báo cáo
-                </a>
-                <a href="/task_dashboard" target="_blank" class="btn btn-quick">
-                    <i class="fas fa-check"></i> Task
-                </a>
-                <a href="/sales/sales_lookup" target="_blank" class="btn btn-quick">
-                    <i class="fas fa-search"></i> Tra cứu
-                </a>
-            </div>
+        <div class="quick-actions">
+            <a href="/nhaplieu" target="_blank" class="btn btn-quick"><i class="fas fa-plus me-2"></i> Báo cáo</a>
+            <a href="/task_dashboard" target="_blank" class="btn btn-quick"><i class="fas fa-check me-2"></i> Task</a>
+            <a href="/sales/sales_lookup" target="_blank" class="btn btn-quick"><i class="fas fa-search me-2"></i> Tra cứu</a>
         </div>
-
-        <div class="row g-4 mb-4">
-            <div class="col-xl-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-icon-box icon-primary"><i class="fas fa-chart-bar"></i></div>
-                    <div>
-                        <div class="stat-label">Tiến độ Doanh số</div>
-                        <div class="stat-value">{{ sales_kpi.percent }}%</div>
-                        <div class="stat-sub text-success fw-bold">
-                            {{ "{:,.0f}".format(sales_kpi.actual/1000000) }}M / {{ "{:,.0f}".format(sales_kpi.target/1000000) }}M
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-icon-box icon-danger"><i class="fas fa-fire"></i></div>
-                    <div>
-                        <div class="stat-label">Việc cần làm ngay</div>
-                        <div class="stat-value">{{ tasks|length }}</div>
-                        <div class="stat-sub text-secondary">Tasks chưa hoàn thành</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-icon-box icon-warning"><i class="fas fa-shipping-fast"></i></div>
-                    <div>
-                        <div class="stat-label">Cần giao trong tháng</div>
-                        <div class="stat-value">{{ orders_stat }}</div>
-                        <div class="stat-sub text-secondary">Đơn hàng chưa hoàn tất</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-icon-box icon-success"><i class="fas fa-wallet"></i></div>
-                    <div>
-                        <div class="stat-label">KH Quá hạn Nợ</div>
-                        <div class="stat-value">{{ overdue_debt|length }}</div>
-                        <div class="stat-sub text-secondary">Khách hàng (Top 20)</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="accordion custom-accordion" id="portalAccordion">
-            
-            <div class="accordion-item">
-                <h2 class="accordion-header" id="headingOne">
-                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-                        <i class="fas fa-exclamation-circle me-3 text-danger"></i> BÁO ĐỘNG ĐỎ (Urgent)
-                    </button>
-                </h2>
-                <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#portalAccordion">
-                    <div class="accordion-body">
-                        <div class="row">
-                            <div class="col-lg-6 border-end">
-                                <span class="section-title text-danger">🔥 Việc cần làm gấp</span>
-                                <ul class="clean-list">
-                                    {% for task in tasks %}
-                                    <li class="clean-item">
-                                        <div class="item-icon">
-                                            {% if task.Status == 'BLOCKED' %} <i class="fas fa-lock text-danger"></i>
-                                            {% elif task.Priority == 'HIGH' %} <i class="fas fa-star text-warning"></i>
-                                            {% else %} <i class="far fa-circle text-secondary"></i> {% endif %}
-                                        </div>
-                                        <div class="item-content">
-                                            <a href="/task_dashboard?open={{ task.TaskID }}" class="item-title text-decoration-none">{{ task.Title }}</a>
-                                            <div class="item-desc">{{ task.ObjectID }} • {{ task.Status }}</div>
-                                        </div>
-                                        {% if task.IsNewUpdate == 1 %}
-                                            <span class="badge bg-danger rounded-pill ms-2">New</span>
-                                        {% endif %}
-                                    </li>
-                                    {% else %}
-                                    <p class="text-muted text-center my-3">Không có task gấp.</p>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                            <div class="col-lg-6 ps-lg-4">
-                                <span class="section-title text-danger">💰 Công nợ Quá hạn (Top 20)</span>
-                                <ul class="clean-list mb-4">
-                                    {% for debt in overdue_debt %}
-                                    <li class="clean-item justify-content-between">
-                                        <div class="d-flex align-items-center" style="overflow: hidden;">
-                                            <i class="fas fa-exclamation-triangle text-warning me-3"></i>
-                                            <div style="min-width: 0;">
-                                                <div class="item-title">{{ debt.ObjectName|default('Không tên', true)|truncate(40) }}</div>
-                                                <div class="item-desc text-danger">Trễ {{ debt.ReDueDays }} ngày</div>
-                                            </div>
-                                        </div>
-                                        <div class="fw-bold text-dark ms-2">{{ debt.TotalOverdueDebtFmt }}</div>
-                                    </li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="accordion-item">
-                <h2 class="accordion-header" id="headingTwo">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                        <i class="fas fa-exchange-alt me-3 text-primary"></i> DÒNG CHẢY KINH DOANH (Business Flow)
-                    </button>
-                </h2>
-                <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#portalAccordion">
-                    <div class="accordion-body">
-                        <div class="row">
-                            <div class="col-lg-4">
-                                <span class="section-title text-primary">📄 Báo giá (Follow-up)</span>
-                                <div class="accordion accordion-flush" id="accQuotes">
-                                    {% for group in active_quotes %}
-                                    <div class="group-item mb-2">
-                                        <div class="group-header p-2 bg-light rounded d-flex justify-content-between align-items-center" 
-                                             data-bs-toggle="collapse" data-bs-target="#q_{{ loop.index }}" style="cursor: pointer;">
-                                            <span class="fw-bold text-dark small" style="max-width: 80%;">{{ group.name|truncate(28) }}</span>
-                                            <span class="badge bg-white text-primary border rounded-pill">{{ group.count }}</span>
-                                        </div>
-                                        <div id="q_{{ loop.index }}" class="collapse mt-1 ps-2 border-start border-3 border-primary" data-bs-parent="#accQuotes">
-                                            <ul class="clean-list">
-                                                {% for q in group.details %}
-                                                <li class="clean-item py-2">
-                                                    <div class="item-content ms-0">
-                                                        <div class="d-flex justify-content-between">
-                                                            <div class="item-title text-primary small">{{ q.VoucherNo }}</div>
-                                                            <small class="text-dark fw-bold">{{ "{:,.0f}".format(q.TotalAmount) }}</small>
-                                                        </div>
-                                                        <div class="item-desc small text-muted">
-                                                            {% if q.QuotationDate and q.QuotationDate.strftime %}{{ q.QuotationDate.strftime('%d/%m') }}{% endif %}
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                                {% endfor %}
-                                            </ul>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-
-                            <div class="col-lg-4 border-start border-end">
-                                <span class="section-title text-info">📦 Lịch Giao Hàng (+/- 30 ngày)</span>
-                                <div class="accordion accordion-flush" id="accOrders">
-                                    {% for group in orders_flow %}
-                                    <div class="group-item mb-2">
-                                        <div class="group-header p-2 bg-light rounded d-flex justify-content-between align-items-center" 
-                                             data-bs-toggle="collapse" data-bs-target="#o_{{ loop.index }}" style="cursor: pointer;">
-                                            <span class="fw-bold text-dark small" style="max-width: 80%;">{{ group.name|truncate(28) }}</span>
-                                            <span class="badge bg-white text-info border rounded-pill">{{ group.count }}</span>
-                                        </div>
-                                        <div id="o_{{ loop.index }}" class="collapse mt-1 ps-2 border-start border-3 border-info" data-bs-parent="#accOrders">
-                                            <ul class="clean-list">
-                                                {% for o in group.details %}
-                                                <li class="clean-item py-2">
-                                                    <div class="item-content">
-                                                        <div class="d-flex justify-content-between">
-                                                            <span class="item-title small">{{ o.VoucherNo }}</span>
-                                                            <span class="{{ 'text-danger fw-bold' if o.IsOverdue else 'text-muted' }} small">
-                                                                {% if o.DeliveryDate and o.DeliveryDate.strftime is defined %}{{ o.DeliveryDate.strftime('%d/%m') }}{% else %}{{ o.DeliveryDate|default('?', true) }}{% endif %}
-                                                            </span>
-                                                        </div>
-                                                        <div class="d-flex justify-content-between">
-                                                            <small class="text-muted">Giá trị:</small>
-                                                            <span class="fw-bold text-dark small">{{ "{:,.0f}".format(o.SaleAmount) }}</span>
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                                {% endfor %}
-                                            </ul>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-
-                            <div class="col-lg-4">
-                                <span class="section-title text-secondary">🚚 LXH Chưa đi giao</span>
-                                <div class="accordion accordion-flush" id="accDelivery">
-                                    {% for group in pending_deliveries %}
-                                    <div class="group-item mb-2">
-                                        <div class="group-header p-2 bg-light rounded d-flex justify-content-between align-items-center" 
-                                             data-bs-toggle="collapse" data-bs-target="#d_{{ loop.index }}" style="cursor: pointer;">
-                                            <span class="fw-bold text-dark small" style="max-width: 80%;">{{ group.name|truncate(28) }}</span>
-                                            <span class="badge bg-white text-secondary border rounded-pill">{{ group.count }}</span>
-                                        </div>
-                                        <div id="d_{{ loop.index }}" class="collapse mt-1 ps-2 border-start border-3 border-secondary" data-bs-parent="#accDelivery">
-                                            <ul class="clean-list">
-                                                {% for d in group.details %}
-                                                <li class="clean-item py-2">
-                                                    <div class="item-icon">
-                                                        {% if d.IsOverdue %} <i class="fas fa-exclamation-circle text-danger small"></i>
-                                                        {% else %} <i class="fas fa-truck-loading text-secondary small"></i> {% endif %}
-                                                    </div>
-                                                    <div class="item-content">
-                                                        <div class="d-flex justify-content-between align-items-center">
-                                                            <span class="item-title small">{{ d.VoucherNo }}</span>
-                                                            <span class="badge bg-light text-dark border" style="font-size: 0.65rem;">
-                                                               YC: {% if d.Request_Day and d.Request_Day.strftime is defined %}{{ d.Request_Day.strftime('%d/%m') }}{% else %}{{ d.Request_Day }}{% endif %}
-                                                            </span>
-                                                        </div>
-                                                        <div class="d-flex justify-content-between mt-1">
-                                                            <small class="text-muted">KH Giao: 
-                                                                <span class="fw-bold {{ 'text-danger' if d.IsOverdue else 'text-primary' }}">
-                                                                    {% if d.Planned_Day and d.Planned_Day.strftime is defined %}{{ d.Planned_Day.strftime('%d/%m') }}{% else %}{{ d.Planned_Day|default('?', true) }}{% endif %}
-                                                                </span>
-                                                            </small>
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                                {% endfor %}
-                                            </ul>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="accordion-item">
-                <h2 class="accordion-header" id="headingThree">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                        <i class="fas fa-seedling me-3 text-success"></i> GỢI Ý & HOẠT ĐỘNG (Suggestions & Activities)
-                    </button>
-                </h2>
-                <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#portalAccordion">
-                    <div class="accordion-body">
-                        <div class="row">
-                            <div class="col-lg-6 border-end">
-                                <span class="section-title text-success">🌱 Gợi ý Dự phòng (Top 40)</span>
-                                <div class="accordion accordion-flush" id="accReplenish">
-                                    {% for group in urgent_replenish %}
-                                    <div class="group-item mb-2">
-                                        <div class="group-header p-2 bg-light rounded d-flex justify-content-between align-items-center" 
-                                             data-bs-toggle="collapse" data-bs-target="#r_{{ loop.index }}" style="cursor: pointer;">
-                                            <span class="fw-bold text-dark small" style="max-width: 80%;">{{ group.name|truncate(35) }}</span>
-                                            <span class="badge bg-white text-success border rounded-pill">{{ group.count }}</span>
-                                        </div>
-                                        <div id="r_{{ loop.index }}" class="collapse mt-1 ps-2 border-start border-3 border-success" data-bs-parent="#accReplenish">
-                                            <ul class="clean-list">
-                                                {% for item in group.details %}
-                                                <li class="clean-item justify-content-between py-2">
-                                                    <div>
-                                                        <div class="item-title text-primary small">{{ item.ItemName }}</div>
-                                                    </div>
-                                                    <div class="text-end">
-                                                        <span class="status-pill pill-success d-block mb-1" style="font-size: 0.65rem;">Gợi ý: {{ item.QuantitySuggestion }}</span>
-                                                    </div>
-                                                </li>
-                                                {% endfor %}
-                                            </ul>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <div class="col-lg-6 ps-lg-4">
-                                <span class="section-title text-secondary">🕒 Báo cáo Vừa làm</span>
-                                <ul class="clean-list">
-                                    {% for r in recent_reports %}
-                                    <li class="clean-item">
-                                        <div class="me-3 fw-bold text-success">#{{ r.STT }}</div>
-                                        <div class="item-content">
-                                            <div class="item-title">{{ r['TEN DOI TUONG'] }}</div>
-                                            <div class="item-desc">{{ r.NGAY }}</div>
-                                        </div>
-                                        <a href="/report_detail_page/{{ r.STT }}" class="btn btn-sm btn-light"><i class="fas fa-eye"></i></a>
-                                    </li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div> 
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card">
+                <div class="stat-icon-box icon-primary"><i class="fas fa-chart-bar"></i></div>
+                <div>
+                    <div class="stat-label">Tiến độ Doanh số</div>
+                    <div class="stat-value">{{ sales_kpi.percent }}%</div>
+                    <div class="stat-sub text-success fw-bold">
+                        {{ sales_kpi.actual | format_tr }} / {{ sales_kpi.target | format_tr }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card">
+                <div class="stat-icon-box icon-danger"><i class="fas fa-fire"></i></div>
+                <div>
+                    <div class="stat-label">Việc cần làm ngay</div>
+                    <div class="stat-value">{{ tasks|length }}</div>
+                    <div class="stat-sub text-secondary">Tasks chưa hoàn thành</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card">
+                <div class="stat-icon-box icon-warning"><i class="fas fa-shipping-fast"></i></div>
+                <div>
+                    <div class="stat-label">Cần giao trong tháng</div>
+                    <div class="stat-value">{{ orders_stat }}</div>
+                    <div class="stat-sub text-secondary">Đơn hàng chưa hoàn tất</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card">
+                <div class="stat-icon-box icon-success"><i class="fas fa-wallet"></i></div>
+                <div>
+                    <div class="stat-label">KH Quá hạn Nợ</div>
+                    <div class="stat-value">{{ overdue_debt|length }}</div>
+                    <div class="stat-sub text-secondary">Khách hàng (Top 20)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="accordion custom-accordion" id="portalAccordion">
+        
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingOne">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true">
+                    <i class="fas fa-exclamation-circle me-3 text-danger"></i> BÁO ĐỘNG ĐỎ (Urgent)
+                </button>
+            </h2>
+            <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#portalAccordion">
+                <div class="accordion-body">
+                    <div class="row">
+                        <div class="col-lg-6 border-end">
+                            <span class="section-title text-danger">🔥 Việc cần làm gấp</span>
+                            <ul class="clean-list">
+                                {% for task in tasks %}
+                                <li class="clean-item">
+                                    <div class="item-icon">
+                                        {% if task.Status == 'BLOCKED' %} <i class="fas fa-lock text-danger"></i>
+                                        {% elif task.Priority == 'HIGH' %} <i class="fas fa-star text-warning"></i>
+                                        {% else %} <i class="far fa-circle text-secondary"></i> {% endif %}
+                                    </div>
+                                    <div class="item-content">
+                                        <a href="/task_dashboard?open={{ task.TaskID }}" class="item-title text-decoration-none">{{ task.Title }}</a>
+                                        <div class="item-desc">{{ task.ObjectID }} • {{ task.Status }}</div>
+                                    </div>
+                                    {% if task.IsNewUpdate == 1 %}
+                                        <span class="badge bg-danger rounded-pill ms-2">New</span>
+                                    {% endif %}
+                                </li>
+                                {% else %}
+                                <p class="text-muted text-center my-3">Không có task gấp.</p>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="col-lg-6 ps-lg-4">
+                            <span class="section-title text-danger">💰 Công nợ Quá hạn (Top 20)</span>
+                            <ul class="clean-list mb-4">
+                                {% for debt in overdue_debt %}
+                                <li class="clean-item justify-content-between">
+                                    <div class="d-flex align-items-center" style="overflow: hidden;">
+                                        <i class="fas fa-exclamation-triangle text-warning me-3"></i>
+                                        <div style="min-width: 0;">
+                                            <div class="item-title">{{ debt.ObjectName|default('Không tên', true)|truncate(40) }}</div>
+                                            <div class="item-desc text-danger">Trễ {{ debt.ReDueDays }} ngày</div>
+                                        </div>
+                                    </div>
+                                    <div class="fw-bold text-dark ms-2">{{ debt.TotalOverdueDebt | format_tr }}</div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingTwo">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                    <i class="fas fa-exchange-alt me-3 text-primary"></i> DÒNG CHẢY KINH DOANH
+                </button>
+            </h2>
+            <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#portalAccordion">
+                <div class="accordion-body">
+                    <div class="row">
+                        <div class="col-lg-4">
+                            <span class="section-title text-primary">📄 Báo giá (Follow-up)</span>
+                            <div class="accordion accordion-flush" id="accQuotes">
+                                {% for group in active_quotes %}
+                                <div class="group-item mb-2">
+                                    <div class="group-header p-2 rounded d-flex justify-content-between align-items-center" 
+                                         data-bs-toggle="collapse" data-bs-target="#q_{{ loop.index }}" style="cursor: pointer;">
+                                        <span class="fw-bold small" style="max-width: 80%;">{{ group.name|truncate(28) }}</span>
+                                        <span class="badge bg-white text-primary border rounded-pill">{{ group.count }}</span>
+                                    </div>
+                                    <div id="q_{{ loop.index }}" class="collapse mt-1 ps-2 border-start border-3 border-primary" data-bs-parent="#accQuotes">
+                                        <ul class="clean-list">
+                                            {% for q in group.details %}
+                                            <li class="clean-item py-2">
+                                                <div class="item-content ms-0">
+                                                    <div class="d-flex justify-content-between">
+                                                        <div class="item-title text-primary small">{{ q.VoucherNo }}</div>
+                                                        <small class="text-dark fw-bold">{{ q.TotalAmount | format_tr }}</small>
+                                                    </div>
+                                                    <div class="item-desc small text-muted">
+                                                        {{ q.QuotationDate | format_date }}
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="col-lg-4 border-start border-end">
+                            <span class="section-title text-info">📦 Lịch Giao Hàng (+/- 30 ngày)</span>
+                            <div class="accordion accordion-flush" id="accOrders">
+                                {% for group in orders_flow %}
+                                <div class="group-item mb-2">
+                                    <div class="group-header p-2 rounded d-flex justify-content-between align-items-center" 
+                                         data-bs-toggle="collapse" data-bs-target="#o_{{ loop.index }}" style="cursor: pointer;">
+                                        <span class="fw-bold small" style="max-width: 80%;">{{ group.name|truncate(28) }}</span>
+                                        <span class="badge bg-white text-info border rounded-pill">{{ group.count }}</span>
+                                    </div>
+                                    <div id="o_{{ loop.index }}" class="collapse mt-1 ps-2 border-start border-3 border-info" data-bs-parent="#accOrders">
+                                        <ul class="clean-list">
+                                            {% for o in group.details %}
+                                            <li class="clean-item py-2">
+                                                <div class="item-content">
+                                                    <div class="d-flex justify-content-between">
+                                                        <span class="item-title small">{{ o.VoucherNo }}</span>
+                                                        <span class="{{ 'text-danger fw-bold' if o.IsOverdue else 'text-muted' }} small">
+                                                            {{ o.DeliveryDate | format_date }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <small class="text-muted">Giá trị:</small>
+                                                        <span class="fw-bold text-dark small">{{ o.SaleAmount | format_tr }}</span>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="col-lg-4">
+                            <span class="section-title text-secondary">🚚 LXH Chưa đi giao</span>
+                            <div class="accordion accordion-flush" id="accDelivery">
+                                {% for group in pending_deliveries %}
+                                <div class="group-item mb-2">
+                                    <div class="group-header p-2 rounded d-flex justify-content-between align-items-center" 
+                                         data-bs-toggle="collapse" data-bs-target="#d_{{ loop.index }}" style="cursor: pointer;">
+                                        <span class="fw-bold small" style="max-width: 80%;">{{ group.name|truncate(28) }}</span>
+                                        <span class="badge bg-white text-secondary border rounded-pill">{{ group.count }}</span>
+                                    </div>
+                                    <div id="d_{{ loop.index }}" class="collapse mt-1 ps-2 border-start border-3 border-secondary" data-bs-parent="#accDelivery">
+                                        <ul class="clean-list">
+                                            {% for d in group.details %}
+                                            <li class="clean-item py-2">
+                                                <div class="item-icon">
+                                                    {% if d.IsOverdue %} <i class="fas fa-exclamation-circle text-danger small"></i>
+                                                    {% else %} <i class="fas fa-truck-loading text-secondary small"></i> {% endif %}
+                                                </div>
+                                                <div class="item-content">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span class="item-title small">{{ d.VoucherNo }}</span>
+                                                        <span class="badge bg-light text-dark border" style="font-size: 0.65rem;">
+                                                           YC: {{ d.Request_Day | format_date }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between mt-1">
+                                                        <small class="text-muted">KH Giao: 
+                                                            <span class="fw-bold {{ 'text-danger' if d.IsOverdue else 'text-primary' }}">
+                                                                {{ d.Planned_Day | format_date }}
+                                                            </span>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingThree">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                    <i class="fas fa-seedling me-3 text-success"></i> GỢI Ý & HOẠT ĐỘNG
+                </button>
+            </h2>
+            <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#portalAccordion">
+                <div class="accordion-body">
+                    <div class="row">
+                        <div class="col-lg-6 border-end">
+                            <span class="section-title text-success">🌱 Gợi ý Dự phòng (Top 40)</span>
+                            <div class="accordion accordion-flush" id="accReplenish">
+                                {% for group in urgent_replenish %}
+                                <div class="group-item mb-2">
+                                    <div class="group-header p-2 rounded d-flex justify-content-between align-items-center" 
+                                         data-bs-toggle="collapse" data-bs-target="#r_{{ loop.index }}" style="cursor: pointer;">
+                                        <span class="fw-bold small" style="max-width: 80%;">{{ group.name|truncate(35) }}</span>
+                                        <span class="badge bg-white text-success border rounded-pill">{{ group.count }}</span>
+                                    </div>
+                                    <div id="r_{{ loop.index }}" class="collapse mt-1 ps-2 border-start border-3 border-success" data-bs-parent="#accReplenish">
+                                        <ul class="clean-list">
+                                            {% for item in group.details %}
+                                            <li class="clean-item justify-content-between py-2">
+                                                <div>
+                                                    <div class="item-title text-primary small">{{ item.ItemName }}</div>
+                                                </div>
+                                                <div class="text-end">
+                                                    <span class="badge bg-success bg-opacity-25 text-success" style="font-size: 0.65rem;">Gợi ý: {{ item.QuantitySuggestion | format_number }}</span>
+                                                </div>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-lg-6 ps-lg-4">
+                            <span class="section-title text-secondary">🕒 Báo cáo Vừa làm</span>
+                            <ul class="clean-list">
+                                {% for r in recent_reports %}
+                                <li class="clean-item">
+                                    <div class="me-3 fw-bold text-success">#{{ r.STT }}</div>
+                                    <div class="item-content">
+                                        <div class="item-title">{{ r['TEN DOI TUONG'] }}</div>
+                                        <div class="item-desc">{{ r.NGAY }}</div>
+                                    </div>
+                                    <a href="/report_detail_page/{{ r.STT }}" class="btn btn-sm btn-light border"><i class="fas fa-eye"></i></a>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div> 
+{% endblock %}

@@ -1,218 +1,238 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Customer 360 - {{ customer.ShortObjectName }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <style>
-        body { background-color: #F4F7FE; font-family: 'Segoe UI', sans-serif; }
-        .metric-card { border: none; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); background: white; transition: all 0.2s; }
-        .metric-card:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.05); }
-        .metric-value { font-size: 1.5rem; font-weight: 700; color: #2B3674; }
-        .metric-sub { font-size: 0.85rem; color: #A3AED0; font-weight: 500; }
-        .metric-label { color: #A3AED0; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        .icon-box { width: 45px; height: 45px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
-        
-        /* Table Styles */
-        .table-custom th { background-color: #F4F7FE; color: #A3AED0; font-weight: 600; border: none; font-size: 0.85rem; }
-        .table-custom td { border-bottom: 1px solid #F4F7FE; vertical-align: middle; font-size: 0.9rem; padding: 10px 12px; }
-        .card-header-custom { background: white; border-bottom: 1px solid #F4F7FE; padding: 15px 20px; font-weight: 700; color: #2B3674; font-size: 1.05rem; }
-        
-        .val-highlight { font-weight: 700; color: #2B3674; }
+{% extends "base.html" %}
 
-        /* --- BẢO MẬT CHỐNG SAO CHÉP --- */
-        body {
-            -webkit-user-select: none; /* Chrome/Safari */
-            -moz-user-select: none;    /* Firefox */
-            -ms-user-select: none;     /* IE10+ */
-            user-select: none;         /* Standard */
-        }
+{% block title %}Customer 360 - {{ customer.ShortObjectName }} | Titan OS{% endblock %}
 
-        /* --- BẢO MẬT CHỐNG IN ẤN --- */
-        @media print {
-            html, body {
-                display: none !important; /* Ẩn toàn bộ nội dung khi in */
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container-fluid py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h3 class="fw-bold mb-1">{{ customer.ObjectName }}</h3>
-                <span class="badge bg-primary me-2">{{ customer.ObjectID }}</span>
-                <span class="text-muted small"><i class="fas fa-map-marker-alt me-1"></i> {{ customer.ObjectAddress }}</span>
-            </div>
-            <div>
-                <button class="btn btn-primary btn-sm"><i class="fas fa-sync-alt"></i> Cập nhật</button>
-            </div>
-        </div>
+{% block extra_css %}
+<style>
+    /* CUSTOM METRIC CARDS - SUPPORT THEMES */
+    .metric-card { 
+        border: none; border-radius: 20px; 
+        box-shadow: var(--shadow-sm); 
+        background: var(--card-bg); 
+        transition: all 0.2s; 
+        border: 1px solid var(--border-color);
+        position: relative; overflow: hidden;
+    }
+    .metric-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--primary); }
+    
+    .metric-value { font-size: 1.5rem; font-weight: 700; color: var(--text-dark); }
+    .metric-sub { font-size: 0.85rem; color: var(--secondary); font-weight: 500; }
+    .metric-label { color: var(--secondary); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    
+    .icon-box { 
+        width: 45px; height: 45px; border-radius: 12px; 
+        display: flex; align-items: center; justify-content: center; font-size: 1.1rem; 
+    }
+    
+    /* Màu nền Icon Box tương thích Theme */
+    .ib-primary { background-color: var(--primary-light); color: var(--primary); }
+    .ib-info { background-color: rgba(51, 204, 255, 0.15); color: var(--info); }
+    .ib-sec { background-color: var(--input-bg); color: var(--secondary); }
+    .ib-warn { background-color: rgba(255, 181, 71, 0.15); color: var(--warning); }
+    .ib-success { background-color: rgba(5, 205, 153, 0.15); color: var(--success); }
+    
+    /* Table Styles */
+    .table-custom th { 
+        background-color: var(--input-bg); color: var(--secondary); 
+        font-weight: 600; border: none; font-size: 0.85rem; 
+    }
+    .table-custom td { 
+        border-bottom: 1px solid var(--border-color); vertical-align: middle; 
+        font-size: 0.9rem; padding: 10px 12px; color: var(--text-dark);
+    }
+    
+    .card-header-custom { 
+        background: var(--card-bg); 
+        border-bottom: 1px solid var(--border-color); 
+        padding: 15px 20px; font-weight: 700; color: var(--text-dark); 
+        font-size: 1.05rem; 
+    }
+    
+    .val-highlight { font-weight: 700; color: var(--primary); }
 
-        <div class="row g-3 mb-3">
-            <div class="col-md-4">
-                <div class="card metric-card h-100 p-3">
-                    <div class="d-flex align-items-center">
-                        <div class="icon-box bg-light text-primary me-3"><i class="fas fa-file-contract"></i></div>
-                        <div>
-                            <div class="metric-label">Báo cáo liên quan</div>
-                            <div class="metric-value">{{ metrics.ReportCount }}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card metric-card h-100 p-3">
-                    <div class="d-flex align-items-center">
-                        <div class="icon-box bg-light text-info me-3"><i class="fas fa-shopping-cart"></i></div>
-                        <div>
-                            <div class="metric-label">Báo giá / Đơn hàng (YTD)</div>
-                            <div class="metric-value">{{ metrics.QuoteYTD }} <span class="text-muted fs-6 fw-normal">/ {{ metrics.OrderYTD }}</span></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card metric-card h-100 p-3">
-                    <div class="d-flex align-items-center">
-                        <div class="icon-box bg-light text-secondary me-3"><i class="fas fa-clock"></i></div>
-                        <div>
-                            <div class="metric-label">T.Gian thanh toán TB</div>
-                            <div class="metric-value">{{ metrics.AvgPaymentDays }} <span class="fs-6 fw-normal">ngày</span></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    /* Bảo mật */
+    body { -webkit-user-select: none; user-select: none; }
+    @media print { html, body { display: none !important; } }
+</style>
+{% endblock %}
 
-        <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <div class="card metric-card h-100 p-3">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <div class="metric-label mb-1">Doanh số YTD / Mục tiêu</div>
-                            <div class="metric-value text-primary" id="kpiSales">...</div>
-                            <div class="metric-sub mt-1" id="kpiTarget">Target: ...</div>
-                        </div>
-                        <div class="icon-box bg-light text-primary"><i class="fas fa-chart-pie"></i></div>
-                    </div>
-                    <div class="progress mt-3" style="height: 6px;">
-                        <div class="progress-bar bg-primary" id="progSales" style="width: 0%"></div>
-                    </div>
-                </div>
-            </div>
+{% block page_title %}{{ customer.ObjectName }}{% endblock %}
+{% block page_sub %}
+    <span class="badge bg-primary me-2">{{ customer.ObjectID }}</span>
+    <span class="text-muted" style="color: var(--secondary) !important;"><i class="fas fa-map-marker-alt me-1"></i> {{ customer.ObjectAddress }}</span>
+{% endblock %}
 
-            <div class="col-md-4">
-                <div class="card metric-card h-100 p-3">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <div class="metric-label mb-1">Công nợ Hiện tại / Quá hạn</div>
-                            <div class="metric-value text-warning" id="kpiDebt">...</div>
-                            <div class="metric-sub mt-1 text-danger" id="kpiOverdue">Quá hạn: ...</div>
-                        </div>
-                        <div class="icon-box bg-light text-warning"><i class="fas fa-money-check-alt"></i></div>
-                    </div>
-                    <div class="progress mt-3" style="height: 6px;">
-                        <div class="progress-bar bg-danger" id="progDebt" style="width: 0%"></div>
-                    </div>
-                </div>
-            </div>
+{% block header_actions %}
+<button class="btn btn-sm btn-primary shadow-sm" onclick="location.reload()">
+    <i class="fas fa-sync-alt me-2"></i> Cập nhật
+</button>
+<a href="/sales/profit_analysis" class="btn btn-sm btn-light border shadow-sm">
+    <i class="fas fa-arrow-left me-2"></i> Quay lại
+</a>
+{% endblock %}
 
-            <div class="col-md-4">
-                <div class="card metric-card h-100 p-3">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <div class="metric-label mb-1">Giao hàng đúng hạn (OTIF)</div>
-                            <div class="metric-value text-success" id="kpiOtif">...%</div>
-                            <div class="metric-sub mt-1">Hiệu suất vận hành</div>
-                        </div>
-                        <div class="icon-box bg-light text-success"><i class="fas fa-shipping-fast"></i></div>
-                    </div>
-                    <div class="progress mt-3" style="height: 6px;">
-                        <div class="progress-bar bg-success" id="progOtif" style="width: {{ metrics.OTIF }}%"></div>
+{% block content %}
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <div class="card metric-card h-100 p-3">
+                <div class="d-flex align-items-center">
+                    <div class="icon-box ib-primary me-3"><i class="fas fa-file-contract"></i></div>
+                    <div>
+                        <div class="metric-label">Báo cáo liên quan</div>
+                        <div class="metric-value">{{ metrics.ReportCount | format_number }}</div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="row g-3 mb-4">
-            <div class="col-lg-8">
-                <div class="card metric-card h-100">
-                    <div class="card-header-custom">Xu hướng & Cơ cấu Doanh số (5 Năm)</div>
-                    <div class="card-body">
-                        <div id="structureChart"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-4">
-                <div class="card metric-card h-100">
-                    <div class="card-header-custom">Cơ cấu Nhóm hàng (YTD)</div>
-                    <div class="card-body">
-                        <div id="categoryChart"></div>
-                        <div class="text-center small text-muted mt-2">Click vào biểu đồ để xem Top 20 mã hàng</div>
+        <div class="col-md-4">
+            <div class="card metric-card h-100 p-3">
+                <div class="d-flex align-items-center">
+                    <div class="icon-box ib-info me-3"><i class="fas fa-shopping-cart"></i></div>
+                    <div>
+                        <div class="metric-label">Báo giá / Đơn hàng (YTD)</div>
+                        <div class="metric-value">{{ metrics.QuoteYTD | format_number }} <span class="metric-sub" style="font-size: 1rem;">/ {{ metrics.OrderYTD | format_number }}</span></div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="row g-3 mb-4">
-            <div class="col-lg-6">
-                <div class="card metric-card h-100">
-                    <div class="card-header-custom d-flex justify-content-between">
-                        <span><i class="fas fa-trophy text-warning me-2"></i>Top 30 Sản phẩm bán chạy (2 Năm)</span>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive" style="max-height: 450px;">
-                            <table class="table table-custom table-hover mb-0">
-                                <thead class="sticky-top bg-white">
-                                    <tr>
-                                        <th>Mã hàng</th>
-                                        <th>Tên hàng</th>
-                                        <th class="text-end">SL Y-1</th>
-                                        <th class="text-end">SL YTD</th>
-                                        <th class="text-end">Tổng Tiền</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="topProdBody"><tr><td colspan="5" class="text-center p-3">Đang tải...</td></tr></tbody>
-                            </table>
-                        </div>
+        <div class="col-md-4">
+            <div class="card metric-card h-100 p-3">
+                <div class="d-flex align-items-center">
+                    <div class="icon-box ib-sec me-3"><i class="fas fa-clock"></i></div>
+                    <div>
+                        <div class="metric-label">T.Gian thanh toán TB</div>
+                        <div class="metric-value">{{ metrics.AvgPaymentDays | format_number }} <span class="metric-sub" style="font-size: 1rem;">ngày</span></div>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <div class="col-lg-6">
-                <div class="card metric-card h-100">
-                    <div class="card-header-custom d-flex justify-content-between">
-                        <span><i class="fas fa-search-dollar text-danger me-2"></i>Cơ hội bỏ lỡ (Báo giá chưa chốt - 5 Năm)</span>
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card metric-card h-100 p-3">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="metric-label mb-1">Doanh số YTD / Mục tiêu</div>
+                        <div class="metric-value" style="color: var(--primary);" id="kpiSales">...</div>
+                        <div class="metric-sub mt-1" id="kpiTarget">Target: ...</div>
                     </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive" style="max-height: 450px;">
-                            <table class="table table-custom table-hover mb-0">
-                                <thead class="sticky-top bg-white">
-                                    <tr>
-                                        <th>Mã hàng</th>
-                                        <th>Tên hàng (Theo BG)</th>
-                                        <th class="text-center">Số lần</th>
-                                        <th class="text-end">Giá trị bỏ lỡ</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="missedOppsBody"><tr><td colspan="4" class="text-center p-3">Đang tải...</td></tr></tbody>
-                            </table>
-                        </div>
+                    <div class="icon-box ib-primary"><i class="fas fa-chart-pie"></i></div>
+                </div>
+                <div class="progress mt-3" style="height: 6px; background-color: var(--input-bg);">
+                    <div class="progress-bar bg-primary" id="progSales" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card metric-card h-100 p-3">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="metric-label mb-1">Công nợ Hiện tại / Quá hạn</div>
+                        <div class="metric-value text-warning" id="kpiDebt">...</div>
+                        <div class="metric-sub mt-1 text-danger" id="kpiOverdue">Quá hạn: ...</div>
+                    </div>
+                    <div class="icon-box ib-warn"><i class="fas fa-money-check-alt"></i></div>
+                </div>
+                <div class="progress mt-3" style="height: 6px; background-color: var(--input-bg);">
+                    <div class="progress-bar bg-danger" id="progDebt" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card metric-card h-100 p-3">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="metric-label mb-1">Giao hàng đúng hạn (OTIF)</div>
+                        <div class="metric-value text-success" id="kpiOtif">...%</div>
+                        <div class="metric-sub mt-1">Hiệu suất vận hành</div>
+                    </div>
+                    <div class="icon-box ib-success"><i class="fas fa-shipping-fast"></i></div>
+                </div>
+                <div class="progress mt-3" style="height: 6px; background-color: var(--input-bg);">
+                    <div class="progress-bar bg-success" id="progOtif" style="width: {{ metrics.OTIF }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+            <div class="card metric-card h-100 p-0">
+                <div class="card-header-custom">Xu hướng & Cơ cấu Doanh số (5 Năm)</div>
+                <div class="card-body">
+                    <div id="structureChart"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card metric-card h-100 p-0">
+                <div class="card-header-custom">Cơ cấu Nhóm hàng (YTD)</div>
+                <div class="card-body">
+                    <div id="categoryChart"></div>
+                    <div class="text-center small text-muted mt-2">Click vào biểu đồ để xem Top 20 mã hàng</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            <div class="card metric-card h-100 p-0">
+                <div class="card-header-custom d-flex justify-content-between">
+                    <span><i class="fas fa-trophy text-warning me-2"></i>Top 30 Sản phẩm bán chạy (2 Năm)</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 450px;">
+                        <table class="table table-custom table-hover mb-0">
+                            <thead class="sticky-top" style="background: var(--card-bg);">
+                                <tr>
+                                    <th>Mã hàng</th>
+                                    <th>Tên hàng</th>
+                                    <th class="text-end">SL Y-1</th>
+                                    <th class="text-end">SL YTD</th>
+                                    <th class="text-end">Tổng Tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topProdBody"><tr><td colspan="5" class="text-center p-3">Đang tải...</td></tr></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card metric-card">
-                    <div class="card-header-custom">Phân tích Giá bán thực tế vs Giá quy định (Top 50 Mã)</div>
-                    <div class="card-body">
-                        <div id="priceChart"></div>
+        <div class="col-lg-6">
+            <div class="card metric-card h-100 p-0">
+                <div class="card-header-custom d-flex justify-content-between">
+                    <span><i class="fas fa-search-dollar text-danger me-2"></i>Cơ hội bỏ lỡ (Báo giá chưa chốt - 5 Năm)</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 450px;">
+                        <table class="table table-custom table-hover mb-0">
+                            <thead class="sticky-top" style="background: var(--card-bg);">
+                                <tr>
+                                    <th>Mã hàng</th>
+                                    <th>Tên hàng (Theo BG)</th>
+                                    <th class="text-center">Số lần</th>
+                                    <th class="text-end">Giá trị bỏ lỡ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="missedOppsBody"><tr><td colspan="4" class="text-center p-3">Đang tải...</td></tr></tbody>
+                        </table>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card metric-card p-0">
+                <div class="card-header-custom">Phân tích Giá bán thực tế vs Giá quy định (Top 50 Mã)</div>
+                <div class="card-body">
+                    <div id="priceChart"></div>
                 </div>
             </div>
         </div>
@@ -220,14 +240,14 @@
 
     <div class="modal fade" id="drillDownModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
-            <div class="modal-content">
+            <div class="modal-content" style="background: var(--card-bg);">
                 <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold" id="drillModalTitle">Chi tiết</h5>
+                    <h5 class="modal-title fw-bold" id="drillModalTitle" style="color: var(--text-dark);">Chi tiết</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="table-responsive">
-                        <table class="table table-striped table-hover small" id="drillTable">
+                        <table class="table table-custom table-hover small" id="drillTable">
                             <thead><tr><th>Mã hàng</th><th>Tên hàng</th><th class="text-end">SL</th><th class="text-end">Giá trị</th></tr></thead>
                             <tbody></tbody>
                         </table>
@@ -236,239 +256,168 @@
             </div>
         </div>
     </div>
+{% endblock %}
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-        const objectId = "{{ object_id }}";
-        const metrics = {{ metrics|tojson }}; // Load metrics từ Backend render
-        const drillModal = new bootstrap.Modal(document.getElementById('drillDownModal'));
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+    const objectId = "{{ object_id }}";
+    const metrics = {{ metrics|tojson }}; 
+    const drillModal = new bootstrap.Modal(document.getElementById('drillDownModal'));
 
-        // === 1. FORMATTER MỚI (Triệu đồng - M) ===
-        function formatCurrencyM(num) {
-            if (!num) return '0';
-            // Chia cho 1 triệu và thêm M
-            return (num / 1000000).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + 'M';
-        }
-        function formatNumber(num) {
-            return new Intl.NumberFormat('vi-VN').format(num);
-        }
+    // --- [JS] FORMATTER CHUẨN MỚI ---
+    function formatCurrencyTr(num) {
+        if (!num && num !== 0) return '0 tr';
+        let val = parseFloat(num) / 1000000;
+        
+        // Nếu >= 1 tỷ (1000 triệu) -> Không cần số lẻ
+        let digits = Math.abs(val) >= 1000 ? 0 : 1;
+        
+        // Format theo chuẩn Mỹ (dấu phẩy ngăn nghìn, dấu chấm thập phân)
+        return new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: digits
+        }).format(val) + ' tr';
+    }
 
-        // === 2. RENDER KPIS ===
-        $(document).ready(function() {
-            // Sales
-            $('#kpiSales').text(formatCurrencyM(metrics.SalesYTD));
-            $('#kpiTarget').text(`Target: ${formatCurrencyM(metrics.TargetYear)}`);
-            const pctSales = metrics.TargetYear > 0 ? (metrics.SalesYTD / metrics.TargetYear * 100) : 0;
-            $('#progSales').css('width', Math.min(pctSales, 100) + '%');
+    function formatNumber(num) {
+        if (!num && num !== 0) return '-';
+        return new Intl.NumberFormat('en-US').format(num);
+    }
 
-            // Debt
-            $('#kpiDebt').text(formatCurrencyM(metrics.DebtCurrent));
-            $('#kpiOverdue').text(`Quá hạn: ${formatCurrencyM(metrics.DebtOverdue)}`);
-            const pctDebt = metrics.DebtCurrent > 0 ? (metrics.DebtOverdue / metrics.DebtCurrent * 100) : 0;
-            $('#progDebt').css('width', Math.min(pctDebt, 100) + '%');
+    // INIT PAGE
+    $(document).ready(function() {
+        $('#kpiSales').text(formatCurrencyTr(metrics.SalesYTD));
+        $('#kpiTarget').text(`Target: ${formatCurrencyTr(metrics.TargetYear)}`);
+        const pctSales = metrics.TargetYear > 0 ? (metrics.SalesYTD / metrics.TargetYear * 100) : 0;
+        $('#progSales').css('width', Math.min(pctSales, 100) + '%');
 
-            // OTIF
-            $('#kpiOtif').text(`${metrics.OTIF}%`);
+        $('#kpiDebt').text(formatCurrencyTr(metrics.DebtCurrent));
+        $('#kpiOverdue').text(`Quá hạn: ${formatCurrencyTr(metrics.DebtOverdue)}`);
+        const pctDebt = metrics.DebtCurrent > 0 ? (metrics.DebtOverdue / metrics.DebtCurrent * 100) : 0;
+        $('#progDebt').css('width', Math.min(pctDebt, 100) + '%');
+
+        $('#kpiOtif').text(`${metrics.OTIF}%`);
+    });
+
+    // LOAD CHARTS
+    fetch(`/api/customer_360/charts/${objectId}`)
+        .then(r => r.json())
+        .then(res => {
+            if(res.success) {
+                renderStructureChart(res.sales_structure);
+                renderCategoryChart(res.category);
+                renderTables(res.top_products, res.missed_opps);
+                renderPriceChart(res.price_compliance);
+            }
         });
 
-        // === 3. LOAD & RENDER CHARTS ===
-        fetch(`/api/customer_360/charts/${objectId}`)
-            .then(r => r.json())
-            .then(res => {
-                if(res.success) {
-                    renderStructureChart(res.sales_structure);
-                    renderCategoryChart(res.category);
-                    renderTables(res.top_products, res.missed_opps);
-                    renderPriceChart(res.price_compliance);
-                }
-            });
+    function renderStructureChart(data) {
+        const options = {
+            series: data.series,
+            chart: { type: 'bar', height: 350, stacked: true, toolbar: { show: false }, background: 'transparent' },
+            theme: { mode: 'light' }, 
+            plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 2 } },
+            xaxis: { categories: data.years, labels: { style: { colors: 'var(--text-dark)' } } },
+            yaxis: { labels: { formatter: (val) => formatCurrencyTr(val), style: { colors: 'var(--text-dark)' } } },
+            legend: { position: 'bottom', labels: { colors: 'var(--text-dark)' } },
+            colors: ['#05CD99', '#FFB547', '#A3AED0'], 
+            dataLabels: { enabled: false },
+            tooltip: { theme: 'light', y: { formatter: (val) => formatNumber(val) } }
+        };
+        new ApexCharts(document.querySelector("#structureChart"), options).render();
+    }
 
-        // --- CHART 1: STRUCTURE (STACKED BAR 5 YEARS) ---
-        function renderStructureChart(data) {
-            const options = {
-                series: data.series, // [{name: 'Stock', data: [...]}, ...]
-                chart: {
-                    type: 'bar',
-                    height: 350,
-                    stacked: true, // [REQ] Dạng Stacked
-                    toolbar: { show: false }
-                },
-                plotOptions: {
-                    bar: {
-                        horizontal: false,
-                        columnWidth: '50%',
-                        borderRadius: 2
-                    },
-                },
-                xaxis: {
-                    categories: data.years, // 2021, 2022...
-                },
-                yaxis: {
-                    labels: {
-                        formatter: function (val) {
-                            return formatCurrencyM(val); // Hiển thị dạng M
-                        }
+    function renderCategoryChart(data) {
+        const options = {
+            series: data.series, labels: data.labels,
+            chart: { 
+                type: 'donut', height: 320, background: 'transparent',
+                events: {
+                    dataPointSelection: function(event, chartContext, config) {
+                        const selectedId = data.ids[config.dataPointIndex];
+                        const label = data.labels[config.dataPointIndex];
+                        openDrillDown('CATEGORY', selectedId, `Top 20 SP nhóm: ${label}`);
                     }
-                },
-                legend: { position: 'bottom' },
-                fill: { opacity: 1 },
-                // Màu sắc: Xanh (Stock), Cam (Order), Xám (Khác)
-                colors: ['#05CD99', '#FFB547', '#A3AED0'], 
-                dataLabels: { enabled: false }, // Tắt label trên cột cho đỡ rối
-                tooltip: {
-                    y: { formatter: (val) => formatNumber(val) }
                 }
-            };
-            new ApexCharts(document.querySelector("#structureChart"), options).render();
-        }
+            },
+            legend: { show: false },
+            dataLabels: { enabled: true, formatter: (val) => val.toFixed(1) + "%" },
+            tooltip: { y: { formatter: (val) => formatCurrencyTr(val) } }
+        };
+        new ApexCharts(document.querySelector("#categoryChart"), options).render();
+    }
 
-        // --- CHART 2: CATEGORY PIE (WITH DRILL DOWN) ---
-        function renderCategoryChart(data) {
-            const options = {
-                series: data.series,
-                labels: data.labels,
-                chart: { 
-                    type: 'donut', height: 320,
-                    events: {
-                        dataPointSelection: function(event, chartContext, config) {
-                            const selectedId = data.ids[config.dataPointIndex];
-                            const label = data.labels[config.dataPointIndex];
-                            openDrillDown('CATEGORY', selectedId, `Top 20 SP nhóm: ${label}`);
-                        }
-                    }
-                },
-                legend: { position: 'bottom', show: false }, // Ẩn legend cho gọn
-                dataLabels: { enabled: true, formatter: (val) => val.toFixed(1) + "%" },
-                tooltip: {
-                    y: { formatter: (val) => formatCurrencyM(val) }
-                }
-            };
-            new ApexCharts(document.querySelector("#categoryChart"), options).render();
-        }
+    function renderTables(topData, missedData) {
+        let topHtml = '';
+        topData.forEach(row => {
+            topHtml += `<tr><td><span class="fw-bold text-primary">${row.InventoryID}</span></td><td class="text-truncate" style="max-width: 150px;">${row.InventoryName}</td><td class="text-end text-muted">${formatNumber(row.Qty_Prev)}</td><td class="text-end fw-bold">${formatNumber(row.Qty_YTD)}</td><td class="text-end val-highlight">${formatCurrencyTr(row.TotalRevenue)}</td></tr>`;
+        });
+        $('#topProdBody').html(topHtml || '<tr><td colspan="5" class="text-center">Không có dữ liệu</td></tr>');
 
-        // --- TABLES ---
-        function renderTables(topData, missedData) {
-            // Top 30
-            let topHtml = '';
-            topData.forEach(row => {
-                topHtml += `
-                    <tr>
-                        <td><span class="fw-bold text-primary">${row.InventoryID}</span></td>
-                        <td class="text-truncate" style="max-width: 150px;" title="${row.InventoryName}">${row.InventoryName}</td>
-                        <td class="text-end text-muted">${formatNumber(row.Qty_Prev)}</td>
-                        <td class="text-end fw-bold">${formatNumber(row.Qty_YTD)}</td>
-                        <td class="text-end val-highlight">${formatCurrencyM(row.TotalRevenue)}</td>
-                    </tr>
-                `;
-            });
-            $('#topProdBody').html(topHtml || '<tr><td colspan="5" class="text-center">Không có dữ liệu</td></tr>');
+        let missedHtml = '';
+        missedData.forEach(row => {
+            missedHtml += `<tr><td><span class="fw-bold text-danger">${row.InventoryID}</span></td><td class="text-truncate" style="max-width: 150px;">${row.InventoryName}</td><td class="text-center"><span class="badge bg-light text-dark">${row.QuoteCount}</span></td><td class="text-end val-highlight text-danger">${formatCurrencyTr(row.MissedValue)}</td></tr>`;
+        });
+        $('#missedOppsBody').html(missedHtml || '<tr><td colspan="4" class="text-center">Không có dữ liệu</td></tr>');
+    }
 
-            // Missed Opps
-            let missedHtml = '';
-            missedData.forEach(row => {
-                missedHtml += `
-                    <tr>
-                        <td><span class="fw-bold text-danger">${row.InventoryID}</span></td>
-                        <td class="text-truncate" style="max-width: 150px;" title="${row.InventoryName}">${row.InventoryName}</td>
-                        <td class="text-center"><span class="badge bg-light text-dark">${row.QuoteCount}</span></td>
-                        <td class="text-end val-highlight text-danger">${formatCurrencyM(row.MissedValue)}</td>
-                    </tr>
-                `;
-            });
-            $('#missedOppsBody').html(missedHtml || '<tr><td colspan="4" class="text-center">Không có dữ liệu</td></tr>');
-        }
-
-        // --- CHART 3: PRICE CANDLESTICK (WITH REVENUE TOOLTIP) ---
-        function renderPriceChart(data) {
-            const options = {
-                series: [{ name: 'Biên độ giá', data: data }],
-                chart: { type: 'candlestick', height: 400, toolbar: { show: true } },
-                plotOptions: { candlestick: { colors: { upward: '#05CD99', downward: '#E31A1A' }, wick: { useFillColor: true } } },
-                colors: data.map(item => item.fillColor),
-                xaxis: { type: 'category', labels: { rotate: -45, style: { fontSize: '10px' } }, tooltip: { enabled: false } },
-                yaxis: { title: { text: '% so với GBQD' }, min: -30, max: 30, tickAmount: 6, labels: { formatter: (val) => val > 0 ? `+${val.toFixed(0)}%` : `${val.toFixed(0)}%` } },
-                annotations: { yaxis: [{ y: 0, borderColor: '#000', borderWidth: 1, label: { text: 'GBQD', style: { color: '#fff', background: '#333' } } }] },
-                tooltip: {
-                    shared: true,
-                    custom: function({seriesIndex, dataPointIndex, w}) {
-                        const d = w.config.series[seriesIndex].data[dataPointIndex];
-                        const i = d.info;
-                        const color = d.y[3] >= 0 ? '#05CD99' : '#E31A1A';
-                        
-                        // FORMAT M CHO DOANH SỐ
-                        const revM = formatCurrencyM(i.revenue);
-                        const pctStr = i.pct_diff > 0 ? `+${i.pct_diff}%` : `${i.pct_diff}%`;
-                        
-                        return `
-                            <div class="p-2 border shadow bg-white small" style="min-width: 200px;">
-                                <div class="d-flex justify-content-between align-items-center border-bottom mb-1 pb-1">
-                                    <span class="fw-bold text-primary">${d.x}</span>
-                                    <span class="badge bg-light" style="color:${color}">${pctStr}</span>
-                                </div>
-                                <div class="mb-1 text-muted text-truncate">${i.name}</div>
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span>Doanh số:</span> <span class="fw-bold text-dark">${revM}</span>
-                                </div>
-                                <div class="bg-light p-1 rounded mb-1">
-                                    <div class="d-flex justify-content-between"><span>Giá Chuẩn:</span> <b>${formatNumber(i.std)}</b></div>
-                                    <div class="d-flex justify-content-between"><span>TB Năm:</span> <b style="color:${color}">${formatNumber(i.curr)}</b></div>
-                                </div>
+    function renderPriceChart(data) {
+        const options = {
+            series: [{ name: 'Biên độ giá', data: data }],
+            chart: { type: 'candlestick', height: 400, toolbar: { show: true }, background: 'transparent' },
+            plotOptions: { candlestick: { colors: { upward: '#05CD99', downward: '#E31A1A' } } },
+            colors: data.map(item => item.fillColor),
+            xaxis: { type: 'category', labels: { rotate: -45, style: { fontSize: '10px', colors: 'var(--text-dark)' } }, tooltip: { enabled: false } },
+            yaxis: { title: { text: '% so với GBQD', style: { color: 'var(--text-dark)' } }, min: -30, max: 30, tickAmount: 6, labels: { style: { colors: 'var(--text-dark)' }, formatter: (val) => val > 0 ? `+${val.toFixed(0)}%` : `${val.toFixed(0)}%` } },
+            annotations: { yaxis: [{ y: 0, borderColor: '#000', borderWidth: 1, label: { text: 'GBQD', style: { color: '#fff', background: '#333' } } }] },
+            tooltip: {
+                shared: true,
+                custom: function({seriesIndex, dataPointIndex, w}) {
+                    const d = w.config.series[seriesIndex].data[dataPointIndex];
+                    const i = d.info;
+                    const color = d.y[3] >= 0 ? '#05CD99' : '#E31A1A';
+                    return `
+                        <div class="p-2 border shadow bg-white small text-dark" style="min-width: 200px;">
+                            <div class="d-flex justify-content-between align-items-center border-bottom mb-1 pb-1">
+                                <span class="fw-bold text-primary">${d.x}</span>
+                                <span class="badge bg-light" style="color:${color}">${i.pct_diff > 0 ? '+' : ''}${i.pct_diff}%</span>
                             </div>
-                        `;
-                    }
+                            <div class="mb-1 text-muted text-truncate">${i.name}</div>
+                            <div class="d-flex justify-content-between mb-1"><span>Doanh số:</span> <span class="fw-bold">${formatCurrencyTr(i.revenue)}</span></div>
+                            <div class="bg-light p-1 rounded mb-1">
+                                <div class="d-flex justify-content-between"><span>Giá Chuẩn:</span> <b>${formatNumber(i.std)}</b></div>
+                                <div class="d-flex justify-content-between"><span>TB Năm:</span> <b style="color:${color}">${formatNumber(i.curr)}</b></div>
+                            </div>
+                        </div>`;
                 }
-            };
-            new ApexCharts(document.querySelector("#priceChart"), options).render();
-        }
-
-        // --- DRILL DOWN ---
-        function openDrillDown(type, value, title) {
-            $('#drillModalTitle').text(title);
-            $('#drillTable tbody').html('<tr><td colspan="4" class="text-center">Đang tải...</td></tr>');
-            drillModal.show();
-
-            fetch('/api/customer_360/drilldown', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ object_id: objectId, drill_type: type, filter_value: value })
-            })
-            .then(r => r.json())
-            .then(res => {
-                if(res.success) {
-                    let html = '';
-                    res.data.forEach(row => {
-                        html += `
-                            <tr>
-                                <td>${row.Col1}</td>
-                                <td>${row.Col2}</td>
-                                <td>${row.Col3}</td>
-                                <td class="text-end fw-bold">${row.Value}</td> 
-                            </tr>
-                        `;
-                    });
-                    $('#drillTable tbody').html(html || '<tr><td colspan="4" class="text-center">Không có dữ liệu</td></tr>');
-                }
-            });
-        }
-
-        // --- SCRIPT BẢO MẬT CHỐNG SAO CHÉP & IN ---
-        document.addEventListener('contextmenu', event => event.preventDefault()); // Chặn chuột phải
-
-        document.onkeydown = function(e) {
-            // Chặn F12, Ctrl+U (Source), Ctrl+S (Save), Ctrl+P (Print)
-            if (e.keyCode == 123) return false; // F12
-            if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; // Ctrl+Shift+I
-            if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false; // Ctrl+Shift+C
-            if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; // Ctrl+Shift+J
-            if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; // Ctrl+U
-            if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) return false; // Ctrl+S
-            if (e.ctrlKey && e.keyCode == 'P'.charCodeAt(0)) { // Ctrl+P
-                alert("Chức năng in bị vô hiệu hóa vì lý do bảo mật dữ liệu.");
-                return false;
             }
-        }
-    </script>
-</body>
-</html>
+        };
+        new ApexCharts(document.querySelector("#priceChart"), options).render();
+    }
+
+    function openDrillDown(type, value, title) {
+        $('#drillModalTitle').text(title);
+        $('#drillTable tbody').html('<tr><td colspan="4" class="text-center">Đang tải...</td></tr>');
+        drillModal.show();
+        fetch('/api/customer_360/drilldown', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ object_id: objectId, drill_type: type, filter_value: value })
+        }).then(r => r.json()).then(res => {
+            if(res.success) {
+                let html = '';
+                res.data.forEach(row => {
+                    html += `<tr><td>${row.Col1}</td><td>${row.Col2}</td><td>${row.Col3}</td><td class="text-end fw-bold">${formatNumber(row.Value)}</td></tr>`;
+                });
+                $('#drillTable tbody').html(html || '<tr><td colspan="4" class="text-center">Không có dữ liệu</td></tr>');
+            }
+        });
+    }
+
+    document.addEventListener('contextmenu', event => event.preventDefault());
+    document.onkeydown = function(e) {
+        if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && (e.keyCode == 'I'.charCodeAt(0) || e.keyCode == 'J'.charCodeAt(0) || e.keyCode == 'C'.charCodeAt(0))) || (e.ctrlKey && (e.keyCode == 'U'.charCodeAt(0) || e.keyCode == 'S'.charCodeAt(0)))) return false;
+        if (e.ctrlKey && e.keyCode == 'P'.charCodeAt(0)) { alert("Chức năng in bị vô hiệu hóa."); return false; }
+    }
+</script>
+{% endblock %}

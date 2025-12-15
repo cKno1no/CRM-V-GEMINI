@@ -1,250 +1,194 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Chi tiết Hiệu suất - {{ salesman_name }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% extends "base.html" %}
+
+{% block title %}Chi tiết Hiệu suất - {{ salesman_name }} | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* KPI CARDS CUSTOM */
+    .kpi-card {
+        background: var(--card-bg); border-radius: 20px; padding: 25px;
+        box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);
+        height: 100%; display: flex; align-items: center; transition: transform 0.2s;
+    }
+    .kpi-card:hover { transform: translateY(-5px); }
+    .kpi-icon-box {
+        width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        margin-right: 20px; font-size: 1.6rem; flex-shrink: 0;
+    }
+    .icon-reg { background-color: rgba(5, 205, 153, 0.1); color: var(--success); }
+    .icon-ytd { background-color: rgba(67, 24, 255, 0.1); color: var(--primary); }
+    .icon-po { background-color: rgba(227, 26, 26, 0.1); color: var(--danger); }
     
-    <style>
-        /* --- 1. CORE STYLES --- */
-        :root {
-            --primary: #4318FF;
-            --primary-light: #F4F7FE;
-            --secondary: #A3AED0;
-            --text-dark: #2B3674;
-            --danger: #E31A1A;
-            --success: #05CD99;
-            --warning: #FFB547;
-            --bg-color: #F4F7FE;
-            --card-radius: 20px;
-            --input-bg: #F4F7FE;
-        }
-        
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-dark); }
-        .container { max-width: 1200px; margin-top: 30px; }
+    .kpi-label { color: var(--secondary); font-size: 0.8rem; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; }
+    .kpi-value { color: var(--text-dark); font-size: 1.8rem; font-weight: 700; line-height: 1; }
+    .kpi-unit { font-size: 0.85rem; color: var(--secondary); margin-top: 4px; }
 
-        /* --- 2. HEADER --- */
-        .page-header { margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
-        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
-        .page-sub { color: var(--primary); font-weight: 600; margin-top: 5px; }
-        
-        .btn-back {
-            background-color: white; color: var(--secondary); border: 1px solid #E0E5F2;
-            padding: 10px 20px; border-radius: 14px; font-weight: 600; text-decoration: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: all 0.2s;
-        }
-        .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
+    /* TABLE CUSTOM */
+    .table th { 
+        background-color: var(--input-bg) !important; color: var(--secondary) !important;
+        font-weight: 700; font-size: 0.8rem; text-transform: uppercase;
+        border-bottom: 1px solid var(--border-color); vertical-align: middle;
+    }
+    .table td { 
+        vertical-align: middle; font-size: 0.9rem; padding: 12px 15px;
+        border-bottom: 1px solid var(--border-color); color: var(--text-dark);
+    }
 
-        /* --- 3. KPI CARDS --- */
-        .kpi-card {
-            background: white; border-radius: var(--card-radius); padding: 25px;
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); border: none;
-            height: 100%; display: flex; align-items: center; transition: transform 0.2s;
-        }
-        .kpi-card:hover { transform: translateY(-5px); }
-        .kpi-icon-box {
-            width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            margin-right: 20px; font-size: 1.6rem; flex-shrink: 0;
-        }
-        .icon-reg { background-color: #E6FDF5; color: var(--success); }
-        .icon-ytd { background-color: var(--primary-light); color: var(--primary); }
-        .icon-po { background-color: #FFF1F1; color: var(--danger); }
-        .kpi-content { flex-grow: 1; }
-        .kpi-label { color: var(--secondary); font-size: 0.8rem; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; }
-        .kpi-value { color: var(--text-dark); font-size: 1.8rem; font-weight: 700; line-height: 1; }
-        .kpi-unit { font-size: 0.85rem; color: var(--secondary); margin-top: 4px; }
+    /* Progress Bar Custom */
+    .progress-wrapper {
+        position: relative; height: 24px; width: 100%;
+        background-color: var(--input-bg); border-radius: 6px; overflow: hidden; display: flex; align-items: center;
+    }
+    .progress-bar-fill { height: 100%; border-radius: 6px; transition: width 0.6s ease; }
+    .progress-text {
+        position: absolute; right: 8px; font-size: 0.8rem; font-weight: 700;
+        color: var(--text-dark); z-index: 2; line-height: 24px;
+    }
+    .text-white-shadow { color: white; text-shadow: 0 0 2px rgba(0,0,0,0.5); }
 
-        /* --- 4. MAIN CARD & TABLE --- */
-        .main-card {
-            border: none; background: white; border-radius: var(--card-radius);
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); margin-bottom: 25px; overflow: hidden;
-        }
-        .card-header-custom {
-            padding: 20px 25px; border-bottom: 1px solid var(--primary-light);
-            font-weight: 700; color: var(--text-dark); font-size: 1.1rem;
-            display: flex; align-items: center;
-        }
-        .card-header-custom i { color: var(--primary); margin-right: 10px; font-size: 1.2rem; }
-        .card-body-custom { padding: 0; }
+    /* Highlights */
+    .highlight-row { background-color: rgba(255, 181, 71, 0.1) !important; }
+    .group-row { background-color: rgba(67, 24, 255, 0.05) !important; font-weight: 600; }
+    
+    .data-amount { font-weight: 600; color: var(--text-dark); }
+    .pending-amount { color: var(--danger); font-weight: 600; }
+</style>
+{% endblock %}
 
-        .table { margin-bottom: 0; width: 100%; border-collapse: collapse; }
-        .table th { 
-            background-color: #FAFCFE !important; color: var(--secondary) !important;
-            font-weight: 700; font-size: 0.8rem; text-transform: uppercase; text-align: left;
-            padding: 15px 20px; border-bottom: 1px solid var(--primary-light); vertical-align: middle;
-        }
-        .table td { 
-            vertical-align: middle; font-size: 0.9rem; padding: 12px 20px;
-            border-bottom: 1px solid #f0f0f0; color: var(--text-dark);
-        }
-        .table tbody tr:hover { background-color: var(--primary-light); }
+{% block page_title %}CHI TIẾT HIỆU SUẤT KHÁCH HÀNG{% endblock %}
+{% block page_sub %}Nhân viên: {{ salesman_name }} ({{ employee_id }}) — Năm {{ current_year }}{% endblock %}
 
-        /* Column Widths */
-        .col-ma-kh { width: 10%; }
-        .col-name { width: 25%; } /* Giảm từ 30% để nhường chỗ */
-        .col-data-fixed { width: 12%; text-align: right !important; }
-        .col-action { width: 10%; text-align: center !important; } /* Cột mới */
-        
-        .data-amount { font-weight: 600; color: var(--text-dark); }
-        .pending-amount { color: var(--danger); font-weight: 600; }
+{% block header_actions %}
+<a href="/sales_dashboard" class="btn btn-back">
+    <i class="fas fa-arrow-left me-2"></i> Về Bảng Tổng hợp
+</a>
+{% endblock %}
 
-        .progress-cell { padding: 8px 20px 8px 0 !important; }
-        .progress-wrapper {
-            position: relative; height: 24px; width: 100%;
-            background-color: #E0E5F2; border-radius: 6px; overflow: hidden; display: flex; align-items: center;
-        }
-        .progress-bar-fill { height: 100%; border-radius: 6px; transition: width 0.6s ease; }
-        .progress-text {
-            position: absolute; right: 8px; font-size: 0.8rem; font-weight: 700;
-            color: var(--text-dark); z-index: 2; line-height: 24px;
-        }
-        .text-white-shadow { color: white; text-shadow: 0 0 2px rgba(0,0,0,0.5); }
-
-        .highlight-row { background-color: #FFF8E1 !important; }
-        .group-row { background-color: #E3F2FD !important; font-weight: 600; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">CHI TIẾT HIỆU SUẤT KHÁCH HÀNG</h1>
-                <div class="page-sub">Nhân viên: {{ salesman_name }} ({{ employee_id }}) — Năm {{ current_year }}</div>
-            </div>
-            <a href="/sales_dashboard" class="btn-back">
-                <i class="fas fa-arrow-left me-2"></i> Về Bảng Tổng hợp
-            </a>
-        </div>
-
-        <div class="row g-4 mb-4">
-            <div class="col-md-4">
-                <div class="kpi-card">
-                    <div class="kpi-icon-box icon-reg"><i class="fas fa-file-contract"></i></div>
-                    <div class="kpi-content">
-                        <div class="kpi-label">Tổng DS Đăng Ký</div>
-                        <div class="kpi-value">{{ "{:,.0f}".format(total_registered_sales | default(0)) }}</div>
-                        <div class="kpi-unit">Triệu VNĐ</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="kpi-card">
-                    <div class="kpi-icon-box icon-ytd"><i class="fas fa-chart-line"></i></div>
-                    <div class="kpi-content">
-                        <div class="kpi-label">Tổng DS YTD</div>
-                        <div class="kpi-value">{{ "{:,.0f}".format(total_ytd_sales | default(0)) }}</div>
-                        <div class="kpi-unit">Triệu VNĐ</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="kpi-card">
-                    <div class="kpi-icon-box icon-po"><i class="fas fa-hourglass-half"></i></div>
-                    <div class="kpi-content">
-                        <div class="kpi-label">Tổng Giá Trị PO</div>
-                        <div class="kpi-value">{{ "{:,.0f}".format(total_poa_amount | default(0)) }}</div>
-                        <div class="kpi-unit">Triệu VNĐ</div>
-                    </div>
+{% block content %}
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="kpi-card">
+                <div class="kpi-icon-box icon-reg"><i class="fas fa-file-contract"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-label">Tổng DS Đăng Ký</div>
+                    <div class="kpi-value">{{ "{:,.0f}".format(total_registered_sales | default(0)) }}</div>
+                    <div class="kpi-unit">Triệu VNĐ</div>
                 </div>
             </div>
         </div>
-
-        <div class="main-card">
-            <div class="card-header-custom">
-                <i class="fas fa-table"></i> Phân tích theo Khách hàng
+        <div class="col-md-4">
+            <div class="kpi-card">
+                <div class="kpi-icon-box icon-ytd"><i class="fas fa-chart-line"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-label">Tổng DS YTD</div>
+                    <div class="kpi-value">{{ "{:,.0f}".format(total_ytd_sales | default(0)) }}</div>
+                    <div class="kpi-unit">Triệu VNĐ</div>
+                </div>
             </div>
-            <div class="card-body-custom">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th class="col-ma-kh">Mã KH</th>
-                                <th class="col-name">Phân loại / Tên KH</th>
-                                <th class="col-data-fixed">DS tháng</th>
-                                <th class="col-data-fixed">DS Đăng ký</th>
-                                <th class="col-data-fixed">DS YTD</th>
-                                <th class="col-data-fixed">Số DHB</th>
-                                <th class="col-data-fixed">PO Tồn</th>
-                                <th class="col-action">Phân tích</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in client_summary %}
-                            {% set client_type = row.ClientName | default(row.ClientType) %}
-                            
-                            {% if 'KHÁCH NHỎ LẺ' in client_type %}
-                            <tr class="group-row">
-                            {% elif 'PS mới' in client_type or 'Chờ giao' in client_type %}
-                            <tr class="highlight-row">
-                            {% else %}
-                            <tr>
-                            {% endif %}
-                                <td class="col-ma-kh font-monospace text-secondary">{{ row.ClientID | default('N/A') }}</td>
-                                <td class="col-name">
-                                    {% if 'KHÁCH NHỎ LẺ' in client_type %}
-                                        <span class="text-primary">{{ client_type | replace("--- ", "") }}</span>
-                                    {% elif 'PS mới' in client_type or 'Chờ giao' in client_type %}
-                                        <span class="text-warning">{{ client_type | replace("--- PS mới - ", "") | replace("--- Chờ giao - ", "") }}</span>
-                                    {% else %}
-                                        {{ row.ClientName | default('---') }}
-                                    {% endif %}
-                                </td>
-                                <td class="col-data-fixed data-amount">
-                                    {{ "{:,.0f}".format(row.CurrentMonthSales | default(0)) }}
-                                </td>
-                                <td class="col-data-fixed text-secondary">
-                                    {{ "{:,.0f}".format(row.RegisteredSales | default(0)) }}
-                                </td>
-                                
-                                {% set reg_sales = row.RegisteredSales | default(0) | float %}
-                                {% set ytd_sales = row.TotalSalesAmount | default(0) | float %}
-                                <td class="col-data-fixed progress-cell">
-                                    {% set completion_percent = (ytd_sales / reg_sales) * 100 if reg_sales > 0 else 0 %}
-                                    {% set bar_width = [completion_percent, 100] | min %} 
-                                    {% set bar_color = '#05CD99' if completion_percent >= 100 else '#4318FF' %}
-
-                                    <div class="progress-wrapper">
-                                        <div class="progress-bar-fill" style="width: {{ bar_width }}%; background-color: {{ bar_color }};"></div>
-                                        <span class="progress-text {{ 'text-white-shadow' if bar_width > 50 else '' }}">
-                                            {{ "{:,.0f}".format(ytd_sales) }}
-                                        </span>
-                                    </div>
-                                </td>
-                                
-                                <td class="col-data-fixed text-secondary">
-                                    {{ "{:,.0f}".format(row.TotalOrders | default(0)) }}
-                                </td>
-                                <td class="col-data-fixed pending-amount">
-                                    {{ "{:,.0f}".format(row.PendingOrdersAmount | default(0)) }}
-                                </td>
-                                
-                                <td class="col-action">
-                                    <a href="/customer_360/{{ row.ClientID }}" target="_blank" 
-                                       class="btn btn-sm btn-white border shadow-sm text-primary"
-                                       data-bs-toggle="tooltip" title="Deep Analysis 360">
-                                        <i class="fas fa-microscope"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+        </div>
+        <div class="col-md-4">
+            <div class="kpi-card">
+                <div class="kpi-icon-box icon-po"><i class="fas fa-hourglass-half"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-label">Tổng Giá Trị PO</div>
+                    <div class="kpi-value">{{ "{:,.0f}".format(total_poa_amount | default(0)) }}</div>
+                    <div class="kpi-unit">Triệu VNĐ</div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Init Tooltips
-        document.addEventListener("DOMContentLoaded", function(){
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl)
-            })
-        });
-    </script>
-</body>
-</html>
+
+    <div class="main-card">
+        <div class="card-header-custom">
+            <span><i class="fas fa-table me-2 text-primary"></i> Phân tích theo Khách hàng</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 10%;">Mã KH</th>
+                        <th style="width: 25%;">Phân loại / Tên KH</th>
+                        <th class="text-end" style="width: 12%;">DS tháng</th>
+                        <th class="text-end" style="width: 12%;">DS Đăng ký</th>
+                        <th class="text-end" style="width: 15%;">DS YTD</th>
+                        <th class="text-end" style="width: 8%;">Số DHB</th>
+                        <th class="text-end" style="width: 10%;">PO Tồn</th>
+                        <th class="text-center" style="width: 8%;">Analysis</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in client_summary %}
+                    {% set client_type = row.ClientName | default(row.ClientType) %}
+                    
+                    {% if 'KHÁCH NHỎ LẺ' in client_type %}
+                    <tr class="group-row">
+                    {% elif 'PS mới' in client_type or 'Chờ giao' in client_type %}
+                    <tr class="highlight-row">
+                    {% else %}
+                    <tr>
+                    {% endif %}
+                        <td class="font-monospace text-secondary">{{ row.ClientID | default('N/A') }}</td>
+                        <td>
+                            {% if 'KHÁCH NHỎ LẺ' in client_type %}
+                                <span class="text-primary fw-bold">{{ client_type | replace("--- ", "") }}</span>
+                            {% elif 'PS mới' in client_type or 'Chờ giao' in client_type %}
+                                <span class="text-warning fw-bold">{{ client_type | replace("--- PS mới - ", "") | replace("--- Chờ giao - ", "") }}</span>
+                            {% else %}
+                                <span class="fw-bold">{{ row.ClientName | default('---') }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end data-amount">
+                            {{ "{:,.0f}".format(row.CurrentMonthSales | default(0)) }}
+                        </td>
+                        <td class="text-end text-secondary">
+                            {{ "{:,.0f}".format(row.RegisteredSales | default(0)) }}
+                        </td>
+                        
+                        {% set reg_sales = row.RegisteredSales | default(0) | float %}
+                        {% set ytd_sales = row.TotalSalesAmount | default(0) | float %}
+                        <td class="text-end" style="padding: 8px 15px !important;">
+                            {% set completion_percent = (ytd_sales / reg_sales) * 100 if reg_sales > 0 else 0 %}
+                            {% set bar_width = [completion_percent, 100] | min %} 
+                            {% set bar_color = 'var(--success)' if completion_percent >= 100 else 'var(--primary)' %}
+
+                            <div class="progress-wrapper">
+                                <div class="progress-bar-fill" style="width: {{ bar_width }}%; background-color: {{ bar_color }};"></div>
+                                <span class="progress-text {{ 'text-white-shadow' if bar_width > 50 else '' }}">
+                                    {{ "{:,.0f}".format(ytd_sales) }}
+                                </span>
+                            </div>
+                        </td>
+                        
+                        <td class="text-end text-secondary">
+                            {{ "{:,.0f}".format(row.TotalOrders | default(0)) }}
+                        </td>
+                        <td class="text-end pending-amount">
+                            {{ "{:,.0f}".format(row.PendingOrdersAmount | default(0)) }}
+                        </td>
+                        
+                        <td class="text-center">
+                            <a href="/customer_360/{{ row.ClientID }}" target="_blank" 
+                               class="btn btn-sm btn-light border shadow-sm text-primary"
+                               data-bs-toggle="tooltip" title="Deep Analysis 360">
+                                <i class="fas fa-microscope"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Init Tooltips
+    document.addEventListener("DOMContentLoaded", function(){
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+    });
+</script>
+{% endblock %}

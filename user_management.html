@@ -1,133 +1,141 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Quản lý Hệ thống</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <style>
-        body { background-color: #F4F7FE; font-family: 'Inter', sans-serif; }
-        .main-card { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        
-        .feature-group-title {
-            background-color: #e9ecef; padding: 10px 15px; border-radius: 8px;
-            font-weight: 700; color: #495057; margin-bottom: 15px; margin-top: 20px;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        
-        /* Style cho khối quyền */
-        .feature-box {
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 10px;
-            transition: all 0.2s;
-            background-color: #fff;
-            height: 100%;
-        }
-        
-        /* Hiệu ứng khi ĐƯỢC CHỌN (Quan trọng) */
-        .feature-box.checked {
-            background-color: #E0E7FF; /* Nền xanh nhạt */
-            border-color: #4318FF;     /* Viền tím đậm */
-            box-shadow: 0 2px 8px rgba(67, 24, 255, 0.15);
-        }
-        
-        .feature-box:hover { transform: translateY(-2px); }
-        .role-active { background-color: #4318FF !important; color: white !important; }
-        .cursor-pointer { cursor: pointer; }
-    </style>
-</head>
-<body>
-    <div class="container-fluid p-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="text-primary fw-bold"><i class="fas fa-users-cog me-2"></i> Quản trị User & Phân quyền</h3>
-            <a href="/" class="btn btn-outline-secondary">Về Portal</a>
-        </div>
-        
-        <div class="main-card">
-            <ul class="nav nav-pills mb-4" id="pills-tab" role="tablist">
-                <li class="nav-item">
-                    <button class="nav-link active fw-bold" id="pills-users-tab" data-bs-toggle="pill" data-bs-target="#pills-users">1. Danh sách User</button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link fw-bold" id="pills-roles-tab" data-bs-toggle="pill" data-bs-target="#pills-roles" onclick="loadPermissions()">2. Phân Quyền (Matrix)</button>
-                </li>
-            </ul>
-            
-            <div class="tab-content">
-                <div class="tab-pane fade show active" id="pills-users">
-                    <div class="d-flex justify-content-between mb-3">
-                        <input type="text" id="userSearch" class="form-control w-25" placeholder="Tìm User Code hoặc Tên...">
-                        <button class="btn btn-primary" onclick="loadUsers()"><i class="fas fa-sync"></i> Refresh</button>
-                    </div>
-                    <div class="table-responsive" style="max-height: 65vh;">
-                        <table class="table table-hover align-middle border">
-                            <thead class="table-light sticky-top">
-                                <tr>
-                                    <th>User Code</th><th>Họ Tên</th><th>Role</th><th>Bộ Phận</th><th>Cấp Trên</th><th class="text-center">Edit</th>
-                                </tr>
-                            </thead>
-                            <tbody id="userTableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
+{% extends "base.html" %}
 
-                <div class="tab-pane fade" id="pills-roles">
-                    <div class="row h-100">
-                        <div class="col-md-3 border-end">
-                            <h6 class="fw-bold mb-3 text-secondary">CHỌN VAI TRÒ (ROLE)</h6>
-                            <div class="list-group" id="roleList" style="max-height: 70vh; overflow-y: auto;"></div>
+{% block title %}Quản trị Hệ thống | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* FEATURE BOXES */
+    .feature-group-title {
+        background-color: var(--input-bg); padding: 10px 15px; border-radius: 8px;
+        font-weight: 700; color: var(--secondary); margin-bottom: 15px; margin-top: 20px;
+        display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);
+    }
+    
+    .feature-box {
+        border: 1px solid var(--border-color); border-radius: 12px; padding: 12px;
+        transition: all 0.2s; background-color: var(--card-bg); height: 100%;
+    }
+    
+    .feature-box.checked {
+        background-color: rgba(67, 24, 255, 0.05); /* Primary nhạt */
+        border-color: var(--primary);
+        box-shadow: 0 4px 10px rgba(67, 24, 255, 0.1);
+    }
+    
+    .feature-box:hover { transform: translateY(-2px); border-color: var(--primary); }
+    
+    .role-active { background-color: var(--primary) !important; color: white !important; border-color: var(--primary) !important; }
+    .list-group-item { background-color: var(--card-bg); color: var(--text-dark); border-color: var(--border-color); cursor: pointer; }
+    .list-group-item:hover { background-color: var(--input-bg); }
+
+    /* Table & Forms */
+    .table th { background-color: var(--input-bg) !important; color: var(--secondary); border-bottom: 2px solid var(--border-color); }
+    .table td { background-color: var(--card-bg); color: var(--text-dark); border-bottom: 1px solid var(--border-color); }
+    
+    .form-control { background-color: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-dark); }
+    .form-control:focus { background-color: var(--card-bg); border-color: var(--primary); }
+    
+    .nav-pills .nav-link { color: var(--secondary); font-weight: 700; }
+    .nav-pills .nav-link.active { background-color: var(--primary); color: white; }
+    
+    /* Modal */
+    .modal-content { background-color: var(--card-bg); }
+    .modal-header { background-color: var(--primary); color: white; border-bottom: none; }
+    .modal-body label { color: var(--text-dark); }
+</style>
+{% endblock %}
+
+{% block page_title %}<i class="fas fa-users-cog me-2"></i> QUẢN TRỊ USER & PHÂN QUYỀN{% endblock %}
+{% block page_sub %}Cấu hình người dùng và ma trận quyền hạn.{% endblock %}
+
+{% block header_actions %}
+<a href="/" class="btn btn-back"><i class="fas fa-home me-2"></i>Portal</a>
+{% endblock %}
+
+{% block content %}
+    <div class="main-card">
+        <ul class="nav nav-pills mb-4" id="pills-tab" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="pills-users-tab" data-bs-toggle="pill" data-bs-target="#pills-users">1. Danh sách User</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="pills-roles-tab" data-bs-toggle="pill" data-bs-target="#pills-roles" onclick="loadPermissions()">2. Phân Quyền (Matrix)</button>
+            </li>
+        </ul>
+        
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="pills-users">
+                <div class="d-flex justify-content-between mb-3">
+                    <input type="text" id="userSearch" class="form-control w-25" placeholder="Tìm User Code hoặc Tên...">
+                    <button class="btn btn-primary" onclick="loadUsers()"><i class="fas fa-sync me-2"></i> Refresh</button>
+                </div>
+                <div class="table-responsive" style="max-height: 65vh;">
+                    <table class="table table-hover align-middle">
+                        <thead class="sticky-top">
+                            <tr>
+                                <th>User Code</th><th>Họ Tên</th><th>Role</th><th>Bộ Phận</th><th>Cấp Trên</th><th class="text-center">Edit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="pills-roles">
+                <div class="row h-100">
+                    <div class="col-md-3 border-end" style="border-color: var(--border-color) !important;">
+                        <h6 class="fw-bold mb-3" style="color: var(--secondary);">CHỌN VAI TRÒ (ROLE)</h6>
+                        <div class="list-group" id="roleList" style="max-height: 70vh; overflow-y: auto;"></div>
+                    </div>
+                    
+                    <div class="col-md-9 ps-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3 pt-2 pb-3 border-bottom" style="background-color: var(--card-bg); position: sticky; top: 0; z-index: 10; border-color: var(--border-color) !important;">
+                            <div>
+                                <h5 class="fw-bold m-0" style="color: var(--text-dark);">Phân quyền cho: <span id="selectedRoleName" class="text-primary">---</span></h5>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="selectAllGlobal" onchange="toggleAllGlobal(this)">
+                                    <label class="form-check-label fw-bold text-success" for="selectAllGlobal">
+                                        <i class="fas fa-check-double me-1"></i> Chọn TOÀN BỘ HỆ THỐNG (Full Quyền)
+                                    </label>
+                                </div>
+                            </div>
+                            <button class="btn btn-success fw-bold px-4 shadow-sm" onclick="savePermissions()">
+                                <i class="fas fa-save me-2"></i> LƯU CẤU HÌNH
+                            </button>
                         </div>
                         
-                        <div class="col-md-9 ps-4">
-                            <div class="d-flex justify-content-between align-items-center mb-3 bg-white sticky-top pt-2 pb-3 border-bottom">
-                                <div>
-                                    <h5 class="fw-bold m-0">Phân quyền cho: <span id="selectedRoleName" class="text-primary">---</span></h5>
-                                    <div class="form-check mt-2">
-                                        <input class="form-check-input" type="checkbox" id="selectAllGlobal" onchange="toggleAllGlobal(this)">
-                                        <label class="form-check-label fw-bold text-success" for="selectAllGlobal">
-                                            <i class="fas fa-check-double me-1"></i> Chọn TOÀN BỘ HỆ THỐNG (Full Quyền)
-                                        </label>
+                        <div id="permissionContainer" style="max-height: 60vh; overflow-y: auto; padding-right: 10px;">
+                            {% for group_name, features in feature_groups.items() %}
+                                <div class="feature-group mb-4" id="group-{{ loop.index }}">
+                                    <div class="feature-group-title">
+                                        <span><i class="fas fa-layer-group me-2"></i>{{ group_name }}</span>
+                                        <div class="form-check">
+                                            <input class="form-check-input group-select-all" type="checkbox" 
+                                                   id="group_check_{{ loop.index }}" 
+                                                   onchange="toggleGroup('group-{{ loop.index }}', this)">
+                                            <label class="form-check-label small fw-bold" for="group_check_{{ loop.index }}">Chọn cả nhóm</label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row g-3">
+                                        {% for code, name in features.items() %}
+                                        <div class="col-md-6">
+                                            <div class="feature-box" id="box_{{ code }}">
+                                                <div class="form-check">
+                                                    <input class="form-check-input feature-check" type="checkbox" 
+                                                           value="{{ code }}" id="feat_{{ code }}" 
+                                                           onchange="updateVisual(this)">
+                                                    <label class="form-check-label fw-bold w-100" for="feat_{{ code }}" style="cursor: pointer; color: var(--text-dark);">
+                                                        {{ name }}
+                                                    </label>
+                                                </div>
+                                                <div class="small ms-4 fst-italic" style="color: var(--secondary);">{{ code }}</div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
                                     </div>
                                 </div>
-                                <button class="btn btn-success fw-bold px-4 shadow" onclick="savePermissions()">
-                                    <i class="fas fa-save me-2"></i> LƯU CẤU HÌNH
-                                </button>
-                            </div>
-                            
-                            <div id="permissionContainer" style="max-height: 60vh; overflow-y: auto; padding-right: 10px;">
-                                {% for group_name, features in feature_groups.items() %}
-                                    <div class="feature-group mb-4" id="group-{{ loop.index }}">
-                                        <div class="feature-group-title">
-                                            <span><i class="fas fa-layer-group me-2"></i>{{ group_name }}</span>
-                                            <div class="form-check">
-                                                <input class="form-check-input group-select-all" type="checkbox" 
-                                                       id="group_check_{{ loop.index }}" 
-                                                       onchange="toggleGroup('group-{{ loop.index }}', this)">
-                                                <label class="form-check-label small fw-bold" for="group_check_{{ loop.index }}">Chọn cả nhóm</label>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="row g-3">
-                                            {% for code, name in features.items() %}
-                                            <div class="col-md-6">
-                                                <div class="feature-box" id="box_{{ code }}">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input feature-check" type="checkbox" 
-                                                               value="{{ code }}" id="feat_{{ code }}" 
-                                                               onchange="updateVisual(this)">
-                                                        <label class="form-check-label fw-bold cursor-pointer w-100" for="feat_{{ code }}">
-                                                            {{ name }}
-                                                        </label>
-                                                    </div>
-                                                    <div class="small text-muted ms-4 fst-italic">{{ code }}</div>
-                                                </div>
-                                            </div>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                {% endfor %}
-                            </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
@@ -138,29 +146,35 @@
     <div class="modal fade" id="editUserModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header bg-primary text-white"><h5 class="modal-title">Chỉnh sửa User</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header">
+                    <h5 class="modal-title">Chỉnh sửa User</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
                 <div class="modal-body">
                     <form id="editUserForm">
-                        <div class="mb-3"><label class="form-label fw-bold">User Code</label><input type="text" id="md_usercode" class="form-control bg-light" readonly></div>
+                        <div class="mb-3"><label class="form-label fw-bold">User Code</label><input type="text" id="md_usercode" class="form-control" readonly></div>
                         <div class="mb-3"><label class="form-label fw-bold">Họ Tên</label><input type="text" id="md_shortname" class="form-control"></div>
                         <div class="row">
-                            <div class="col-6 mb-3"><label class="form-label fw-bold">Role (Vai trò)</label><input type="text" id="md_role" class="form-control text-uppercase"></div>
+                            <div class="col-6 mb-3"><label class="form-label fw-bold">Role</label><input type="text" id="md_role" class="form-control text-uppercase"></div>
                             <div class="col-6 mb-3"><label class="form-label fw-bold">Cấp Trên</label><input type="text" id="md_captren" class="form-control text-uppercase"></div>
                         </div>
                         <div class="mb-3"><label class="form-label fw-bold">Bộ Phận</label><input type="text" id="md_bophan" class="form-control"></div>
-                        <hr>
+                        <hr style="border-color: var(--border-color);">
                         <div class="mb-3">
                             <label class="form-label fw-bold text-danger">Đổi Mật khẩu (Để trống nếu không đổi)</label>
                             <input type="text" id="md_password" class="form-control" placeholder="Nhập pass mới...">
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button><button type="button" class="btn btn-primary" onclick="submitEditUser()">Lưu thay đổi</button></div>
+                <div class="modal-footer" style="border-top-color: var(--border-color);">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary" onclick="submitEditUser()">Lưu thay đổi</button>
+                </div>
             </div>
         </div>
     </div>
+{% endblock %}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}
     <script src="{{ url_for('static', filename='js/user_management.js') }}"></script>
-</body>
-</html>
+{% endblock %}

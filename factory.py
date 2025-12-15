@@ -140,6 +140,7 @@ def create_app():
             'shortname': session.get('user_shortname'),
             'role': session.get('user_role'),
             'cap_tren': session.get('cap_tren'),
+            'theme': session.get('theme', 'light'), # <--- THÊM DÒNG NÀY
             'bo_phan': session.get('bo_phan'),
             'can': check_permission # Helper mới
         })

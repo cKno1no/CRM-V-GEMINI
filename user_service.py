@@ -5,13 +5,21 @@ class UserService:
     def __init__(self, db_manager: DBManager):
         self.db = db_manager
 
-    def get_all_users(self):
+    def get_all_users(self, division=None): 
+        params = []
         query = f"""
-            SELECT USERCODE, USERNAME, SHORTNAME, ROLE, [CAP TREN], [BO PHAN], [CHUC VU]
+            SELECT USERCODE, USERNAME, SHORTNAME, ROLE, [CAP TREN], [BO PHAN], [CHUC VU], [Division]
             FROM {config.TEN_BANG_NGUOI_DUNG}
-            ORDER BY USERCODE
+            WHERE 1=1
         """
-        return self.db.get_data(query)
+        
+        # Bây giờ biến division đã hợp lệ để sử dụng
+        if division:
+            query += " AND [Division] = ?"
+            params.append(division)
+            
+        query += " ORDER BY USERCODE"
+        return self.db.get_data(query, tuple(params))
 
     def get_user_detail(self, user_code):
         query = f"""
@@ -89,3 +97,9 @@ class UserService:
             return False
         finally:
             if conn: conn.close()
+
+    # Thêm hàm mới vào Class UserService
+    def update_user_theme_preference(self, user_code, theme_code):
+        """Cập nhật theme mặc định cho User."""
+        query = f"UPDATE {config.TEN_BANG_NGUOI_DUNG} SET [THEME] = ? WHERE USERCODE = ?"
+        return self.db.execute_non_query(query, (theme_code, user_code))

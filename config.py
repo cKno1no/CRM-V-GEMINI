@@ -135,7 +135,11 @@ SYSTEM_FEATURES_GROUPS = {
     "1. QUẢN TRỊ & HỆ THỐNG": {
         'MANAGE_USER': 'Quản lý User & Phân quyền',
         'VIEW_CEO_COCKPIT': 'Xem CEO Cockpit (Tổng hợp)',
-        'VIEW_COMPARISON': 'Phân tích So sánh Kỳ này/Kỳ trước'
+        'VIEW_COMPARISON': 'Phân tích So sánh Kỳ này/Kỳ trước',
+        # --- Đảm bảo 3 dòng này có mặt ---
+        'THEME_DARK': 'Kích hoạt: Giao diện Tối (Dark Mode)',
+        'THEME_FANTASY': 'Kích hoạt: Giao diện Fantasy (Sci-fi)',
+        'THEME_ADORABLE': 'Kích hoạt: Giao diện Adorable (GenZ)'
     },
     "2. CRM & BÁO CÁO THỊ TRƯỜNG": {
         'VIEW_PORTAL': 'Truy cập Portal Cá nhân',

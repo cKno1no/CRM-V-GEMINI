@@ -27,56 +27,57 @@ def get_user_ip():
 def sales_dashboard():
     """ROUTE: Bảng Tổng hợp Hiệu suất Sales."""
     
-    # FIX: Import Sales Service Cục bộ
-    # --- CÁCH GỌI MỚI (DÙNG) ---
     sales_service = current_app.sales_service
     db_manager = current_app.db_manager
     
     current_year = datetime.now().year
-    DIVISOR = 1000000.0 # Để chuyển đổi từ tiền tệ sang triệu đồng
+    DIVISOR = 1000000.0 
 
     user_role = session.get('user_role', '').strip().upper()
-    is_admin = (user_role == config.ROLE_ADMIN) # [CONFIG] 
+    is_admin = (user_role == config.ROLE_ADMIN) 
     user_code = session.get('user_code')
-    
+    user_division = session.get('division')
+
     if not user_code:
         flash("Lỗi phiên đăng nhập: Không tìm thấy mã nhân viên.", 'danger')
         return redirect(url_for('login'))
 
-    # Gọi Sales Service để lấy dữ liệu hiệu suất
-    summary_data = sales_service.get_sales_performance_data(current_year, user_code, is_admin)
+    # 1. Lấy dữ liệu
+    summary_data = sales_service.get_sales_performance_data(
+        current_year, 
+        user_code, 
+        is_admin, 
+        division=user_division 
+    )
     
-    # Sắp xếp và tính tổng
+    # Sắp xếp
     summary_data = sorted(summary_data, key=itemgetter('RegisteredSales'), reverse=True)
     
+    # Khởi tạo biến tổng RAW (VNĐ)
     total_registered_sales_raw = 0
     total_monthly_sales_raw = 0
     total_ytd_sales_raw = 0
     total_orders_raw = 0
     total_pending_orders_amount_raw = 0
 
+    # 2. Tính tổng
     for row in summary_data:
-        # Tính tổng RAW
         total_registered_sales_raw += row.get('RegisteredSales', 0)
         total_monthly_sales_raw += row.get('CurrentMonthSales', 0)
         total_ytd_sales_raw += row.get('TotalSalesAmount', 0)
         total_orders_raw += row.get('TotalOrders', 0)
         total_pending_orders_amount_raw += row.get('PendingOrdersAmount', 0)
-        
-        # Chuẩn bị dữ liệu hiển thị (Chia cho DIVISOR)
-        row['RegisteredSales'] /= DIVISOR
-        row['CurrentMonthSales'] /= DIVISOR
-        row['TotalSalesAmount'] /= DIVISOR
-        row['PendingOrdersAmount'] /= DIVISOR
     
-    # Chuẩn bị tổng KPI hiển thị
-    total_registered_sales = total_registered_sales_raw / DIVISOR
-    total_monthly_sales = total_monthly_sales_raw / DIVISOR
-    total_ytd_sales = total_ytd_sales_raw / DIVISOR
-    total_orders = total_orders_raw
-    total_pending_orders_amount = total_pending_orders_amount_raw / DIVISOR
-    
-    # LOG VIEW_SALES_DASHBOARD (BỔ SUNG)
+    # 3. [QUAN TRỌNG] TẠO BIẾN KPI_SUMMARY MÀ HTML CẦN
+    # HTML dùng filter | format_tr nên ta truyền số RAW (VNĐ) vào
+    kpi_summary = {
+        'Sales_YTD': total_ytd_sales_raw,
+        'Sales_CurrentMonth': total_monthly_sales_raw,
+        'Sales_LastYear': 0, # Hiện tại chưa tính được năm ngoái trong view này, để 0 hoặc bổ sung logic
+        'PendingOrdersAmount': total_pending_orders_amount_raw
+    }
+
+    # 4. Ghi Log
     try:
         db_manager.write_audit_log(
             user_code, 'VIEW_SALES_DASHBOARD', 'INFO', 
@@ -84,17 +85,23 @@ def sales_dashboard():
             get_user_ip()
         )
     except Exception as e:
-        print(f"Lỗi ghi log VIEW_SALES_DASHBOARD: {e}")
+        print(f"Lỗi ghi log: {e}")
         
+    # 5. Render Template
     return render_template(
         'sales_dashboard.html', 
         summary=summary_data,
         current_year=current_year,
-        total_registered_sales=total_registered_sales,
-        total_monthly_sales=total_monthly_sales,
-        total_ytd_sales=total_ytd_sales,
-        total_orders=total_orders,
-        total_pending_orders_amount=total_pending_orders_amount
+        
+        # Truyền biến kpi_summary đã tạo ở bước 3
+        kpi_summary=kpi_summary, 
+        
+        # Các biến phụ (nếu template cũ còn dùng)
+        total_registered_sales=total_registered_sales_raw,
+        total_monthly_sales=total_monthly_sales_raw,
+        total_ytd_sales=total_ytd_sales_raw,
+        total_orders=total_orders_raw,
+        total_pending_orders_amount=total_pending_orders_amount_raw
     )
 
 @kpi_bp.route('/sales_detail/<string:employee_id>', methods=['GET'])
@@ -159,7 +166,7 @@ def realtime_dashboard():
 
 
     current_year = datetime.now().year
-    
+    user_division = session.get('division')
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
     is_admin = user_role == config.ROLE_ADMIN
@@ -179,14 +186,16 @@ def realtime_dashboard():
         
     users_data = []
     if is_admin:
-        # Lấy danh sách nhân viên để Admin lọc
+        # Thêm điều kiện lọc Division vào query_users
         query_users = f"""
         SELECT [USERCODE], [USERNAME], [SHORTNAME] 
         FROM {config.TEN_BANG_NGUOI_DUNG} 
-        WHERE [PHONG BAN] IS NOT NULL AND RTRIM([PHONG BAN]) != '9. DU HOC'
+        WHERE [PHONG BAN] IS NOT NULL 
+        AND RTRIM([PHONG BAN]) != '9. DU HOC'
+        AND [Division] = ?  -- Thêm dòng này
         ORDER BY [SHORTNAME] 
         """
-        users_data = db_manager.get_data(query_users)
+        users_data = db_manager.get_data(query_users, (user_division,))
         
     salesman_name = "TẤT CẢ NHÂN VIÊN"
     if selected_salesman and selected_salesman.strip():
@@ -404,15 +413,15 @@ def ar_aging_detail_dashboard():
 def ar_aging_detail_single_customer():
     """ROUTE: Trang chi tiết công nợ cho MỘT KHÁCH HÀNG (Drill-down)."""
     
-    
     ar_aging_service = current_app.ar_aging_service
-    get_user_ip = current_app.get_user_ip 
+    # get_user_ip = current_app.get_user_ip  <-- XÓA DÒNG NÀY (Gây lỗi)
+    
     db_manager = current_app.db_manager
 
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
     
-    customer_id = request.args.get('object_id') # Lấy ObjectID từ URL
+    customer_id = request.args.get('object_id') 
     if not customer_id:
         flash("Thiếu Mã Khách hàng để xem chi tiết.", 'danger')
         return redirect(url_for('kpi_bp.ar_aging_dashboard'))
@@ -426,22 +435,23 @@ def ar_aging_detail_single_customer():
         flash(f"Không tìm thấy dữ liệu công nợ cho Mã KH {customer_id}.", 'warning')
         return redirect(url_for('kpi_bp.ar_aging_dashboard'))
 
-    # 2. Fetch Detail Vouchers cho KH đó (sử dụng hàm cũ, chỉ lọc theo ID)
+    # 2. Fetch Detail Vouchers
     aging_details = ar_aging_service.get_ar_aging_details_by_voucher(
         user_code, 
         user_role, 
         customer_id=customer_id,
-        filter_salesman_id=None # Không cần lọc NVKD nữa vì đã lọc theo KH
+        filter_salesman_id=None 
     )
     
     total_overdue = kpi_summary['TotalOverdueDebt']
 
-    # 3. LOG VIEW_AR_AGING_DETAIL_SINGLE
+    # 3. LOG
     try:
+        # Gọi hàm get_user_ip() trực tiếp (đã được định nghĩa ở đầu file kpi_bp.py)
         db_manager.write_audit_log(
             user_code, 'VIEW_AR_AGING_DETAIL_SINGLE', 'INFO', 
             f"Xem Chi tiết Công nợ KH: {customer_id}", 
-            get_user_ip()
+            get_user_ip() 
         )
     except Exception as e:
         print(f"Lỗi ghi log VIEW_AR_AGING_DETAIL_SINGLE: {e}")

@@ -1,470 +1,294 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Dashboard Duyệt Đơn Hàng Bán (DHB)</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% extends "base.html" %}
+
+{% block title %}Duyệt Đơn Hàng Bán (DHB) | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* --- CUSTOM LAYOUT --- */
+    .table-approval { width: 100%; border-collapse: separate; border-spacing: 0; }
     
-    <style>
-        /* --- 1. CORE STYLES (Đồng bộ nhaplieu_new) --- */
-        :root {
-            --primary: #4318FF;
-            --primary-light: #F4F7FE;
-            --secondary: #A3AED0;
-            --text-dark: #2B3674;
-            --danger: #E31A1A;
-            --success: #05CD99;
-            --warning: #FFB547;
-            --bg-color: #F4F7FE;
-            --card-radius: 20px;
-            --input-bg: #F4F7FE;
-        }
-        
-        body { 
-            background-color: var(--bg-color); 
-            font-family: 'Inter', sans-serif; 
-            color: var(--text-dark); 
-            overflow-x: hidden;
-        }
-        .container-fluid { max-width: 98%; margin-top: 30px; }
+    .table-approval th { 
+        position: sticky; top: 0; z-index: 10; 
+        background-color: var(--input-bg) !important; 
+        color: var(--secondary) !important; 
+        font-weight: 700; font-size: 0.8rem; text-transform: uppercase;
+        border-bottom: 2px solid var(--border-color); text-align: center;
+        padding: 12px 8px; white-space: nowrap;
+    }
+    
+    .table-approval td { 
+        vertical-align: middle; font-size: 0.9rem; 
+        border-bottom: 1px solid var(--border-color);
+        padding: 10px 8px; color: var(--text-dark);
+    }
+    
+    /* Hover & Selection */
+    .quote-row { transition: background-color 0.1s; cursor: pointer; }
+    .quote-row:hover td { background-color: var(--input-bg) !important; }
+    .row-selected td { 
+        background-color: var(--input-bg) !important; font-weight: 700; color: var(--primary);
+    }
+    
+    /* Status Colors */
+    .status-fail { border-left: 5px solid var(--danger) !important; } 
+    .status-pass { border-left: 5px solid var(--success) !important; } 
+    .status-pending { border-left: 5px solid var(--warning) !important; }
+    .ratio-alert { color: var(--danger) !important; font-weight: 800; }
 
-        /* --- 2. HEADER & LAYOUT (Style mới) --- */
-        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
-        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
-        
-        .btn-action {
-            padding: 10px 20px; border-radius: 14px; font-weight: 600; border: none;
-            text-decoration: none; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
-        .btn-back { background-color: white; color: var(--secondary); border: 1px solid #E0E5F2; }
-        .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
-        .btn-portal { background-color: var(--primary); color: white; }
-        .btn-so-approve { background-color: var(--success); color: white; } /* Giữ màu xanh cho nút này */
+    /* Layout Scrolling */
+    .master-table-scroll { overflow-y: auto; max-height: 75vh; border: 1px solid var(--border-color); border-radius: 12px; }
 
-        /* --- 3. MAIN CARDS (Style mới) --- */
-        .main-card {
-            border: none;
-            background: white;
-            border-radius: var(--card-radius);
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
-            margin-bottom: 25px;
-            overflow: hidden;
-        }
-        .card-header-custom {
-            background-color: white;
-            color: var(--text-dark);
-            font-weight: 700;
-            font-size: 1.1rem;
-            padding: 20px 25px;
-            border-bottom: 1px solid var(--primary-light);
-            display: flex;
-            align-items: center;
-        }
-        .card-header-custom i {
-            font-size: 1.1rem;
-            margin-right: 12px;
-            color: var(--success); /* Màu xanh lá cho duyệt DHB */
-        }
-        .card-header-custom.detail-header i {
-            color: var(--primary); /* Màu tím cho chi tiết */
-        }
-        .card-body-custom {
-            padding: 25px;
-            background-color: white;
-        }
-        .card-body-custom.p-0 { padding: 0; }
+    /* Modal Detail Table */
+    .table-detail th {
+        background-color: var(--primary) !important; color: white !important;
+        font-size: 0.8rem; text-align: center; border: 1px solid var(--primary); white-space: nowrap;
+        padding: 8px;
+    }
+    .table-detail td { 
+        border: 1px solid var(--border-color); vertical-align: middle; padding: 8px; 
+    }
+    
+    /* Filter Inputs */
+    .form-control { border: 1px solid var(--border-color); background-color: var(--input-bg); color: var(--text-dark); border-radius: 12px; }
+    .form-control:focus { background-color: var(--card-bg); border-color: var(--primary); box-shadow: none; }
+    
+    /* Modal Styling */
+    .modal-content { border-radius: 20px; border: none; overflow: hidden; }
+    .modal-header { background-color: var(--input-bg); border-bottom: 1px solid var(--border-color); padding: 15px 20px; }
+    .modal-title { font-weight: 700; color: var(--text-dark); }
+    .modal-body { padding: 0; background-color: var(--card-bg); }
+    .modal-footer { padding: 10px 20px; background-color: var(--card-bg); border-top: 1px solid var(--border-color); }
+</style>
+{% endblock %}
 
-        /* --- 4. FORMS (Style mới) --- */
-        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
-        .form-control, .form-select {
-            border: none; background-color: var(--input-bg); border-radius: 16px;
-            padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none;
-        }
-        .form-control:focus, .form-select:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
-        .btn-primary { background-color: var(--primary); border: none; border-radius: 12px; font-weight: 600; padding: 12px; }
-        .btn-primary:hover { background-color: #3a14db; }
+{% block page_title %}<i class="fas fa-shipping-fast me-2"></i> PHÊ DUYỆT ĐƠN HÀNG BÁN{% endblock %}
+{% block page_sub %}Các đơn hàng chờ duyệt để chuyển sang ERP{% endblock %}
 
-        /* --- 5. BỐ CỤC MASTER-DETAIL (Giữ nguyên) --- */
-        .master-panel, .detail-panel {
-            position: sticky; 
-            top: 20px; /* Thêm khoảng cách */
-            max-height: 85vh;
-        }
-        .master-table-scroll, .detail-table-scroll {
-            max-height: 65vh;
-            overflow-y: auto;
-            padding: 10px 15px;
-        }
+{% block header_actions %}
+<a href="{{ url_for('index') }}" class="btn btn-back"><i class="fas fa-home me-2"></i>Portal</a>
+<a href="{{ url_for('approval_bp.quote_approval_dashboard') }}" target="_blank" class="btn btn-primary text-white shadow-sm">
+    <i class="fas fa-file-signature me-2"></i>Duyệt Chào Giá
+</a>
+{% endblock %}
 
-        /* --- 6. DATA TABLES (Style mới) --- */
-        .table-approval { border: 1px solid var(--primary-light); width: 100%; }
-        .table-approval th { 
-            position: sticky !important; top: 0; z-index: 10; 
-            background-color: #FAFCFE !important; 
-            color: var(--secondary) !important; 
-            font-weight: 600; font-size: 0.85rem; text-transform: uppercase;
-            white-space: nowrap; vertical-align: middle; 
-            border: 1px solid var(--primary-light);
-            text-align: center; padding: 10px 5px;
-        }
-        .table-approval td { 
-            vertical-align: middle; font-size: 0.9rem; border: 1px solid var(--primary-light);
-            font-weight: normal; padding: 8px 5px;
-            color: var(--text-dark);
-        }
-        
-        /* GIỮ NGUYÊN LOGIC TÔ MÀU (Style mới) */
-        .quote-row:hover td { cursor: pointer; background-color: var(--primary-light) !important; }
-        .row-selected td { 
-            background-color: var(--primary-light) !important; 
-            font-weight: bold; 
-            border-top: 2px solid var(--primary);
-            border-bottom: 2px solid var(--primary);
-        }
-        .ratio-alert { color: var(--danger) !important; font-weight: 700; }
-        .status-fail { background-color: #FFF1F1 !important; } /* Đỏ nhạt */
-        .status-pass { background-color: #F0FFF9 !important; } /* Xanh nhạt */
-        .status-pending { background-color: #FFF8E1 !important; } /* Vàng nhạt */
-        
-        /* CỘT CĂN CHỈNH (Giữ nguyên) */
-        .col-ratio { width: 5%; }
-        .col-nvkd { width: 5%; text-align: center; } 
-        .col-vtype { width: 5%; text-align: center; }
-        .col-gt { width: 10%; }
-        .col-result { width: 25%; }
-        .col-client { width: 20%; text-align: left !important; }
-        
-        /* Bảng Chi tiết (Style mới) */
-        .table-detail th {
-            background-color: var(--primary) !important; 
-            color: white;
-            font-size: 0.8rem; text-align: center;
-            border: 1px solid var(--primary);
-            white-space: nowrap;
-        }
-        .table-detail td {
-            font-size: 0.8rem;
-            text-align: center;
-        }
-        .text-danger { color: var(--danger) !important; }
-        
-        /* DataTables (Style mới) */
-        .dataTables_wrapper .dataTables_paginate .paginate_button { 
-            padding: 0.3em 0.6em; border-radius: 10px !important; border: none; margin: 0 3px;
-            font-weight: 600; color: var(--secondary) !important;
-        }
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-            background: var(--primary) !important; color: white !important;
-        }
-        .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_info { 
-            font-size: 0.9rem; color: var(--secondary); padding: 0.5em 0.75em;
-        }
-        .dataTables_wrapper .dataTables_length select {
-             background-color: var(--input-bg); border: none; border-radius: 8px;
-        }
-        .dataTables_wrapper .dataTables_filter input {
-            background-color: var(--input-bg); border: none; border-radius: 12px;
-            padding: 5px 10px; margin-left: 5px;
-        }
-        
-        /* --- MOBILE RESPONSIVE: SALES ORDER APPROVAL --- */
-        @media (max-width: 992px) { /* Áp dụng cho cả Tablet dọc */
-            /* 1. Layout Master-Detail: Chồng lên nhau */
-            .row.g-3 {
-                flex-direction: column;
-            }
-            
-            .col-lg-7, .col-lg-5 {
-                width: 100%;
-            }
-
-            /* 2. Giới hạn chiều cao bảng để không chiếm hết màn hình */
-            .master-table-scroll {
-                max-height: 40vh; /* Master chiếm 40% màn hình */
-            }
-            
-            .detail-table-scroll {
-                max-height: 40vh; /* Detail chiếm 40% màn hình */
-            }
-
-            /* 3. Filter Date Form */
-            .card-body-custom form.row {
-                flex-direction: column;
-                gap: 10px;
-            }
-            
-            .col-md-3, .col-md-2 {
-                width: 100%;
-            }
-
-            /* 4. Tinh chỉnh bảng */
-            .table-approval th, .table-approval td {
-                white-space: nowrap;
-                font-size: 0.75rem;
-            }
-            
-            /* Ẩn cột Loại (VType) để tiết kiệm chỗ */
-            .col-vtype {
-                display: none;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container-fluid">
-        <!-- HEADER (Style mới) -->
-        <div class="page-header">
-            <h1 class="page-title"><i class="fas fa-shipping-fast me-2"></i> PHÊ DUYỆT ĐƠN HÀNG BÁN</h1>
-            <div class="d-flex gap-2">
-                <a href="{{ url_for('index') }}" class="btn-action btn-back">
-                    <i class="fas fa-home me-1"></i> Về Portal
-                </a>
-                <a href="{{ url_for('approval_bp.quote_approval_dashboard') }}" target="_blank" class="btn-action btn-portal">
-                    <i class="fas fa-file-signature me-1"></i> Duyệt Chào Giá
-                </a>
+{% block content %}
+    <div class="main-card mb-4">
+        <div class="card-body-custom" style="padding: 20px;">
+            <form method="POST" action="{{ url_for('approval_bp.sales_order_approval_dashboard') }}" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small text-muted text-uppercase">Từ Ngày</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted text-uppercase">Đến Ngày</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="fas fa-filter me-2"></i> Lọc</button>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-end-0 border-secondary"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" id="customSearchInput" class="form-control border-start-0 ps-0" placeholder="Tìm Mã DHB, Khách hàng...">
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="main-card">
+        <div class="card-header-custom d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-list-ul me-2 text-success"></i> DANH SÁCH ĐƠN HÀNG</span>
+            <span class="badge bg-light text-dark border">{{ orders|length }} đơn hàng</span>
+        </div>
+        <div class="card-body-custom p-0">
+            <div class="master-table-scroll">
+                <table id="approval-dhb-table" class="table table-hover mb-0 table-approval">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">Hệ số</th>           
+                            <th>Mã DHB</th>
+                            <th>Loại</th>
+                            <th>Ngày</th>                           
+                            <th class="text-start">Khách hàng</th>
+                            <th>NVKD</th>            
+                            <th class="text-end">Tổng GT</th>     
+                            <th class="text-start">KẾT QUẢ KIỂM TRA</th>
+                            <th style="width: 100px;">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        {% set result = order.ApprovalResult %}
+                        {% set status = result.Passed %}
+                        {% set approver_id = result.ApproverRequired %}
+                        {% set row_class = 'status-pass' if status else ('status-pending' if 'PENDING' in result.Reason else 'status-fail') %}
+                        
+                        <tr id="master-{{ order.OrderID }}" 
+                            class="quote-row {% if not status %} {{ row_class }} {% endif %}"
+                            onclick="showDetails('{{ order.SOrderID }}', '{{ order.OrderID }}', this)"
+                            data-orderid="{{ order.OrderID }}"
+                            data-sorderid="{{ order.SOrderID }}"
+                            data-clientid="{{ order.ClientID }}"
+                            data-salesmanid="{{ order.SalesManID }}"
+                            data-ratio="{{ result.ApprovalRatio | safe }}"> 
+                            
+                            <td class="text-end">
+                                <span class="fw-bold {% if result.ApprovalRatio < 138 %} ratio-alert {% endif %}">
+                                    {{ result.ApprovalRatio }}
+                                </span>
+                            </td>
+                            
+                            <td class="fw-bold text-primary">{{ order.OrderID }}</td>
+                            <td class="text-center small">{{ order.VoucherTypeID }}</td>
+                            <td class="text-center small">{{ order.OrderDate | format_date }}</td>
+                            <td class="text-start text-truncate" style="max-width: 250px;" title="{{ order.ClientName }}">{{ order.ClientName | default('N/A') }}</td>
+                            <td class="text-center small">{{ order.NVKDName | default(order.SalesManID) }}</td>
+                            
+                            <td class="text-end fw-bold text-dark">{{ order.SaleAmount | format_tr }}</td>
+                            
+                            <td class="text-start small text-truncate" style="max-width: 300px;" title="{{ result.Reason }}">{{ result.Reason }}</td>
+                            
+                            <td class="text-center">
+                                {% if status and current_user_code in approver_id %}
+                                    <button class="btn btn-success btn-sm shadow-sm px-3" onclick="event.stopPropagation(); approveOrder(this)">
+                                        <i class="fas fa-check"></i> Duyệt
+                                    </button>
+                                {% elif current_user_code in approver_id and 'FAILED' in result.Reason %}
+                                    <span class="badge bg-danger">Lỗi</span>
+                                {% elif result.ApproverDisplay == 'TỰ DUYỆT (SELF - DTK < 100M)' %}
+                                    <span class="badge bg-success"><i class="fas fa-check-double me-1"></i> Tự duyệt</span>
+                                {% else %}
+                                    <span class="badge bg-light text-muted border">Chờ {{ result.ApproverDisplay }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
-        <p class="text-muted small mb-3">Mặc định hiển thị Đơn hàng chưa duyệt trong 7 ngày. Click Mã DHB để xem chi tiết.</p>
+    </div>
 
-        <!-- FILTER CARD (Style mới) -->
-        <div class="main-card mb-3">
-            <div class="card-body-custom" style="padding: 20px 25px;">
-                <form method="POST" action="{{ url_for('approval_bp.sales_order_approval_dashboard') }}" class="row g-3 align-items-end">
-                    <div class="col-md-3">
-                        <label for="date_from" class="form-label">Từ Ngày DHB</label>
-                        <input type="date" name="date_from" id="date_from" class="form-control" 
-                                value="{{ date_from }}">
-                    </div>
-                    <div class="col-md-3">
-                        <label for="date_to" class="form-label">Đến Ngày DHB</label>
-                        <input type="date" name="date_to" id="date_to" class="form-control" 
-                                value="{{ date_to }}">
-                    </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-search me-1"></i> Lọc Ngày
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        
-        <!-- MASTER-DETAIL LAYOUT (Giữ nguyên) -->
-        <div class="row g-3">
-            <!-- MASTER (Style mới) -->
-            <div class="col-lg-7">
-                <div class="main-card master-panel">
-                    <div class="card-header-custom">
-                        <i class="fas fa-list-ul"></i> DANH SÁCH ĐƠN HÀNG BÁN
-                    </div>
-                    <div class="card-body-custom p-0">
-                        <div class="table-responsive master-table-scroll">
-                            <!-- BẢNG (Giữ nguyên HTML/Logic) -->
-                            <table id="approval-dhb-table" class="table table-hover mb-3 table-approval">
-                                <thead>
-                                    <tr>
-                                        <th class="col-ratio">Hệ số</th>           
-                                        <th>Mã DHB</th>
-                                        <th class="col-vtype">Loại</th>
-                                        <th>Ngày DHB</th>                           
-                                        <th class="col-client">Khách hàng</th>
-                                        <th class="col-nvkd">NVKD</th>            
-                                        <th class="col-gt">Tổng GT (VNĐ)</th>     
-                                        <th>KẾT QUẢ KIỂM TRA</th>
-                                        <th>Hành động</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for order in orders %}
-                                    {% set result = order.ApprovalResult %}
-                                    {% set status = result.Passed %}
-                                    {% set approver_id = result.ApproverRequired %}
-                                    {% set row_class = 'status-pass' if status else ('status-pending' if 'PENDING' in result.Reason else 'status-fail') %}
-                                    
-                                    <tr id="master-{{ order.OrderID }}" 
-                                        class="quote-row {% if not status %} {{ row_class }} {% endif %}"
-                                        onclick="showDetails('{{ order.SOrderID }}', this)"
-                                        data-orderid="{{ order.OrderID }}"
-                                        data-sorderid="{{ order.SOrderID }}"
-                                        data-clientid="{{ order.ClientID }}"
-                                        data-salesmanid="{{ order.SalesManID }}"
-                                        data-ratio="{{ result.ApprovalRatio | safe }}"> 
-                                        
-                                        <td class="text-end col-ratio">
-                                            <span class="fw-bold {% if result.ApprovalRatio < 138 %} ratio-alert {% endif %}">
-                                                {{ result.ApprovalRatio }}
-                                            </span>
-                                        </td>
-                                        
-                                        <td>{{ order.OrderID }}</td>
-                                        <td class="col-vtype">{{ order.VoucherTypeID }}</td>
-                                        
-                                        <td>
-                                            {% if order.OrderDate %}
-                                                {{ order.OrderDate.strftime('%d/%m') }}
-                                            {% else %}
-                                                N/A
-                                            {% endif %}
-                                        </td>
-                                        
-                                        <td class="col-client text-start">{{ order.ClientName | default('N/A') }}</td>
-                                        
-                                        <td class="col-nvkd">{{ order.NVKDName | default(order.SalesManID) }}</td>
-                                        
-                                        <td class="text-end col-gt">{{ "{:,.0f}".format(order.SaleAmount | float) }}</td>
-                                        
-                                        <td class="col-result">
-                                            {{ result.Reason }}
-                                        </td>
-                                        
-                                        <td>
-                                            {% if status and current_user_code in approver_id %}
-                                                <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); approveOrder(this)">
-                                                    <i class="fas fa-check"></i> Duyệt
-                                                </button>
-                                            {% elif current_user_code in approver_id and 'FAILED' in result.Reason %}
-                                                <button class="btn btn-danger btn-sm" disabled>
-                                                    <i class="fas fa-times"></i> Cần sửa lỗi
-                                                </button>
-                                            {% elif result.ApproverDisplay == 'TỰ DUYỆT (SELF - DTK < 100M)' %}
-                                                <span class="text-success small">Đã Tự Duyệt</span>
-                                            {% else %}
-                                                <span class="text-muted small">Chờ {{ result.ApproverDisplay }}</span>
-                                            {% endif %}
-                                        </td>
-                                        </tr>
-                                    {% endfor %}
-                                    {% if not orders %}
-                                    <tr><td colspan="9" class="text-center text-muted">Không có đơn hàng nào cần duyệt.</td></tr>
-                                    {% endif %}
-                                </tbody>
-                            </table>
+    <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-info-circle me-2 text-primary"></i> Chi tiết Đơn hàng: <span id="modalOrderTitle" class="text-primary fw-bold">...</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="detail-container" class="p-0">
+                        <div class="d-flex flex-column align-items-center justify-content-center py-5 text-muted">
+                            <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                            <p>Đang tải dữ liệu...</p>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- DETAIL (Style mới) -->
-            <div class="col-lg-5">
-                <div class="main-card detail-panel">
-                    <div class="card-header-custom detail-header">
-                        <i class="fas fa-info-circle"></i> CHI TIẾT MẶT HÀNG
-                    </div>
-                    <div class="card-body-custom p-0 detail-table-scroll" id="detail-container">
-                        <p class="p-3 text-muted text-center">Click vào một Đơn hàng Bán để xem chi tiết.</p>
-                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- ======================================================== -->
-    <!-- TOÀN BỘ JAVASCRIPT ĐƯỢC GIỮ NGUYÊN 100% -->
-    <!-- ======================================================== -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}
+
+{% block scripts %}
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
     
     <script>
         let currentOrderId = null;
         let lastClickedRow = null;
+        const detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
 
-        // Hàm định dạng tiền tệ (cần thiết cho Detail Rendering)
-        function formatCurrency(value) {
-            if (value === null || value === undefined || value === '—' || String(value).trim() === '') return '—';
-            // Đảm bảo loại bỏ dấu phẩy trước khi parse float
-            const num = parseFloat(String(value).replace(/,/g, '')); 
-            if (isNaN(num)) return '—';
-            return num.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        /**
+         * HÀM ĐỊNH DẠNG SỐ AN TOÀN (FIX LỖI NaN)
+         * - Loại bỏ dấu phẩy có sẵn trong dữ liệu (ví dụ: "10,000" -> "10000")
+         * - Parse sang số thực
+         * - Format lại theo chuẩn Mỹ (10,000)
+         */
+        function formatNumberStandard(value) {
+            if (value === null || value === undefined || String(value).trim() === '') {
+                return '0';
+            }
+            // Xóa dấu phẩy cũ trước khi xử lý
+            const cleanValue = String(value).replace(/,/g, '');
+            const num = parseFloat(cleanValue);
+            
+            if (isNaN(num)) return '0';
+            return new Intl.NumberFormat('en-US').format(num);
         }
 
-
         function renderDetailTable(details, container) {
-            let tableHtml = '<div class="table-responsive p-3"><table class="table table-sm table-striped table-bordered small mb-0 table-detail">';
-            // STYLE MỚI CHO HEADER DETAIL
-            tableHtml += '<thead><tr>'; 
-            
-            // Header chi tiết DHB
-            tableHtml += '<th class="text-center">Mã hàng</th><th>Tên hàng</th><th class="text-end">SL</th>';
-            tableHtml += '<th class="text-end">Đơn giá</th><th class="text-end">Đơn giá QĐ</th>';
-            tableHtml += '<th>Date 01</th><th>Mã BG</th><th class="text-end">Thành tiền</th></tr></thead><tbody>';
+            let tableHtml = '<div class="table-responsive"><table class="table table-striped table-bordered mb-0 table-detail">';
+            tableHtml += '<thead><tr><th class="text-center">Mã hàng</th><th>Tên hàng</th><th class="text-end">SL</th><th class="text-end">Đơn giá</th><th class="text-end">Đơn giá QĐ</th><th class="text-end">Thành tiền</th></tr></thead><tbody>';
 
-            details.forEach(item => {
-                // Sử dụng hàm formatCurrency cho việc hiển thị
-                const DonGiaQuyDinh_raw = String(item.DonGiaQuyDinh).replace(/,/g, '');
-                const DonGia_raw = String(item.DonGia).replace(/,/g, '');
-                
-                const price_ratio_color = (parseFloat(DonGia_raw) < parseFloat(DonGiaQuyDinh_raw)) ? 'text-danger' : 'text-success';
-                const date01_color = (item.Date01 === 'N/A') ? 'text-danger fw-bold' : '';
-                const ma_bg_color = (item.MaBaoGia === null || item.MaBaoGia === '') ? 'text-danger fw-bold' : '';
+            if (!details || details.length === 0) {
+                tableHtml += '<tr><td colspan="6" class="text-center text-muted">Không có dữ liệu chi tiết.</td></tr>';
+            } else {
+                details.forEach(item => {
+                    // 1. Lấy giá trị thô (Raw) để so sánh màu sắc
+                    const rawDonGia = parseFloat(String(item.DonGia || 0).replace(/,/g, ''));
+                    const rawDonGiaQD = parseFloat(String(item.DonGiaQuyDinh || 0).replace(/,/g, ''));
 
-                tableHtml += '<tr>';
-                tableHtml += `<td class="text-center">${item.MaHang}</td>`; 
-                tableHtml += `<td class="text-start">${item.TenHang || '—'}</td>`;
-                tableHtml += `<td class="text-end">${item.SoLuong}</td>`;
-                tableHtml += `<td class="text-end">${item.DonGia}</td>`;
-                tableHtml += `<td class="text-end ${price_ratio_color}">${item.DonGiaQuyDinh}</td>`; 
-                tableHtml += `<td class="text-center ${date01_color}">${item.Date01}</td>`;
-                tableHtml += `<td class="text-center ${ma_bg_color}">${item.MaBaoGia || '—'}</td>`;
-                tableHtml += `<td class="text-end fw-bold">${item.ThanhTien}</td>`;
-                tableHtml += '</tr>';
-            });
-
+                    // 2. Logic tô màu: Giá bán < Giá quy định -> Đỏ
+                    const price_ratio_color = (rawDonGia < rawDonGiaQD) ? 'text-danger fw-bold' : 'text-success';
+                    
+                    // 3. Render HTML với hàm format an toàn
+                    tableHtml += `<tr>
+                        <td class="text-center font-monospace">${item.MaHang || ''}</td> 
+                        <td>${item.TenHang || '—'}</td>
+                        <td class="text-end">${formatNumberStandard(item.SoLuong)}</td>
+                        <td class="text-end">${formatNumberStandard(item.DonGia)}</td>
+                        <td class="text-end ${price_ratio_color}">${formatNumberStandard(item.DonGiaQuyDinh)}</td> 
+                        <td class="text-end fw-bold">${formatNumberStandard(item.ThanhTien)}</td>
+                    </tr>`;
+                });
+            }
             tableHtml += '</tbody></table></div>';
             container.innerHTML = tableHtml;
         }
 
-        function showDetails(orderId, rowElement) {
-            if (lastClickedRow) {
-                lastClickedRow.classList.remove('row-selected');
-            }
-
-            if (currentOrderId === orderId) {
-                currentOrderId = null;
-                document.getElementById('detail-container').innerHTML = '<p class="p-3 text-muted text-center">Click vào một Đơn hàng Bán để xem chi tiết.</p>';
-                return;
-            }
-
-            currentOrderId = orderId;
+        // Cập nhật hàm showDetails để mở Modal
+        function showDetails(sOrderId, orderIdDisplay, rowElement) {
+            if (lastClickedRow) $(lastClickedRow).removeClass('row-selected');
+            
             lastClickedRow = rowElement;
-            rowElement.classList.add('row-selected');
-
+            $(rowElement).addClass('row-selected');
+            
+            // Cập nhật tiêu đề Modal và hiển thị Loading
+            $('#modalOrderTitle').text(orderIdDisplay);
             const container = document.getElementById('detail-container');
-            container.innerHTML = '<p class="p-3 text-center"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết...</p>';
+            container.innerHTML = '<div class="d-flex flex-column align-items-center justify-content-center py-5 text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-3 text-primary"></i><p>Đang tải dữ liệu...</p></div>';
+            
+            detailModal.show();
 
-            fetch(`/api/get_order_details/${orderId}`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
-            })
-            .then(response => {
-                if (!response.ok) throw new Error('Lỗi truy vấn chi tiết đơn hàng (HTTP ' + response.status + ')');
-                return response.json();
-            })
+            // Fetch data
+            fetch(`/api/get_order_details/${sOrderId}`)
+            .then(response => response.json())
             .then(details => {
                 if (details.error) throw new Error(details.error);
                 renderDetailTable(details, container);
             })
             .catch(error => {
-                container.innerHTML = `<p class="p-3 text-danger text-center"><i class="fas fa-times-circle me-2"></i> LỖI: ${error.message}</p>`;
                 console.error(error);
+                container.innerHTML = `<div class="alert alert-danger m-3 text-center"><i class="fas fa-exclamation-triangle me-2"></i> LỖI: ${error.message}</div>`;
             });
         }
         
-        // HÀM DUYỆT ĐƠN HÀNG (Lấy data từ Data Attributes)
         function approveOrder(buttonElement) {
             const row = $(buttonElement).closest('tr');
-            const orderId = row.data('orderid'); // MACT (VoucherNo)
-            const sOrderId = row.data('sorderid'); // MasoCT (SOrderID)
-            const clientId = row.data('clientid'); // MaKH
-            const salesmanId = row.data('salesmanid'); // NGUOILAM
-            const ratio = row.data('ratio'); // TySoDuyet
-
-            if (!confirm(`Xác nhận duyệt Đơn hàng Bán ${orderId}? Dữ liệu sẽ được chuyển sang ERP!`)) { return; }
             
+            // Lấy dữ liệu từ data attributes
+            const orderId = row.data('orderid');
+            const sOrderId = row.data('sorderid');
+            const clientId = row.data('clientid');
+            const salesmanId = row.data('salesmanid');
+            const ratio = row.data('ratio');
+
+            if (!confirm(`Xác nhận duyệt Đơn hàng ${orderId}? Dữ liệu sẽ được chuyển sang ERP.`)) return;
+            
+            // Disable nút và hiện loading
             buttonElement.disabled = true;
             $(buttonElement).html('<i class="fas fa-spinner fa-spin"></i>');
 
@@ -479,61 +303,38 @@
                     approval_ratio: parseFloat(ratio) 
                 }),
             })
-            .then(response => {
-                if (!response.ok) { 
-                    return response.json().then(err => { throw new Error(err.message || 'Lỗi không xác định'); }); 
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(result => {
                 if (result.success) {
                     alert(result.message);
-                    // Dùng DataTables để xóa hàng đã duyệt khỏi bảng
+                    // Xóa dòng khỏi bảng
                     $('#approval-dhb-table').DataTable().row(row).remove().draw();
-                    // window.location.reload(); // Không cần reload nếu dùng DataTables
                 } else {
                     alert(`LỖI DUYỆT: ${result.message}`);
                     buttonElement.disabled = false;
-                    $(buttonElement).html('<i class="fas fa-check"></i> Duyệt');
+                    $(buttonElement).html('<i class="fas fa-check"></i>');
                 }
             })
             .catch(error => {
                 alert('Lỗi kết nối hoặc xử lý API: ' + error.message);
                 buttonElement.disabled = false;
-                $(buttonElement).html('<i class="fas fa-check"></i> Duyệt');
+                $(buttonElement).html('<i class="fas fa-check"></i>');
             });
         }
 
-        // KHỞI TẠO DATATABLES
         $(document).ready(function() {
-            if ($('#approval-dhb-table').length) {
-                $('#approval-dhb-table').DataTable({
-                    "paging": true,
-                    "pageLength": 25,
-                    "lengthChange": true,
-                    "searching": true,
-                    "ordering": true,
-                    "info": true,
-                    "scrollY": "70vh", 
-                    "scrollCollapse": true,
-                    "order": [[3, 'asc']], // Order by OrderDate
-                    "language": {
-                        "lengthMenu": "Hiển thị _MENU_ mục",
-                        "zeroRecords": "Không tìm thấy đơn hàng nào.",
-                        "info": "Hiển thị từ _START_ đến _END_ trong tổng số _TOTAL_ mục",
-                        "infoEmpty": "Không có dữ liệu",
-                        "infoFiltered": "(lọc từ _MAX_ mục)",
-                        "search": "Lọc nhanh:",
-                        "paginate": {
-                            "first": "Đầu",
-                            "last": "Cuối",
-                            "next": "Sau",
-                            "previous": "Trước"
-                        }
-                    }
-                });
-            }
+            // Init DataTables
+            const table = $('#approval-dhb-table').DataTable({
+                "paging": true, "pageLength": 50, "searching": true, "info": true,
+                "scrollY": "70vh", "scrollCollapse": true, "dom": 'rtp',
+                "language": { 
+                    "paginate": { "next": ">", "previous": "<" },
+                    "zeroRecords": "Không có dữ liệu phù hợp."
+                }
+            });
+
+            // Custom Search Box
+            $('#customSearchInput').on('keyup', function() { table.search(this.value).draw(); });
         });
     </script>
-</body>
-</html>
+{% endblock %}

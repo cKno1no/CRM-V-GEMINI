@@ -23,7 +23,15 @@ def user_management_page():
 @login_required
 def api_get_users():
     if not check_admin_access(): return jsonify([]), 403
-    users = current_app.user_service.get_all_users()
+    
+    # --- ĐOẠN CẦN SỬA ---
+    # Code cũ: users = current_app.user_service.get_all_users()
+    
+    # Code mới: Lấy division từ session và truyền vào
+    user_division = session.get('division')
+    users = current_app.user_service.get_all_users(division=user_division)
+    # --------------------
+    
     return jsonify(users)
 
 @user_bp.route('/api/users/detail/<string:user_code>', methods=['GET'])
@@ -58,3 +66,19 @@ def api_save_permissions():
     features = data.get('features', [])
     success = current_app.user_service.update_permissions(role_id, features)
     return jsonify({'success': success})
+
+@user_bp.route('/api/user/set_theme', methods=['POST'])
+@login_required
+def api_set_user_theme():
+    """API: Lưu theme người dùng chọn vào CSDL."""
+    data = request.json
+    theme = data.get('theme', 'light')
+    user_code = session.get('user_code')
+    
+    # 1. Update DB
+    current_app.user_service.update_user_theme_preference(user_code, theme)
+    
+    # 2. Update Session hiện tại (để F5 không bị mất)
+    session['theme'] = theme
+    
+    return jsonify({'success': True})

@@ -1,357 +1,213 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Dashboard Báo cáo & Theo dõi</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "base.html" %}
+
+{% block title %}Dashboard Báo cáo | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* MODERN TABLE */
+    .table-container {
+        background: var(--card-bg); border-radius: 16px;
+        box-shadow: var(--shadow-sm); overflow: hidden; border: 1px solid var(--border-color);
+    }
     
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    .table-header-sticky th { 
+        position: sticky; top: 0; z-index: 10;
+        background-color: var(--input-bg) !important; 
+        color: var(--secondary) !important;
+        font-weight: 700; font-size: 0.85rem; text-transform: uppercase;
+        padding: 20px 15px; border-bottom: 2px solid var(--border-color); white-space: nowrap;
+    }
+
+    .report-table td { 
+        padding: 15px; border-bottom: 1px solid var(--border-color); 
+        font-size: 0.95rem; color: var(--text-dark); vertical-align: top;
+    }
+    .report-row:hover td { background-color: var(--input-bg); cursor: pointer; }
+
+    /* CONTENT CELL */
+    .content-cell { line-height: 1.6; color: var(--text-dark); min-width: 300px; }
     
-    <style>
-        /* --- 1. CORE VARIABLES & BASE STYLES (Đồng bộ nhaplieu_new) --- */
-        :root {
-            --primary: #4318FF;
-            --primary-light: #F4F7FE;
-            --secondary: #A3AED0;
-            --text-dark: #2B3674;
-            --danger: #E31A1A;
-            --success: #05CD99;
-            --warning: #FFB547;
-            --bg-color: #F4F7FE;
-            --card-radius: 20px;
-            --input-bg: #F4F7FE;
-        }
-        
-        body { 
-            background-color: var(--bg-color); 
-            font-family: 'Inter', sans-serif; 
-            color: var(--text-dark); 
-        }
-        .container-fluid { max-width: 1600px; padding: 30px 20px; } /* Rộng hơn để xem bảng */
-        
-        /* --- 2. HEADER --- */
-        .page-header { margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
-        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
-        .page-sub { color: var(--secondary); font-size: 0.95rem; margin-top: 5px;}
-        
-        /* Buttons Modern */
-        .btn-action {
-            padding: 10px 20px; border-radius: 14px; font-weight: 600; border: none; transition: all 0.2s;
-        }
-        .btn-create { background-color: var(--primary); color: white; box-shadow: 0 4px 10px rgba(67, 24, 255, 0.2); }
-        .btn-create:hover { background-color: #3311db; transform: translateY(-2px); color: white; }
-        .btn-back { background-color: white; color: var(--secondary); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .btn-back:hover { color: var(--text-dark); background-color: #fff; }
+    .highlight { background-color: var(--warning); color: #000; padding: 2px 4px; border-radius: 4px; }
 
-        /* --- 3. FILTER CARD (Style Input Chìm) --- */
-        .main-card {
-            background: white; border-radius: var(--card-radius); padding: 25px;
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); border: none; margin-bottom: 25px;
-        }
-        
-        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
-        .form-control, .form-select {
-            border: none; background-color: var(--input-bg); border-radius: 16px;
-            padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none; transition: all 0.2s;
-        }
-        .form-control:focus, .form-select:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
-        
-        .btn-filter {
-            background-color: var(--primary); color: white; border-radius: 16px; font-weight: 600; width: 100%; padding: 12px;
-        }
-        .btn-filter:hover { background-color: #3311db; color: white; }
-
-        /* --- 4. MODERN TABLE STYLES --- */
-        .table-container {
-            background: white; border-radius: var(--card-radius);
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
-            overflow: hidden; /* Bo góc cho bảng */
-            padding: 0;
-        }
-        
-        .table-header-sticky th { 
-            position: sticky; top: 0; z-index: 10;
-            background-color: #FAFCFE !important; /* Màu nền header nhạt */
-            color: var(--secondary) !important;
-            font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;
-            padding: 20px 15px; border-bottom: 1px solid #E0E5F2;
-            white-space: nowrap;
-        }
-
-        .report-table td { 
-            padding: 15px; border-bottom: 1px solid #F4F7FE; 
-            font-size: 0.95rem; color: var(--text-dark); vertical-align: top;
-        }
-        .report-row:hover td { background-color: var(--primary-light); cursor: pointer; }
-        .report-row:last-child td { border-bottom: none; }
-
-        /* --- 5. RICH TEXT CONTENT STYLING (Quan trọng để hiển thị đẹp) --- */
-        .content-cell { line-height: 1.6; color: #4A5568; }
-        
-        /* Style cho khối Header được chèn vào (Giống bên Nhập liệu) */
-        .injected-header-p {
-            display: flex; justify-content: space-between; align-items: center;
-            background: var(--primary-light); border: 1px solid #E0E5F2; border-left: 4px solid var(--primary);
-            border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; margin-top: 8px;
-            font-size: 0.9rem; font-weight: 600; color: var(--text-dark);
-        }
-        /* Ẩn nút xóa khi xem ở Dashboard */
-        .injected-header-p .delete-header-btn { display: none; }
-        
-        /* Style cho Callout Block (Nếu dùng style mới) */
-        .report-callout {
-            background-color: #FFF8E1; border-left: 4px solid var(--warning);
-            padding: 10px; border-radius: 8px; margin: 5px 0; font-size: 0.9rem;
-        }
-        
-        /* Highlight search text */
-        .highlight { background-color: #FFEB3B; color: black; padding: 2px 4px; border-radius: 4px; }
-
-        /* --- 6. BADGES & PAGINATION --- */
-        .badge-id { background-color: var(--input-bg); color: var(--primary); border-radius: 8px; padding: 5px 10px; font-weight: 700; }
-        .badge-file { background-color: #E6FFFA; color: var(--success); border: 1px solid var(--success); border-radius: 20px; padding: 4px 10px; font-size: 0.8rem; }
-        
-        .pagination .page-link {
-            border: none; border-radius: 10px; margin: 0 3px; color: var(--secondary); font-weight: 600;
-        }
-        .pagination .page-item.active .page-link {
-            background-color: var(--primary); color: white; box-shadow: 0 4px 10px rgba(67, 24, 255, 0.3);
-        }
-        .pagination .page-item.disabled .page-link { background-color: transparent; color: #d1d5db; }
-
-        /* Print protection */
-        @media print { body * { visibility: hidden; } #watermark-user-id { visibility: visible; } }
-
-        /* --- MOBILE RESPONSIVE: DASHBOARD REPORT --- */
-        @media (max-width: 768px) {
-            /* 1. Header */
-            .page-header {
-                flex-direction: column;
-                align-items: flex-start !important;
-                gap: 15px;
-            }
-            .page-header .d-flex {
-                width: 100%;
-                justify-content: space-between;
-            }
-            .btn-action {
-                width: 48%; /* Hai nút chia đôi màn hình */
-                text-align: center;
-                justify-content: center;
-            }
-
-            /* 2. Filter Form */
-            .main-card form.row {
-                flex-direction: column;
-                gap: 10px;
-            }
-            .main-card .col-md-2, .main-card .col-md-3, .main-card .col-md-1 {
-                width: 100%;
-            }
-            .btn-filter {
-                margin-top: 10px;
-            }
-
-            /* 3. Table */
-            .table-container .table-responsive {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-            .report-table th {
-                padding: 10px 5px;
-                font-size: 0.75rem;
-            }
-            .report-table td {
-                white-space: nowrap; /* Giữ dòng không bị ngắt */
-                font-size: 0.8rem;
-                padding: 10px 5px;
-            }
-            
-            /* Riêng cột nội dung (Content) cho phép xuống dòng nhưng có min-width */
-            .content-cell {
-                white-space: normal !important;
-                min-width: 250px; /* Đảm bảo đủ rộng để đọc */
-                max-height: 100px;
-                overflow-y: hidden;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container-fluid">
-        
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">Dashboard Báo cáo</h1>
-                <p class="page-sub">Theo dõi & Quản lý thông tin khách hàng</p>
-            </div>
-            <div class="d-flex gap-3">
-                <a href="{{ url_for('crm_bp.nhap_lieu') }}" class="btn btn-action btn-create">
-                    <i class="fas fa-plus me-2"></i>Tạo Báo cáo
-                </a>
-                <a href="{{ url_for('index') }}" class="btn btn-action btn-back">
-                    <i class="fas fa-times me-2"></i>Đóng
-                </a>
-            </div>
-        </div>
-        
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show rounded-4 mb-4" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-            {% endfor %}
-        {% endif %}
-        {% endwith %}
-
-        <div class="main-card">
-            <form method="POST" action="{{ url_for('crm_bp.dashboard_reports', page=1) }}" class="row g-3 align-items-end">
-                <div class="col-md-2">
-                    <label class="form-label">Từ Ngày</label>
-                    <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Đến Ngày</label>
-                    <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Nhân viên</label>
-                    <select name="nv_bao_cao" class="form-select">
-                        <option value="">-- Tất cả --</option>
-                        {% for user in users %}
-                        <option value="{{ user.USERCODE }}" {% if selected_user == user.USERCODE %} selected {% endif %}>
-                            {{ user.SHORTNAME }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Khách hàng</label>
-                    <input type="text" name="kh_search" class="form-control" value="{{ kh_search_term }}" placeholder="Tìm tên...">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Từ khóa nội dung</label>
-                    <input type="text" name="text_search" class="form-control" value="{{ text_search_term }}" placeholder="Nội dung, đánh giá...">
-                </div>
-                <div class="col-md-1">
-                    <button type="submit" class="btn btn-filter"><i class="fas fa-search"></i></button>
-                </div>
-            </form>
-        </div>
-
-        <div class="table-container">
-            <div class="d-flex justify-content-between align-items-center p-4 border-bottom">
-                <h5 class="m-0 fw-bold text-dark">
-                    <i class="fas fa-list text-primary me-2"></i>Danh sách Báo cáo
-                </h5>
-                <span class="badge bg-light text-secondary rounded-pill px-3 py-2 border">
-                    Tổng: {{ total_reports|default(0) }} bản ghi
-                </span>
-            </div>
-
-            {% if reports %}
-            <div class="table-responsive" style="max-height: 65vh; overflow-y: auto;">
-                <table class="table report-table mb-0">
-                    <thead class="table-header-sticky">
-                        <tr>
-                            <th width="5%" class="text-center">ID</th>
-                            <th width="8%">Ngày</th>
-                            <th width="5%">NV</th>
-                            <th width="15%">Đối tượng</th>
-                            <th width="30%">Nội dung Chính</th>
-                            <th width="30%">Đánh giá / Kế hoạch</th>
-                            <th width="7%" class="text-center">Tệp</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in reports %}
-                        <tr class="report-row" onclick="window.open('{{ url_for('crm_bp.report_detail_page', report_stt=row.ID_KEY) }}', '_blank')">
-                            <td class="text-center"><span class="badge-id">#{{ row.ID_KEY }}</span></td>
-                            <td class="text-muted fw-medium" style="font-size: 0.85rem;">{{ row.NGAY }}</td>
-                            <td class="fw-bold text-primary">{{ row.NV }}</td>
-                            <td class="fw-bold text-dark">{{ row.KH }}</td>
-                            
-                            <td class="content-cell">
-                                {{ row['NOI DUNG 1'] | safe }}
-                            </td>
-                            
-                            <td class="content-cell">
-                                {{ row['DANH GIA 1'] | safe }}
-                            </td>
-                            
-                            <td class="text-center">
-                                {% if row.FILE_COUNT and row.FILE_COUNT > 0 %}
-                                    <span class="badge-file"><i class="fas fa-paperclip me-1"></i>{{ row.FILE_COUNT }}</span>
-                                {% else %}
-                                    <span class="text-muted opacity-25">—</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="d-flex justify-content-center py-4">
-                <nav aria-label="Page navigation">
-                    <ul class="pagination mb-0">
-                        {% set url_params = {'nv_bao_cao': selected_user, 'date_from': date_from, 'date_to': date_to, 'kh_search': kh_search_term, 'text_search': text_search_term} %}
-                        
-                        <li class="page-item {% if page == 1 %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('crm_bp.dashboard_reports', page=page - 1, **url_params) }}"><i class="fas fa-chevron-left"></i></a>
-                        </li>
-                        
-                        {% set start_page = [1, page - 2] | max %}
-                        {% set end_page = [total_pages, page + 2] | min %}
-
-                        {% if start_page > 1 %}
-                            <li class="page-item"><a class="page-link" href="{{ url_for('crm_bp.dashboard_reports', page=1, **url_params) }}">1</a></li>
-                            {% if start_page > 2 %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}
-                        {% endif %}
+    /* BADGES */
+    .badge-id { background-color: var(--input-bg); color: var(--primary); border-radius: 8px; padding: 5px 10px; font-weight: 700; border: 1px solid var(--border-color); }
+    .badge-file { background-color: rgba(5, 205, 153, 0.1); color: var(--success); border: 1px solid var(--success); border-radius: 20px; padding: 4px 10px; font-size: 0.8rem; }
     
-                        {% for p in range(start_page, end_page + 1) %}
-                            <li class="page-item {% if p == page %}active{% endif %}">
-                                <a class="page-link" href="{{ url_for('crm_bp.dashboard_reports', page=p, **url_params) }}">{{ p }}</a>
-                            </li>
-                        {% endfor %}
+    /* FILTER */
+    .btn-filter {
+        background-color: var(--primary); color: white; border-radius: 16px; font-weight: 600; width: 100%; padding: 12px; border: none;
+    }
+    .btn-filter:hover { background-color: var(--primary-dark); }
     
-                        {% if end_page < total_pages %}
-                            {% if end_page < total_pages - 1 %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}
-                            <li class="page-item"><a class="page-link" href="{{ url_for('crm_bp.dashboard_reports', page=total_pages, **url_params) }}">{{ total_pages }}</a></li>
-                        {% endif %}
+    /* PAGINATION */
+    .pagination .page-link {
+        background-color: var(--card-bg); border: 1px solid var(--border-color);
+        margin: 0 3px; color: var(--secondary); font-weight: 600; border-radius: 10px;
+    }
+    .pagination .page-item.active .page-link {
+        background-color: var(--primary); color: white; border-color: var(--primary); box-shadow: var(--shadow-sm);
+    }
+    .pagination .page-item.disabled .page-link { background-color: var(--input-bg); color: var(--secondary); opacity: 0.5; }
 
-                        <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('crm_bp.dashboard_reports', page=page + 1, **url_params) }}"><i class="fas fa-chevron-right"></i></a>
-                        </li>
-                    </ul>
-                </nav>
-            </div>
-            {% else %}
-            <div class="text-center py-5">
-                <img src="https://cdn-icons-png.flaticon.com/512/7486/7486754.png" alt="Empty" width="100" class="opacity-25 mb-3">
-                <p class="text-muted">Không tìm thấy báo cáo nào phù hợp.</p>
-            </div>
-            {% endif %}
-        </div>
+    @media (max-width: 768px) {
+        .table-responsive { overflow-x: auto; }
+        .report-table th, .report-table td { white-space: nowrap; padding: 12px 10px; }
+        .content-cell { white-space: normal !important; min-width: 250px; }
+    }
+</style>
+{% endblock %}
 
+{% block page_title %}Dashboard Báo cáo{% endblock %}
+{% block page_sub %}Theo dõi & Quản lý thông tin khách hàng.{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('crm_bp.nhap_lieu') }}" class="btn btn-primary shadow-sm fw-bold">
+    <i class="fas fa-plus me-2"></i>Tạo Báo cáo
+</a>
+<a href="{{ url_for('index') }}" class="btn btn-back">
+    <i class="fas fa-times me-2"></i>Đóng
+</a>
+{% endblock %}
+
+{% block content %}
+    <div class="main-card">
+        <form method="POST" action="{{ url_for('crm_bp.dashboard_reports', page=1) }}" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label">Từ Ngày</label>
+                <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Đến Ngày</label>
+                <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Nhân viên</label>
+                <select name="nv_bao_cao" class="form-select">
+                    <option value="">-- Tất cả --</option>
+                    {% for user in users %}
+                    <option value="{{ user.USERCODE }}" {% if selected_user == user.USERCODE %} selected {% endif %}>
+                        {{ user.SHORTNAME }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Khách hàng</label>
+                <input type="text" name="kh_search" class="form-control" value="{{ kh_search_term }}" placeholder="Tìm tên...">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Từ khóa nội dung</label>
+                <input type="text" name="text_search" class="form-control" value="{{ text_search_term }}" placeholder="Nội dung, đánh giá...">
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-filter"><i class="fas fa-search"></i></button>
+            </div>
+        </form>
     </div>
-    
-    <div id="watermark-user-id" data-user="{{ current_user.usercode }}" style="display:none;"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+    <div class="table-container">
+        <div class="d-flex justify-content-between align-items-center p-4 border-bottom" style="border-color: var(--border-color) !important;">
+            <h5 class="m-0 fw-bold" style="color: var(--text-dark);">
+                <i class="fas fa-list text-primary me-2"></i>Danh sách Báo cáo
+            </h5>
+            <span class="badge rounded-pill px-3 py-2 border" style="background: var(--input-bg); color: var(--secondary); border-color: var(--border-color) !important;">
+                Tổng: {{ total_reports|default(0) }} bản ghi
+            </span>
+        </div>
+
+        {% if reports %}
+        <div class="table-responsive" style="max-height: 65vh; overflow-y: auto;">
+            <table class="table report-table mb-0">
+                <thead class="table-header-sticky">
+                    <tr>
+                        <th width="5%" class="text-center">ID</th>
+                        <th width="8%">Ngày</th>
+                        <th width="5%">NV</th>
+                        <th width="15%">Đối tượng</th>
+                        <th width="30%">Nội dung Chính</th>
+                        <th width="30%">Đánh giá / Kế hoạch</th>
+                        <th width="7%" class="text-center">Tệp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in reports %}
+                    <tr class="report-row" onclick="window.open('{{ url_for('crm_bp.report_detail_page', report_stt=row.ID_KEY) }}', '_blank')">
+                        <td class="text-center"><span class="badge-id">#{{ row.ID_KEY }}</span></td>
+                        <td class="fw-medium" style="color: var(--secondary); font-size: 0.85rem;">{{ row.NGAY | format_date }}</td>
+                        <td class="fw-bold text-primary">{{ row.NV }}</td>
+                        <td class="fw-bold" style="color: var(--text-dark);">{{ row.KH }}</td>
+                        
+                        <td class="content-cell">
+                            {{ row['NOI DUNG 1'] | safe }}
+                        </td>
+                        
+                        <td class="content-cell">
+                            {{ row['DANH GIA 1'] | safe }}
+                        </td>
+                        
+                        <td class="text-center">
+                            {% if row.FILE_COUNT and row.FILE_COUNT > 0 %}
+                                <span class="badge-file"><i class="fas fa-paperclip me-1"></i>{{ row.FILE_COUNT }}</span>
+                            {% else %}
+                                <span class="opacity-25" style="color: var(--secondary);">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="d-flex justify-content-center py-4">
+            <nav aria-label="Page navigation">
+                <ul class="pagination mb-0">
+                    {% set url_params = {'nv_bao_cao': selected_user, 'date_from': date_from, 'date_to': date_to, 'kh_search': kh_search_term, 'text_search': text_search_term} %}
+                    
+                    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('crm_bp.dashboard_reports', page=page - 1, **url_params) }}"><i class="fas fa-chevron-left"></i></a>
+                    </li>
+                    
+                    {% set start_page = [1, page - 2] | max %}
+                    {% set end_page = [total_pages, page + 2] | min %}
+
+                    {% if start_page > 1 %}
+                        <li class="page-item"><a class="page-link" href="{{ url_for('crm_bp.dashboard_reports', page=1, **url_params) }}">1</a></li>
+                        {% if start_page > 2 %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}
+                    {% endif %}
+
+                    {% for p in range(start_page, end_page + 1) %}
+                        <li class="page-item {% if p == page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('crm_bp.dashboard_reports', page=p, **url_params) }}">{{ p }}</a>
+                        </li>
+                    {% endfor %}
+
+                    {% if end_page < total_pages %}
+                        {% if end_page < total_pages - 1 %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}
+                        <li class="page-item"><a class="page-link" href="{{ url_for('crm_bp.dashboard_reports', page=total_pages, **url_params) }}">{{ total_pages }}</a></li>
+                    {% endif %}
+
+                    <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('crm_bp.dashboard_reports', page=page + 1, **url_params) }}"><i class="fas fa-chevron-right"></i></a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-inbox fa-3x mb-3 opacity-25" style="color: var(--secondary);"></i>
+            <p class="text-muted">Không tìm thấy báo cáo nào phù hợp.</p>
+        </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block scripts %}
     <script>
-        // 1. Script Highlight từ khóa tìm kiếm (Giữ nguyên logic nhưng tối ưu selector)
         function highlightSearchTerm(element, terms) {
             if (!terms || terms.length === 0) return;
             let html = element.innerHTML;
             terms.forEach(term => {
                 if (term.trim() === '') return;
-                // Chỉ highlight text, không phá vỡ thẻ HTML
                 const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')})(?![^<]*>)`, 'gi');
                 html = html.replace(regex, '<span class="highlight">$1</span>');
             });
@@ -368,20 +224,5 @@
                 });
             }
         });
-
-        // 2. Script chặn in ấn & Copy (Giữ nguyên yêu cầu bảo mật)
-        document.addEventListener('DOMContentLoaded', function() {
-            document.addEventListener('keydown', function(e) {
-                if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-                    e.preventDefault();
-                    alert("Chức năng in đã bị khóa.");
-                }
-            }, true);
-            window.print = function() { alert("Chức năng in đã bị khóa."); };
-            document.addEventListener('contextmenu', e => e.preventDefault()); 
-            document.addEventListener('selectstart', e => e.preventDefault()); 
-            document.addEventListener('copy', e => { e.preventDefault(); alert("Sao chép nội dung bị cấm."); });
-        });
     </script>
-</body>
-</html>
+{% endblock %}

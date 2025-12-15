@@ -6,64 +6,45 @@
     <title>Xác thực Phiếu Chi</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; padding: 20px; font-family: sans-serif; }
-        .card { border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: none; }
-        .valid-icon { font-size: 60px; color: #198754; margin-bottom: 10px; }
-        .invalid-icon { font-size: 60px; color: #dc3545; margin-bottom: 10px; }
-        .info-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding: 10px 0; }
-        .info-label { color: #6c757d; }
-        .info-val { font-weight: bold; color: #212529; }
+        body { background-color: #F4F7FE; padding: 20px; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: none; width: 100%; max-width: 450px; overflow: hidden; }
+        .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #eee; }
+        .info-label { color: #6c757d; font-size: 0.9rem; }
+        .info-val { font-weight: bold; color: #2B3674; font-size: 0.95rem; }
     </style>
 </head>
 <body>
-    <div class="container" style="max-width: 500px;">
-        {% if error %}
-        <div class="card p-4 text-center">
-            <div class="invalid-icon">❌</div>
-            <h3 class="text-danger fw-bold">KHÔNG HỢP LỆ</h3>
-            <p class="text-muted">{{ error }}</p>
-        </div>
-        {% else %}
-        <div class="card">
-            <div class="card-header bg-success text-white text-center py-3" style="border-radius: 15px 15px 0 0;">
-                <h4 class="m-0 fw-bold">✔ XÁC THỰC THÀNH CÔNG</h4>
-                <small>Phiếu này có thật trên hệ thống</small>
-            </div>
-            <div class="card-body p-4">
-                <div class="text-center mb-4">
-                    <div class="text-muted small text-uppercase">Số tiền duyệt chi</div>
-                    <div class="display-4 fw-bold text-success">{{ "{:,.0f}".format(req.Amount | float) }}</div>
-                </div>
-                
-                <div class="info-row">
-                    <span class="info-label">Mã phiếu:</span>
-                    <span class="info-val">{{ req.RequestID }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Người đề nghị:</span>
-                    <span class="info-val">{{ req.RequesterName }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Mục chi:</span>
-                    <span class="info-val text-end">{{ req.BudgetName }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Ngày tạo:</span>
-                    <span class="info-val">
-                         {% if req.RequestDate %}{{ req.RequestDate.strftime('%d/%m/%Y') }}{% endif %}
-                    </span>
-                </div>
-                <div class="info-row border-0">
-                    <span class="info-label">Trạng thái:</span>
-                    <span class="badge bg-success fs-6">ĐÃ DUYỆT (APPROVED)</span>
-                </div>
-                
-                <div class="mt-4 text-center">
-                    <a href="/login" class="btn btn-outline-primary btn-sm">Đăng nhập để xem chi tiết</a>
-                </div>
-            </div>
-        </div>
-        {% endif %}
+    {% if error %}
+    <div class="card p-5 text-center">
+        <div style="font-size: 60px; margin-bottom: 20px;">❌</div>
+        <h3 class="text-danger fw-bold">KHÔNG HỢP LỆ</h3>
+        <p class="text-muted">{{ error }}</p>
     </div>
+    {% else %}
+    <div class="card">
+        <div class="bg-success text-white text-center py-4">
+            <div style="font-size: 40px;">✔</div>
+            <h4 class="m-0 fw-bold">XÁC THỰC THÀNH CÔNG</h4>
+            <small class="opacity-75">Phiếu này có thật trên hệ thống Titan OS</small>
+        </div>
+        <div class="card-body p-4">
+            <div class="text-center mb-4">
+                <div class="text-muted small text-uppercase">Số tiền duyệt chi</div>
+                <div class="display-5 fw-bold text-success">{{ req.Amount | format_number }}</div>
+                <small class="text-muted">VNĐ</small>
+            </div>
+            
+            <div class="info-row"><span class="info-label">Mã phiếu:</span><span class="info-val font-monospace">{{ req.RequestID }}</span></div>
+            <div class="info-row"><span class="info-label">Người đề nghị:</span><span class="info-val">{{ req.RequesterName }}</span></div>
+            <div class="info-row"><span class="info-label">Mục chi:</span><span class="info-val text-end">{{ req.BudgetName }}</span></div>
+            <div class="info-row"><span class="info-label">Ngày tạo:</span><span class="info-val">{{ req.RequestDate | format_date }}</span></div>
+            <div class="info-row border-0"><span class="info-label">Trạng thái:</span><span class="badge bg-success">APPROVED</span></div>
+            
+            <div class="mt-4 text-center">
+                <a href="/login" class="btn btn-outline-primary rounded-pill px-4">Đăng nhập hệ thống</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </body>
 </html>

@@ -1,285 +1,151 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Nợ Phải Trả (AP Aging)</title>
+{% extends "base.html" %}
+
+{% block title %}Quản lý Nợ Phải Trả (AP Aging) | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* KPI CARDS */
+    .kpi-card {
+        background: var(--card-bg); border-radius: var(--card-radius); padding: 20px;
+        box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); 
+        height: 100%; display: flex; align-items: center; transition: transform 0.2s;
+    }
+    .kpi-card:hover { transform: translateY(-5px); border-color: var(--primary); }
     
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    .kpi-icon-box {
+        width: 56px; height: 56px; border-radius: 50%; 
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.6rem; margin-right: 15px; flex-shrink: 0;
+    }
     
-    <style>
-        /* --- 1. CORE STYLES --- */
-        :root {
-            --primary: #4318FF; 
-            --bg-color: #F4F7FE; 
-            --text-dark: #2B3674;
-            --danger: #E31A1A; 
-            --success: #05CD99; 
-            --warning: #FFB547;
-            --info: #0dcaf0;
-            --card-radius: 20px;
-            --input-bg: #F4F7FE;
-        }
-        
-        body { 
-            background-color: var(--bg-color); 
-            font-family: 'Inter', sans-serif; 
-            color: var(--text-dark); 
-        }
-        
-        .container-fluid { max-width: 98%; margin-top: 30px; padding-bottom: 50px; }
+    .icon-total { background: var(--input-bg); color: var(--primary); }
+    .icon-overdue { background: rgba(227, 26, 26, 0.1); color: var(--danger); }
+    .icon-special { background: rgba(67, 24, 255, 0.1); color: var(--primary); }
+    
+    .kpi-content { flex-grow: 1; }
+    .kpi-label { font-size: 0.8rem; color: var(--secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
+    .kpi-value { font-size: 1.8rem; font-weight: 800; color: var(--text-dark); line-height: 1.1; }
+    
+    .text-danger-custom { color: var(--danger); }
+    
+    .kpi-sub-item { margin-bottom: 4px; }
+    .kpi-sub-label { font-size: 0.75rem; color: var(--secondary); display: block; }
+    .kpi-sub-val { font-size: 1.1rem; font-weight: 700; color: var(--text-dark); }
 
-        /* --- 2. HEADER --- */
-        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
-        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
-        
-        .btn-back { 
-            background: white; color: #A3AED0; border: 1px solid #E0E5F2; 
-            padding: 10px 20px; border-radius: 14px; font-weight: 600; text-decoration: none; 
-            transition: all 0.2s;
-        }
-        .btn-back:hover { background-color: #f8f9fa; color: var(--text-dark); }
-        
-        .btn-budget {
-            background-color: white; color: var(--success); border: 1px solid var(--success);
-            padding: 10px 20px; border-radius: 14px; font-weight: 600; text-decoration: none;
-            transition: all 0.2s;
-        }
-        .btn-budget:hover { background-color: #E6FDF5; transform: translateY(-2px); }
+    /* TABLE STYLES */
+    .table-aging { width: 100%; border-collapse: separate; border-spacing: 0; }
+    
+    .table-aging th { 
+        background-color: var(--input-bg) !important; color: var(--secondary); font-weight: 700; 
+        font-size: 0.75rem; text-transform: uppercase; padding: 15px 8px; 
+        border-bottom: 2px solid var(--border-color); vertical-align: middle; white-space: nowrap;
+        position: sticky; top: 0; z-index: 10;
+    }
+    
+    .table-aging td { 
+        vertical-align: middle; font-size: 0.85rem; padding: 10px 8px;
+        border-bottom: 1px solid var(--border-color); color: var(--text-dark);
+    }
+    
+    /* Sticky Columns (Mã & Tên) */
+    .table-aging th:nth-child(2), .table-aging td:nth-child(2) {
+        position: sticky; left: 0; background-color: var(--card-bg); z-index: 5;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+    }
+    .table-aging th:nth-child(2) { z-index: 11; background-color: var(--input-bg) !important; }
 
-        /* --- 3. KPI CARDS --- */
-        .kpi-card {
-            background: white; border-radius: var(--card-radius); padding: 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: none; height: 100%; 
-            display: flex; align-items: center; transition: transform 0.2s;
-        }
-        .kpi-card:hover { transform: translateY(-5px); }
-        
-        .kpi-icon-box {
-            width: 56px; height: 56px; border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.6rem; margin-right: 15px; flex-shrink: 0;
-        }
-        
-        .icon-total { background: var(--input-bg); color: var(--primary); }
-        .icon-overdue { background: #FFF5F5; color: var(--danger); }
-        .icon-special { background: #E3F2FD; color: #1565C0; }
-        
-        .kpi-content { flex-grow: 1; }
-        .kpi-label { font-size: 0.8rem; color: #A3AED0; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
-        .kpi-value { font-size: 1.8rem; font-weight: 800; color: var(--text-dark); line-height: 1.1; }
-        
-        .text-danger-custom { color: var(--danger); }
-        
-        /* Style riêng cho Card Nhóm đặc thù */
-        .kpi-sub-item { margin-bottom: 4px; }
-        .kpi-sub-label { font-size: 0.75rem; color: #6c757d; display: block; }
-        .kpi-sub-val { font-size: 1.1rem; font-weight: 700; color: var(--text-dark); }
+    /* Row Highlights */
+    .row-bank { background-color: rgba(255, 181, 71, 0.05) !important; }
+    .table-aging tbody tr:hover td { background-color: var(--input-bg) !important; }
+    
+    .val-total { font-weight: 700; color: var(--text-dark); }
+    .val-overdue { color: var(--danger); font-weight: 700; background-color: rgba(227, 26, 26, 0.1); padding: 3px 6px; border-radius: 6px; display: inline-block; }
+    .val-current { color: var(--success); font-weight: 600; }
+    
+    /* Badges */
+    .badge-type { font-size: 0.65rem; font-weight: 700; padding: 4px 6px; border-radius: 6px; text-transform: uppercase; }
+    .badge-bank { background-color: rgba(255, 181, 71, 0.2); color: #B71C1C; border: 1px solid #FFCC80; }
+    .badge-supplier { background-color: rgba(67, 24, 255, 0.1); color: var(--primary); border: 1px solid var(--primary); }
+    .badge-gtg { background-color: rgba(13, 202, 240, 0.2); color: #000; }
+    .badge-vlp { background-color: #6c757d; color: white; }
+    .badge-other { background-color: var(--input-bg); color: var(--text-dark); border: 1px solid var(--border-color); }
 
-        /* --- 4. FILTER & TABLE CARD --- */
-        .main-card { 
-            background: white; border-radius: var(--card-radius); 
-            padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 25px;
-            overflow: hidden;
-        }
-        
-        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
-        .form-control, .form-select {
-            border: none; background-color: var(--input-bg); border-radius: 12px;
-            padding: 10px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none; height: 45px;
-        }
-        .form-control:focus, .form-select:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
-        
-        .btn-primary { 
-            background-color: var(--primary); border: none; border-radius: 12px; 
-            font-weight: 600; height: 45px; width: 100%; transition: all 0.2s;
-        }
-        .btn-primary:hover { background-color: #3311db; }
+    /* Button Pay */
+    .btn-pay {
+        background-color: var(--primary); color: white; border: none; 
+        border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;
+        box-shadow: var(--shadow-sm); transition: all 0.2s;
+        display: inline-flex; align-items: center; gap: 5px;
+    }
+    .btn-pay:hover { background-color: var(--primary-dark); transform: translateY(-2px); }
+    
+    .btn-pay-bank { background-color: var(--warning); color: #000; }
+    .btn-pay-bank:hover { background-color: #FF9E0F; }
 
-        /* Table Styles */
-        .table-aging { width: 100%; border-collapse: separate; border-spacing: 0; }
-        .table-aging th { 
-            background-color: #FAFCFE !important; color: #A3AED0; font-weight: 700; 
-            font-size: 0.75rem; text-transform: uppercase; padding: 15px 8px; 
-            border-bottom: 2px solid #E0E5F2; vertical-align: middle; white-space: nowrap;
-        }
-        .table-aging td { 
-            vertical-align: middle; font-size: 0.85rem; padding: 10px 8px;
-            border-bottom: 1px solid #f4f7fe; color: var(--text-dark);
-        }
-        /* Highlight nhẹ dòng Bank để dễ phân biệt */
-        .row-bank { background-color: #FFF8E1 !important; }
-        .row-bank:hover td { background-color: #FFECB3 !important; }
-        
-        .table-aging tbody tr:hover td { background-color: #F8F9FA; }
-        
-        .val-total { font-weight: 700; color: var(--text-dark); }
-        .val-overdue { color: var(--danger); font-weight: 700; background-color: #FFF5F5; padding: 3px 6px; border-radius: 6px; display: inline-block; }
-        .val-current { color: var(--success); font-weight: 600; }
-        
-        .btn-pay {
-            background-color: var(--primary); color: white; border: none; 
-            border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;
-            box-shadow: 0 2px 5px rgba(67, 24, 255, 0.2); transition: all 0.2s;
-            display: inline-flex; align-items: center; gap: 5px;
-        }
-        .btn-pay:hover { background-color: #3311db; transform: translateY(-2px); }
-        
-        /* Button style riêng cho Bank */
-        .btn-pay-bank {
-            background-color: #FFB547; color: #000;
-        }
-        .btn-pay-bank:hover { background-color: #FF9E0F; }
+    /* DataTables Overrides for Theme */
+    .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_info { color: var(--secondary) !important; padding: 10px; }
+    .dataTables_wrapper .dataTables_paginate .paginate_button { color: var(--secondary) !important; }
+    .dataTables_wrapper .dataTables_filter { display: none; }
+</style>
+{% endblock %}
 
-        /* Badges for Debt Type */
-        .badge-type { font-size: 0.65rem; font-weight: 700; padding: 4px 6px; border-radius: 6px; text-transform: uppercase; }
-        .badge-bank { background-color: #FFF8E1; color: #B71C1C; border: 1px solid #FFCC80; }
-        .badge-supplier { background-color: #E3F2FD; color: #1565C0; border: 1px solid #90CAF9; }
-        .badge-gtg { background-color: #0dcaf0; color: #000; }
-        .badge-vlp { background-color: #6c757d; color: white; }
-        .badge-other { background-color: #F5F5F5; color: #616161; border: 1px solid #E0E0E0; }
+{% block page_title %}<i class="fas fa-file-invoice-dollar me-2 text-primary"></i> QUẢN LÝ NỢ PHẢI TRẢ (AP){% endblock %}
+{% block page_sub %}Theo dõi công nợ Nhà cung cấp, Vay Ngân hàng (341) và các nhóm đặc thù.{% endblock %}
 
-        /* DataTables Custom */
-        .dataTables_wrapper .dataTables_filter { display: none; }
-        .dataTables_wrapper .dataTables_length { color: #A3AED0; font-size: 0.85rem; padding: 10px; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button { 
-            border-radius: 8px !important; border: none !important; padding: 5px 10px !important;
-            font-weight: 600; color: #A3AED0 !important; margin: 0 2px;
-        }
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-            background: var(--primary) !important; color: white !important;
-        }
+{% block header_actions %}
+<a href="/budget/payment" class="btn btn-warning text-dark border-0 shadow-sm fw-bold">
+    <i class="fas fa-money-check-alt me-2"></i>Thực Chi (Payment)
+</a>
+<a href="/" class="btn btn-back"><i class="fas fa-home me-2"></i>Portal</a>
+{% endblock %}
 
-        /* --- MOBILE RESPONSIVE: AP AGING --- */
-        @media (max-width: 992px) {
-            /* 1. Header */
-            .page-header {
-                flex-direction: column;
-                align-items: flex-start !important;
-                gap: 15px;
-            }
-            .page-header .d-flex {
-                width: 100%;
-                flex-direction: column; /* Nút xếp dọc */
-                gap: 10px;
-            }
-            .btn-back, .btn-budget {
-                width: 100%;
-                text-align: center;
-            }
-
-            /* 2. KPI Cards: Xếp chồng */
-            .kpi-card {
-                padding: 15px;
-            }
-            
-            /* KPI con (Công nợ đặc thù) */
-            .kpi-card .row .col-6 {
-                width: 100%;
-                border-right: none !important;
-                border-bottom: 1px solid #eee;
-                padding-bottom: 5px;
-                margin-bottom: 5px;
-                padding-left: 0 !important;
-            }
-            .kpi-card .row .col-6:last-child {
-                border-bottom: none;
-                margin-bottom: 0;
-            }
-
-            /* 3. Form Lọc */
-            .main-card form.row {
-                flex-direction: column;
-                gap: 15px;
-            }
-            .main-card .col-md-4, .main-card .col-md-3, .main-card .col-md-2 {
-                width: 100%;
-            }
-
-            /* 4. Bảng dữ liệu */
-            .table-responsive {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-            .table-aging th, .table-aging td {
-                white-space: nowrap;
-                font-size: 0.8rem;
-            }
-            
-            /* Tăng kích thước nút Chi/Trả để dễ bấm */
-            .btn-pay {
-                padding: 8px 16px;
-                font-size: 0.85rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container-fluid">
-        
-        <div class="page-header">
-            <div>
-                <h1 class="page-title"><i class="fas fa-file-invoice-dollar me-2 text-primary"></i> QUẢN LÝ NỢ PHẢI TRẢ (AP)</h1>
-                <p class="text-muted small mb-0">Theo dõi công nợ Nhà cung cấp, Vay Ngân hàng (341) và các nhóm đặc thù.</p>
-            </div>
-            <div class="d-flex gap-2">
-                <a href="/budget/payment" class="btn-budget">
-                    <i class="fas fa-money-check-alt me-2"></i>Thực Chi (Payment Queue)
-                </a>
-                <a href="{{ url_for('index') }}" class="btn-back">
-                    <i class="fas fa-home me-2"></i>Về Portal
-                </a>
+{% block content %}
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="kpi-card">
+                <div class="kpi-icon-box icon-total"><i class="fas fa-wallet"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-label">Tổng Phải Trả</div>
+                    <div class="kpi-value">{{ kpi_total_payable | format_tr }}</div>
+                    <small class="text-muted">*NCC + Bank (Chưa bao gồm GTG)</small>
+                </div>
             </div>
         </div>
-
-        <div class="row g-4 mb-4">
-            <div class="col-md-4">
-                <div class="kpi-card">
-                    <div class="kpi-icon-box icon-total"><i class="fas fa-wallet"></i></div>
-                    <div class="kpi-content">
-                        <div class="kpi-label">Tổng Phải Trả (NCC + Bank)</div>
-                        <div class="kpi-value">{{ "{:,.0f}".format(kpi_total_payable) }}</div>
-                        <small class="text-muted">*Không bao gồm GTG & VLP</small>
-                    </div>
+        <div class="col-md-4">
+            <div class="kpi-card">
+                <div class="kpi-icon-box icon-overdue"><i class="fas fa-exclamation-circle"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-label text-danger">Tổng Quá Hạn</div>
+                    <div class="kpi-value text-danger-custom">{{ kpi_total_overdue | format_tr }}</div>
+                    <small class="text-muted">*Ưu tiên thanh toán</small>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="kpi-card">
-                    <div class="kpi-icon-box icon-overdue"><i class="fas fa-exclamation-circle"></i></div>
-                    <div class="kpi-content">
-                        <div class="kpi-label text-danger">Tổng Quá Hạn (NCC + Bank)</div>
-                        <div class="kpi-value text-danger-custom">{{ "{:,.0f}".format(kpi_total_overdue) }}</div>
-                        <small class="text-muted">*Cần ưu tiên xử lý</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="kpi-card">
-                    <div class="kpi-icon-box icon-special"><i class="fas fa-tools"></i></div>
-                    <div class="kpi-content">
-                        <div class="kpi-label text-primary" style="margin-bottom: 10px;">CÔNG NỢ ĐẶC THÙ</div>
-                        <div class="row">
-                            <div class="col-6 border-end">
-                                <span class="kpi-sub-label">Gia công (GTG)</span>
-                                <span class="kpi-sub-val">{{ "{:,.0f}".format(kpi_gtg_total) }}</span>
-                            </div>
-                            <div class="col-6 ps-3">
-                                <span class="kpi-sub-label">Vật liệu phụ (VLP)</span>
-                                <span class="kpi-sub-val">{{ "{:,.0f}".format(kpi_vlp_total) }}</span>
-                            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="kpi-card">
+                <div class="kpi-icon-box icon-special"><i class="fas fa-tools"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-label text-primary" style="margin-bottom: 10px;">CÔNG NỢ ĐẶC THÙ</div>
+                    <div class="row">
+                        <div class="col-6 border-end">
+                            <span class="kpi-sub-label">Gia công (GTG)</span>
+                            <span class="kpi-sub-val">{{ kpi_gtg_total | format_tr }}</span>
+                        </div>
+                        <div class="col-6 ps-3">
+                            <span class="kpi-sub-label">Vật liệu phụ (VLP)</span>
+                            <span class="kpi-sub-val">{{ kpi_vlp_total | format_tr }}</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="main-card">
+    <div class="main-card mb-4">
+        <div class="card-body-custom" style="padding: 20px;">
             <form method="POST" class="row g-3 align-items-end">
                 <div class="col-md-4">
-                    <label class="form-label text-secondary">Đối tượng (Tên NCC / Ngân hàng...)</label>
+                    <label class="form-label text-secondary">Đối tượng (NCC / Bank...)</label>
                     <div class="input-group">
                         <span class="input-group-text border-0 bg-transparent ps-3" style="position: absolute; z-index: 10;"><i class="fas fa-search text-muted"></i></span>
                         <input type="text" name="vendor_name" class="form-control ps-5" value="{{ vendor_filter }}" placeholder="Tìm kiếm theo tên...">
@@ -289,12 +155,10 @@
                     <label class="form-label text-secondary">Loại Công Nợ</label>
                     <select class="form-select" name="debt_type">
                         <option value="ALL" {% if debt_type_filter == 'ALL' %}selected{% endif %}>-- Tất cả --</option>
-                        
                         <optgroup label="Nhóm chính">
                             <option value="SUPPLIER" {% if debt_type_filter == 'SUPPLIER' %}selected{% endif %}>📉 Nhà Cung Cấp (331)</option>
                             <option value="BANK" {% if debt_type_filter == 'BANK' %}selected{% endif %}>🏦 Vay Ngân Hàng (341)</option>
                         </optgroup>
-                        
                         <optgroup label="Nhóm đặc thù">
                             <option value="GTG" {% if debt_type_filter == 'GTG' %}selected{% endif %}>🔧 Gia công (GTG)</option>
                             <option value="VLP" {% if debt_type_filter == 'VLP' %}selected{% endif %}>🔩 Vật liệu phụ (VLP)</option>
@@ -303,12 +167,14 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary shadow-sm">Lọc Dữ Liệu</button>
+                    <button type="submit" class="btn btn-primary shadow-sm w-100">Lọc Dữ Liệu</button>
                 </div>
             </form>
         </div>
+    </div>
 
-        <div class="main-card p-0">
+    <div class="main-card">
+        <div class="card-body-custom p-0">
             <div class="table-responsive">
                 <table id="apTable" class="table table-aging mb-0">
                     <thead>
@@ -356,22 +222,26 @@
                             </td>
                             <td class="text-center small text-secondary">{{ row.ReDueDays }}</td>
                             
-                            <td class="text-end val-total">{{ "{:,.0f}".format(row.TotalDebt) }}</td>
+                            <td class="text-end val-total" data-order="{{ row.TotalDebt }}">
+                                {{ row.TotalDebt | format_tr }}
+                            </td>
                             
-                            <td class="text-end">
+                            <td class="text-end" data-order="{{ row.TotalOverdueDebt }}">
                                 {% if row.TotalOverdueDebt > 0 %}
-                                    <span class="val-overdue">{{ "{:,.0f}".format(row.TotalOverdueDebt) }}</span>
+                                    <span class="val-overdue">{{ row.TotalOverdueDebt | format_tr }}</span>
                                 {% else %}
                                     <span class="text-muted">-</span>
                                 {% endif %}
                             </td>
                             
-                            <td class="text-end val-current">{{ "{:,.0f}".format(row.Debt_Current) }}</td>
+                            <td class="text-end val-current" data-order="{{ row.Debt_Current }}">
+                                {{ row.Debt_Current | format_tr }}
+                            </td>
                             
-                            <td class="text-end text-secondary small">{{ "{:,.0f}".format(row.Debt_Range_1_30) }}</td>
-                            <td class="text-end text-secondary small">{{ "{:,.0f}".format(row.Debt_Range_31_90) }}</td>
-                            <td class="text-end text-secondary small">{{ "{:,.0f}".format(row.Debt_Range_91_180) }}</td>
-                            <td class="text-end text-danger fw-bold small">{{ "{:,.0f}".format(row.Debt_Over_180) }}</td>
+                            <td class="text-end text-secondary small" data-order="{{ row.Debt_Range_1_30 }}">{{ row.Debt_Range_1_30 | format_tr }}</td>
+                            <td class="text-end text-secondary small" data-order="{{ row.Debt_Range_31_90 }}">{{ row.Debt_Range_31_90 | format_tr }}</td>
+                            <td class="text-end text-secondary small" data-order="{{ row.Debt_Range_91_180 }}">{{ row.Debt_Range_91_180 | format_tr }}</td>
+                            <td class="text-end text-danger fw-bold small" data-order="{{ row.Debt_Over_180 }}">{{ row.Debt_Over_180 | format_tr }}</td>
                             
                             <td class="text-center">
                                 {% if row.DebtType == 'BANK' %}
@@ -390,57 +260,35 @@
                 </table>
             </div>
         </div>
-        
     </div>
+{% endblock %}
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
-    
+{% block scripts %}
     <script>
         $(document).ready(function() {
-            // Khởi tạo DataTables
             $('#apTable').DataTable({
                 "paging": true, 
-                "pageLength": 15, 
+                "pageLength": 25, 
                 "ordering": true,
-                "order": [[5, "desc"], [4, "desc"]], // Sắp xếp ưu tiên Nợ Quá Hạn giảm dần
+                "order": [[5, "desc"], [4, "desc"]], // Sắp xếp theo Quá hạn giảm dần
                 "language": { 
                     "search": "Lọc nhanh:", 
                     "info": "Hiển thị _START_ - _END_ / _TOTAL_ dòng",
                     "paginate": { "next": "Sau", "previous": "Trước" },
                     "emptyTable": "Không tìm thấy dữ liệu công nợ phù hợp."
                 },
-                "columnDefs": [
-                    { "orderable": false, "targets": 11 } // Không sort cột Tác vụ (Index 11)
-                ]
+                "columnDefs": [ { "orderable": false, "targets": 11 } ]
             });
         });
 
-        /**
-         * Hàm chuyển hướng sang trang lập phiếu chi (Budget Payment)
-         * @param {string} id - Mã đối tượng (VTTN-0027)
-         * @param {string} name - Tên đối tượng
-         * @param {number} overdueAmount - Số tiền quá hạn (gợi ý thanh toán)
-         * @param {string} type - Loại nợ (SUPPLIER, BANK, GTG...) -> CẦN THIẾT ĐỂ XỬ LÝ ĐÚNG TK
-         */
         function planPayment(id, name, overdueAmount, type) {
-            let amountToFill = overdueAmount;
-            if (overdueAmount <= 0) amountToFill = 0; 
-
-            // Logic thông báo rõ ràng hơn tùy loại nợ
-            let msg = `Lập đề nghị thanh toán cho NCC: ${name}?`;
-            if (type === 'BANK') {
-                msg = `Lập đề nghị Trả vay / Gốc lãi cho Ngân hàng: ${name}?`;
-            }
+            let amountToFill = overdueAmount <= 0 ? 0 : overdueAmount; 
+            let msg = type === 'BANK' ? `Lập đề nghị Trả vay / Gốc lãi cho Ngân hàng: ${name}?` : `Lập đề nghị thanh toán cho NCC: ${name}?`;
 
             if(!confirm(msg)) return;
 
-            // Truyền thêm param debt_type lên URL để trang Budget xử lý
-            // debt_type sẽ giúp backend Budget biết nên hạch toán vào 331 hay 341
             const url = `/budget/dashboard?create=1&obj_id=${encodeURIComponent(id)}&obj_name=${encodeURIComponent(name)}&amt=${amountToFill}&debt_type=${encodeURIComponent(type)}`;
             window.location.href = url;
         }
     </script>
-</body>
-</html>
+{% endblock %}

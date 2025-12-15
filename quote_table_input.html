@@ -1,249 +1,212 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Nhập liệu Báo giá (v2)</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% extends "base.html" %}
+
+{% block title %}Nhập liệu Báo giá | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* TABLE STYLES */
+    .table-input th { 
+        background-color: var(--input-bg) !important; color: var(--secondary); font-weight: 700; font-size: 0.8rem; 
+        position: sticky; top: 0; z-index: 10; white-space: nowrap; text-transform: uppercase;
+        text-align: center; vertical-align: middle; border-bottom: 2px solid var(--border-color);
+        padding: 12px 5px;
+    }
+    .table-input td { vertical-align: middle; font-size: 0.85rem; padding: 5px; border-bottom: 1px solid var(--border-color); color: var(--text-dark); }
     
-    <style>
-        /* --- CORE STYLES --- */
-        :root {
-            --primary: #4318FF;
-            --primary-light: #F4F7FE;
-            --secondary: #A3AED0;
-            --text-dark: #2B3674;
-            --danger: #E31A1A;
-            --success: #05CD99;
-            --warning: #FFB547;
-            --bg-color: #F4F7FE;
-            --card-radius: 20px;
-            --input-bg: #F4F7FE;
-        }
-        body { background-color: var(--bg-color); font-family: 'Inter', sans-serif; color: var(--text-dark); }
-        .container-fluid { max-width: 98%; margin-top: 30px; }
+    .readonly-data { font-weight: 500; }
+    
+    /* Inputs in Table */
+    .table-input .form-control, .table-input .form-select {
+        border-radius: 8px; padding: 4px 8px; font-size: 0.8rem; height: auto;
+        background-color: transparent; border: 1px solid transparent; color: var(--text-dark);
+    }
+    .table-input .form-control:hover, .table-input .form-select:hover {
+        background-color: var(--input-bg); border-color: var(--border-color);
+    }
+    .table-input .form-control:focus, .table-input .form-select:focus {
+        background-color: var(--card-bg); border-color: var(--primary); box-shadow: 0 0 0 2px rgba(67, 24, 255, 0.2);
+    }
 
-        /* HEADER */
-        .page-header { margin-bottom: 20px; }
-        .page-title { font-size: 1.5rem; font-weight: 700; color: var(--text-dark); }
+    /* Status Colors */
+    .status-win { color: var(--success); font-weight: 700; }
+    .status-lost, .status-cancel { color: var(--danger); font-weight: 700; }
+    .status-delay, .status-hold { color: var(--warning); font-weight: 700; }
+    
+    /* Row Highlights */
+    .row-critical { background-color: rgba(227, 26, 26, 0.05) !important; } 
+    .row-high { background-color: rgba(255, 181, 71, 0.05) !important; } 
+    .row-medium { background-color: var(--input-bg) !important; } 
+    
+    /* Column Widths & Colors */
+    .risk-col { min-width: 80px; font-weight: 700; }
+    .risk-reason-col { min-width: 250px; } 
+    .action-col { min-width: 140px; }
+    .time-col { min-width: 130px; }
+    
+    /* Header Colors */
+    .th-time { background-color: rgba(67, 24, 255, 0.1) !important; color: var(--primary) !important; }
+    .th-risk { background-color: rgba(227, 26, 26, 0.1) !important; color: var(--danger) !important; }
+    .th-action { background-color: rgba(5, 205, 153, 0.1) !important; color: var(--success) !important; }
+    
+    /* Form Inputs */
+    .form-control, .form-select { 
+        background-color: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-dark); border-radius: 12px; 
+    }
+</style>
+{% endblock %}
 
-        /* MAIN CARD */
-        .main-card {
-            border: none; background: white; border-radius: var(--card-radius);
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); margin-bottom: 25px; overflow: hidden;
-        }
-        .card-body-custom { padding: 20px; }
+{% block page_title %}<i class="fas fa-edit me-2 text-primary"></i> NHẬP LIỆU BÁO GIÁ{% endblock %}
+{% block page_sub %}Cập nhật tình trạng, rủi ro và lý do thất bại.{% endblock %}
 
-        /* FORMS */
-        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.85rem; }
-        .form-control, .form-select {
-            border: none; background-color: var(--input-bg); border-radius: 12px;
-            color: var(--text-dark); box-shadow: none;
-        }
-        .form-control:focus, .form-select:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
-        .btn-primary { background-color: var(--primary); border: none; border-radius: 12px; font-weight: 600; }
+{% block header_actions %}
+<a href="/" class="btn btn-back"><i class="fas fa-home me-2"></i>Portal</a>
+{% endblock %}
 
-        /* TABLE STYLES */
-        .table-input th { 
-            background-color: #FAFCFE !important; color: var(--secondary); font-weight: 700; font-size: 0.8rem; 
-            position: sticky; top: 0; z-index: 10; white-space: nowrap; text-transform: uppercase;
-            text-align: center; vertical-align: middle; border-bottom: 2px solid var(--primary-light);
-            padding: 12px 5px;
-        }
-        .table-input td { vertical-align: middle; font-size: 0.85rem; padding: 5px; border-color: #f0f0f0; }
-        
-        .readonly-data { color: var(--text-dark); font-weight: 500; }
-        
-        /* Inputs in Table */
-        .table-input .form-control, .table-input .form-select {
-            border-radius: 8px; padding: 4px 8px; font-size: 0.8rem; height: auto;
-            background-color: transparent; border: 1px solid transparent;
-        }
-        .table-input .form-control:hover, .table-input .form-select:hover {
-            background-color: var(--input-bg); border-color: #e0e0e0;
-        }
-        .table-input .form-control:focus, .table-input .form-select:focus {
-            background-color: white; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-light);
-        }
-
-        /* Status Colors */
-        .status-win { color: var(--success); font-weight: 700; }
-        .status-lost, .status-cancel { color: var(--danger); font-weight: 700; }
-        .status-delay, .status-hold { color: var(--warning); font-weight: 700; }
-        
-        /* Row Highlights (Nhạt hơn để không chói) */
-        .row-critical { background-color: #FFF5F5; } 
-        .row-high { background-color: #FFFAEB; } 
-        .row-medium { background-color: #F9FAFB; } 
-        
-        /* Column Widths & Colors */
-        .risk-col { min-width: 80px; font-weight: 700; }
-        .risk-reason-col { min-width: 250px; } 
-        .action-col { min-width: 140px; }
-        .time-col { min-width: 130px; }
-        
-        /* Header Column Colors (Pastel) */
-        .th-time { background-color: #E3F2FD !important; color: #1565C0 !important; }
-        .th-risk { background-color: #FFEBEE !important; color: #C62828 !important; }
-        .th-action { background-color: #E8F5E9 !important; color: #2E7D32 !important; }
-        
-    </style>
-</head>
-<body>
-    <div class="container-fluid">
-        <div class="page-header">
-            <h1 class="page-title"><i class="fas fa-edit me-2 text-primary"></i> NHẬP LIỆU BÁO GIÁ</h1>
-            <p class="text-muted small mt-1">Cập nhật tình trạng, rủi ro và lý do thất bại.</p>
-        </div>
-
-        <!-- FILTER -->
-        <div class="main-card">
-            <div class="card-body-custom">
-                <form method="POST" action="{{ url_for('approval_bp.quote_input_table') }}" class="row g-3 align-items-end">
-                    <div class="col-md-3">
-                        <label class="form-label">Từ Ngày BG</label>
-                        <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Đến Ngày BG</label>
-                        <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
-                    </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary w-100" style="padding: 10px;">
-                            <i class="fas fa-filter me-2"></i> Lọc Dữ Liệu
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- TABLE -->
-        <div class="main-card">
-            <div class="card-body-custom p-0">
-                <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
-                    <table class="table table-hover mb-0 table-input">
-                        <thead>
-                            <tr>
-                                <th class="text-center">Mã BG</th>
-                                <th class="text-start">Khách hàng</th>
-                                <th class="text-end">Giá trị</th>
-                                <th class="text-center">Ngày</th>
-                                
-                                <th class="text-center time-col th-time">Phát sinh (Start)</th>
-                                <th class="text-center time-col th-time">Hoàn tất (End)</th>
-                                
-                                <th class="text-center th-risk">TÌNH TRẠNG</th>
-                                <th class="text-center risk-col th-risk">RỦI RO</th> 
-                                <th class="text-start risk-reason-col th-risk">Lý do Thua/Hủy</th>
-                                
-                                <th class="text-center action-col th-action">Hành động 1</th>
-                                <th class="text-center action-col th-action">Hành động 2</th>
-                                
-                                <th class="text-center">P.Ứng (h)</th>
-                                <th class="text-center">Lưu</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for quote in quotes %}
-                            {% set quote_id_safe = quote.QuoteID | replace(" ", "_") %}
-                            {% set risk_level_class = 'row-' + quote.RiskLevel | lower %}
-                            
-                            <tr id="row_{{ quote_id_safe }}" data-quote-id="{{ quote.QuoteID }}" class="{{ risk_level_class }}">
-                                <td class="text-center readonly-data font-monospace small">{{ quote.QuoteID }}</td>
-                                <td class="text-start readonly-data text-truncate" style="max-width: 200px;" title="{{ quote.ClientName }}">
-                                    {{ quote.ClientName | default('N/A') }}
-                                </td>
-                                <td class="text-end readonly-data fw-bold">{{ "{:,.0f}".format(quote.QuoteValue | float) }}</td>
-                                <td class="text-center readonly-data small">
-                                    {{ quote.QuoteDate | default('N/A') | replace('00:00:00', '') }}
-                                </td>
-                                
-                                <td class="time-col">
-                                    <input type="datetime-local" name="TIME_START" class="form-control"
-                                           value="{{ quote.TimeStartValue }}"
-                                           onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)">
-                                </td>
-                                
-                                <td class="time-col">
-                                    <input type="datetime-local" name="TIME_COMPLETE" class="form-control"
-                                           value="{{ quote.TimeCompleteValue }}"
-                                           onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)">
-                                </td>
-                                
-                                <td>
-                                    <select name="TINH_TRANG_BG" class="form-select fw-bold" 
-                                            onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)">
-                                        {% for status_code, status_name in quote_statuses %}
-                                            <option value="{{ status_code }}" 
-                                                    {% if status_code == quote.StatusCRM %} selected {% endif %}
-                                                    class="status-{{ status_code | lower | replace('.','') | replace(' ', '') }}">
-                                                {{ status_name }}
-                                            </option>
-                                        {% endfor %}
-                                    </select>
-                                </td>
-                                
-                                <td class="text-center risk-col text-danger">
-                                    {{ quote.RiskScore }} 
-                                    {% if quote.RiskLevel not in ['LOW', 'CLOSED'] %}
-                                        <i class="fas fa-exclamation text-warning ms-1" title="{{ quote.RiskNotes }}"></i>
-                                    {% endif %}
-                                </td>
-                                
-                                <td class="risk-reason-col">
-                                    <textarea name="LY_DO_THUA" class="form-control" rows="1"
-                                              placeholder="Chi tiết lý do..."
-                                              onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)"
-                                              {% if quote.StatusCRM == 'WIN' %} disabled {% endif %}
-                                              style="resize: none;">{{ quote.LossReason }}</textarea>
-                                </td>
-                                
-                                <td class="action-col">
-                                    <select name="MA_HANH_DONG_1" class="form-select" 
-                                            onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)">
-                                        {% for action_code, action_name in actions %}
-                                            <option value="{{ action_code }}" 
-                                                    {% if action_code == quote.Action1 %} selected {% endif %}>
-                                                {{ action_name }}
-                                            </option>
-                                        {% endfor %}
-                                    </select>
-                                </td>
-
-                                <td class="action-col">
-                                    <select name="MA_HANH_DONG_2" class="form-select" 
-                                            onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)">
-                                        {% for action_code, action_name in actions %}
-                                            <option value="{{ action_code }}" 
-                                                    {% if action_code == quote.Action2 %} selected {% endif %}>
-                                                {{ action_name }}
-                                            </option>
-                                        {% endfor %}
-                                    </select>
-                                </td>
-
-                                <td class="text-center readonly-data small text-muted">
-                                    {{ quote.ReactionTime }} 
-                                </td>
-                                
-                                <td class="text-center">
-                                    <span id="status_icon_{{ quote_id_safe }}" class="save-status-icon text-secondary">
-                                        <i class="far fa-save"></i>
-                                    </span>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+{% block content %}
+    <div class="main-card mb-4">
+        <div class="card-body-custom" style="padding: 20px;">
+            <form method="POST" action="{{ url_for('approval_bp.quote_input_table') }}" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Từ Ngày BG</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
                 </div>
-            </div>
+                <div class="col-md-3">
+                    <label class="form-label">Đến Ngày BG</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold" style="padding: 10px;">
+                        <i class="fas fa-filter me-2"></i> Lọc Dữ Liệu
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="main-card">
+        <div class="card-body-custom p-0">
+            <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
+                <table class="table table-hover mb-0 table-input">
+                    <thead>
+                        <tr>
+                            <th class="text-center">Mã BG</th>
+                            <th class="text-start">Khách hàng</th>
+                            <th class="text-end">Giá trị</th>
+                            <th class="text-center">Ngày</th>
+                            
+                            <th class="text-center time-col th-time">Phát sinh (Start)</th>
+                            <th class="text-center time-col th-time">Hoàn tất (End)</th>
+                            
+                            <th class="text-center th-risk">TÌNH TRẠNG</th>
+                            <th class="text-center risk-col th-risk">RỦI RO</th> 
+                            <th class="text-start risk-reason-col th-risk">Lý do Thua/Hủy</th>
+                            
+                            <th class="text-center action-col th-action">Hành động 1</th>
+                            <th class="text-center action-col th-action">Hành động 2</th>
+                            
+                            <th class="text-center">P.Ứng (h)</th>
+                            <th class="text-center">Lưu</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for quote in quotes %}
+                        {% set quote_id_safe = quote.QuoteID | replace(" ", "_") %}
+                        {% set risk_level_class = 'row-' + quote.RiskLevel | lower %}
+                        
+                        <tr id="row_{{ quote_id_safe }}" data-quote-id="{{ quote.QuoteID }}" class="{{ risk_level_class }}">
+                            <td class="text-center readonly-data font-monospace small text-primary">{{ quote.QuoteID }}</td>
+                            <td class="text-start readonly-data text-truncate" style="max-width: 200px;" title="{{ quote.ClientName }}">
+                                {{ quote.ClientName | default('N/A') }}
+                            </td>
+                            <td class="text-end readonly-data fw-bold">{{ quote.QuoteValue | format_tr }}</td>
+                            <td class="text-center readonly-data small text-muted">
+                                {{ quote.QuoteDate | default('N/A') | replace('00:00:00', '') }}
+                            </td>
+                            
+                            <td class="time-col">
+                                <input type="datetime-local" name="TIME_START" class="form-control"
+                                       value="{{ quote.TimeStartValue }}"
+                                       onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)">
+                            </td>
+                            
+                            <td class="time-col">
+                                <input type="datetime-local" name="TIME_COMPLETE" class="form-control"
+                                       value="{{ quote.TimeCompleteValue }}"
+                                       onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)">
+                            </td>
+                            
+                            <td>
+                                <select name="TINH_TRANG_BG" class="form-select fw-bold" 
+                                        onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)">
+                                    {% for status_code, status_name in quote_statuses %}
+                                        <option value="{{ status_code }}" 
+                                                {% if status_code == quote.StatusCRM %} selected {% endif %}
+                                                class="status-{{ status_code | lower | replace('.','') | replace(' ', '') }}">
+                                            {{ status_name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            
+                            <td class="text-center risk-col text-danger">
+                                {{ quote.RiskScore }} 
+                                {% if quote.RiskLevel not in ['LOW', 'CLOSED'] %}
+                                    <i class="fas fa-exclamation text-warning ms-1" title="{{ quote.RiskNotes }}"></i>
+                                {% endif %}
+                            </td>
+                            
+                            <td class="risk-reason-col">
+                                <textarea name="LY_DO_THUA" class="form-control" rows="1"
+                                          placeholder="Chi tiết lý do..."
+                                          onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)"
+                                          {% if quote.StatusCRM == 'WIN' %} disabled {% endif %}
+                                          style="resize: none;">{{ quote.LossReason }}</textarea>
+                            </td>
+                            
+                            <td class="action-col">
+                                <select name="MA_HANH_DONG_1" class="form-select" 
+                                        onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)">
+                                    {% for action_code, action_name in actions %}
+                                        <option value="{{ action_code }}" 
+                                                {% if action_code == quote.Action1 %} selected {% endif %}>
+                                            {{ action_name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+
+                            <td class="action-col">
+                                <select name="MA_HANH_DONG_2" class="form-select" 
+                                        onchange="saveRow('{{ quote.QuoteID }}', this.name, this.value)">
+                                    {% for action_code, action_name in actions %}
+                                        <option value="{{ action_code }}" 
+                                                {% if action_code == quote.Action2 %} selected {% endif %}>
+                                            {{ action_name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+
+                            <td class="text-center readonly-data small text-muted">
+                                {{ quote.ReactionTime }} 
+                            </td>
+                            
+                            <td class="text-center">
+                                <span id="status_icon_{{ quote_id_safe }}" class="save-status-icon text-secondary">
+                                    <i class="far fa-save"></i>
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
     <script>
-        // GIỮ NGUYÊN LOGIC JAVASCRIPT CŨ
         function saveRow(quoteId, fieldName, fieldValue) {
             const quoteIdSafe = quoteId.replace(" ", "_");
             const statusIcon = document.getElementById(`status_icon_${quoteIdSafe}`);
@@ -307,5 +270,4 @@
             });
         }
     </script>
-</body>
-</html>
+{% endblock %}

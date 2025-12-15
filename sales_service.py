@@ -11,15 +11,16 @@ class SalesService:
     def __init__(self, db_manager: DBManager):
         self.db = db_manager
 
-    def get_sales_performance_data(self, current_year, user_code, is_admin):
+    def get_sales_performance_data(self, current_year, user_code, is_admin, division=None):
         """
-        [UPDATED] Tổng hợp KPI Sales sử dụng SP từ Config.
+        [UPDATED] Tổng hợp KPI Sales sử dụng SP từ Config, có lọc theo Division.
         """
         try:
-            # [CONFIG]: SP_SALES_PERFORMANCE
+            # Truyền thêm division vào danh sách tham số gọi SP
+            # SP trong SQL Server đã được sửa để nhận 4 tham số
             result_sets = self.db.execute_sp_multi(
                 config.SP_SALES_PERFORMANCE, 
-                (current_year, user_code, 1 if is_admin else 0)
+                (current_year, user_code, 1 if is_admin else 0, division)
             )
             
             if not result_sets or not result_sets[0]:

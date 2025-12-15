@@ -21,19 +21,29 @@ def get_user_ip():
 def task_dashboard():
     """ROUTE: Dashboard Quản lý Đầu việc hàng ngày."""
     
-    # FIX: Import Services Cục bộ
-    task_service   = current_app.task_service 
+    task_service = current_app.task_service 
+    db_manager = current_app.db_manager # Cần để ghi log
     
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
-    is_admin = (user_role == config.ROLE_ADMIN)
     
+    # Biến này xác định user CÓ PHẢI là Admin thực sự hay không (để hiện nút chuyển view)
+    real_is_admin = (user_role == config.ROLE_ADMIN)
     
+    # Lấy View Mode từ URL
     view_mode = request.args.get('view', 'USER').upper()
     filter_type = request.args.get('filter') or 'ALL'
     text_search_term = request.args.get('search') or request.form.get('search') or ''
 
-    can_manage_view = is_admin or (user_role == config.ROLE_MANAGER)
+    # LOGIC MỚI: Xác định cờ "is_admin" để truy vấn dữ liệu
+    # 1. Nếu đang xem View Cá nhân (USER) -> Coi như không phải Admin để lọc theo UserCode
+    # 2. Nếu đang xem View Quản lý (SUPERVISOR) -> Giữ nguyên quyền Admin (để xem tất cả)
+    if view_mode == 'USER':
+        is_admin_for_query = False 
+    else:
+        is_admin_for_query = real_is_admin
+
+    can_manage_view = real_is_admin or (user_role == config.ROLE_MANAGER)
 
     # 1. XỬ LÝ TẠO TASK MỚI (Logic INSERT)
     if request.method == 'POST' and 'create_task' in request.form:
@@ -69,13 +79,25 @@ def task_dashboard():
                 flash("Lỗi khi tạo Task. Vui lòng thử lại.", 'danger')
             return redirect(url_for('task_bp.task_dashboard'))
     
-    # 2. GỌI DỮ LIỆU CHÍNH
-    kpi_summary = task_service.get_kpi_summary(user_code, is_admin=is_admin)
-    kanban_tasks = task_service.get_kanban_tasks(user_code, is_admin=is_admin, view_mode=view_mode)
+    # 2. GỌI DỮ LIỆU CHÍNH (Cập nhật tham số)
+    
+    # Cập nhật: Truyền view_mode vào get_kpi_summary
+    kpi_summary = task_service.get_kpi_summary(
+        user_code, 
+        is_admin=is_admin_for_query, 
+        view_mode=view_mode  # <--- MỚI
+    )
+    
+    kanban_tasks = task_service.get_kanban_tasks(
+        user_code, 
+        is_admin=is_admin_for_query, 
+        view_mode=view_mode
+    )
+    
     risk_history_tasks = task_service.get_filtered_tasks(
         user_code, 
         filter_type=filter_type, 
-        is_admin=is_admin, 
+        is_admin=is_admin_for_query, 
         view_mode=view_mode, 
         text_search_term=text_search_term 
     )
@@ -85,7 +107,7 @@ def task_dashboard():
         kpi=kpi_summary,
         kanban_tasks=kanban_tasks, 
         history_tasks=risk_history_tasks, 
-        is_admin=is_admin,
+        is_admin=real_is_admin, # Vẫn truyền quyền thật xuống template để hiện các nút chức năng
         current_date=datetime.now().strftime('%Y-%m-%d'),
         active_filter=filter_type,
         view_mode=view_mode,

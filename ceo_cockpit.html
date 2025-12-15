@@ -1,245 +1,177 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Titan OS | CEO Cockpit</title>
+{% extends "base.html" %}
+
+{% block title %}Titan OS | CEO Cockpit{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+
+<style>
+    /* Font đặc thù cho Dashboard CEO */
+    h1, h2, h3, h4, h5, h6 { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    /* --- CARDS --- */
+    .card-box {
+        background: var(--card-bg); 
+        border-radius: 20px;
+        padding: 24px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-md);
+        height: 100%;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        display: block;
+        text-decoration: none;
+        color: inherit;
+    }
+    .card-box:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1);
+        border-color: var(--primary);
+        cursor: pointer;
+    }
+
+    /* Scorecard Styles */
+    .score-label {
+        color: var(--secondary);
+        font-size: 0.75rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .score-value {
+        color: var(--text-dark);
+        font-size: 1.8rem;
+        font-weight: 800;
+        line-height: 1.1;
+        margin-bottom: 8px;
+    }
+    .trend-badge {
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
     
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    /* Backgrounds cho Badge */
+    .bg-trend-up { background-color: rgba(5, 205, 153, 0.15); color: var(--success); }
+    .bg-trend-down { background-color: rgba(227, 26, 26, 0.1); color: var(--danger); }
+    .bg-trend-warn { background-color: rgba(255, 181, 71, 0.15); color: #B71C1C; }
 
-    <style>
-        :root {
-            --primary: #4318FF;
-            --primary-dark: #2A0EBB;
-            --secondary: #A3AED0;
-            --text-dark: #2B3674;
-            --bg-light: #F4F7FE;
-            --success: #05CD99;
-            --warning: #FFB547;
-            --danger: #E31A1A;
-            --info: #33ccff;
-            --card-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
-        }
+    /* Gradient Card (Profit) */
+    .card-gradient {
+        background: linear-gradient(135deg, #4318FF 0%, #7B61FF 100%);
+        color: white !important;
+        border: none;
+    }
+    .card-gradient .score-label { color: rgba(255,255,255,0.8) !important; }
+    .card-gradient .score-value { color: white !important; }
+    .card-gradient .trend-badge { background-color: rgba(255,255,255,0.2); color: white; }
 
-        body {
-            background-color: var(--bg-light);
-            font-family: 'Inter', sans-serif;
-            color: var(--text-dark);
-        }
+    /* Icon Box */
+    .icon-box {
+        width: 45px; height: 45px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem;
+    }
+    .ib-primary { background-color: var(--input-bg); color: var(--primary); }
+    .ib-warning { background-color: rgba(255, 181, 71, 0.15); color: var(--warning); }
+    .ib-danger { background-color: rgba(227, 26, 26, 0.1); color: var(--danger); }
+    .ib-success { background-color: rgba(5, 205, 153, 0.15); color: var(--success); }
+    .ib-info { background-color: rgba(51, 204, 255, 0.15); color: var(--info); }
 
-        h1, h2, h3, h4, h5, h6 { font-family: 'Plus Jakarta Sans', sans-serif; }
+    /* --- ACTION CENTER --- */
+    .action-item {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 15px 0; border-bottom: 1px solid var(--border-color);
+    }
+    .action-item:last-child { border-bottom: none; }
+    .action-icon {
+        width: 40px; height: 40px; border-radius: 50%;
+        background-color: var(--input-bg); color: var(--primary);
+        display: flex; align-items: center; justify-content: center; margin-right: 15px;
+    }
+    .btn-go {
+        width: 36px; height: 36px; border-radius: 10px;
+        background-color: var(--primary); color: white;
+        display: flex; align-items: center; justify-content: center;
+        text-decoration: none; transition: 0.2s;
+    }
+    .btn-go:hover { background-color: var(--primary-dark); color: white; }
 
-        /* --- LAYOUT --- */
-        .main-content {
-            padding: 30px;
-            max-width: 1800px;
-            margin: 0 auto;
-        }
-
-        /* --- CARDS --- */
-        .card-box {
-            background: white;
-            border-radius: 20px;
-            padding: 24px;
-            border: none;
-            box-shadow: var(--card-shadow);
-            height: 100%;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-            display: block;
-            text-decoration: none;
-            color: inherit;
-        }
-        .card-box:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 25px 50px rgba(112, 144, 176, 0.2);
-            cursor: pointer;
-        }
-
-        /* Scorecard Styles */
-        .score-label {
-            color: var(--secondary);
-            font-size: 0.75rem;
-            font-weight: 700;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .score-value {
-            color: var(--text-dark);
-            font-size: 1.8rem;
-            font-weight: 800;
-            line-height: 1.1;
-            margin-bottom: 8px;
-        }
-        .trend-badge {
-            font-size: 0.75rem;
-            font-weight: 700;
-            padding: 4px 10px;
-            border-radius: 20px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .bg-trend-up { background-color: #E6FDF5; color: var(--success); }
-        .bg-trend-down { background-color: #FEEEEE; color: var(--danger); }
-        .bg-trend-warn { background-color: #FFF8E1; color: #B71C1C; }
-
-        /* Gradient Card (Profit) */
-        .card-gradient {
-            background: linear-gradient(135deg, #4318FF 0%, #7B61FF 100%);
-            color: white !important;
-        }
-        .card-gradient .score-label { color: rgba(255,255,255,0.8) !important; }
-        .card-gradient .score-value { color: white !important; }
-        .card-gradient .trend-badge { background-color: rgba(255,255,255,0.2); color: white; }
-
-        /* Icon Box */
-        .icon-box {
-            width: 45px; height: 45px;
-            border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.3rem;
-        }
-        .ib-primary { background-color: #F4F7FE; color: var(--primary); }
-        .ib-warning { background-color: #FFF8E1; color: var(--warning); }
-        .ib-danger { background-color: #FFF5F5; color: var(--danger); }
-        .ib-success { background-color: #E6FDF5; color: var(--success); }
-        .ib-info { background-color: #E1F5FE; color: #039BE5; }
-
-        /* --- ACTION CENTER --- */
-        .action-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 15px 0;
-            border-bottom: 1px solid #F4F7FE;
-        }
-        .action-item:last-child { border-bottom: none; }
-        .action-icon {
-            width: 40px; height: 40px;
-            border-radius: 50%;
-            background-color: #F4F7FE;
-            color: var(--primary);
-            display: flex; align-items: center; justify-content: center;
-            margin-right: 15px;
-        }
-        .btn-go {
-            width: 36px; height: 36px;
-            border-radius: 10px;
-            background-color: var(--primary);
-            color: white;
-            display: flex; align-items: center; justify-content: center;
-            text-decoration: none;
-            transition: 0.2s;
-        }
-        .btn-go:hover { background-color: var(--primary-dark); color: white; }
-
-        /* --- LEADERBOARD TABLE --- */
-        .table-leaderboard th {
-            color: var(--secondary);
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            border-bottom: 1px solid #E0E5F2;
-        }
-        .table-leaderboard td {
-            padding: 15px 10px;
-            vertical-align: middle;
-            color: var(--text-dark);
-            font-weight: 600;
-            border-bottom: 1px solid #F4F7FE;
-        }
-        .avatar-circle {
-            width: 32px; height: 32px;
-            background-color: #E0E5F2;
-            border-radius: 50%;
-            color: var(--primary);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.8rem; font-weight: 800;
-            margin-right: 10px;
-        }
-        
-        /* Modal Custom */
-        .modal-content { border-radius: 16px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
-        .modal-header { border-bottom: 1px solid #E0E5F2; padding: 20px 25px; }
-        .modal-title { font-weight: 700; color: var(--text-dark); }
-        .modal-body { padding: 25px; }
-
-        /* --- MOBILE RESPONSIVE: CEO COCKPIT --- */
-        @media (max-width: 992px) {
-            /* 1. Header: Xếp dọc */
-            .d-flex.justify-content-between.align-items-end {
-                flex-direction: column;
-                align-items: flex-start !important;
-                gap: 15px;
-            }
-            .d-flex.gap-3 {
-                width: 100%;
-                justify-content: space-between;
-            }
-
-            /* 2. KPI Scorecards: Tự động xuống dòng (đã được Bootstrap Grid lo) */
-            /* Chỉ cần chỉnh lại margin nếu cần */
-            .card-box {
-                margin-bottom: 15px;
-            }
-
-            /* 3. Charts: Đảm bảo chiều cao hợp lý trên mobile */
-            #inventoryChart, #categoryChart, #financialTrendChart, #funnelChart {
-                height: 300px !important;
-            }
-
-            /* 4. Action Center Items: Xếp dọc nội dung bên trong */
-            .action-item {
-                flex-wrap: wrap;
-                gap: 10px;
-            }
-            .action-item > div {
-                display: flex;
-                align-items: center;
-                width: 100%; /* Chiếm hết dòng */
-            }
-            .btn-go {
-                margin-left: auto; /* Đẩy nút sang phải */
-            }
-
-            /* 5. Leaderboard Table */
-            .table-responsive {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-            .table-leaderboard th, .table-leaderboard td {
-                white-space: nowrap;
-                font-size: 0.8rem;
-            }
-        }
-    </style>
-</head>
-<body>
-
-<div class="main-content">
+    /* --- LEADERBOARD TABLE --- */
+    .table-leaderboard th {
+        color: var(--secondary); font-weight: 600; text-transform: uppercase;
+        font-size: 0.75rem; border-bottom: 1px solid var(--border-color);
+        background: transparent;
+    }
+    .table-leaderboard td {
+        padding: 15px 10px; vertical-align: middle;
+        color: var(--text-dark); font-weight: 600;
+        border-bottom: 1px solid var(--border-color);
+        background: transparent;
+    }
+    .avatar-circle {
+        width: 32px; height: 32px; background-color: var(--input-bg);
+        border-radius: 50%; color: var(--primary);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.8rem; font-weight: 800; margin-right: 10px;
+    }
     
-    <div class="d-flex justify-content-between align-items-end mb-4">
-        <div>
-            <h6 class="text-secondary fw-bold mb-1">TRUNG TÂM ĐIỀU HÀNH</h6>
-            <h1 class="fw-bolder text-dark m-0">Titan OS <span class="text-primary">.CEO Cockpit</span></h1>
-        </div>
-        <div class="d-flex gap-3">
-            <span class="bg-white px-3 py-2 rounded-pill shadow-sm text-secondary fw-bold small d-flex align-items-center">
-                <i class="far fa-calendar-check me-2"></i> Dữ liệu Lũy kế năm (YTD)
-            </span>
-            <a href="/" class="btn btn-light fw-bold text-secondary shadow-sm rounded-pill px-4">
-                <i class="fas fa-home me-2"></i> Về Portal
-            </a>
-        </div>
+    /* Override Modal cho đẹp hơn */
+    .modal-header { padding: 20px 25px; }
+    .modal-body { padding: 25px; }
+</style>
+{% endblock %}
+
+{% block header %}
+<div class="page-header d-flex justify-content-between align-items-end mb-4">
+    <div>
+        <h6 class="fw-bold mb-1" style="color: var(--secondary);">TRUNG TÂM ĐIỀU HÀNH</h6>
+        <h1 class="fw-bolder m-0" style="color: var(--text-dark);">Titan OS <span style="color: var(--primary);">.CEO Cockpit</span></h1>
     </div>
+    <div class="d-flex gap-3 align-items-center">
+        <div class="dropdown d-inline-block">
+            <button class="btn btn-light shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" 
+                    style="background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-dark);">
+                <i class="fas fa-palette"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 12px; background-color: var(--card-bg);">
+                <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('light', true)" style="color: var(--text-dark);"><i class="fas fa-sun me-2 text-warning"></i> Sáng</a></li>
+                
+                {% if current_user.role == 'ADMIN' or current_user.can('THEME_DARK') %}
+                <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('dark', true)" style="color: var(--text-dark);"><i class="fas fa-moon me-2 text-primary"></i> Tối</a></li>
+                {% endif %}
+                
+                {% if current_user.role == 'ADMIN' or current_user.can('THEME_FANTASY') %}
+                <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('fantasy', true)" style="color: var(--text-dark);"><i class="fas fa-magic me-2 text-danger"></i> Fantasy</a></li>
+                {% endif %}
 
+                {% if current_user.role == 'ADMIN' or current_user.can('THEME_ADORABLE') %}
+                <li><hr class="dropdown-divider" style="border-color: var(--border-color);"></li>
+                <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('adorable', true)" style="color: var(--text-dark);"><i class="fas fa-heart me-2 text-info"></i> Adorable</a></li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <span class="px-3 py-2 rounded-pill shadow-sm fw-bold small d-flex align-items-center" 
+              style="background: var(--card-bg); color: var(--secondary); border: 1px solid var(--border-color);">
+            <i class="far fa-calendar-check me-2"></i> Dữ liệu Lũy kế năm (YTD)
+        </span>
+        <a href="/" class="btn btn-light fw-bold shadow-sm rounded-pill px-4" 
+           style="background: var(--card-bg); color: var(--secondary); border: 1px solid var(--border-color);">
+            <i class="fas fa-home me-2"></i> Về Portal
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
     <div class="row g-4 mb-4">
         
         <div class="col-xl-3 col-md-6">
@@ -247,20 +179,20 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="score-label">DOANH SỐ YTD</div>
-                        <div class="score-value">{{ "{:,.0f}".format(kpi_summary.Sales_YTD / 1000000) }}M</div>
+                        <div class="score-value">{{ kpi_summary.Sales_YTD | format_tr }}</div>
                         <div class="trend-badge bg-trend-up">
-                            <i class="fas fa-bullseye"></i> Target Năm: {{ "{:,.0f}".format(kpi_summary.TargetYear / 1000000) }}M
+                            <i class="fas fa-bullseye"></i> Target: {{ kpi_summary.TargetYear | format_tr }}
                         </div>
                     </div>
                     <div class="icon-box ib-primary"><i class="fas fa-chart-line"></i></div>
                 </div>
                 <div class="mt-3">
-                    <div class="d-flex justify-content-between small text-secondary mb-1">
+                    <div class="d-flex justify-content-between small mb-1" style="color: var(--secondary);">
                         <span>Tiến độ năm</span>
                         <span class="fw-bold">{{ kpi_summary.Percent }}%</span>
                     </div>
-                    <div class="progress" style="height: 6px; border-radius: 10px;">
-                        <div class="progress-bar bg-primary" style="width: {{ kpi_summary.Percent }}%"></div>
+                    <div class="progress" style="height: 6px; border-radius: 10px; background-color: var(--input-bg);">
+                        <div class="progress-bar" style="background-color: var(--primary); width: {{ kpi_summary.Percent }}%"></div>
                     </div>
                 </div>
             </a>
@@ -271,7 +203,7 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="score-label text-white-50">LỢI NHUẬN GỘP YTD</div>
-                        <div class="score-value text-white">{{ "{:,.0f}".format(profit_summary.GrossProfit / 1000000) }}M</div>
+                        <div class="score-value text-white">{{ profit_summary.GrossProfit | format_tr }}</div>
                         <div class="trend-badge bg-white bg-opacity-25 text-white">
                             <i class="fas fa-percentage"></i> Margin: {{ "{:.1f}".format(profit_summary.AvgMargin) }}%
                         </div>
@@ -290,12 +222,12 @@
             <a href="/budget/report/ytd" target="_blank" class="card-box">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="score-label text-warning">CHI PHÍ HOẠT ĐỘNG YTD</div>
-                        <div class="score-value text-dark mb-1">
-                            {{ "{:,.0f}".format(finance_summary.TotalExpenses / 1000000) }}M
+                        <div class="score-label" style="color: var(--warning);">CHI PHÍ HOẠT ĐỘNG YTD</div>
+                        <div class="score-value mb-1" style="color: var(--text-dark);">
+                            {{ finance_summary.TotalExpenses | format_tr }}
                         </div>
-                        <div class="small fw-bold text-secondary mb-2" style="font-size: 0.8rem;">
-                            / Ngân sách: {{ "{:,.0f}".format(kpi_summary.BudgetPlan_YTD / 1000000) }}M
+                        <div class="small fw-bold mb-2" style="font-size: 0.8rem; color: var(--secondary);">
+                            / Ngân sách: {{ kpi_summary.BudgetPlan_YTD | format_tr }}
                         </div>
                         {% if kpi_summary.OverBudgetCount > 0 %}
                         <div class="trend-badge bg-trend-down text-danger">
@@ -319,11 +251,11 @@
             <a href="/cross_sell_dashboard" target="_blank" class="card-box">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="score-label text-info">LỢI NHUẬN VIP YTD</div>
-                        <div class="score-value text-dark">
-                            {{ "{:,.0f}".format(finance_summary.CrossSellProfit / 1000000) }}M
+                        <div class="score-label" style="color: var(--info);">LỢI NHUẬN VIP YTD</div>
+                        <div class="score-value" style="color: var(--text-dark);">
+                            {{ finance_summary.CrossSellProfit | format_tr }}
                         </div>
-                        <div class="trend-badge bg-trend-up text-info">
+                        <div class="trend-badge bg-trend-up" style="color: var(--info);">
                             <i class="fas fa-gem"></i> {{ kpi_summary.CrossSellCustCount }} KH Titan/Diamond
                         </div>
                     </div>
@@ -343,7 +275,7 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="score-label text-danger">PHẢI THU RỦI RO (>180)</div>
-                        <div class="score-value text-danger">{{ "{:,.0f}".format(risk_summary.AR_Debt_Over_180 / 1000000) }}M</div>
+                        <div class="score-value text-danger">{{ risk_summary.AR_Debt_Over_180 | format_tr }}</div>
                         <div class="trend-badge bg-trend-down">
                             <i class="fas fa-skull-crossbones"></i> Thu hồi gấp
                         </div>
@@ -351,7 +283,7 @@
                     <div class="icon-box ib-danger"><i class="fas fa-file-invoice-dollar"></i></div>
                 </div>
                 <div class="mt-3 small text-muted">
-                    Tổng AR quá hạn: <strong>{{ "{:,.0f}".format(risk_summary.AR_TotalOverdueDebt / 1000000) }}M</strong>
+                    Tổng AR quá hạn: <strong>{{ risk_summary.AR_TotalOverdueDebt | format_tr }}</strong>
                 </div>
             </a>
         </div>
@@ -360,8 +292,8 @@
             <a href="/ap_aging" target="_blank" class="card-box">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="score-label text-warning">PHẢI TRẢ RỦI RO (>180)</div>
-                        <div class="score-value" style="color: #E65100;">{{ "{:,.0f}".format(risk_summary.AP_Debt_Over_180 / 1000000) }}M</div>
+                        <div class="score-label" style="color: var(--warning);">PHẢI TRẢ RỦI RO (>180)</div>
+                        <div class="score-value" style="color: #E65100;">{{ risk_summary.AP_Debt_Over_180 | format_tr }}</div>
                         <div class="trend-badge bg-trend-warn text-danger">
                             <i class="fas fa-exclamation-triangle"></i> Cần thanh toán
                         </div>
@@ -369,7 +301,7 @@
                     <div class="icon-box ib-warning"><i class="fas fa-file-invoice"></i></div>
                 </div>
                 <div class="mt-3 small text-muted">
-                    Tổng AP quá hạn: <strong>{{ "{:,.0f}".format(risk_summary.AP_TotalOverdueDebt / 1000000) }}M</strong> (NCC)
+                    Tổng AP quá hạn: <strong>{{ risk_summary.AP_TotalOverdueDebt | format_tr }}</strong> (NCC)
                 </div>
             </a>
         </div>
@@ -378,13 +310,13 @@
             <a href="/inventory_aging" target="_blank" class="card-box">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="score-label" style="color: #6c757d;">HÀNG CLC (>2 NĂM)</div>
-                        <div class="score-value" style="color: #6c757d;">{{ "{:,.0f}".format(risk_summary.Inventory_Over_2Y / 1000000) }}M</div>
-                        <div class="trend-badge bg-light text-secondary border">
+                        <div class="score-label" style="color: var(--secondary);">HÀNG CLC (>2 NĂM)</div>
+                        <div class="score-value" style="color: var(--secondary);">{{ risk_summary.Inventory_Over_2Y | format_tr }}</div>
+                        <div class="trend-badge border" style="background-color: var(--input-bg); color: var(--secondary);">
                             <i class="fas fa-box-open"></i> Khó thanh lý
                         </div>
                     </div>
-                    <div class="icon-box" style="background-color: #E9ECEF; color: #6c757d;"><i class="fas fa-warehouse"></i></div>
+                    <div class="icon-box" style="background-color: var(--input-bg); color: var(--secondary);"><i class="fas fa-warehouse"></i></div>
                 </div>
                 <div class="mt-3 small text-muted">
                     Hàng tồn kho lâu năm chất lượng kém.
@@ -396,8 +328,8 @@
             <a href="/delivery_dashboard" target="_blank" class="card-box">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="score-label text-primary">GIAO HÀNG ĐÚNG HẠN (OTIF)</div>
-                        <div class="score-value text-primary">{{ "{:.1f}".format(kpi_summary.OTIF_YTD) }}%</div>
+                        <div class="score-label" style="color: var(--primary);">GIAO HÀNG ĐÚNG HẠN (OTIF)</div>
+                        <div class="score-value" style="color: var(--primary);">{{ "{:.1f}".format(kpi_summary.OTIF_YTD) }}%</div>
                         <div class="trend-badge bg-trend-up">
                             Tháng này: {{ "{:.1f}".format(kpi_summary.OTIF_Month) }}%
                         </div>
@@ -417,12 +349,13 @@
             <div class="card-box">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
-                        <h5 class="fw-bold m-0 text-dark">Sức khỏe Tồn kho (Aging)</h5>
+                        <h5 class="fw-bold m-0" style="color: var(--text-dark);">Sức khỏe Tồn kho (Aging)</h5>
                         <small class="text-muted" style="font-size: 0.8rem;">
                             <i class="fas fa-mouse-pointer me-1"></i> Click vào biểu đồ để xem chi tiết
                         </small>
                     </div>
-                    <a href="/inventory_aging" target="_blank" class="btn btn-light btn-sm text-danger fw-bold">
+                    <a href="/inventory_aging" target="_blank" class="btn btn-sm fw-bold" 
+                       style="background: var(--input-bg); color: var(--danger); border: 1px solid var(--border-color);">
                         <i class="fas fa-warehouse"></i> Full
                     </a>
                 </div>
@@ -436,8 +369,8 @@
         <div class="col-lg-7">
             <div class="card-box">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="fw-bold m-0 text-dark">Hiệu quả Kinh doanh Top 10 Nhóm hàng</h5>
-                    <span class="badge bg-primary-subtle text-primary border border-primary">Doanh thu vs Lợi nhuận gộp</span>
+                    <h5 class="fw-bold m-0" style="color: var(--text-dark);">Hiệu quả Kinh doanh Top 10 Nhóm hàng</h5>
+                    <span class="badge" style="background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary);">Doanh thu vs Lợi nhuận gộp</span>
                 </div>
                 <div id="categoryChart" style="height: 320px;"></div>
             </div>
@@ -447,13 +380,13 @@
     <div class="row g-4 mb-4">
         <div class="col-lg-7">
             <div class="card-box">
-                <h5 class="fw-bold m-0 mb-4 text-dark">Xu hướng Tài chính (12 Tháng)</h5>
+                <h5 class="fw-bold m-0 mb-4" style="color: var(--text-dark);">Xu hướng Tài chính (12 Tháng)</h5>
                 <div id="financialTrendChart" style="height: 350px;"></div>
             </div>
         </div>
         <div class="col-lg-5">
             <div class="card-box">
-                <h5 class="fw-bold m-0 mb-4 text-dark">Phễu Chuyển đổi (Conversion)</h5>
+                <h5 class="fw-bold m-0 mb-4" style="color: var(--text-dark);">Phễu Chuyển đổi (Conversion)</h5>
                 <div id="funnelChart" style="height: 350px;"></div>
             </div>
         </div>
@@ -462,7 +395,7 @@
     <div class="row g-4 mb-4">
         <div class="col-lg-8">
             <div class="card-box">
-                <h5 class="fw-bold mb-3">Bảng Xếp Hạng Sales (YTD)</h5>
+                <h5 class="fw-bold mb-3" style="color: var(--text-dark);">Bảng Xếp Hạng Sales (YTD)</h5>
                 <div class="table-responsive">
                     <table class="table table-borderless table-leaderboard m-0">
                         <thead>
@@ -480,17 +413,18 @@
                                     <div class="d-flex align-items-center">
                                         <div class="avatar-circle">{{ sale.ShortName[:2] }}</div>
                                         <div>
-                                            <div class="text-dark">{{ sale.ShortName }}</div>
+                                            <div style="color: var(--text-dark);">{{ sale.ShortName }}</div>
                                             <div class="small text-muted" style="font-size: 0.7rem;">{{ sale.UserCode }}</div>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="text-end">{{ "{:,.0f}".format(sale.TotalSalesAmount / 1000000) }}M</td>
+                                <td class="text-end">{{ sale.TotalSalesAmount | format_tr }}</td>
                                 <td class="text-center">
                                     <div class="d-flex align-items-center justify-content-center">
                                         <span class="me-2 small fw-bold">{{ sale.Percent }}%</span>
-                                        <div class="progress" style="width: 50px; height: 4px;">
-                                            <div class="progress-bar {{ 'bg-success' if sale.Percent >= 100 else 'bg-primary' }}" style="width: {{ sale.Percent }}%"></div>
+                                        <div class="progress" style="width: 50px; height: 4px; background-color: var(--input-bg);">
+                                            <div class="progress-bar {{ 'bg-success' if sale.Percent >= 100 else 'bg-primary' }}" 
+                                                 style="width: {{ sale.Percent }}%"></div>
                                         </div>
                                     </div>
                                 </td>
@@ -523,95 +457,67 @@
                             <i class="fas fa-file-signature"></i>
                         </div>
                         <div>
-                            <div class="fw-bold text-dark">Phê duyệt Chào giá biên thấp</div>
+                            <div class="fw-bold" style="color: var(--text-dark);">Phê duyệt Chào giá biên thấp</div>
                             <div class="small text-secondary">Có <strong>{{ pending_actions.Quotes }}</strong> phiếu đang chờ.</div>
                         </div>
                     </div>
                     <a href="/quote_approval" class="btn-go"><i class="fas fa-arrow-right"></i></a>
                 </div>
-
-                <div class="action-item">
-                    <div class="d-flex align-items-center">
-                        <div class="action-icon text-danger" style="background-color: #FFF5F5;">
-                            <i class="fas fa-file-invoice-dollar"></i>
-                        </div>
-                        <div>
-                            <div class="fw-bold text-dark">Đề nghị Thanh toán</div>
-                            <div class="small text-secondary">Có <strong>{{ pending_actions.Budgets }}</strong> đề nghị chi.</div>
-                        </div>
-                    </div>
-                    <a href="/budget/approval" class="btn-go bg-danger border-danger"><i class="fas fa-arrow-right"></i></a>
-                </div>
-
-                <div class="action-item">
-                    <div class="d-flex align-items-center">
-                        <div class="action-icon text-success" style="background-color: #E6FDF5;">
-                            <i class="fas fa-shipping-fast"></i>
-                        </div>
-                        <div>
-                            <div class="fw-bold text-dark">Duyệt Đơn hàng Bán</div>
-                            <div class="small text-secondary">Có <strong>{{ pending_actions.Orders }}</strong> đơn hàng chờ.</div>
-                        </div>
-                    </div>
-                    <a href="/sales_order_approval" class="btn-go bg-success border-success"><i class="fas fa-arrow-right"></i></a>
-                </div>
                 
                 <div class="action-item border-0">
                     <div class="d-flex align-items-center">
-                        <div class="action-icon text-warning" style="background-color: #FFF8E1;">
+                        <div class="action-icon text-warning" style="background-color: rgba(255, 181, 71, 0.15);">
                             <i class="fas fa-tasks"></i>
                         </div>
                         <div>
-                            <div class="fw-bold text-dark">Các sự vụ "Báo động"</div>
+                            <div class="fw-bold" style="color: var(--text-dark);">Các sự vụ "Báo động"</div>
                             <div class="small text-secondary">Có <strong>{{ pending_actions.UrgentTasks }}</strong> task khẩn cấp.</div>
                         </div>
                     </div>
-                    <a href="/task_dashboard?filter=RISK" class="btn-go bg-warning border-warning text-dark"><i class="fas fa-arrow-right"></i></a>
+                    <a href="/task_dashboard?filter=RISK" class="btn-go" style="background-color: var(--warning); color: #B71C1C;"><i class="fas fa-arrow-right"></i></a>
                 </div>
 
             </div>
         </div>
     </div>
-
-</div>
-
-<div class="modal fade" id="inventoryDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header bg-light">
-                <h5 class="modal-title fw-bold">Chi tiết Tồn kho: <span id="invModalTitle" class="text-primary"></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover mb-0" id="invDetailTable">
-                        <thead class="table-light sticky-top">
-                            <tr>
-                                <th class="ps-4">Mã Nhóm (I04)</th>
-                                <th class="text-end pe-4">Giá trị (VNĐ)</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+    
+    <div class="modal fade" id="inventoryDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background: var(--card-bg); border-bottom: 1px solid var(--border-color);">
+                    <h5 class="modal-title fw-bold" style="color: var(--text-dark);">Chi tiết Tồn kho: <span id="invModalTitle" class="text-primary"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
+                <div class="modal-body p-0" style="background: var(--card-bg);">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0" id="invDetailTable" style="color: var(--text-dark);">
+                            <thead class="sticky-top" style="background: var(--input-bg);">
+                                <tr>
+                                    <th class="ps-4" style="color: var(--secondary);">Mã Nhóm (I04)</th>
+                                    <th class="text-end pe-4" style="color: var(--secondary);">Giá trị (VNĐ)</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background: var(--card-bg); border-top: 1px solid var(--border-color);">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<div id="ceo-context"
-     data-inventory='{{ inventory_chart_data | tojson | safe }}'
-     data-financial='{{ chart_data | tojson | safe }}'
-     data-category='{{ category_perf_data | tojson | safe }}'
-     data-funnel='{{ sales_funnel_data | tojson | safe }}'>
-</div>
+    <div id="ceo-context"
+         data-inventory='{{ inventory_chart_data | tojson | safe }}'
+         data-financial='{{ chart_data | tojson | safe }}'
+         data-category='{{ category_perf_data | tojson | safe }}'
+         data-funnel='{{ sales_funnel_data | tojson | safe }}'>
+    </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}
 
-<script src="{{ url_for('static', filename='js/ceo_cockpit.js') }}"></script>
-
-</body>
-</html>
+{% block scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="{{ url_for('static', filename='js/ceo_cockpit.js') }}"></script>
+{% endblock %}

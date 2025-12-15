@@ -38,7 +38,7 @@ def quote_approval_dashboard():
     
     salesman_list = []
     try:
-        salesman_list = task_service.get_eligible_helpers() 
+        salesman_list = task_service.get_eligible_helpers(division=user_division)
     except Exception as e:
         print(f"Lỗi tải danh sách NVKD cho Quote Approval: {e}")
 

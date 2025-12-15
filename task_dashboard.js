@@ -16,11 +16,10 @@ let taskConfig = {
 
 let taskManagerInstance = null;
 
-// --- HÀM HELPER PARSE JSON AN TOÀN (FIX LỖI NaN) ---
+// --- HÀM HELPER PARSE JSON AN TOÀN ---
 function safeJsonParse(jsonString) {
     if (!jsonString) return [];
     try {
-        // Thay thế NaN bằng null trước khi parse để tránh SyntaxError
         const safeString = jsonString.replace(/\bNaN\b/g, "null");
         return JSON.parse(safeString);
     } catch (e) {
@@ -32,7 +31,6 @@ function safeJsonParse(jsonString) {
 // Lớp quản lý Task
 class TaskManager {
     constructor(tasks) {
-        // Gộp cả daily_tasks (Kanban) và history_tasks (Table) để dễ truy xuất
         this.tasks = (tasks.daily_tasks || []).concat(tasks.history_tasks || []);
         this.tasksMap = this.tasks.reduce((map, task) => {
             if (task && task.TaskID) {
@@ -75,7 +73,6 @@ class TaskManager {
              objectIdInput.val(task.ObjectID || '');
         }
 
-        // Xử lý giá trị null/NaN cho progress
         let progress = task.ProgressPercentage;
         if (progress === null || isNaN(progress)) progress = 0;
         $('#progress_percent').val(progress); 
@@ -87,6 +84,8 @@ class TaskManager {
         $('#helperSelectionBox').hide(); 
 
         $('#logHistoryContainer').html('<p class="text-center text-muted">Đang tải lịch sử...</p>');
+        
+        // Gọi API lấy lịch sử
         fetch(`/api/task/history/${taskId}`)
             .then(r => r.json())
             .then(logs => {
@@ -102,7 +101,8 @@ class TaskManager {
     openSupervisorNoteModal(logId) {
          $('#noteLogIdDisplay').text(logId);
          $('#note_log_id').val(logId);
-         $('#note_content').val(`[Phản hồi Log ${logId}]: `); 
+         // Reset nội dung để người dùng nhập mới, không bị dính nội dung cũ
+         $('#note_content').val(''); 
          $('#supervisorNoteModal').modal('show');
     }
 }
@@ -116,7 +116,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     try {
-        // Sử dụng hàm safeJsonParse để tránh lỗi NaN
         taskConfig.dailyTasks = safeJsonParse(contextEl.dataset.dailyTasks);
         taskConfig.historyTasks = safeJsonParse(contextEl.dataset.historyTasks);
         
@@ -125,11 +124,6 @@ document.addEventListener('DOMContentLoaded', function() {
         taskConfig.viewMode = contextEl.dataset.viewMode || 'USER';
         taskConfig.activeFilter = contextEl.dataset.activeFilter || 'ALL';
         taskConfig.searchTerm = contextEl.dataset.searchTerm || '';
-        
-        console.log("Task Config Loaded:", {
-            daily: taskConfig.dailyTasks.length,
-            history: taskConfig.historyTasks.length
-        });
 
     } catch(e) {
         console.error("Lỗi khởi tạo cấu hình Task:", e);
@@ -179,6 +173,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => { $('#helper_code_select').focus(); }, 100);
     });
 
+    // Submit form cập nhật chính
     $('#updateTaskForm').on('submit', function(e) {
         e.preventDefault();
         const form = $(this);
@@ -209,10 +204,16 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => { alert('Lỗi kết nối.'); });
     });
 
+    // Submit form phản hồi cấp trên
     $('#supervisorNoteForm').on('submit', function(e) {
         e.preventDefault();
         const logId = $('#note_log_id').val();
         const feedback = $('#note_content').val();
+
+        if (!feedback.trim()) {
+            alert("Vui lòng nhập nội dung phản hồi.");
+            return;
+        }
 
         fetch('/api/task/add_feedback', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -230,8 +231,6 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault(); alert("Chức năng in đã bị khóa."); 
         } 
     }, true);
-    window.print = function() { alert("Chức năng in đã bị khóa."); };
-    document.addEventListener('contextmenu', e => e.preventDefault());
 });
 
 // --- EXPOSED FUNCTIONS ---
@@ -242,7 +241,6 @@ window.filterTasks = function(filterType) {
 
 window.openCreateTaskModal = function() { $('#createTaskModal').modal('show'); };
 
-// Fix lỗi: Đảm bảo instance đã được khởi tạo
 window.openUpdateModal = function(taskId) { 
     if (taskManagerInstance) {
         taskManagerInstance.openUpdateModal(taskId); 
@@ -304,7 +302,8 @@ function renderLogHistory(logs, isAdmin) {
 
         if (isAdmin && log.TaskLogType !== 'SUPERVISOR_NOTE') {
              const safeContent = (log.UpdateContent || "").replace(/'/g, "\\'");
-             actionBtn = `<button class="btn btn-sm btn-link p-0 float-end text-info" onclick="openSupervisorNoteModal(${log.LogID}, '${safeContent}')"><i class="fas fa-comment-dots"></i></button>`;
+             // --- FIX LỖI Ở ĐÂY: Thêm type="button" ---
+             actionBtn = `<button type="button" class="btn btn-sm btn-link p-0 float-end text-info" onclick="openSupervisorNoteModal(${log.LogID}, '${safeContent}')"><i class="fas fa-comment-dots"></i></button>`;
         }
 
         let feedbackHtml = log.SupervisorFeedback ? `<div class="mt-2 p-2 small border-top border-info"><i class="fas fa-reply me-1 text-info"></i> <strong>Cấp trên:</strong> ${log.SupervisorFeedback}</div>` : '';

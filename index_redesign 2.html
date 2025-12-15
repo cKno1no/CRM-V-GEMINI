@@ -5,58 +5,46 @@
 {% block extra_css %}
 <style>
     /* ======================================= */
-    /* 1. BACKGROUND RANDOM SETUP (MỚI BỔ SUNG) */
-    /* ======================================= */
-    .index-bg-image {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: -2; /* Nằm sau cùng */
-        background-position: center;
-        background-size: cover;
-        background-repeat: no-repeat;
-        filter: blur(10px); /* Hiệu ứng làm mờ nhẹ */
-        transform: scale(1.1); /* Phóng to để che viền mờ */
-    }
-
-    .index-bg-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: -1; /* Nằm giữa ảnh và nội dung */
-        /* Lớp phủ tối để làm nổi bật nội dung kính mờ phía trên */
-        background-color: rgba(15, 23, 42, 0.6); 
-    }
-
-    /* ======================================= */
-    /* 2. LAYOUT & CONTENT WRAPPER (GIỮ NGUYÊN) */
+    /* 1. BACKGROUND OVERRIDE (ĐẶC TRƯNG INDEX) */
     /* ======================================= */
     
-    /* Thiết lập biến màu kính mờ cho Wrapper */
+    /* Mặc định (Light Mode) sẽ dùng ảnh nền thiên nhiên/thành phố */
     :root {
-        --glass-bg: rgba(255, 255, 255, 0.85); /* Light Mode */
-    }
-    [data-theme="dark"] {
-        --glass-bg: rgba(11, 20, 55, 0.85); /* Dark Mode */
-    }
-    [data-theme="fantasy"], [data-theme="adorable"] {
-        --glass-bg: var(--card-bg);
+        --bg-image: url('https://picsum.photos/1920/1080?grayscale'); 
+        --glass-bg: rgba(255, 255, 255, 0.85); /* Lớp phủ mờ sáng */
     }
 
-    /* Container chính chứa menu */
+    /* Dark Mode: Dùng ảnh nền tối hoặc màu tối */
+    [data-theme="dark"] {
+        --bg-image: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1920&auto=format&fit=crop');
+        --glass-bg: rgba(11, 20, 55, 0.85); /* Lớp phủ mờ tối */
+    }
+
+    /* Fantasy/Adorable: Giữ nguyên background của Theme (đã định nghĩa ở base.html) */
+    [data-theme="fantasy"], [data-theme="adorable"] {
+        --glass-bg: var(--card-bg); /* Dùng độ mờ của theme */
+    }
+
+    /* Cấu hình lại Body cho trang Index */
+    body {
+        background-image: var(--bg-image) !important; /* Force ảnh nền */
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+
+    /* ======================================= */
+    /* 2. LAYOUT & CONTENT WRAPPER */
+    /* ======================================= */
     .content-wrapper {
         position: relative;
         z-index: 1;
         padding: 40px 30px;
         max-width: 900px;
-        margin: 5vh auto; /* Căn giữa */
-        background-color: var(--glass-bg); /* Nền kính mờ */
+        margin: 5vh auto; /* Căn giữa dọc/ngang */
+        background-color: var(--glass-bg);
         border-radius: 24px;
-        backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px); /* Hiệu ứng kính mờ hiện đại */
         box-shadow: 0 10px 40px rgba(0,0,0,0.2);
         border: 1px solid rgba(255,255,255,0.2);
     }
@@ -139,17 +127,11 @@
     
     /* Ẩn Header mặc định của Base để dùng Header riêng của Index */
     .page-header { display: none !important; }
-    .container-fluid { padding: 0 !important; } 
-    
-    /* Chatbot toggle position override */
-    .chatbot-toggle { bottom: 25px; right: 25px; width: 60px; height: 60px; font-size: 1.8rem; }
+    .container-fluid { padding: 0 !important; } /* Reset padding base */
 </style>
 {% endblock %}
 
 {% block content %}
-    <div id="random-bg-image" class="index-bg-image"></div>
-    <div class="index-bg-overlay"></div>
-
     <div class="content-wrapper">
         
         <header class="d-flex justify-content-between align-items-center mb-4">
@@ -275,6 +257,9 @@
         </div>
     </div>
 
+    <style>
+        .chatbot-toggle { bottom: 25px; right: 25px; width: 60px; height: 60px; font-size: 1.8rem; }
+    </style>
     <div class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-robot"></i></div>
 
     <div class="chatbot-window" id="chatbotWindow">
@@ -296,20 +281,7 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // --- 1. RANDOM BACKGROUND LOGIC (MỚI BỔ SUNG) ---
-        const bgContainer = document.getElementById('random-bg-image');
-        // Sử dụng picsum.photos với tham số thời gian để tránh cache
-        const randomImageUrl = "https://picsum.photos/1920/1080?" + new Date().getTime();
-        
-        const img = new Image();
-        img.onload = function() {
-            // Khi ảnh tải xong, gán vào div nền
-            bgContainer.style.backgroundImage = `url('${randomImageUrl}')`;
-            bgContainer.style.opacity = 1;
-        };
-        img.src = randomImageUrl;
-
-        // --- 2. CHATBOT LOGIC (GIỮ NGUYÊN) ---
+        // --- CHATBOT LOGIC ---
         const toggleBtn = document.getElementById('chatbotToggle');
         const closeBtn = document.getElementById('chatbotClose');
         const maximizeBtn = document.getElementById('chatbotMaximizeBtn');
@@ -357,29 +329,9 @@
 
         function addMessageToHistory(text, type, isLoading = false) {
             const msgDiv = document.createElement('div');
-            msgDiv.classList.add('chat-message');
-            // Thêm style inline hoặc class tùy theme, ở đây dùng class định nghĩa trong base hoặc inline cơ bản
-            msgDiv.style.marginBottom = '10px';
-            msgDiv.style.padding = '8px 12px';
-            msgDiv.style.borderRadius = '15px';
-            msgDiv.style.maxWidth = '85%';
-            msgDiv.style.wordWrap = 'break-word';
-
-            if (type === 'user') {
-                msgDiv.style.backgroundColor = 'var(--primary-light)'; 
-                msgDiv.style.color = 'var(--primary)';
-                msgDiv.style.alignSelf = 'flex-end';
-                msgDiv.style.marginLeft = '15%';
-            } else {
-                msgDiv.style.backgroundColor = 'var(--input-bg)';
-                msgDiv.style.color = 'var(--text-dark)';
-                msgDiv.style.alignSelf = 'flex-start';
-                msgDiv.style.marginRight = '15%';
-            }
-
+            msgDiv.classList.add('chat-message', type === 'user' ? 'chat-user' : 'chat-bot');
             if(isLoading) { msgDiv.id = 'bot-loading'; msgDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
             else msgDiv.innerHTML = text.replace(/\n/g, '<br>');
-            
             messageContainer.appendChild(msgDiv);
             historyEl.scrollTop = historyEl.scrollHeight;
         }

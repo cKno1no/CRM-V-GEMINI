@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{% block title %}Titan OS{% endblock %}</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Quicksand:wght@500;600;700&family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    {% block extra_css %}{% endblock %}
+
+    <style>
+        /* ========================================= */
+        /* 1. DESIGN SYSTEM & THEMES */
+        /* ========================================= */
+        
+        /* --- DEFAULT: LIGHT MODE --- */
+        :root {
+            --primary: #4318FF;
+            --primary-dark: #2A0EBB;
+            --primary-light: #F4F7FE;
+            --secondary: #A3AED0;
+            --text-dark: #2B3674;
+            --danger: #E31A1A;
+            --success: #05CD99;
+            --warning: #FFB547;
+            --info: #33CCFF;
+            
+            --bg-color: #F4F7FE;
+            --card-bg: #FFFFFF;
+            --input-bg: #F4F7FE;
+            --border-color: #E0E5F2;
+            
+            --card-radius: 20px;
+            --shadow-sm: 0 4px 10px rgba(112, 144, 176, 0.08);
+            --shadow-md: 0px 18px 40px rgba(112, 144, 176, 0.12);
+            --bg-image: none;
+            --font-main: 'Inter', sans-serif;
+            --font-header: 'Inter', sans-serif;
+        }
+
+        /* --- DARK MODE --- */
+        [data-theme="dark"] {
+            --primary: #7551FF;
+            --primary-dark: #5A3BC4;
+            --primary-light: #1B254B;
+            --secondary: #A3AED0;
+            --text-dark: #E3E8EF;
+            --danger: #FF5B5B;
+            
+            --bg-color: #0B1437;
+            --card-bg: #111C44;
+            --input-bg: #1B254B;
+            --border-color: #2B3674;
+            
+            --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0px 18px 40px rgba(0, 0, 0, 0.4);
+            --bg-image: none;
+        }
+
+        /* --- FANTASY MODE --- */
+        [data-theme="fantasy"] {
+            --primary: #E91E63;
+            --primary-dark: #C2185B;
+            --primary-light: rgba(255, 255, 255, 0.2);
+            --text-dark: #FFFFFF;
+            --secondary: #E0E0E0;
+            
+            --bg-color: #2d1b4e;
+            --card-bg: rgba(255, 255, 255, 0.15); /* Glassmorphism */
+            --input-bg: rgba(0, 0, 0, 0.3);
+            --border-color: rgba(255, 255, 255, 0.2);
+            
+            --bg-image: url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5980?auto=format&fit=crop&w=1920&q=80');
+        }
+
+        /* --- ADORABLE MODE (ROBIN STYLE) --- */
+        [data-theme="adorable"] {
+            --primary: #FF6B81;           /* Coral Pink */
+            --primary-dark: #FF4757;
+            --primary-light: #FFECEE;     
+            --secondary: #747D8C;
+            --text-dark: #2F3542;
+            --danger: #FF6348;
+            --success: #2ED573;
+            --warning: #FFA502;
+            --info: #1E90FF;
+
+            --bg-color: #FDF2F5;
+            --card-bg: #FFFFFF;
+            --input-bg: #F8F9FA;
+            --border-color: #F1F2F6;
+            
+            --card-radius: 30px;
+            --shadow-sm: 0 5px 15px rgba(255, 107, 129, 0.15);
+            --shadow-md: 0 15px 35px rgba(255, 107, 129, 0.1);
+            
+            --font-main: 'Quicksand', sans-serif; 
+            --font-header: 'Fredoka', sans-serif;
+            
+            --bg-image: radial-gradient(#FFD1D6 15%, transparent 16%), radial-gradient(#FFD1D6 15%, transparent 16%);
+        }
+
+        /* ========================================= */
+        /* 2. GLOBAL STYLES */
+        /* ========================================= */
+        body { 
+            font-family: var(--font-main); 
+            background-color: var(--bg-color); 
+            color: var(--text-dark); 
+            -webkit-font-smoothing: antialiased;
+            transition: background-color 0.3s, color 0.3s;
+            min-height: 100vh;
+            
+            background-image: var(--bg-image);
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center;
+        }
+        
+        /* ADORABLE MODE OVERRIDES */
+        [data-theme="adorable"] body {
+            background-size: 30px 30px; 
+            background-position: 0 0, 15px 15px;
+        }
+        
+        [data-theme="adorable"] .page-title, 
+        [data-theme="adorable"] h1, [data-theme="adorable"] h2, 
+        [data-theme="adorable"] h3, [data-theme="adorable"] h4, 
+        [data-theme="adorable"] .card-header-custom {
+            font-family: var(--font-header);
+            letter-spacing: 0.5px;
+        }
+
+        [data-theme="adorable"] .btn {
+            border-radius: 50px;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            padding: 12px 24px;
+        }
+        
+        [data-theme="adorable"] .main-card {
+            border-top: 5px solid var(--primary);
+        }
+
+        /* Glassmorphism for Fantasy */
+        [data-theme="fantasy"] .main-card, 
+        [data-theme="fantasy"] .card, 
+        [data-theme="fantasy"] .modal-content,
+        [data-theme="fantasy"] .dropdown-menu {
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .container-fluid { max-width: 1600px; padding: 30px 20px; }
+
+        /* Card Style */
+        .main-card {
+            background: var(--card-bg);
+            border-radius: var(--card-radius);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            margin-bottom: 25px;
+            overflow: hidden;
+            transition: background-color 0.3s, border-color 0.3s, transform 0.2s;
+        }
+
+        .card-header-custom {
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 700;
+            color: var(--text-dark);
+            font-size: 1.1rem;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .card-body-custom { padding: 25px; }
+
+        /* Form Elements */
+        .form-control, .form-select {
+            border: 1px solid transparent;
+            background-color: var(--input-bg);
+            border-radius: 12px;
+            padding: 12px 15px;
+            font-size: 0.95rem;
+            color: var(--text-dark);
+            transition: all 0.2s;
+        }
+        
+        [data-theme="dark"] .form-control, [data-theme="fantasy"] .form-control,
+        [data-theme="adorable"] .form-control {
+            border: 1px solid var(--border-color);
+        }
+        
+        [data-theme="fantasy"] option { background-color: #2d1b4e; color: white; }
+
+        .form-control:focus, .form-select:focus {
+            background-color: var(--card-bg);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.2);
+            color: var(--text-dark);
+        }
+        
+        [data-theme="adorable"] .form-control:focus {
+            box-shadow: 0 0 0 3px rgba(255, 107, 129, 0.25);
+        }
+
+        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
+
+        /* Buttons */
+        .btn {
+            border-radius: 14px;
+            font-weight: 600;
+            padding: 10px 20px;
+            transition: transform 0.2s;
+        }
+        .btn:active { transform: scale(0.98); }
+        
+        .btn-primary { background-color: var(--primary); border: none; box-shadow: var(--shadow-sm); }
+        .btn-primary:hover { background-color: var(--primary-dark); }
+        
+        .btn-back { background: var(--card-bg); color: var(--secondary); border: 1px solid var(--border-color); }
+        .btn-back:hover { color: var(--text-dark); border-color: var(--primary); }
+
+        /* Alert/Flash Messages */
+        .alert-custom {
+            border: none;
+            border-radius: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* --- 3. MOBILE OPTIMIZATION --- */
+        @media (max-width: 768px) {
+            .container-fluid { padding: 15px 10px; }
+            .page-header { flex-direction: column; align-items: flex-start !important; gap: 15px; }
+            .page-title { font-size: 1.5rem !important; }
+            .page-header .d-flex { width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+            .main-card form .row > div { width: 100%; margin-bottom: 10px; }
+            .btn { width: 100%; padding: 12px; font-size: 1rem; }
+            
+            .table-mobile-card thead { display: none; }
+            .table-mobile-card, .table-mobile-card tbody, .table-mobile-card tr, .table-mobile-card td {
+                display: block; width: 100%;
+            }
+            .table-mobile-card tr {
+                margin-bottom: 15px;
+                background: var(--card-bg);
+                border-radius: 16px;
+                box-shadow: var(--shadow-sm);
+                border: 1px solid var(--border-color);
+                padding: 15px;
+                position: relative;
+            }
+            .table-mobile-card td {
+                text-align: right;
+                padding: 8px 0;
+                padding-left: 45%; 
+                position: relative;
+                border-bottom: 1px solid var(--border-color);
+                min-height: 35px;
+                color: var(--text-dark);
+            }
+            .table-mobile-card td:last-child { border-bottom: none; }
+            .table-mobile-card td::before {
+                content: attr(data-label);
+                position: absolute; left: 0; width: 40%;
+                font-weight: 600; color: var(--secondary);
+                text-align: left; font-size: 0.85rem; text-transform: uppercase;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container-fluid">
+        {% block header %}
+        <div class="page-header d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="page-title fw-bold m-0" style="font-size: 1.8rem; color: var(--text-dark);">
+                    {% block page_title %}Titan OS{% endblock %}
+                </h1>
+                <p class="small mb-0" style="color: var(--secondary);">
+                    {% block page_sub %}{% endblock %}
+                </p>
+            </div>
+            
+            <div class="d-flex align-items-center gap-2">
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-sm shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" 
+                            style="background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-dark);">
+                        <i class="fas fa-palette me-1"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 12px; background-color: var(--card-bg);">
+                        
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('light', true)" style="color: var(--text-dark);">
+                            <i class="fas fa-sun me-2 text-warning"></i> Business (Light)
+                        </a></li>
+
+                        {% if current_user.role == 'ADMIN' or current_user.can('THEME_DARK') %}
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('dark', true)" style="color: var(--text-dark);">
+                            <i class="fas fa-moon me-2 text-primary"></i> Night Owl (Dark)
+                        </a></li>
+                        {% endif %}
+
+                        {% if current_user.role == 'ADMIN' or current_user.can('THEME_FANTASY') %}
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('fantasy', true)" style="color: var(--text-dark);">
+                            <i class="fas fa-magic me-2 text-danger"></i> Sci-fi (Fantasy)
+                        </a></li>
+                        {% endif %}
+
+                        {% if current_user.role == 'ADMIN' or current_user.can('THEME_ADORABLE') %}
+                        <li><hr class="dropdown-divider" style="border-color: var(--border-color);"></li>
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('adorable', true)" style="color: var(--text-dark);">
+                            <i class="fas fa-heart me-2 text-danger"></i> Adorable (GenZ)
+                        </a></li>
+                        {% endif %}
+                        
+                    </ul>
+                </div>
+
+                {% block header_actions %}
+                <a href="/" class="btn btn-back"><i class="fas fa-home me-2"></i>Portal</a>
+                {% endblock %}
+            </div>
+        </div>
+        {% endblock %}
+
+        <div id="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-custom alert-dismissible fade show mb-4" role="alert" style="background-color: var(--card-bg); color: var(--text-dark); border-left: 5px solid var(--{{ category if category != 'message' else 'primary' }});">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-info-circle me-3 fs-4 text-{{ category }}"></i>
+                            <div>{{ message }}</div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <div id="watermark-user-id" data-user="{{ current_user.usercode if current_user else 'GUEST' }}" style="display:none;"></div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
+    
+    <script>
+        // --- THEME LOGIC ---
+        const DB_THEME = "{{ current_user.theme | default('light') }}";
+
+        function setTheme(themeName, saveToDb = false) {
+            document.documentElement.setAttribute('data-theme', themeName);
+            localStorage.setItem('titan_theme', themeName);
+            
+            // Fix hover
+            const items = document.querySelectorAll('.dropdown-item');
+            items.forEach(item => {
+                item.style.backgroundColor = 'transparent';
+                item.onmouseenter = function() { this.style.backgroundColor = 'var(--input-bg)'; }
+                item.onmouseleave = function() { this.style.backgroundColor = 'transparent'; }
+            });
+
+            if (saveToDb) {
+                fetch('/api/user/set_theme', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ theme: themeName })
+                }).then(r => r.json()).then(res => {
+                    if(!res.success) console.error("Lỗi lưu theme");
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            setTheme(DB_THEME, false);
+            localStorage.setItem('titan_theme', DB_THEME);
+
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                    e.preventDefault(); alert("Chức năng in bị giới hạn vì lý do bảo mật.");
+                }
+            }, true);
+        });
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

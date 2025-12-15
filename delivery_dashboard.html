@@ -1,321 +1,229 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Bảng Điều phối Giao vận (v2)</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% extends "base.html" %}
+
+{% block title %}Bảng Điều phối Giao vận | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* --- TAB NAVIGATION --- */
+    .nav-tabs { border-bottom: 1px solid var(--border-color); }
+    .nav-tabs .nav-link {
+        font-weight: 600; color: var(--secondary); border: none;
+        border-bottom: 2px solid transparent; padding: 10px 20px;
+        background: transparent;
+    }
+    .nav-tabs .nav-link.active {
+        color: var(--primary); border-bottom: 2px solid var(--primary); background: none;
+    }
+
+    /* --- KANBAN BOARD --- */
+    .kanban-board-container { 
+        display: flex; width: 100%; overflow-x: auto; 
+        gap: 15px; padding: 10px; min-height: 80vh; 
+    }
+    .kanban-column { 
+        flex-shrink: 0; width: 280px; 
+        background-color: var(--input-bg);
+        border-radius: 12px; padding: 0; 
+        display: flex; flex-direction: column; 
+        max-height: 80vh; border: 1px solid var(--border-color);
+    }
+    .kanban-column-header { 
+        font-weight: 700; font-size: 1rem; 
+        padding: 12px; border-bottom: 2px solid transparent; 
+        text-align: center; color: white;
+        border-top-left-radius: 12px; border-top-right-radius: 12px; 
+    }
     
-    <style>
-        /* --- 1. CORE STYLES --- */
-        :root {
-            --primary: #4318FF;
-            --primary-light: #F4F7FE;
-            --secondary: #A3AED0;
-            --text-dark: #2B3674;
-            --danger: #E31A1A;
-            --success: #05CD99;
-            --warning: #FFB547;
-            --bg-color: #F4F7FE;
-            --card-radius: 20px;
-            --input-bg: #F4F7FE;
-        }
-        
-        body { 
-            background-color: var(--bg-color); 
-            font-family: 'Inter', sans-serif; 
-            color: var(--text-dark); 
-        }
-        .container-fluid { max-width: 98%; margin-top: 30px; }
+    /* Column Colors */
+    #POOL .kanban-column-header { background-color: var(--secondary); } 
+    #URGENT .kanban-column-header { background-color: var(--danger); } 
+    #WITHIN_WEEK .kanban-column-header { background-color: var(--warning); color: #000; } 
+    #COMPLETED .kanban-column-header { background-color: var(--success); } 
+    
+    /* Weekdays */
+    #MONDAY .kanban-column-header, #TUESDAY .kanban-column-header, 
+    #WEDNESDAY .kanban-column-header, #THURSDAY .kanban-column-header, 
+    #FRIDAY .kanban-column-header, #SATURDAY .kanban-column-header {
+        background-color: var(--primary);
+    }
 
-        /* --- 2. HEADER & TABS --- */
-        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
-        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
-        
-        .btn-back {
-            background-color: white; color: var(--secondary); border: 1px solid #E0E5F2;
-            padding: 10px 20px; border-radius: 14px; font-weight: 600; text-decoration: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: all 0.2s;
-        }
-        .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
+    .task-list { min-height: 100px; overflow-y: auto; flex-grow: 1; padding: 10px; }
+    
+    /* DELIVERY CARD */
+    .delivery-card { 
+        background-color: var(--card-bg); border-radius: 12px; 
+        padding: 12px; margin-bottom: 10px; 
+        box-shadow: var(--shadow-sm); 
+        border-left: 5px solid var(--primary); 
+        font-size: 0.85rem; line-height: 1.4; 
+        cursor: grab; transition: all 0.2s;
+        color: var(--text-dark); border: 1px solid var(--border-color); border-left-width: 5px;
+    }
+    .delivery-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .delivery-card:active { cursor: grabbing; }
+    
+    /* Card Status Colors */
+    .delivery-card.group-card { border-left-color: var(--success); background-color: rgba(5, 205, 153, 0.05); }
+    .delivery-card.no-drag { cursor: not-allowed; opacity: 0.7; }
+    .delivery-card.status-open { border-left-color: var(--secondary); }
+    .delivery-card.status-dasoan { border-left-color: var(--warning); background-color: rgba(255, 181, 71, 0.05); }
+    .delivery-card.status-dagiao { border-left-color: var(--success); background-color: rgba(5, 205, 153, 0.05); opacity: 0.8; }
+    .delivery-card.overdue { border-left-color: var(--danger) !important; background-color: rgba(227, 26, 26, 0.05); }
+    
+    .item-title { font-weight: 700; font-size: 0.9rem; color: var(--text-dark); margin-bottom: 4px; display: block; }
+    .item-customer { color: var(--primary); font-weight: 600; font-size: 0.85rem; }
+    .item-details { font-size: 0.8rem; color: var(--secondary); margin-top: 4px; }
+    .drag-over { background-color: var(--primary-light); border: 2px dashed var(--primary); }
+    
+    /* DISPATCH VIEW (KHO) */
+    .dispatch-column-kho { flex-basis: 25%; flex-grow: 1; min-width: 250px; }
+    .dispatch-column-kho .kanban-column-header { color: white; }
+    
+    #col-hom-nay .kanban-column-header { background-color: var(--danger); }
+    #col-sap-xep .kanban-column-header { background-color: var(--warning); color: #000; }
+    #col-trong-tuan .kanban-column-header { background-color: var(--primary); }
+    #col-da-giao .kanban-column-header { background-color: var(--success); }
 
-        .nav-tabs { border-bottom: 1px solid #E0E5F2; }
-        .nav-tabs .nav-link {
-            font-weight: 600; color: var(--secondary); border: none;
-            border-bottom: 2px solid transparent; padding: 10px 20px;
-        }
-        .nav-tabs .nav-link.active {
-            color: var(--primary); border-bottom: 2px solid var(--primary); background: none;
-        }
+    /* Modal & Inputs */
+    .modal-header { background-color: var(--input-bg); border-bottom: 1px solid var(--border-color); }
+    .modal-title { color: var(--text-dark); font-weight: 700; }
+    .modal-body, .modal-footer { background-color: var(--card-bg); color: var(--text-dark); }
+    
+    .btn-status-dasoan { background-color: var(--warning); color: #000; border: none; font-weight: 600; }
+    .btn-status-dagiao { background-color: var(--success); color: white; border: none; font-weight: 600; }
+    
+    .form-control { background-color: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-dark); }
+    .form-control:focus { background-color: var(--card-bg); border-color: var(--primary); }
 
-        /* --- 3. KANBAN BOARD --- */
-        .kanban-board-container { 
-            display: flex; width: 100%; overflow-x: auto; 
-            gap: 15px; padding: 10px; min-height: 80vh; 
-        }
-        .kanban-column { 
-            flex-shrink: 0; width: 280px; 
-            background-color: var(--input-bg);
-            border-radius: 12px; padding: 0; 
-            display: flex; flex-direction: column; 
-            max-height: 80vh;
-        }
-        .kanban-column-header { 
-            font-weight: 700; font-size: 1rem; 
-            padding: 12px; border-bottom: 2px solid transparent; 
-            text-align: center; color: white;
-            border-top-left-radius: 12px; border-top-right-radius: 12px; 
-        }
-        
-        /* Màu sắc cột */
-        #POOL .kanban-column-header { background-color: var(--secondary); } 
-        #URGENT .kanban-column-header { background-color: var(--danger); } 
-        #WITHIN_WEEK .kanban-column-header { background-color: var(--warning); color: var(--text-dark); } 
-        #COMPLETED .kanban-column-header { background-color: var(--success); } 
-        #MONDAY .kanban-column-header, #TUESDAY .kanban-column-header, #WEDNESDAY .kanban-column-header,
-        #THURSDAY .kanban-column-header, #FRIDAY .kanban-column-header, #SATURDAY .kanban-column-header {
-            background-color: var(--primary);
-        }
+    /* Mobile Responsive */
+    @media (max-width: 992px) {
+        .kanban-board-container { flex-direction: column; overflow-x: hidden; height: auto; padding: 0; }
+        .kanban-column { width: 100%; max-width: 100%; margin-bottom: 20px; max-height: 400px; }
+        .nav-tabs { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; gap: 10px; border-bottom: none; }
+        .nav-tabs .nav-link { border: 1px solid var(--border-color); border-radius: 20px; background: var(--card-bg); }
+        .nav-tabs .nav-link.active { background: var(--primary); color: white; border-color: var(--primary); }
+    }
+</style>
+{% endblock %}
 
-        .task-list { min-height: 100px; overflow-y: auto; flex-grow: 1; padding: 10px; }
-        
-        /* Card Style */
-        .delivery-card { 
-            background-color: white; border-radius: 12px; 
-            padding: 10px; margin-bottom: 10px; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
-            border-left: 5px solid var(--primary); 
-            font-size: 0.85rem; line-height: 1.4; 
-            cursor: grab; transition: box-shadow 0.2s;
-        }
-        .delivery-card:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .delivery-card:active { cursor: grabbing; }
-        
-        .delivery-card.group-card { border-left-color: var(--success); background-color: #F0FFF9; }
-        .delivery-card.no-drag { cursor: not-allowed; }
-        .delivery-card.status-open { border-left-color: var(--secondary); }
-        .delivery-card.status-dasoan { border-left-color: var(--warning); background-color: #FFF8E1; }
-        .delivery-card.status-dagiao { border-left-color: var(--success); background-color: #F0FFF9; opacity: 0.8; }
-        .delivery-card.overdue { border-left-color: var(--danger) !important; background-color: #FFF1F1; }
-        
-        .item-title { font-weight: 700; font-size: 0.9rem; color: var(--text-dark); }
-        .item-customer { color: var(--primary); font-weight: 600; }
-        .item-details { font-size: 0.8rem; color: var(--secondary); }
-        .drag-over { background-color: var(--primary-light); border: 2px dashed var(--primary); }
-        
-        /* Tab 2 Styles */
-        #dispatch-view .kanban-column-header { color: white; }
-        .kanban-column.dispatch-column-kho {
-            flex-basis: 25%; flex-grow: 1; flex-shrink: 1; width: auto; min-width: 250px;
-        }
-        #dispatch-view .form-control {
-            border: none; background-color: white; border-radius: 16px;
-            padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
-        #dispatch-view .delivery-card { cursor: pointer; }
-        #dispatch-view .delivery-card.no-edit { cursor: not-allowed; }
-        
-        /* Modal Styles */
-        .modal-content { border-radius: var(--card-radius); border: none; }
-        .modal-header { background-color: var(--primary-light); border-bottom: none; }
-        .modal-header .modal-title { color: var(--primary); font-weight: 700; }
-        .btn-status-dasoan { background-color: var(--warning); color: var(--text-dark); border: none; border-radius: 12px; font-weight: 600; }
-        .btn-status-dagiao { background-color: var(--success); color: white; border: none; border-radius: 12px; font-weight: 600; }
-        .btn-secondary { background-color: #f0f0f0; color: var(--secondary); border: none; border-radius: 12px; font-weight: 600; }
+{% block page_title %}<i class="fas fa-truck-loading me-2 text-primary"></i> ĐIỀU PHỐI GIAO VẬN{% endblock %}
+{% block page_sub %}Lập kế hoạch giao hàng tuần và thực thi xuất kho.{% endblock %}
 
-        /* --- MOBILE RESPONSIVE: DELIVERY DASHBOARD --- */
-        @media (max-width: 992px) {
-            /* 1. Header & Tabs */
-            .page-header {
-                flex-direction: column;
-                align-items: flex-start !important;
-                gap: 15px;
-            }
-            
-            .nav-tabs {
-                display: flex;
-                flex-wrap: nowrap; /* Giữ trên 1 dòng */
-                overflow-x: auto;  /* Cho phép cuộn nếu tab quá dài */
-                white-space: nowrap;
-                border-bottom: none; /* Bỏ viền dưới để đỡ rối */
-                gap: 10px;
-            }
-            
-            .nav-tabs .nav-link {
-                border: 1px solid #E0E5F2;
-                border-radius: 20px; /* Bo tròn như nút */
-                padding: 10px 15px;
-                font-size: 0.9rem;
-                background-color: white;
-            }
-            
-            .nav-tabs .nav-link.active {
-                background-color: var(--primary);
-                color: white;
-                border-color: var(--primary);
-            }
+{% block header_actions %}
+<a href="{{ url_for('index') }}" class="btn btn-back"><i class="fas fa-home me-2"></i>Portal</a>
+{% endblock %}
 
-            /* 2. Kanban Board: Chuyển sang xếp dọc (Vertical Stack) */
-            .kanban-board-container {
-                flex-direction: column;
-                overflow-x: hidden; /* Tắt cuộn ngang */
-                height: auto;
-                min-height: auto;
-                padding: 0;
-            }
-            
-            .kanban-column {
-                width: 100%;
-                max-width: 100%;
-                margin-bottom: 20px;
-                max-height: 400px; /* Giới hạn chiều cao mỗi cột */
-                flex-basis: auto;
-            }
-            
-            .task-list {
-                padding: 5px; /* Giảm padding để tận dụng không gian */
-            }
-
-            /* 3. Thẻ Giao hàng (Card) */
-            .delivery-card {
-                margin-bottom: 8px;
-                padding: 12px;
-            }
-            
-            .item-title { font-size: 1rem; } /* Tăng font tiêu đề */
-            
-            /* 4. Bộ lọc (Dispatch View) */
-            .tab-pane .d-flex.justify-content-between {
-                flex-direction: column;
-                align-items: flex-start !important;
-                gap: 10px;
-            }
-            #dispatchSearchInput {
-                width: 100%; /* Input full màn hình */
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container-fluid">
-        <div class="page-header">
-            <h1 class="page-title"><i class="fas fa-truck-loading me-2"></i> BẢNG ĐIỀU PHỐI GIAO VẬN</h1>
-            <a href="{{ url_for('index') }}" class="btn-back"><i class="fas fa-arrow-left me-2"></i>Về Portal</a>
+{% block content %}
+    <ul class="nav nav-tabs mb-3" id="deliveryTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="planner-tab" data-bs-toggle="tab" data-bs-target="#planner-view" type="button">
+                <i class="fas fa-calendar-alt me-2"></i> 1. Lập Kế hoạch Tuần (Thư ký)
+            </button>
+        </li>
+        {% if can_view_dispatch %} 
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="dispatch-tab" data-bs-toggle="tab" data-bs-target="#dispatch-view" type="button">
+                <i class="fas fa-shipping-fast me-2"></i> 2. Thực thi Giao hàng (Kho)
+            </button>
+        </li>
+        {% endif %}
+    </ul>
+    
+    <div class="tab-content" id="deliveryTabsContent">
+        
+        <div class="tab-pane fade show active" id="planner-view" role="tabpanel">
+            <div class="kanban-board-container" id="planner-board">
+                <div class="kanban-column" id="POOL" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <div class="kanban-column-header"><i class="fas fa-inbox me-2"></i> BỂ CHỜ (POOL)</div>
+                    <div class="task-list" id="task-list-POOL"></div>
+                </div>
+                <div class="kanban-column" id="URGENT" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <div class="kanban-column-header"><i class="fas fa-bolt me-2"></i> GIAO GẤP</div>
+                    <div class="task-list" id="task-list-URGENT"></div>
+                </div>
+                <div class="kanban-column" id="WITHIN_WEEK" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <div class="kanban-column-header">SẮP XẾP TRONG TUẦN</div>
+                    <div class="task-list" id="task-list-WITHIN_WEEK"></div>
+                </div>
+                
+                <div class="kanban-column" id="MONDAY" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="kanban-column-header">THỨ 2</div><div class="task-list" id="task-list-MONDAY"></div></div>
+                <div class="kanban-column" id="TUESDAY" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="kanban-column-header">THỨ 3</div><div class="task-list" id="task-list-TUESDAY"></div></div>
+                <div class="kanban-column" id="WEDNESDAY" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="kanban-column-header">THỨ 4</div><div class="task-list" id="task-list-WEDNESDAY"></div></div>
+                <div class="kanban-column" id="THURSDAY" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="kanban-column-header">THỨ 5</div><div class="task-list" id="task-list-THURSDAY"></div></div>
+                <div class="kanban-column" id="FRIDAY" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="kanban-column-header">THỨ 6</div><div class="task-list" id="task-list-FRIDAY"></div></div>
+                <div class="kanban-column" id="SATURDAY" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="kanban-column-header">THỨ 7</div><div class="task-list" id="task-list-SATURDAY"></div></div>
+                
+                <div class="kanban-column" id="COMPLETED" ondrop="false" ondragover="false"> 
+                    <div class="kanban-column-header"><i class="fas fa-check-circle me-2"></i> ĐÃ GIAO (7 NGÀY)</div>
+                    <div class="task-list" id="task-list-COMPLETED"></div>
+                </div>
+            </div>
         </div>
         
-        <ul class="nav nav-tabs mb-3" id="deliveryTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="planner-tab" data-bs-toggle="tab" data-bs-target="#planner-view" type="button" role="tab">
-                    <i class="fas fa-calendar-alt me-2"></i> 1. Lập Kế hoạch Tuần (Thư ký)
-                </button>
-            </li>
-            {% if can_view_dispatch %} <li class="nav-item" role="presentation">
-                <button class="nav-link" id="dispatch-tab" data-bs-toggle="tab" data-bs-target="#dispatch-view" type="button" role="tab">
-                    <i class="fas fa-shipping-fast me-2"></i> 2. Thực thi Giao hàng (Kho)
-                </button>
-            </li>
-            {% endif %}
-        </ul>
-        
-        <div class="tab-content" id="deliveryTabsContent">
-            
-            <div class="tab-pane fade show active" id="planner-view" role="tabpanel">
-                <div class="kanban-board-container" id="planner-board">
-                    <div class="kanban-column" id="POOL" ondrop="drop(event)" ondragover="allowDrop(event)">
-                        <div class="kanban-column-header"><i class="fas fa-inbox me-2"></i> BỂ CHỜ (POOL)</div>
-                        <div class="task-list" id="task-list-POOL"></div>
-                    </div>
-                    <div class="kanban-column" id="URGENT" ondrop="drop(event)" ondragover="allowDrop(event)">
-                        <div class="kanban-column-header"><i class="fas fa-bolt me-2"></i> GIAO GẤP</div>
-                        <div class="task-list" id="task-list-URGENT"></div>
-                    </div>
-                    <div class="kanban-column" id="WITHIN_WEEK" ondrop="drop(event)" ondragover="allowDrop(event)">
-                        <div class="kanban-column-header">SẮP XẾP TRONG TUẦN</div>
-                        <div class="task-list" id="task-list-WITHIN_WEEK"></div>
-                    </div>
-                    
-                    <div class="kanban-column" id="MONDAY" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="kanban-column-header">THỨ 2</div><div class="task-list" id="task-list-MONDAY"></div></div>
-                    <div class="kanban-column" id="TUESDAY" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="kanban-column-header">THỨ 3</div><div class="task-list" id="task-list-TUESDAY"></div></div>
-                    <div class="kanban-column" id="WEDNESDAY" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="kanban-column-header">THỨ 4</div><div class="task-list" id="task-list-WEDNESDAY"></div></div>
-                    <div class="kanban-column" id="THURSDAY" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="kanban-column-header">THỨ 5</div><div class="task-list" id="task-list-THURSDAY"></div></div>
-                    <div class="kanban-column" id="FRIDAY" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="kanban-column-header">THỨ 6</div><div class="task-list" id="task-list-FRIDAY"></div></div>
-                    <div class="kanban-column" id="SATURDAY" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="kanban-column-header">THỨ 7</div><div class="task-list" id="task-list-SATURDAY"></div></div>
-                    
-                    <div class="kanban-column" id="COMPLETED" ondrop="false" ondragover="false"> 
-                        <div class="kanban-column-header"><i class="fas fa-check-circle me-2"></i> ĐÃ GIAO (7 NGÀY)</div>
-                        <div class="task-list" id="task-list-COMPLETED"></div>
-                    </div>
+        {% if can_view_dispatch %} 
+        <div class="tab-pane fade" id="dispatch-view" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <h4 class="fw-bold" style="color: var(--text-dark);">Kế hoạch Giao hàng ({{ current_date_str }} - {{ current_weekday_str }})</h4>
+                <div class="col-md-4 col-12">
+                    <input type="text" id="dispatchSearchInput" class="form-control" placeholder="Lọc nhanh theo Mã LXH, Tên KH, RefNo02...">
                 </div>
             </div>
             
-            {% if can_view_dispatch %} 
-            <div class="tab-pane fade" id="dispatch-view" role="tabpanel">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4 class="text-dark fw-bold">Kế hoạch Giao hàng ({{ current_date_str }} - {{ current_weekday_str }})</h4>
-                    <div class="col-md-4">
-                        <input type="text" id="dispatchSearchInput" class="form-control" placeholder="Lọc nhanh theo Mã LXH, Tên KH, RefNo02...">
+            <div class="kanban-board-container" id="dispatch-board">
+                <div class="kanban-column dispatch-column-kho" id="col-hom-nay">
+                    <div class="kanban-column-header">
+                        <i class="fas fa-exclamation-circle me-2"></i> HÔM NAY PHẢI GIAO ({{ kho_hom_nay | length }})
+                    </div>
+                    <div class="task-list">
+                        {% for item in kho_hom_nay %}
+                            {% include 'delivery_card.html' %}
+                        {% endfor %}
                     </div>
                 </div>
                 
-                <div class="kanban-board-container" id="dispatch-board">
-                    <div class="kanban-column dispatch-column-kho" id="col-hom-nay">
-                        <div class="kanban-column-header bg-danger text-white">
-                            <i class="fas fa-exclamation-circle me-2"></i> HÔM NAY PHẢI GIAO ({{ kho_hom_nay | length }})
-                        </div>
-                        <div class="task-list">
-                            {% for item in kho_hom_nay %}
-                                {% include 'delivery_card.html' %}
-                            {% endfor %}
-                        </div>
+                <div class="kanban-column dispatch-column-kho" id="col-sap-xep">
+                    <div class="kanban-column-header">
+                        <i class="fas fa-random me-2"></i> SẮP XẾP TRONG TUẦN ({{ kho_sap_xep | length }})
                     </div>
-                    
-                    <div class="kanban-column dispatch-column-kho" id="col-sap-xep">
-                        <div class="kanban-column-header" style="background-color: var(--warning); color: var(--text-dark);">
-                            <i class="fas fa-random me-2"></i> SẮP XẾP TRONG TUẦN ({{ kho_sap_xep | length }})
-                        </div>
-                        <div class="task-list">
-                            {% for item in kho_sap_xep %}
-                                {% include 'delivery_card.html' %}
-                            {% endfor %}
-                        </div>
+                    <div class="task-list">
+                        {% for item in kho_sap_xep %}
+                            {% include 'delivery_card.html' %}
+                        {% endfor %}
                     </div>
-                    
-                    <div class="kanban-column dispatch-column-kho" id="col-trong-tuan">
-                        <div class="kanban-column-header bg-primary text-white">
-                            <i class="fas fa-calendar-day me-2"></i> TRONG TUẦN SẼ GIAO ({{ kho_trong_tuan | length }})
-                        </div>
-                        <div class="task-list">
-                            {% for item in kho_trong_tuan %}
-                                {% include 'delivery_card.html' %}
-                            {% endfor %}
-                        </div>
+                </div>
+                
+                <div class="kanban-column dispatch-column-kho" id="col-trong-tuan">
+                    <div class="kanban-column-header">
+                        <i class="fas fa-calendar-day me-2"></i> TRONG TUẦN SẼ GIAO ({{ kho_trong_tuan | length }})
                     </div>
-                    
-                    <div class="kanban-column dispatch-column-kho" id="col-da-giao">
-                        <div class="kanban-column-header bg-success text-white">
-                            <i class="fas fa-check-circle me-2"></i> ĐÃ GIAO (7 NGÀY) ({{ kho_da_giao | length }})
-                        </div>
-                        <div class="task-list">
-                            {% for item in kho_da_giao %}
-                                {% include 'delivery_card.html' %}
-                            {% endfor %}
-                        </div>
+                    <div class="task-list">
+                        {% for item in kho_trong_tuan %}
+                            {% include 'delivery_card.html' %}
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="kanban-column dispatch-column-kho" id="col-da-giao">
+                    <div class="kanban-column-header">
+                        <i class="fas fa-check-circle me-2"></i> ĐÃ GIAO (7 NGÀY) ({{ kho_da_giao | length }})
+                    </div>
+                    <div class="task-list">
+                        {% for item in kho_da_giao %}
+                            {% include 'delivery_card.html' %}
+                        {% endfor %}
                     </div>
                 </div>
             </div>
-            {% endif %} 
         </div>
+        {% endif %} 
     </div>
     
-    <div class="modal fade" id="confirmDeliveryModal" tabindex="-1" aria-labelledby="confirmDeliveryModalLabel" aria-hidden="true">
+    <div class="modal fade" id="confirmDeliveryModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="confirmDeliveryModalLabel">Xác nhận Trạng thái Giao hàng</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title">Xác nhận Trạng thái Giao hàng</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <h6>Lệnh Xuất Hàng: <strong id="modalVoucherNo" class="text-primary"></strong></h6>
@@ -325,7 +233,7 @@
                     <div class="table-responsive">
                         <table class="table table-sm table-bordered">
                             <thead class="table-light">
-                                <tr><th>Mã hàng</th><th>Tên hàng</th><th>Số lượng</th></tr>
+                                <tr><th>Mã hàng</th><th>Tên hàng</th><th class="text-end">Số lượng</th></tr>
                             </thead>
                             <tbody id="modalItemTableBody"></tbody>
                         </table>
@@ -334,7 +242,7 @@
                 <div class="modal-footer justify-content-between">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
                     <div id="modal-action-buttons" {% if not can_edit_dispatch %}style="display: none;"{% endif %}> 
-                        <button type="button" class="btn btn-status-dasoan" onclick="updateStatus('Da Soan')">
+                        <button type="button" class="btn btn-status-dasoan me-2" onclick="updateStatus('Da Soan')">
                             <i class="fas fa-box-open me-1"></i> Đã Soạn Hàng
                         </button>
                         <button type="button" class="btn btn-status-dagiao" onclick="updateStatus('Da Giao')">
@@ -354,10 +262,8 @@
          data-can-edit-dispatch='{{ can_edit_dispatch | tojson | safe }}'>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script src="{{ url_for('static', filename='js/delivery_dashboard.js') }}"></script>
+{% endblock %}
 
-</body>
-</html>
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/delivery_dashboard.js') }}"></script>
+{% endblock %}

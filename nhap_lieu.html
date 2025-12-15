@@ -1,690 +1,328 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soạn Báo Cáo (v4.5 Hybrid)</title>
+{% extends "base.html" %}
+
+{% block title %}Soạn Báo Cáo | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* --- FORM ELEMENTS --- */
+    .form-control, .form-select {
+        border: 1px solid var(--border-color); background-color: var(--input-bg); border-radius: 12px;
+        padding: 10px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none; transition: all 0.2s;
+    }
+    .form-control:focus, .form-select:focus { 
+        background-color: var(--card-bg); box-shadow: 0 0 0 2px var(--primary); border-color: var(--primary);
+    }
+    .form-control[readonly] { background-color: var(--border-color); opacity: 0.8; }
+
+    /* --- ACCORDION --- */
+    .custom-accordion .accordion-item {
+        border: 1px solid var(--border-color); background: var(--card-bg); 
+        border-radius: 16px !important; box-shadow: var(--shadow-sm); 
+        margin-bottom: 20px; overflow: hidden;
+    }
+    .custom-accordion .accordion-button { 
+        background-color: var(--card-bg); color: var(--text-dark); 
+        font-weight: 700; font-size: 1.05rem; padding: 15px 20px; 
+    }
+    .custom-accordion .accordion-button:not(.collapsed) { 
+        background-color: var(--input-bg); color: var(--primary); border-bottom: 1px solid var(--border-color);
+    }
+    .custom-accordion .accordion-body { padding: 20px; background-color: var(--card-bg); }
+
+    /* --- TABS (Pills) --- */
+    .nav-pills-custom { 
+        background-color: var(--input-bg); padding: 5px; border-radius: 12px; 
+        display: inline-flex; margin-bottom: 20px; border: 1px solid var(--border-color);
+    }
+    .nav-pills-custom .nav-link { 
+        color: var(--secondary); font-weight: 600; border-radius: 8px; 
+        padding: 8px 20px; transition: all 0.2s; 
+    }
+    .nav-pills-custom .nav-link.active { 
+        background-color: var(--primary); color: white; box-shadow: var(--shadow-sm); 
+    }
+
+    /* --- EDITOR --- */
+    .rich-editor {
+        background: var(--card-bg); min-height: 450px; white-space: pre-wrap; overflow-y: auto;
+        border-radius: 16px; font-size: 0.95rem; line-height: 1.6; padding: 20px;
+        border: 1px solid var(--border-color); color: var(--text-dark);
+    }
+    .rich-editor:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-light); }
+
+    /* --- SIDEBAR & TAGS --- */
+    .sticky-sidebar { position: sticky; top: 20px; }
     
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    .preview-card, .tag-pool-card {
+        background: var(--card-bg); border-radius: 16px; overflow: hidden;
+        border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); margin-bottom: 20px;
+    }
+    .card-header-sidebar { padding: 12px 15px; font-weight: 700; font-size: 0.9rem; color: white; }
+    .bg-preview { background-color: var(--success); }
+    .bg-pool { background-color: var(--primary); }
     
-    <style>
-        /* --- 1. BASE STYLES (Lấy từ bản NEW - Đẹp & Hiện đại) --- */
-        :root {
-            --primary: #4318FF;
-            --primary-light: #F4F7FE;
-            --secondary: #A3AED0;
-            --text-dark: #2B3674;
-            --danger: #E31A1A;
-            --success: #05CD99;
-            --warning: #FFB547;
-            --bg-color: #F4F7FE;
-            --card-radius: 20px;
-            --input-bg: #F4F7FE;
-        }
+    .sidebar-body { padding: 15px; max-height: 400px; overflow-y: auto; }
+
+    .tag-btn {
+        display: flex; align-items: center; width: 100%; background-color: var(--card-bg);
+        border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px;
+        margin-bottom: 8px; color: var(--secondary); font-weight: 500; font-size: 0.85rem;
+        cursor: pointer; transition: all 0.2s;
+    }
+    .tag-btn:hover { 
+        background-color: var(--input-bg); color: var(--primary); 
+        border-color: var(--primary); transform: translateX(3px); 
+    }
+    .tag-btn i { margin-right: 8px; color: var(--primary); }
+    .tag-btn.global-tag { background-color: rgba(255, 181, 71, 0.1); border-color: var(--warning); color: #B71C1C; }
+    .tag-btn.global-tag i { color: var(--warning); }
+
+    /* --- INJECTED HEADER (Inside Editor) --- */
+    .injected-header-p {
+        display: flex; justify-content: space-between; align-items: center;
+        background: var(--input-bg); border: 1px solid var(--border-color); border-left: 4px solid var(--primary);
+        border-radius: 8px; padding: 6px 10px; margin-bottom: 0.5em; font-size: 0.9rem; color: var(--text-dark);
+    }
+    .delete-header-btn { 
+        text-decoration: none; color: var(--danger); font-weight: 700; 
+        padding-left: 10px; opacity: 0.6; cursor: pointer;
+    }
+    .delete-header-btn:hover { opacity: 1; }
+
+    /* Search Dropdown */
+    #kh_search_results { 
+        position: absolute; width: 100%; z-index: 1050; border: 1px solid var(--border-color); 
+        border-radius: 12px; box-shadow: var(--shadow-md); margin-top: 5px; 
+        background-color: var(--card-bg); color: var(--text-dark);
+    }
+    .hidden-field { display: none !important; }
+</style>
+{% endblock %}
+
+{% block page_title %}Soạn Báo Cáo{% endblock %}
+{% block page_sub %}Nhập liệu thông minh (Hybrid v4.5){% endblock %}
+
+{% block header_actions %}
+<a href="/" class="btn btn-light border shadow-sm text-decoration-none fw-bold" style="background: var(--card-bg); color: var(--text-dark);">
+    <i class="fas fa-times me-2"></i>Đóng
+</a>
+{% endblock %}
+
+{% block content %}
+    <form method="POST" action="/nhaplieu" id="reportForm" enctype="multipart/form-data">
         
-        body { background-color: var(--bg-color); font-family: 'Inter', sans-serif; color: var(--text-dark); }
-        .container { max-width: 1400px; padding: 30px 20px; }
-        
-        /* HEADER */
-        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
-        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
-        .page-sub { color: var(--secondary); font-size: 0.95rem; }
-
-        /* FORM INPUTS (SaaS Style) */
-        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
-        .form-control, .form-select {
-            border: none; background-color: var(--input-bg); border-radius: 16px;
-            padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none; transition: all 0.2s;
-        }
-        .form-control:focus, .form-select:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
-        .form-control[readonly] { background-color: #e9ecef; opacity: 0.7; }
-
-        /* ACCORDION */
-        .custom-accordion .accordion-item {
-            border: none; background: white; border-radius: var(--card-radius) !important;
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); margin-bottom: 20px; overflow: hidden;
-        }
-        .custom-accordion .accordion-button { background-color: white; color: var(--text-dark); font-weight: 700; font-size: 1.1rem; padding: 20px 25px; box-shadow: none !important; }
-        .custom-accordion .accordion-button:not(.collapsed) { background-color: var(--primary-light); color: var(--primary); }
-        .custom-accordion .accordion-body { padding: 5px 25px 25px 25px; background-color: white; }
-
-        /* CARDS */
-        .main-card {
-            background: white; border-radius: var(--card-radius); padding: 25px;
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); border: none; margin-bottom: 30px;
-        }
-        .card-title-custom { font-size: 1.1rem; font-weight: 700; color: var(--text-dark); margin-bottom: 20px; display: flex; align-items: center; }
-        .card-title-custom i { margin-right: 10px; color: var(--primary); font-size: 1.3rem; }
-
-        /* TABS (Pills Style) */
-        .nav-pills-custom { background-color: var(--input-bg); padding: 5px; border-radius: 16px; display: inline-flex; margin-bottom: 20px; }
-        .nav-pills-custom .nav-link { color: var(--secondary); font-weight: 600; border-radius: 12px; padding: 10px 20px; transition: all 0.3s; }
-        .nav-pills-custom .nav-link.active { background-color: var(--primary); color: white; box-shadow: 0 4px 10px rgba(67, 24, 255, 0.3); }
-
-        /* SEARCH & TAGS */
-        #kh_search_results { position: absolute; width: 100%; z-index: 1000; border: none; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 5px; }
-        .search-wrapper { position: relative; }
-        .hidden-field { display: none !important; }
-
-        /* --- 2. LOGIC STYLES (Lấy từ bản CŨ - Phục vụ tính năng Tách đôi/Preview) --- */
-        
-        /* Sticky Sidebar Wrapper */
-        .sticky-sidebar { position: sticky; top: 20px; align-self: flex-start; }
-
-        /* Editor Style */
-        .rich-editor {
-            background: white; min-height: 450px; white-space: pre-wrap; overflow-y: auto;
-            border-radius: 16px; font-size: 0.95rem; line-height: 1.6; padding: 20px;
-            border: 2px solid var(--input-bg); transition: border-color 0.2s;
-        }
-        .rich-editor:focus { outline: none; border-color: var(--primary); }
-
-        /* Header Only Style (Chèn vào editor) */
-        .injected-header-p {
-            display: flex; justify-content: space-between; align-items: center;
-            background: var(--primary-light); border: 1px solid #E0E5F2; border-left: 4px solid var(--primary);
-            border-radius: 8px; padding: 5px 10px; margin-bottom: 0.3em; font-size: 0.9rem;
-        }
-        .delete-header-btn { text-decoration: none; color: var(--danger); font-weight: 700; font-size: 1.1rem; padding-left: 10px; opacity: 0.5; }
-        .delete-header-btn:hover { opacity: 1; }
-
-        /* Preview Card (Bên phải - Trên) */
-        #suggestion-preview-card {
-            background: white; border-radius: var(--card-radius); padding: 0;
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); margin-bottom: 20px; overflow: hidden;
-            border: 2px solid transparent; transition: all 0.3s ease-out;
-        }
-        .preview-header { background-color: var(--success); color: white; padding: 15px 20px; font-weight: 600; }
-        #suggestion-preview-content { padding: 20px; background-color: #fff; max-height: 300px; overflow-y: auto; font-size: 0.9rem;}
-        /* Làm sạch nội dung preview */
-        #suggestion-preview-content ul { padding-left: 10px; list-style-type: none; }
-        #suggestion-preview-content ul li { position: relative; padding-left: 25px; margin-bottom: 8px; }
-        #suggestion-preview-content ul li::before {
-            content: '\f058'; font-family: 'Font Awesome 6 Free'; font-weight: 600;
-            position: absolute; left: 0; top: 2px; color: var(--success);
-        }
-
-        /* Tag Pool (Bên phải - Dưới) */
-        #tag-pool-card { background: white; border-radius: var(--card-radius); padding: 0; box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); overflow: hidden; }
-        .pool-header { background-color: var(--primary); color: white; padding: 15px 20px; font-weight: 600; }
-        #tag-pool-sidebar-body { padding: 15px; max-height: 500px; overflow-y: auto; }
-
-        .tag-btn {
-            display: flex; align-items: center; width: 100%; background-color: white;
-            border: 1px solid #E0E5F2; border-radius: 12px; padding: 12px 15px;
-            margin-bottom: 10px; color: var(--secondary); font-weight: 500; font-size: 0.9rem;
-            transition: all 0.2s; text-align: left; cursor: pointer;
-        }
-        .tag-btn:hover { background-color: var(--primary-light); color: var(--primary); border-color: var(--primary); transform: translateX(5px); }
-        .tag-btn i { margin-right: 10px; color: var(--primary); }
-        .tag-btn.global-tag { background-color: #FFF8E1; border-color: var(--warning); color: #B38200; }
-        .tag-btn.global-tag i { color: var(--warning); }
-
-        /* Other Helpers */
-        .btn-save { background-color: var(--success); color: white; border: none; padding: 12px 30px; border-radius: 16px; font-weight: 600; }
-        .btn-save:hover { background-color: #04b385; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(5, 205, 153, 0.3); }
-        .btn-back { background-color: white; color: var(--secondary); border: 1px solid #E0E5F2; padding: 12px 30px; border-radius: 16px; font-weight: 600; }
-        .reference-box { background-color: var(--input-bg); border-radius: 16px; padding: 15px; height: 100%; }
-        .ref-label { color: var(--secondary); font-size: 0.8rem; display: block; }
-        .ref-val { color: var(--text-dark); font-weight: 600; font-size: 0.95rem; display: block; margin-bottom: 10px; }
-
-    </style>
-</head>
-<body>
-    <div class="container">
-        
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">Soạn Báo Cáo</h1>
-                <p class="page-sub">Nhập liệu thông minh (Hybrid v4.5)</p>
-            </div>
-            <a href="/" class="btn btn-back btn-sm text-decoration-none"><i class="fas fa-times me-2"></i>Đóng</a>
-        </div>
-
-        {% if message and 'success' in message %}
-        <div class="alert alert-success alert-dismissible fade show rounded-4 mb-4" role="alert">
-            <i class="fas fa-check-circle me-2"></i> <strong>Thành công!</strong> {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        {% elif message and 'error' in message %}
-        <div class="alert alert-danger alert-dismissible fade show rounded-4 mb-4" role="alert">
-            <i class="fas fa-exclamation-circle me-2"></i> <strong>Lỗi!</strong> {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        {% endif %}
-
-        <form method="POST" action="/nhaplieu" id="reportForm" enctype="multipart/form-data">
+        <div class="accordion custom-accordion" id="setupAccordion">
             
-            <div class="accordion custom-accordion" id="setupAccordion">
-                
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingOne">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true">
-                            <i class="fas fa-user-tag me-3 text-primary"></i> 1. Thông Tin & Khách Hàng
-                        </button>
-                    </h2>
-                    <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#setupAccordion">
-                        <div class="accordion-body">
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-2">
-                                    <label class="form-label">ID Bản ghi</label>
-                                    <input type="text" class="form-control" value="[AUTO]" readonly> 
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingOne">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                        <i class="fas fa-user-tag me-3 text-primary"></i> 1. Thông Tin & Khách Hàng
+                    </button>
+                </h2>
+                <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#setupAccordion">
+                    <div class="accordion-body">
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-2">
+                                <label class="form-label">ID Bản ghi</label>
+                                <input type="text" class="form-control" value="[AUTO]" readonly> 
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Loại Báo cáo <span class="text-danger">*</span></label>
+                                <select name="loai" id="ddl_loai_bao_cao" class="form-select" required>
+                                    <option value="">-- Chọn Loại --</option>
+                                    {% for loai in loai_bao_cao %}
+                                    <option value="{{ loai.LOAI }}">{{ loai['DIEN GIAI'] }} ({{ loai.LOAI }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Người báo cáo <span class="text-danger">*</span></label>
+                                <select name="nv_bao_cao" class="form-select" required>
+                                    {% for user in users %}
+                                    <option value="{{ user.USERCODE }}" {% if user.USERCODE == default_usercode %} selected {% endif %}>
+                                        {{ user.SHORTNAME }} ({{ user.USERNAME }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Ngày Báo cáo <span class="text-danger">*</span></label>
+                                <input type="date" name="ngay_bao_cao" class="form-control" value="{{ now_date.strftime('%Y-%m-%d') }}" required>
+                            </div>
+                        </div>
+
+                        <hr style="border-color: var(--border-color); opacity: 0.5;">
+
+                        <div class="row g-3 align-items-start">
+                            <div class="col-md-3">
+                                <label class="form-label">Tìm Khách hàng</label>
+                                <div class="input-group">
+                                    <span class="input-group-text border-0 bg-transparent ps-3" style="position: absolute; z-index: 10;"><i class="fas fa-search text-secondary"></i></span>
+                                    <input type="text" id="kh_ten_tat" placeholder="Gõ tên..." class="form-control ps-5">
                                 </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Loại Báo cáo <span class="text-danger">*</span></label>
-                                    <select name="loai" id="ddl_loai_bao_cao" class="form-select" required>
-                                        <option value="">-- Chọn Loại --</option>
-                                        {% for loai in loai_bao_cao %}
-                                        <option value="{{ loai.LOAI }}">{{ loai['DIEN GIAI'] }} ({{ loai.LOAI }})</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Người báo cáo <span class="text-danger">*</span></label>
-                                    <select name="nv_bao_cao" class="form-select" required>
-                                        <option value="">-- Chọn Nhân viên --</option>
-                                        {% for user in users %}
-                                        <option value="{{ user.USERCODE }}" {% if user.USERCODE == default_usercode %} selected {% endif %}>
-                                            {{ user.SHORTNAME }} ({{ user.USERNAME }})
-                                        </option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Ngày Báo cáo <span class="text-danger">*</span></label>
-                                    <input type="date" name="ngay_bao_cao" class="form-control" value="{{ now_date.strftime('%Y-%m-%d') }}" required>
-                                </div>
+                                <small id="kh_status" class="text-muted mt-1 d-block" style="font-size: 0.8rem;">Nhập tên để tìm...</small>
                             </div>
 
-                            <hr class="text-muted opacity-25">
+                            <div class="col-md-5 position-relative">
+                                <label class="form-label">Đối tượng được chọn <span class="text-danger">*</span></label> 
+                                <input type="text" id="kh_ten_day_du" placeholder="Chưa chọn khách hàng" class="form-control fw-bold" readonly> 
+                                <input type="hidden" name="ma_doi_tuong_kh" id="kh_ma_doi_tuong" required>
+                                <select id="kh_search_results" class="form-select" size="5" style="display:none;" onchange="chonKhachHang()"></select>
+                            </div>
 
-                            <div class="row g-3 align-items-start">
-                                <div class="col-md-3">
-                                    <label class="form-label">Tìm Khách hàng</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text border-0 bg-light rounded-start-4 ps-3"><i class="fas fa-search text-secondary"></i></span>
-                                        <input type="text" id="kh_ten_tat" placeholder="Gõ tên viết tắt..." class="form-control rounded-end-4">
-                                    </div>
-                                    <small id="kh_status" class="text-muted mt-1 d-block" style="font-size: 0.8rem;">Nhập để tìm kiếm...</small>
-                                </div>
-
-                                <div class="col-md-5 search-wrapper">
-                                    <label class="form-label">Đối tượng được chọn <span class="text-danger">*</span></label> 
-                                    <input type="text" id="kh_ten_day_du" placeholder="Chưa chọn khách hàng" class="form-control fw-bold" readonly> 
-                                    <input type="hidden" name="ma_doi_tuong_kh" id="kh_ma_doi_tuong" required>
-                                    <select id="kh_search_results" class="form-select" size="5" style="display:none;" onchange="chonKhachHang()"></select>
-                                </div>
-
-                                <div class="col-md-4">
-                                    <div class="reference-box">
-                                        <div class="row">
-                                            <div class="col-12 mb-2">
-                                                <span class="ref-label">Địa chỉ:</span>
-                                                <span class="ref-val" id="ref_diachi">...</span>
-                                            </div>
-                                            <div class="col-12">
-                                                <span class="ref-label">Liên hệ:</span>
-                                                <span class="ref-val text-success" id="ref_nlh_count">...</span> 
-                                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 rounded-3" style="background: var(--input-bg); border: 1px solid var(--border-color);">
+                                    <div class="row">
+                                        <div class="col-12 mb-2">
+                                            <small class="d-block text-secondary">Địa chỉ:</small>
+                                            <span class="fw-bold text-dark small" id="ref_diachi">...</span>
+                                        </div>
+                                        <div class="col-12">
+                                            <small class="d-block text-secondary">Liên hệ:</small>
+                                            <span class="fw-bold text-success small" id="ref_nlh_count">...</span> 
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <div class="col-md-6">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <label class="form-label mb-0">Gặp Nhân sự (1)</label>
-                                        <a href="#" onclick="openNhansuForm(event)" class="text-decoration-none small fw-bold text-primary"><i class="fas fa-plus"></i> Tạo mới</a>
-                                    </div>
-                                    <select name="nhansu_hengap_1" id="nhansu_hengap_1" class="form-select">
-                                        <option value="">-- Chọn Nhân sự --</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Gặp Nhân sự (2)</label>
-                                    <select name="nhansu_hengap_2" id="nhansu_hengap_2" class="form-select">
-                                        <option value="">-- Chọn (Không bắt buộc) --</option>
-                                    </select>
-                                </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingTwo">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false">
-                            <i class="fas fa-poll-h me-3 text-warning"></i> 2. Phân loại & Kết quả
-                        </button>
-                    </h2>
-                    <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#setupAccordion">
-                        <div class="accordion-body">
-                            <div class="row g-4">
-                                <div class="col-md-4" id="div_noi_dung_4">
-                                    <label class="form-label text-primary" for="select_noi_dung_4">Mục đích gặp *</label>
-                                    <select name="noi_dung_4" id="select_noi_dung_4" class="form-select" required>
-                                        <option value="">-- Vui lòng chọn --</option>
-                                    </select>
+                            
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label mb-0">Gặp Nhân sự (1)</label>
+                                    <a href="#" onclick="openNhansuForm(event)" class="text-decoration-none small fw-bold text-primary"><i class="fas fa-plus"></i> Tạo mới</a>
                                 </div>
-                                <div class="col-md-4" id="div_noi_dung_5">
-                                    <label class="form-label text-primary" for="select_noi_dung_5">Kết quả *</label>
-                                    <select name="noi_dung_5" id="select_noi_dung_5" class="form-select" required>
-                                        <option value="">-- Vui lòng chọn --</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4" id="div_danh_gia_2">
-                                    <label class="form-label text-primary" for="select_danh_gia_4">Hành động tiếp theo *</label>
-                                    <select name="danh_gia_4" id="select_danh_gia_4" class="form-select" required>
-                                        <option value="">-- Vui lòng chọn --</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="col-12">
-                                    <div class="p-3 rounded-4" style="border: 2px dashed #A3AED0; background-color: #FAFCFE;">
-                                        <label class="form-label mb-2"><i class="fas fa-paperclip me-2"></i>Đính kèm tài liệu (Ảnh, PDF...)</label>
-                                        <input type="file" name="attachment_file" class="form-control" multiple onchange="checkFiles(this)">
-                                        <div id="file_list_display" class="mt-2 small text-muted"></div> 
-                                    </div>
-                                </div>
+                                <select name="nhansu_hengap_1" id="nhansu_hengap_1" class="form-select">
+                                    <option value="">-- Chọn Nhân sự --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Gặp Nhân sự (2)</label>
+                                <select name="nhansu_hengap_2" id="nhansu_hengap_2" class="form-select">
+                                    <option value="">-- Chọn (Không bắt buộc) --</option>
+                                </select>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="row mt-4">
-                <div class="col-12">
-                    <h5 class="mb-3 fw-bold text-dark"><i class="fas fa-edit me-2 text-primary"></i>3. Nội dung chi tiết</h5>
-                </div>
-                
-                <div class="col-lg-8">
-                    <div class="main-card">
-                        <ul class="nav nav-pills nav-pills-custom" id="reportTabs" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="tab-a-tab" data-bs-toggle="pill" data-bs-target="#tab-a-pane" type="button"><span id="lbl_tab_A">Tab A</span></button>
-                            </li>
-                            <li class="nav-item" role="presentation" id="li_tab_b">
-                                <button class="nav-link" id="tab-b-tab" data-bs-toggle="pill" data-bs-target="#tab-b-pane" type="button"><span id="lbl_tab_B">Tab B</span></button>
-                            </li>
-                            <li class="nav-item" role="presentation" id="li_tab_c">
-                                <button class="nav-link" id="tab-c-tab" data-bs-toggle="pill" data-bs-target="#tab-c-pane" type="button"><span id="lbl_tab_C">Tab C</span></button>
-                            </li>
-                        </ul>
-
-                        <div class="tab-content pt-2">
-                            <div class="tab-pane fade show active" id="tab-a-pane">
-                                <div class="card-title-custom" id="title_noi_dung_1"><i class="fas fa-pen"></i> Nội dung chính</div>
-                                <div id="editor_noi_dung_1" class="rich-editor" contenteditable="true"></div>
-                                <input type="hidden" name="danh_gia_2" id="hidden_danh_gia_2">
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingTwo">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                        <i class="fas fa-poll-h me-3 text-warning"></i> 2. Phân loại & Kết quả
+                    </button>
+                </h2>
+                <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#setupAccordion">
+                    <div class="accordion-body">
+                        <div class="row g-4">
+                            <div class="col-md-4">
+                                <label class="form-label text-primary" for="select_noi_dung_4">Mục đích gặp *</label>
+                                <select name="noi_dung_4" id="select_noi_dung_4" class="form-select" required>
+                                    <option value="">-- Vui lòng chọn --</option>
+                                </select>
                             </div>
-
-                            <div class="tab-pane fade" id="tab-b-pane">
-                                <div class="card-title-custom" id="title_noi_dung_2"><i class="fas fa-align-left"></i> Nội dung mở rộng</div>
-                                <div id="editor_noi_dung_2" class="rich-editor" contenteditable="true"></div>
-                                <input type="hidden" name="noi_dung_2" id="hidden_noi_dung_2">
+                            <div class="col-md-4">
+                                <label class="form-label text-primary" for="select_noi_dung_5">Kết quả *</label>
+                                <select name="noi_dung_5" id="select_noi_dung_5" class="form-select" required>
+                                    <option value="">-- Vui lòng chọn --</option>
+                                </select>
                             </div>
-
-                            <div class="tab-pane fade" id="tab-c-pane">
-                                <div class="card-title-custom" id="title_danh_gia_1"><i class="fas fa-star"></i> Đánh giá / Kế hoạch</div>
-                                <div id="editor_danh_gia_1" class="rich-editor" contenteditable="true"></div>
-                                <input type="hidden" name="noi_dung_1" id="hidden_noi_dung_1">
+                            <div class="col-md-4">
+                                <label class="form-label text-primary" for="select_danh_gia_4">Hành động tiếp theo *</label>
+                                <select name="danh_gia_4" id="select_danh_gia_4" class="form-select" required>
+                                    <option value="">-- Vui lòng chọn --</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-12">
+                                <div class="p-3 rounded-4" style="border: 2px dashed var(--border-color); background-color: var(--input-bg);">
+                                    <label class="form-label mb-2 text-muted"><i class="fas fa-paperclip me-2"></i>Đính kèm tài liệu (Ảnh, PDF...)</label>
+                                    <input type="file" name="attachment_file" class="form-control" multiple>
+                                </div>
                             </div>
                         </div>
-
-                        <input type="hidden" name="noi_dung_3" value="">
-                        <input type="hidden" name="danh_gia_1" value=""> 
-                        <input type="hidden" name="danh_gia_3" value="">
-                        <input type="hidden" name="danh_gia_5" value="">
-                    </div>
-                </div>
-
-                <div class="col-lg-4">
-                    <div class="sticky-sidebar">
-                        
-                        <div id="suggestion-preview-card">
-                            <div class="preview-header">
-                                <i class="fas fa-lightbulb me-2"></i> Nội dung Gợi ý
-                            </div>
-                            <div id="suggestion-preview-content">
-                                <p class="text-muted small">Hãy chọn một thẻ gợi ý từ bể chờ ở dưới...</p>
-                            </div>
-                        </div>
-
-                        <div id="tag-pool-card">
-                            <div class="pool-header">
-                                <i class="fas fa-tags me-2"></i> Thẻ có sẵn
-                            </div>
-                            <div id="tag-pool-sidebar-body">
-                                <p class="text-muted small text-center mt-4">Vui lòng chọn Loại Báo cáo.</p>
-                            </div>
-                        </div>
-
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="d-flex justify-content-center gap-3 my-5"> 
-                <button type="submit" class="btn-save shadow"><i class="fas fa-save me-2"></i>Lưu Báo Cáo</button>
-                <a href="/" class="btn-back text-decoration-none d-flex align-items-center"><i class="fas fa-arrow-left me-2"></i>Quay lại</a>
+        <div class="row mt-4">
+            <div class="col-12">
+                <h5 class="mb-3 fw-bold text-dark"><i class="fas fa-edit me-2 text-primary"></i>3. Nội dung chi tiết</h5>
             </div>
-        </form>
-    </div>
-
-    <div id="watermark-user-id" data-user="{{ current_user.usercode }}" style="display:none;"></div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-        // --- 1. LOGIC AUTOSUGGEST KHÁCH HÀNG (Giữ nguyên) ---
-        function debounce(func, timeout = 300) {
-            let timer;
-            return (...args) => { clearTimeout(timer); timer = setTimeout(() => { func.apply(this, args); }, timeout); };
-        }
-        function resetReferenceBox() {
-            document.getElementById('ref_diachi').textContent = '...';
-            document.getElementById('ref_nlh_count').textContent = '...';
-        }
-        function fetchReferenceCount(maDoiTuong) {
-            const nlhObject = document.getElementById('ref_nlh_count');
-            nlhObject.textContent = 'Đang tải...';
-            fetch(`/api/khachhang/ref/${maDoiTuong}`)
-                .then(r => r.json()).then(data => { nlhObject.textContent = `Đã liên hệ ${data.CountNLH || 0} người.`; })
-                .catch(e => { nlhObject.textContent = `Lỗi tải.`; });
-        }
-        function populateNhansuDropdowns(data) {
-            const ddl1 = document.getElementById('nhansu_hengap_1');
-            const ddl2 = document.getElementById('nhansu_hengap_2');
-            ddl1.innerHTML = '<option value="">-- Chọn Nhân sự --</option>';
-            ddl2.innerHTML = '<option value="">-- Chọn (Không bắt buộc) --</option>';
-            if (data && data.length > 0) {
-                data.forEach(item => {
-                    ddl1.appendChild(new Option(item.text, item.id));
-                    ddl2.appendChild(new Option(item.text, item.id));
-                });
-            }
-        }
-        function fetchNhansuDropdownData(maDoiTuong) {
-            fetch(`/api/nhansu_ddl_by_khachhang/${maDoiTuong}`)
-                .then(r => r.json()).then(data => populateNhansuDropdowns(data))
-                .catch(e => {});
-        }
-        function openNhansuForm(event) {
-            event.preventDefault();
-            const maDoiTuong = document.getElementById('kh_ma_doi_tuong').value;
-            if (maDoiTuong.trim() !== '') { window.open(`/nhansu_nhaplieu?kh_code=${maDoiTuong}`, '_blank'); } 
-            else { alert("Vui lòng chọn Đối tượng trước."); }
-        }
-        function checkFiles(input) {}
-        
-        function timKhachHang() {
-            const ten_tat = document.getElementById('kh_ten_tat').value.trim();
-            const resultsDropdown = document.getElementById('kh_search_results');
-            resultsDropdown.style.display = 'none'; resultsDropdown.innerHTML = '';
             
-            if (ten_tat.length < 2) return;
-            
-            fetch(`/sales/api/khachhang/${ten_tat}`)
-                .then(r => r.json()).then(data => {
-                    if (data && data.length > 0) {
-                        data.forEach(kh => {
-                            const option = document.createElement('option');
-                            option.value = kh.ID; option.textContent = `${kh.FullName} (${kh.ID})`;
-                            option.setAttribute('data-fullname', kh.FullName);
-                            option.setAttribute('data-diachi', kh.Address || 'N/A');
-                            resultsDropdown.appendChild(option);
-                        });
-                        resultsDropdown.style.display = 'block'; resultsDropdown.size = Math.min(data.length, 5) + 1;
-                    }
-                }).catch(e => {});
-        }
-        function chonKhachHang() {
-            const resultsDropdown = document.getElementById('kh_search_results');
-            if (resultsDropdown.selectedIndex === -1) return;
-            const selectedOption = resultsDropdown.options[resultsDropdown.selectedIndex];
-            if (selectedOption) {
-                const maDoiTuong = selectedOption.value;
-                document.getElementById('kh_ma_doi_tuong').value = maDoiTuong;
-                document.getElementById('kh_ten_day_du').value = selectedOption.getAttribute('data-fullname');
-                document.getElementById('ref_diachi').textContent = selectedOption.getAttribute('data-diachi');
-                resultsDropdown.style.display = 'none';
-                fetchReferenceCount(maDoiTuong); fetchNhansuDropdownData(maDoiTuong); 
-            }
-        }
+            <div class="col-lg-8">
+                <div class="card p-3 shadow-sm border-0" style="background: var(--card-bg);">
+                    <ul class="nav nav-pills nav-pills-custom" id="reportTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="tab-a-tab" data-bs-toggle="pill" data-bs-target="#tab-a-pane" type="button"><span id="lbl_tab_A">Tab A</span></button>
+                        </li>
+                        <li class="nav-item" role="presentation" id="li_tab_b">
+                            <button class="nav-link" id="tab-b-tab" data-bs-toggle="pill" data-bs-target="#tab-b-pane" type="button"><span id="lbl_tab_B">Tab B</span></button>
+                        </li>
+                        <li class="nav-item" role="presentation" id="li_tab_c">
+                            <button class="nav-link" id="tab-c-tab" data-bs-toggle="pill" data-bs-target="#tab-c-pane" type="button"><span id="lbl_tab_C">Tab C</span></button>
+                        </li>
+                    </ul>
 
-        // --- 2. LOGIC EDITOR & GỢI Ý (SỬ DỤNG LOGIC BẢN CŨ - TÁCH ĐÔI) ---
-        let allDefaults = {};
-        let activeEditorId = 'editor_noi_dung_1'; 
-        let activeTagGroup = '1'; 
+                    <div class="tab-content pt-2">
+                        <div class="tab-pane fade show active" id="tab-a-pane">
+                            <div class="fw-bold mb-2 text-primary"><i class="fas fa-pen"></i> Nội dung chính</div>
+                            <div id="editor_noi_dung_1" class="rich-editor" contenteditable="true"></div>
+                            <input type="hidden" name="danh_gia_2" id="hidden_danh_gia_2">
+                        </div>
 
-        // Tạo thẻ (Style mới nhưng logic onClick gọi hàm Cũ)
-        function createTagButton(tagName, tagTemplate, isGlobal = false) {
-            const btn = document.createElement('div');
-            btn.className = isGlobal ? 'tag-btn global-tag' : 'tag-btn';
-            const icon = isGlobal ? 'fa-star' : 'fa-plus-circle';
-            btn.innerHTML = `<i class="fas ${icon}"></i> ${tagName}`;
-            
-            // LOGIC CŨ: 1. Chèn Header -> 2. Hiện Preview -> 3. Hiệu ứng
-            btn.onclick = function() {
-                injectHeaderOnly(tagName);
-                updateSuggestionPreview(tagTemplate);
-                
-                // Hiệu ứng nháy thẻ Preview
-                const previewCard = document.getElementById('suggestion-preview-card');
-                previewCard.style.transition = 'none';
-                previewCard.style.borderColor = 'var(--primary)';
-                previewCard.style.transform = 'scale(1.02)';
-                setTimeout(() => {
-                    previewCard.style.transition = 'all 0.3s ease-out';
-                    previewCard.style.borderColor = 'transparent';
-                    previewCard.style.transform = 'scale(1)';
-                }, 150);
-            };
-            return btn;
-        }
+                        <div class="tab-pane fade" id="tab-b-pane">
+                            <div class="fw-bold mb-2 text-primary"><i class="fas fa-align-left"></i> Nội dung mở rộng</div>
+                            <div id="editor_noi_dung_2" class="rich-editor" contenteditable="true"></div>
+                            <input type="hidden" name="noi_dung_2" id="hidden_noi_dung_2">
+                        </div>
 
-        // Hàm CŨ (Sửa lại): Chèn Header vào Editor và xử lý con trỏ
-        function injectHeaderOnly(tagName) {
-            const editor = document.getElementById(activeEditorId);
-            if (!editor) return;
+                        <div class="tab-pane fade" id="tab-c-pane">
+                            <div class="fw-bold mb-2 text-primary"><i class="fas fa-star"></i> Đánh giá / Kế hoạch</div>
+                            <div id="editor_danh_gia_1" class="rich-editor" contenteditable="true"></div>
+                            <input type="hidden" name="noi_dung_1" id="hidden_noi_dung_1">
+                        </div>
+                    </div>
 
-            // Template HTML: Header + 1 dòng trống p bên dưới để gõ
-            const htmlTemplate = `
-                <p class="injected-header-p" contenteditable="false">
-                    <strong style="flex-grow: 1;">${tagName}:</strong>
-                    <a href="#" class="delete-header-btn" onclick="this.closest('p.injected-header-p').nextElementSibling?.remove(); this.closest('p.injected-header-p').remove(); return false;">&times;</a>
-                </p>
-                <p><br></p> 
-            `;
-            
-            // 1. Lấy lại focus cho editor
-            editor.focus();
+                    <input type="hidden" name="noi_dung_3" value="">
+                    <input type="hidden" name="danh_gia_1" value=""> 
+                    <input type="hidden" name="danh_gia_3" value="">
+                    <input type="hidden" name="danh_gia_5" value="">
+                </div>
+            </div>
 
-            // 2. KỸ THUẬT QUAN TRỌNG: Ép con trỏ về cuối cùng của nội dung hiện tại
-            const range = document.createRange();
-            range.selectNodeContents(editor); // Chọn toàn bộ nội dung editor
-            range.collapse(false); // false nghĩa là co cụm về PHÍA SAU (End)
-            
-            const sel = window.getSelection();
-            sel.removeAllRanges();
-            sel.addRange(range);
+            <div class="col-lg-4">
+                <div class="sticky-sidebar">
+                    
+                    <div class="preview-card">
+                        <div class="card-header-sidebar bg-preview">
+                            <i class="fas fa-lightbulb me-2"></i> Nội dung Gợi ý
+                        </div>
+                        <div class="sidebar-body" id="suggestion-preview-content" style="background: var(--card-bg); color: var(--text-dark);">
+                            <p class="text-muted small">Hãy chọn một thẻ gợi ý từ bể chờ ở dưới...</p>
+                        </div>
+                    </div>
 
-            // 3. Thực hiện lệnh chèn tại vị trí con trỏ (lúc này đang ở cuối)
-            document.execCommand('insertHTML', false, htmlTemplate);
-            
-            // 4. Cuộn thanh trượt xuống dưới cùng để người dùng thấy nội dung mới
-            editor.scrollTop = editor.scrollHeight;
-        }
+                    <div class="tag-pool-card">
+                        <div class="card-header-sidebar bg-pool">
+                            <i class="fas fa-tags me-2"></i> Thẻ có sẵn
+                        </div>
+                        <div class="sidebar-body" id="tag-pool-sidebar-body" style="background: var(--card-bg);">
+                            <p class="text-muted small text-center mt-4">Vui lòng chọn Loại Báo cáo.</p>
+                        </div>
+                    </div>
 
-        // Hàm CŨ: Cập nhật Preview và làm sạch nội dung
-        function updateSuggestionPreview(tagTemplate) {
-            const previewContent = document.getElementById('suggestion-preview-content');
-            const templateLines = (tagTemplate || '').split('\n').filter(line => line.trim() !== '');
-            
-            if (templateLines.length === 0) {
-                previewContent.innerHTML = '<p class="text-muted small">Không có nội dung gợi ý.</p>';
-                return;
-            }
+                </div>
+            </div>
+        </div>
 
-            let html = '<ul>';
-            templateLines.forEach(line => {
-                let clean = line.trim();
-                if (clean.startsWith('*')) clean = clean.substring(1).trim();
-                clean = clean.replace(/\\F058/gi, '').trim();
-                if (clean.startsWith('"') && clean.endsWith('"')) clean = clean.substring(1, clean.length - 1);
-                html += `<li>${clean}</li>`;
-            });
-            html += '</ul>';
-            previewContent.innerHTML = html;
-        }
+        <div class="d-flex justify-content-center gap-3 my-5"> 
+            <button type="submit" class="btn btn-success px-5 py-2 fw-bold shadow"><i class="fas fa-save me-2"></i>Lưu Báo Cáo</button>
+            <a href="/" class="btn btn-back text-decoration-none d-flex align-items-center"><i class="fas fa-arrow-left me-2"></i>Quay lại</a>
+        </div>
+    </form>
+{% endblock %}
 
-        // Reset Form
-        function resetTabsAndEditors() {
-            document.getElementById('lbl_tab_A').textContent = 'Tab A';
-            document.getElementById('lbl_tab_B').textContent = 'Tab B';
-            document.getElementById('lbl_tab_C').textContent = 'Tab C';
-            document.getElementById('li_tab_b').classList.remove('hidden-field');
-            document.getElementById('li_tab_c').classList.remove('hidden-field');
-            
-            document.getElementById('editor_noi_dung_1').innerHTML = '';
-            document.getElementById('editor_noi_dung_2').innerHTML = '';
-            document.getElementById('editor_danh_gia_1').innerHTML = '';
-
-            // Reset dropdowns (Lưu ý name mới)
-            updateDropdown(null, '4', 'noi_dung_4', 'Mục đích *');
-            updateDropdown(null, '5', 'noi_dung_5', 'Kết quả *');
-            updateDropdown(null, '6', 'danh_gia_4', 'Hành động *'); // <-- Đã sửa thành danh_gia_4
-        }
-
-        // Cập nhật Tabs
-        function updateTabs(prefix) {
-            const tabB = document.getElementById('li_tab_b');
-            const tabC = document.getElementById('li_tab_c');
-            const keys = Object.keys(allDefaults).filter(k => k.length === 3 && k.startsWith(prefix) && (k.endsWith('AH') || k.endsWith('BH') || k.endsWith('CH')));
-            let hasB = false, hasC = false;
-            keys.forEach(k => {
-                const stt = k.substring(1, 2);
-                const lbl = document.getElementById('lbl_tab_' + stt);
-                if (lbl) lbl.textContent = allDefaults[k];
-                if (stt === 'B') hasB = true;
-                if (stt === 'C') hasC = true;
-            });
-            if (!hasB) tabB.classList.add('hidden-field');
-            if (!hasC) tabC.classList.add('hidden-field');
-        }
-
-        // Cập nhật Bể chờ thẻ (Tag Pool)
-        function updateTagPool(prefix) {
-            const sidebar = document.getElementById('tag-pool-sidebar-body');
-            sidebar.innerHTML = '';
-            if (!prefix) { sidebar.innerHTML = '<p class="text-muted small text-center mt-4">Vui lòng chọn Loại Báo cáo.</p>'; return; }
-            
-            let hasTags = false;
-            // Global Tag
-            const gM = prefix + '00M'; const gH = prefix + '00H';
-            if (allDefaults[gM] || allDefaults[gH]) {
-                sidebar.appendChild(createTagButton(allDefaults[gH] || "Việc quan trọng", allDefaults[gM], true));
-                hasTags = true;
-            }
-            
-            // Tab Tags
-            const keys = Object.keys(allDefaults).filter(k => k.length === 4 && k.startsWith(prefix) && k.endsWith('H') && k.substring(1, 3) !== '00');
-            let hasTabTags = false;
-            keys.forEach(k => {
-                const group = k.substring(1, 2);
-                if (group === activeTagGroup) {
-                    const mKey = k.replace('H', 'M');
-                    sidebar.appendChild(createTagButton(allDefaults[k], allDefaults[mKey], false));
-                    hasTabTags = true;
-                }
-            });
-            if (!hasTags && !hasTabTags) sidebar.innerHTML = '<p class="text-muted small text-center mt-4">Không có gợi ý.</p>';
-        }
-
-        // Cập nhật Dropdown (Logic Cũ - Cascading)
-        function updateDropdown(prefix, grp, name, defLabel) {
-            const sel = document.querySelector(`select[name="${name}"]`);
-            const lbl = sel.parentElement.querySelector('label');
-            sel.innerHTML = '<option value="">-- Vui lòng chọn --</option>';
-            if (lbl) lbl.textContent = defLabel;
-            
-            if (!prefix) { sel.parentElement.classList.add('hidden-field'); return; }
-
-            const labelKey = prefix + grp + '1H';
-            if (allDefaults[labelKey]) lbl.textContent = allDefaults[labelKey] + ' *';
-
-            const opts = Object.keys(allDefaults).filter(k => k.length === 4 && k.startsWith(prefix + grp) && k.endsWith('M')).sort();
-            
-            if (opts.length === 0) { sel.parentElement.classList.add('hidden-field'); return; }
-            
-            sel.parentElement.classList.remove('hidden-field');
-            opts.forEach(k => {
-                const s = allDefaults[k];
-                if (s && typeof s === 'string') {
-                    const p = s.split(':');
-                    if (p.length === 2) sel.appendChild(new Option(p[1], p[0]));
-                    else if (p.length === 1) sel.appendChild(new Option(p[0], p[0]));
-                }
-            });
-        }
-        
-        // Sự kiện Tabs
-        document.querySelectorAll('button[data-bs-toggle="pill"]').forEach(t => {
-            t.addEventListener('shown.bs.tab', function(e) {
-                const id = e.target.id;
-                if (id === 'tab-a-tab') { activeEditorId = 'editor_noi_dung_1'; activeTagGroup = '1'; }
-                else if (id === 'tab-b-tab') { activeEditorId = 'editor_noi_dung_2'; activeTagGroup = '2'; }
-                else { activeEditorId = 'editor_danh_gia_1'; activeTagGroup = '3'; }
-                updateTagPool(document.getElementById('ddl_loai_bao_cao').value);
-            });
-        });
-
-        // 2. Sự kiện Change Loại Báo cáo (Cập nhật dropdown call)
-        document.getElementById('ddl_loai_bao_cao').addEventListener('change', function() {
-            const prefix = this.value;
-            const sidebar = document.getElementById('tag-pool-sidebar-body');
-            allDefaults = {}; resetTabsAndEditors(); sidebar.innerHTML = '<p class="text-muted small text-center mt-4">Đang tải...</p>';
-            
-            if (prefix) {
-                fetch(`/api/defaults/${prefix}`).then(r => r.json()).then(d => {
-                    allDefaults = d;
-                    updateTabs(prefix); 
-                    updateTagPool(prefix);
-                    // Cập nhật 3 dropdown
-                    updateDropdown(prefix, '4', 'noi_dung_4', 'Mục đích *');
-                    updateDropdown(prefix, '5', 'noi_dung_5', 'Kết quả *');
-                    updateDropdown(prefix, '6', 'danh_gia_4', 'Hành động *'); // <-- Đã sửa thành danh_gia_4
-                }).catch(e => {
-                    console.error(e);
-                    sidebar.innerHTML = '<p class="text-danger small text-center">Lỗi kết nối dữ liệu.</p>';
-                });
-            } else { updateTagPool(prefix); }
-        });
-
-        // 3. Sự kiện Submit (Quan trọng: Map nội dung Editor vào Hidden Input mới)
-        document.getElementById('reportForm').addEventListener('submit', function(e) {
-            try {
-                // TAB A (editor_noi_dung_1) -> Vào cột DANH GIA 2
-                document.getElementById('hidden_danh_gia_2').value = document.getElementById('editor_noi_dung_1').innerHTML;
-                
-                // TAB B (editor_noi_dung_2) -> Vào cột NOI DUNG 2 (Giữ nguyên)
-                document.getElementById('hidden_noi_dung_2').value = document.getElementById('editor_noi_dung_2').innerHTML;
-                
-                // TAB C (editor_danh_gia_1) -> Vào cột NOI DUNG 1
-                document.getElementById('hidden_noi_dung_1').value = document.getElementById('editor_danh_gia_1').innerHTML;
-                
-            } catch (err) { e.preventDefault(); alert("Lỗi lấy nội dung."); }
-        });
-
-        // Init
-        document.addEventListener('DOMContentLoaded', function() {
-            const inp = document.getElementById('kh_ten_tat');
-            resetTabsAndEditors(); updateTagPool('');
-            inp.addEventListener('input', debounce(timKhachHang, 300));
-            inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); timKhachHang(); } });
-            document.getElementById('kh_search_results').addEventListener('change', chonKhachHang);
-            resetReferenceBox(); populateNhansuDropdowns(null);
-        });
-    </script>
-</body>
-</html>
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/nhap_lieu.js') }}"></script>
+{% endblock %}

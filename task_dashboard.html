@@ -1,793 +1,405 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Dashboard Quản lý Đầu việc (v2.2)</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% extends "base.html" %}
+
+{% block title %}Quản lý Đầu việc | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* --- KPI TILES --- */
+    .kpi-tile { 
+        text-align: center; padding: 20px; border-radius: 20px; 
+        color: white; font-weight: 700; box-shadow: var(--shadow-sm);
+        cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+    }
+    .kpi-tile:hover { opacity: 0.9; transform: translateY(-3px); box-shadow: var(--shadow-md); }
+    .kpi-value { font-size: 2rem; display: block; }
+    .kpi-label { font-size: 0.85rem; opacity: 0.9; text-transform: uppercase; }
     
-    <style>
-        /* --- 1. CORE STYLES (Đồng bộ nhaplieu_new) --- */
-        :root {
-            --primary: #4318FF;
-            --primary-light: #F4F7FE;
-            --secondary: #A3AED0;
-            --text-dark: #2B3674;
-            --danger: #E31A1A;
-            --success: #05CD99;
-            --warning: #FFB547;
-            --bg-color: #F4F7FE;
-            --card-radius: 20px;
-            --input-bg: #F4F7FE;
-        }
-        
-        body { 
-            background-color: var(--bg-color); 
-            font-family: 'Inter', sans-serif; 
-            color: var(--text-dark); 
-        }
-        .container-fluid { max-width: 95%; margin-top: 30px; }
-        
-        /* --- 2. HEADER & LAYOUT --- */
-        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
-        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
-        
-        .btn-action {
-            padding: 10px 20px; border-radius: 14px; font-weight: 600; border: none;
-            text-decoration: none; transition: all 0.2s;
-        }
-        .btn-back {
-            background-color: white; color: var(--secondary); border: 1px solid #E0E5F2;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
-        .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
-        .btn-view-user { background-color: var(--warning); color: var(--text-dark); }
-        .btn-view-admin { background-color: var(--danger); color: white; }
+    /* KPI Colors */
+    .bg-total { background-color: var(--secondary); }
+    .bg-completed { background-color: var(--success); } 
+    .bg-pending { background-color: var(--warning); color: #000; } 
+    .bg-help { background-color: var(--danger); } 
+    .kpi-active { border: 3px solid var(--primary); box-shadow: 0 0 15px rgba(67, 24, 255, 0.3); }
 
-        /* --- 3. MAIN CARDS (Style mới) --- */
-        .main-card {
-            border: none;
-            background: white;
-            border-radius: var(--card-radius);
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
-            margin-bottom: 25px;
-            overflow: hidden;
-        }
-        .card-header-custom {
-            background-color: white;
-            color: var(--text-dark);
-            font-weight: 700;
-            font-size: 1.1rem;
-            padding: 20px 25px;
-            border-bottom: 1px solid var(--primary-light);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .card-header-custom i {
-            font-size: 1.1rem;
-            margin-right: 12px;
-            color: var(--primary);
-        }
-        .card-body-custom {
-            padding: 25px;
-            background-color: white;
-        }
+    /* --- KANBAN BOARD --- */
+    .kanban-container { 
+        display: flex; gap: 15px; min-height: 400px; padding-bottom: 10px;
+    }
+    .kanban-column {
+        flex-basis: 25%; min-width: 250px;
+        background-color: var(--input-bg);
+        border-radius: 12px; padding: 10px; display: flex;
+        flex-direction: column; max-height: 70vh; border: 1px solid var(--border-color);
+    }
+    .kanban-column-header {
+        font-weight: 700; font-size: 0.95rem;
+        padding: 8px; margin-bottom: 10px;
+        border-bottom: 2px solid var(--border-color);
+        text-align: center; color: var(--secondary); text-transform: uppercase;
+    }
+    .task-list { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
+    
+    /* Task Card */
+    .task-card {
+        background-color: var(--card-bg); border-radius: 12px;
+        padding: 12px; margin-bottom: 10px;
+        box-shadow: var(--shadow-sm);
+        border-left: 5px solid var(--primary); 
+        font-size: 0.85rem; line-height: 1.4;
+        position: relative; color: var(--text-dark);
+        border: 1px solid var(--border-color); border-left-width: 5px;
+    }
+    .task-card:hover { box-shadow: var(--shadow-md); cursor: pointer; border-color: var(--primary); }
+    
+    .task-card.priority-high { border-left-color: var(--danger); background-color: rgba(227, 26, 26, 0.05); }
+    .task-card.priority-alert { border-left-color: var(--warning); }
+    
+    .new-update-marker {
+        position: absolute; top: 8px; right: 8px; 
+        width: 10px; height: 10px; background-color: var(--danger);
+        border-radius: 50%; box-shadow: 0 0 5px rgba(227, 26, 26, 0.5);
+    }
+
+    /* --- HISTORY TABLE --- */
+    .table-task th { 
+        background-color: var(--input-bg) !important; color: var(--secondary) !important;
+        font-weight: 600; font-size: 0.85rem; text-transform: uppercase;
+        border-bottom: 1px solid var(--border-color); white-space: nowrap;
+    }
+    .table-task td { font-size: 0.9rem; color: var(--text-dark); border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    .table-task tbody tr:hover td { background-color: var(--input-bg); }
+    
+    .truncate-content {
+        max-width: 350px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* Help Call UI */
+    .help-call-display {
+        display: none; align-items: center; justify-content: center;
+        background-color: rgba(255, 181, 71, 0.1); border: 2px dashed var(--warning);
+        color: var(--danger); border-radius: 12px; height: 48px; font-weight: 700; width: 100%;
+        animation: flash-border 2s infinite;
+    }
+    @keyframes flash-border { 0%, 100% { border-color: var(--warning); } 50% { border-color: var(--danger); } }
+
+    /* Modal Styles Override */
+    .modal-content { background-color: var(--card-bg); border-radius: 16px; border: none; }
+    .modal-header { border-bottom: 1px solid var(--border-color); }
+    .modal-footer { border-top: 1px solid var(--border-color); }
+    .form-control, .form-select { background-color: var(--input-bg); color: var(--text-dark); border: 1px solid var(--border-color); }
+    .form-control:focus { background-color: var(--card-bg); }
+
+    /* Search Dropdown */
+    #create_kh_search_results { 
+        position: absolute; width: 100%; z-index: 1050; 
+        background-color: var(--card-bg); border: 1px solid var(--primary);
+        border-radius: 8px; max-height: 200px; overflow-y: auto;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 992px) {
+        .col-6 { width: 50%; padding: 5px; }
+        .kpi-tile { padding: 15px; min-height: 100px; margin-bottom: 0; }
+        .kpi-value { font-size: 1.5rem; }
+        .kpi-label { font-size: 0.7rem; }
         
-        /* --- 4. KPI TILES (Style mới) --- */
-        .kpi-tile { 
-            text-align: center; padding: 20px; border-radius: var(--card-radius); 
-            color: white; font-weight: 700; box-shadow: 0 2px 5px rgba(0,0,0,.1);
-            cursor: pointer; transition: all 0.2s;
-        }
-        .kpi-tile:hover { opacity: 0.9; transform: translateY(-2px); }
-        .kpi-value { font-size: 2.2rem; display: block; }
-        .kpi-label { font-size: 0.9rem; opacity: 0.9; }
+        .kanban-container { flex-direction: column; height: auto; padding: 0; }
+        .kanban-column { width: 100%; margin-bottom: 20px; max-height: 400px; }
         
-        /* Màu mới */
-        .bg-total { background-color: var(--secondary); }
-        .bg-completed { background-color: var(--success); } 
-        .bg-pending { background-color: var(--warning); } 
-        .bg-help { background-color: var(--danger); } 
-        .kpi-active { 
-            border: 3px solid var(--primary); 
-            box-shadow: 0 0 15px rgba(67, 24, 255, 0.5); 
-        }
+        .table-responsive { overflow-x: auto; }
+        .truncate-content { white-space: normal; min-width: 200px; }
+    }
+</style>
+{% endblock %}
 
-        /* --- 5. KANBAN BOARD (Style mới) --- */
-        .kanban-container { 
-            display: flex; gap: 15px; min-height: 400px; padding-bottom: 10px;
-        }
-        .kanban-column {
-            flex-basis: 25%; min-width: 250px;
-            background-color: var(--input-bg); /* Nền xám tím nhạt */
-            border-radius: 12px; padding: 10px; display: flex;
-            flex-direction: column; max-height: 70vh;
-        }
-        .kanban-column-header {
-            font-weight: 700; font-size: 1rem;
-            padding: 8px; margin-bottom: 10px;
-            border-bottom: 2px solid #E0E5F2; /* Viền nhạt */
-            text-align: center; color: var(--secondary);
-        }
-        .task-list { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
-        .task-card {
-            background-color: white; border-radius: 12px; /* Bo hơn */
-            padding: 10px; margin-bottom: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            border-left: 5px solid var(--primary); 
-            font-size: 0.85rem; line-height: 1.3;
-            position: relative;
-        }
-        /* Marker (Giữ nguyên logic, đổi màu) */
-        .new-update-marker {
-            position: absolute; top: -5px; right: -5px; 
-            width: 12px; height: 12px; background-color: var(--danger);
-            border-radius: 50%; z-index: 10;
-            box-shadow: 0 0 5px rgba(227, 26, 26, 0.8);
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(0.9); opacity: 0.7; }
-            50% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(0.9); opacity: 0.7; }
-        }
-        .task-card:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer; }
-        
-        .task-card.priority-high {
-            border-left: 5px solid var(--danger); 
-            background-color: #FFF8E1;
-        }
-        .task-card.priority-alert {
-            border-left: 5px solid var(--warning); 
-        }
-        .task-title-small { font-weight: 600; margin-bottom: 5px; color: var(--text-dark); }
-        .task-id-tag { float: right; font-size: 0.75rem; color: var(--secondary); }
+{% block page_title %}<i class="fas fa-tasks me-2 text-primary"></i> QUẢN LÝ ĐẦU VIỆC{% endblock %}
+{% block page_sub %}Theo dõi tiến độ công việc hàng ngày và giao việc.{% endblock %}
 
-        /* --- 6. FORMS & MODALS (Style mới) --- */
-        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
-        .form-control, .form-select {
-            border: none; background-color: var(--input-bg); border-radius: 16px;
-            padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none;
-        }
-        .form-control:focus, .form-select:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
-        .btn-primary { background-color: var(--primary); border: none; border-radius: 12px; font-weight: 600; }
-        .btn-primary:hover { background-color: #3a14db; }
-        .btn-secondary { background-color: #f0f0f0; color: var(--secondary); border: none; border-radius: 12px; font-weight: 600; }
-        .btn-secondary:hover { background-color: #e0e0e0; color: var(--text-dark); }
-        .btn-success { background-color: var(--success); border: none; border-radius: 12px; font-weight: 600; }
-        .btn-warning { background-color: var(--warning); border: none; border-radius: 12px; font-weight: 600; }
-        
-        /* Dropdown tìm kiếm */
-        .search-results-dropdown { 
-            width: 100%; border-radius: 12px; border: 1px solid var(--primary); 
-            outline: none; display: none; position: absolute; z-index: 1056; /* Cao hơn modal */
-            margin-top: 5px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        }
-        .search-container { position: relative; }
-        .modal-content { border-radius: var(--card-radius); border: none; }
-        .modal-header { background-color: var(--primary-light); border-bottom: none; }
-        .modal-header .modal-title { color: var(--primary); font-weight: 700; }
+{% block header_actions %}
+<a href="/" class="btn btn-back"><i class="fas fa-home me-2"></i>Portal</a>
+{% if can_manage_view %}
+    {% if view_mode == 'SUPERVISOR' %}
+        <a href="{{ url_for('task_bp.task_dashboard', view='USER', filter=active_filter) }}" class="btn btn-warning text-dark border-0 shadow-sm"><i class="fas fa-user-circle me-1"></i> View Cá nhân</a>
+    {% else %}
+        <a href="{{ url_for('task_bp.task_dashboard', view='SUPERVISOR', filter=active_filter) }}" class="btn btn-danger text-white border-0 shadow-sm"><i class="fas fa-user-tie me-1"></i> View Quản lý</a>
+    {% endif %}
+{% endif %}
+{% endblock %}
 
-        /* --- 6b. STYLE MỚI CHO THẺ HELP CALL (UI Swap) --- */
-        .help-call-display {
-            display: none; /* Mặc định ẩn */
-            align-items: center;
-            justify-content: center;
-            background-color: #FFF8E1; /* Nền vàng nhạt */
-            border: 2px dashed #FFC107; /* Viền nét đứt cảnh báo */
-            color: #B71C1C; /* Chữ đỏ đậm */
-            border-radius: 16px;
-            height: 48px; /* Chiều cao bằng input thường */
-            font-weight: 700;
-            width: 100%;
-            animation: flash-border 2s infinite;
-        }
-        .help-call-display i { margin-right: 10px; font-size: 1.2rem; }
-        
-        @keyframes flash-border {
-            0% { border-color: #FFC107; }
-            50% { border-color: #FF5722; }
-            100% { border-color: #FFC107; }
-        }
-
-        /* --- 7. HISTORY TABLE (Style mới) --- */
-        .table-task th { 
-            background-color: #FAFCFE !important; color: var(--secondary) !important;
-            font-weight: 600; font-size: 0.85rem; text-transform: uppercase;
-            border-bottom: 1px solid #E0E5F2;
-        }
-        .table-task td { font-size: 0.9rem; color: var(--text-dark); border-bottom: 1px solid var(--primary-light); }
-        .table-task tbody tr:hover td { background-color: var(--primary-light); }
-        
-        .truncate-content {
-            max-width: 400px; 
-            white-space: normal; /* Cho phép xuống dòng */
-            word-wrap: break-word; /* Ngắt từ nếu quá dài */
-            cursor: text;
-        }
-        
-        /* DataTables (Style mới) */
-        .dataTables_wrapper .dataTables_paginate .paginate_button { 
-            padding: 0.3em 0.6em; border-radius: 10px !important; border: none; margin: 0 3px;
-            font-weight: 600; color: var(--secondary) !important;
-        }
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-            background: var(--primary) !important; color: white !important;
-        }
-        .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_info { 
-            font-size: 0.9rem; color: var(--secondary); padding-top: 0.5em !important;
-        }
-        .dataTables_wrapper .dataTables_length select {
-             background-color: var(--input-bg); border: none; border-radius: 8px;
-        }
-        /* Form lọc của Bảng */
-        .input-group .form-control { border-radius: 16px 0 0 16px; }
-        .input-group .btn { border-radius: 0 16px 16px 0; }
-
-        /* --- 8. CHATBOT (Style mới) --- */
-        .chatbot-toggle {
-            position: fixed; bottom: 25px; right: 25px; width: 60px; height: 60px;
-            background-color: var(--primary); /* Màu tím */
-            color: white; border-radius: 50%; display: flex;
-            justify-content: center; align-items: center; font-size: 1.8rem;
-            cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            z-index: 9998; transition: all 0.2s;
-        }
-        .chatbot-toggle:hover { transform: scale(1.1); background-color: #3a14db; }
-
-        .chatbot-window {
-            position: fixed; bottom: 100px; right: 25px; width: 350px;
-            max-width: 90vw; height: 450px; max-height: 70vh;
-            background-color: white; border-radius: var(--card-radius); /* Bo tròn */
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2); z-index: 9999;
-            display: none; flex-direction: column; overflow: hidden;
-            transition: all 0.3s;
-        }
-        .chatbot-window.active { display: flex; }
-        .chatbot-window.maximized {
-            width: 95vw; height: 85vh; max-height: 85vh;
-            bottom: 2.5vh; right: 2.5vw;
-        }
-        .chatbot-header {
-            background-color: var(--primary); /* Màu tím */
-            color: white; padding: 10px 15px; font-weight: 600;
-            display: flex; justify-content: space-between; align-items: center;
-            cursor: grab;
-        }
-        .chatbot-control-btn {
-            cursor: pointer; font-size: 1.1rem; color: #E0E5F2; /* Nhạt hơn */
-            background: none; border: none; padding: 0 5px;
-        }
-        .chatbot-control-btn:hover { color: white; }
-        .chatbot-history {
-            flex-grow: 1; overflow-y: auto; padding: 15px;
-            background-color: var(--input-bg); /* Nền xám tím */
-            display: flex; flex-direction: column;
-        }
-        .chat-message-container { display: flex; flex-direction: column; width: 100%; }
-        .chat-message {
-            margin-bottom: 12px; padding: 8px 12px;
-            border-radius: 18px; max-width: 85%;
-            word-wrap: break-word; white-space: pre-wrap; line-height: 1.5;
-        }
-        .chat-user {
-            background-color: var(--primary-light); /* Nền tím nhạt */
-            color: var(--primary); /* Chữ tím */
-            align-self: flex-end; margin-left: 15%;
-        }
-        .chat-bot {
-            background-color: #E9ECEF; /* Giữ nguyên màu bot */
-            color: #3C4043; align-self: flex-start; margin-right: 15%;
-        }
-        .chat-bot strong, .chat-bot b { color: var(--primary); } /* Chữ strong màu tím */
-        
-        .chatbot-input-area {
-            display: flex; padding: 10px; border-top: 1px solid #E0E0E0;
-        }
-        .chatbot-input {
-            flex-grow: 1; border: none; background: var(--input-bg);
-            border-radius: 20px; padding: 8px 15px; outline: none;
-        }
-        .chatbot-send-btn {
-            background: none; border: none; color: var(--primary); /* Màu tím */
-            font-size: 1.5rem; margin-left: 10px; cursor: pointer;
-        }
-        /* YÊU CẦU 3: STYLE MỚI CHO MULTI-SELECT NGƯỜI HỖ TRỢ (ĐỒNG BỘ) */
-        #helper_code_select {
-            background-color: #FFF; 
-            border: 1px solid #E0E5F2; 
-            /* Bỏ border đỏ/hồng cũ */
-        }
-        #helper_code_select:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px var(--primary-light);
-        }
-        /* Mobile */
-        @media (max-width: 992px) {
-            .kanban-container {
-                flex-direction: column; gap: 10px;
-                min-height: auto; max-height: none; padding: 0;
-            }
-            .kanban-column {
-                min-width: 100%; max-height: 400px; 
-            }
-            .task-list { max-height: 300px; }
-            .kpi-tile { padding: 15px; margin-bottom: 10px; }
-            .kpi-value { font-size: 1.8rem; }
-            .kpi-label { font-size: 0.8rem; }
-            .table-responsive { overflow-x: auto; }
-            .table-task th, .table-task td {
-                font-size: 0.75rem; white-space: nowrap;
-            }
-            .truncate-content { max-width: 200px; }
-        }
-
-        /* --- MOBILE RESPONSIVE: TASK DASHBOARD --- */
-        @media (max-width: 992px) {
-            /* 1. Header */
-            .page-header {
-                flex-direction: column;
-                align-items: flex-start !important;
-                gap: 15px;
-            }
-            .d-flex.gap-2 {
-                width: 100%;
-                justify-content: space-between;
-            }
-
-            /* 2. KPI Tiles: 2 cột trên 1 dòng */
-            .col-6 {
-                width: 50%; /* Bootstrap col-6 đã lo, nhưng đảm bảo padding */
-            }
-            .kpi-tile {
-                padding: 15px;
-                min-height: 100px;
-            }
-            .kpi-value { font-size: 1.5rem; }
-            .kpi-label { font-size: 0.75rem; }
-
-            /* 3. Kanban Board: Chuyển sang xếp dọc (Vertical Stack) */
-            .kanban-container {
-                flex-direction: column; /* Quan trọng: Xếp dọc */
-                height: auto; /* Bỏ giới hạn chiều cao */
-                overflow-x: hidden;
-            }
-            
-            .kanban-column {
-                width: 100%;
-                min-width: 100%;
-                margin-bottom: 20px; /* Khoảng cách giữa các cột */
-                max-height: 400px; /* Giới hạn chiều cao mỗi cột để không quá dài */
-            }
-
-            /* 4. History Table */
-            .table-responsive {
-                overflow-x: auto;
-            }
-            .table-task th, .table-task td {
-                white-space: nowrap;
-                font-size: 0.8rem;
-            }
-            /* Nội dung chi tiết trong bảng */
-            .truncate-content {
-                white-space: normal;
-                min-width: 200px;
-            }
-            
-            /* 5. Filter & Search Form */
-            .input-group {
-                flex-direction: column;
-            }
-            .input-group input {
-                width: 100%;
-                border-radius: 12px !important;
-                margin-bottom: 10px;
-            }
-            .input-group .btn {
-                width: 48%;
-                border-radius: 12px !important;
-            }
-            /* Wrapper cho 2 nút Lọc/Reset để nằm cùng hàng */
-            .input-group {
-                display: block; /* Phá vỡ flex của input-group */
-            }
-            .input-group > .btn {
-                display: inline-block;
-                width: 48%;
-                margin-top: 0;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container-fluid">
-        <div class="page-header">
-            <h1 class="page-title"><i class="fas fa-tasks me-2"></i> QUẢN LÝ ĐẦU VIỆC HÀNG NGÀY</h1>
-            <div class="d-flex gap-2">
-                <a href="{{ url_for('index') }}" class="btn-action btn-back"><i class="fas fa-home me-1"></i> Về Portal</a>
-                {% if can_manage_view %}
-                    {% if view_mode == 'SUPERVISOR' %}
-                        <a href="{{ url_for('task_bp.task_dashboard', view='USER', filter=active_filter, search=text_search_term) }}" class="btn-action btn-view-user"><i class="fas fa-user-circle me-1"></i> View Cá nhân</a>
-                    {% else %}
-                        <a href="{{ url_for('task_bp.task_dashboard', view='SUPERVISOR', filter=active_filter, search=text_search_term) }}" class="btn-action btn-view-admin"><i class="fas fa-user-tie me-1"></i> View Quản lý</a>
-                    {% endif %}
-                {% endif %}
+{% block content %}
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+            <div class="kpi-tile bg-total {% if active_filter == 'ALL' %}kpi-active{% endif %}" onclick="filterTasks('ALL')">
+                <span class="kpi-value">{{ kpi.TotalTasks|default(0) }}</span>
+                <span class="kpi-label">Tổng Task (30 Ngày)</span>
             </div>
         </div>
-
-        <div class="row g-4 mb-4">
-            <div class="col-md-3 col-6">
-                <div class="kpi-tile bg-total {% if active_filter == 'ALL' %}kpi-active{% endif %}" onclick="filterTasks('ALL')">
-                    <span class="kpi-value">{{ kpi.TotalTasks|default(0) }}</span>
-                    <span class="kpi-label">Tổng Task (30 Ngày)</span>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="kpi-tile bg-completed {% if active_filter == 'COMPLETED' %}kpi-active{% endif %}" onclick="filterTasks('COMPLETED')">
-                    <span class="kpi-value">{{ kpi.Completed|default(0) }} ({{ kpi.CompletedPercent|default(0) }}%)</span>
-                    <span class="kpi-label">Đã Hoàn thành</span>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="kpi-tile bg-pending {% if active_filter == 'PENDING' %}kpi-active{% endif %}" onclick="filterTasks('PENDING')">
-                    <span class="kpi-value">{{ kpi.Pending|default(0) }}</span>
-                    <span class="kpi-label">Đang Chờ/Mới</span>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="kpi-tile bg-help {% if active_filter == 'HELP' %}kpi-active{% endif %}" onclick="filterTasks('HELP')">
-                    <span class="kpi-value">{{ kpi.HelpNeeded|default(0) }}</span>
-                    <span class="kpi-label">Cần hỗ trợ/ Giao việc</span>
-                </div>
+        <div class="col-md-3 col-6">
+            <div class="kpi-tile bg-completed {% if active_filter == 'COMPLETED' %}kpi-active{% endif %}" onclick="filterTasks('COMPLETED')">
+                <span class="kpi-value">{{ kpi.Completed|default(0) }}</span>
+                <span class="kpi-label">Đã Hoàn thành</span>
             </div>
         </div>
-
-        <div class="main-card">
-            <div class="card-header-custom">
-                <div><i class="fas fa-columns"></i> KANBAN BOARD (3 ngày vừa qua)</div>
-                <button class="btn btn-primary btn-sm" onclick="openCreateTaskModal()"><i class="fas fa-plus me-1"></i> Tạo Task Mới</button>
+        <div class="col-md-3 col-6">
+            <div class="kpi-tile bg-pending {% if active_filter == 'PENDING' %}kpi-active{% endif %}" onclick="filterTasks('PENDING')">
+                <span class="kpi-value">{{ kpi.Pending|default(0) }}</span>
+                <span class="kpi-label">Đang Chờ / Mới</span>
             </div>
-            <div class="card-body-custom">
-                <div class="kanban-container">
-                    <div class="kanban-column" style="border-top: 5px solid var(--secondary);">
-                        <div class="kanban-column-header">MỚI TẠO (OPEN)</div>
-                        <div class="task-list">
-                            {% for task in kanban_tasks if task.Status == 'OPEN' %}
-                                {% include 'partials/task_card.html' %}
-                            {% endfor %}
-                        </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="kpi-tile bg-help {% if active_filter == 'HELP' %}kpi-active{% endif %}" onclick="filterTasks('HELP')">
+                <span class="kpi-value">{{ kpi.HelpNeeded|default(0) }}</span>
+                <span class="kpi-label">Cần hỗ trợ / Giao việc</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-card mb-4">
+        <div class="card-header-custom d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-columns me-2 text-primary"></i> KANBAN BOARD (3 ngày gần nhất)</span>
+            <button class="btn btn-primary btn-sm shadow-sm" onclick="openCreateTaskModal()">
+                <i class="fas fa-plus me-1"></i> Tạo Task
+            </button>
+        </div>
+        <div class="card-body-custom">
+            <div class="kanban-container">
+                <div class="kanban-column" style="border-top: 4px solid var(--secondary);">
+                    <div class="kanban-column-header">MỚI TẠO (OPEN)</div>
+                    <div class="task-list">
+                        {% for task in kanban_tasks if task.Status == 'OPEN' %}
+                            {% include 'partials/task_card.html' %}
+                        {% endfor %}
                     </div>
-                    <div class="kanban-column" style="border-top: 5px solid var(--warning);">
-                        <div class="kanban-column-header" style="color: var(--warning);">ĐANG XỬ LÝ (PENDING)</div>
-                        <div class="task-list">
-                            {% for task in kanban_tasks if task.Status == 'PENDING' or task.Status == 'BLOCKED' %}
-                                {% include 'partials/task_card.html' %}
-                            {% endfor %}
-                        </div>
+                </div>
+                <div class="kanban-column" style="border-top: 4px solid var(--warning);">
+                    <div class="kanban-column-header" style="color: var(--warning);">ĐANG XỬ LÝ (PENDING)</div>
+                    <div class="task-list">
+                        {% for task in kanban_tasks if task.Status == 'PENDING' or task.Status == 'BLOCKED' %}
+                            {% include 'partials/task_card.html' %}
+                        {% endfor %}
                     </div>
-                    <div class="kanban-column" style="border-top: 5px solid var(--danger);">
-                        <div class="kanban-column-header" style="color: var(--danger);">CẦN HỖ TRỢ/ GIAO VIỆC</div>
-                        <div class="task-list">
-                            {% for task in kanban_tasks if task.Status == 'HELP_NEEDED' %}
-                                {% include 'partials/task_card.html' %}
-                            {% endfor %}
-                        </div>
+                </div>
+                <div class="kanban-column" style="border-top: 4px solid var(--danger);">
+                    <div class="kanban-column-header" style="color: var(--danger);">CẦN HỖ TRỢ / GIAO VIỆC</div>
+                    <div class="task-list">
+                        {% for task in kanban_tasks if task.Status == 'HELP_NEEDED' %}
+                            {% include 'partials/task_card.html' %}
+                        {% endfor %}
                     </div>
-                    <div class="kanban-column" style="border-top: 5px solid var(--success);">
-                        <div class="kanban-column-header" style="color: var(--success);">HOÀN THÀNH (COMPLETED)</div>
-                        <div class="task-list">
-                            {% for task in kanban_tasks if task.Status == 'COMPLETED' %}
-                                {% include 'partials/task_card.html' %}
-                            {% endfor %}
-                        </div>
+                </div>
+                <div class="kanban-column" style="border-top: 4px solid var(--success);">
+                    <div class="kanban-column-header" style="color: var(--success);">HOÀN THÀNH (COMPLETED)</div>
+                    <div class="task-list">
+                        {% for task in kanban_tasks if task.Status == 'COMPLETED' %}
+                            {% include 'partials/task_card.html' %}
+                        {% endfor %}
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="main-card">
-            <div class="card-header-custom">
-                <div><i class="fas fa-history"></i> Bảng Truy vấn Lịch sử Chi tiết (30 Ngày)</div>
-            </div>
-            <div class="card-body-custom">
-                <form method="GET" action="{{ url_for('task_bp.task_dashboard', view=view_mode, filter=active_filter) }}" class="mb-3">
-                    <div class="input-group">
-                        <input type="text" name="search" class="form-control" placeholder="Lọc nhanh theo Tiêu đề, Nội dung hoặc Khách hàng..." 
-                                   value="{{ text_search_term }}" aria-label="Lọc từ bất kỳ">
-                        <button class="btn btn-secondary" type="submit" style="border-radius: 0;"><i class="fas fa-search"></i> Lọc</button>
-                        <a href="{{ url_for('task_bp.task_dashboard', view=view_mode, filter=active_filter) }}" class="btn btn-outline-secondary" style="border-radius: 0 16px 16px 0;"><i class="fas fa-undo"></i> Reset</a>
-                    </div>
-                </form>
+    <div class="main-card">
+        <div class="card-header-custom">
+            <span><i class="fas fa-history me-2 text-primary"></i> Lịch sử Chi tiết (30 Ngày)</span>
+        </div>
+        <div class="card-body-custom">
+            <form method="GET" action="{{ url_for('task_bp.task_dashboard', view=view_mode, filter=active_filter) }}" class="mb-3">
+                <div class="input-group">
+                    <input type="text" name="search" class="form-control" placeholder="Tìm kiếm nhanh..." 
+                               value="{{ text_search_term }}">
+                    <button class="btn btn-secondary" type="submit"><i class="fas fa-search"></i> Lọc</button>
+                    <a href="{{ url_for('task_bp.task_dashboard', view=view_mode, filter=active_filter) }}" class="btn btn-outline-secondary"><i class="fas fa-undo"></i></a>
+                </div>
+            </form>
 
-                {% if history_tasks %}
-                    <div class="table-responsive">
-                        <table id="task-history-table" class="table table-hover table-sm table-task" style="width: 100%;">
-                            <thead>
-                                <tr>
-                                    <th>ID</th> <th>Ngày</th> <th>Loại</th> <th>Tiêu đề</th> <th>Đối tượng</th>
-                                    <th>Người tạo</th> <th>Nội dung chi tiết</th> <th>Trạng thái</th> <th>Note Cấp trên</th> <th>Ưu tiên</th> <th>Hành động</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                 {% for task in history_tasks %}
-                                    <tr data-task-id="{{ task.TaskID }}">
-                                        <td>{{ task.TaskID }}</td>
-                                        <td>{{ task.TaskDateDisplay }}</td>
-                                        <td><span class="badge bg-secondary">{{ task.TaskType }}</span></td>
-                                        <td>
-                                            {{ task.Title }}
-                                            {% if task.Attachments %}<a href="{{ task.Attachments }}" target="_blank" class="text-danger ms-1"><i class="fas fa-link"></i></a>{% endif %}
-                                            <span class="badge bg-primary-subtle text-primary-emphasis rounded-pill ms-1"><i class="fas fa-stream fa-xs"></i> {{ task.LogCount | default(0) }}</span>
-                                        </td>
-                                        <td class="text-start">{{ task.ClientName or task.ObjectID or '—' }}</td>
-                                        <td>{{ task.AssigneeShortName or task.UserCode }}</td> 
-                                        <td class="truncate-content">{{ task.DetailContent | default('—') }}</td>
-                                        <td><span class="badge bg-{% if task.Status == 'COMPLETED' %}success{% elif task.Status == 'HELP_NEEDED' %}danger{% else %}warning{% endif %}">{{ task.Status | replace('HELP_NEEDED', 'CẦN HỖ TRỢ/GV') }}</span></td>
-                                        <td>
-                                            {% if task.NoteCapTren %}<span class="badge bg-primary me-1">Note</span> <span class="small text-muted" title="{{ task.NoteCapTren }}">{{ task.NoteCapTren|truncate(30, True) }}</span>{% else %}—{% endif %}
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-link p-0" onclick="togglePriority({{ task.TaskID }}, this); event.stopPropagation();">
-                                                <i class="fas fa-star" style="color: {% if task.Priority == 'HIGH' or task.Priority == 'ALERT' %}#ffc107{% else %}#ccc{% endif %};"></i>
-                                            </button>
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-info" onclick="openUpdateModal({{ task.TaskID }})">Xem/Sửa</button>
-                                            {% if is_admin %}<button class="btn btn-sm btn-secondary" onclick="openSupervisorNoteModal({{ task.TaskID }})">Note</button>{% endif %}
-                                        </td>
-                                    </tr>
-                                 {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                     <div class="alert alert-info mt-2 mb-0">Không có Task nào trong lịch sử 30 ngày qua cho bộ lọc hiện tại.</div>
-                {% endif %}
+            <div class="table-responsive">
+                <table id="task-history-table" class="table table-hover table-sm table-task">
+                    <thead>
+                        <tr>
+                            <th>ID</th> <th>Ngày</th> <th>Loại</th> <th>Tiêu đề</th> <th>Đối tượng</th>
+                            <th>Người tạo</th> <th>Nội dung</th> <th>Trạng thái</th> <th>Note Cấp trên</th> <th>Ưu tiên</th> <th>Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                         {% for task in history_tasks %}
+                            <tr data-task-id="{{ task.TaskID }}">
+                                <td class="text-primary fw-bold">{{ task.TaskID }}</td>
+                                <td>{{ task.TaskDateDisplay }}</td>
+                                <td><span class="badge bg-secondary bg-opacity-25 text-secondary border">{{ task.TaskType }}</span></td>
+                                <td class="fw-bold">{{ task.Title }}</td>
+                                <td>{{ task.ClientName or task.ObjectID or '—' }}</td>
+                                <td>{{ task.AssigneeShortName or task.UserCode }}</td> 
+                                <td class="truncate-content text-muted small">{{ task.DetailContent | default('—') }}</td>
+                                <td>
+                                    {% if task.Status == 'COMPLETED' %} <span class="badge bg-success">Hoàn thành</span>
+                                    {% elif task.Status == 'HELP_NEEDED' %} <span class="badge bg-danger">Cần hỗ trợ</span>
+                                    {% else %} <span class="badge bg-warning text-dark">Đang xử lý</span> {% endif %}
+                                </td>
+                                <td>{{ task.NoteCapTren|truncate(30, True) or '—' }}</td>
+                                <td class="text-center">
+                                    <i class="fas fa-star" style="color: {% if task.Priority == 'HIGH' or task.Priority == 'ALERT' %}#ffc107{% else %}var(--border-color){% endif %};"></i>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-light border shadow-sm text-primary" onclick="openUpdateModal({{ task.TaskID }})">Xem</button>
+                                </td>
+                            </tr>
+                         {% else %}
+                            <tr><td colspan="11" class="text-center py-4 text-muted">Không có dữ liệu phù hợp.</td></tr>
+                         {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
     
-    <div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
+    <div class="modal fade" id="createTaskModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <form method="POST" action="{{ url_for('task_bp.task_dashboard') }}" enctype="multipart/form-data">
-                    <input type="hidden" name="create_task" value="1">
-                    <input type="hidden" name="view" value="{{ view_mode }}">
-                    <input type="hidden" name="filter" value="{{ active_filter }}">
-
+                <form method="POST">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="createTaskModalLabel">Tạo Task Mới</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="task_title" class="form-label">Tiêu đề Tóm tắt (Bắt buộc)</label>
-                            <input type="text" class="form-control" id="task_title" name="task_title" required>
-                        </div>
-                        
-                        <div class="mb-3 search-container">
-                            <label for="create_object_id_input" class="form-label">Đối tượng/Khách hàng</label>
-                            <input type="text" class="form-control" id="create_object_id_input" placeholder="Gõ tên KH để tìm kiếm...">
-                            <input type="hidden" name="object_id" id="create_object_id_selected"> 
-                            <select id="create_kh_search_results" class="form-select search-results-dropdown" size="5"></select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="task_type" class="form-label">Loại Task</label>
-                            <select class="form-select" id="task_type" name="task_type" required>
-                                <option value="NHU_CAU_KH" selected>1. Nhu cầu KH</option>
-                                <option value="THAM_KH">2. Thăm KH</option>
-                                <option value="SU_CO">3. Sự cố</option>
-                                <option value="NGUON_HANG">4. Nguồn hàng</option>
-                                <option value="NOI_BO">5. Nội bộ</option>
-                                <option value="KHAC">6. Khác</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="task_email_link" class="form-label">Link Email / Tài liệu (URL)</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fas fa-link"></i></span>
-                                <input type="url" class="form-control" id="task_email_link" name="task_email_link" placeholder="Paste link...">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                        <button type="submit" class="btn btn-success">Tạo Task</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="updateTaskModal" tabindex="-1" aria-labelledby="updateTaskModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl"> 
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Cập nhật Task #<span id="updateTaskIdDisplay"></span>: <span id="updateTaskTitleDisplay"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row g-4">
-                        <div class="col-md-6 border-end">
-                            <h6 class="text-primary"><i class="fas fa-edit me-1"></i> Ghi nhận Tiến độ Mới</h6>
-                            <form id="updateTaskForm">
-                                <input type="hidden" id="update_task_id" name="task_id">
-                                <div class="row g-3">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="update_object_id" class="form-label">Đối tượng/Khách hàng</label>
-                                        <input type="text" class="form-control" id="update_object_id" name="object_id" placeholder="Mã KH (Tùy chọn)">
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="progress_percent" class="form-label">Tiến độ (%)</label>
-                                        <input type="number" class="form-control" id="progress_percent" name="progress_percent" min="0" max="100" value="0" required>
-                                    </div>
-                                    <div class="col-12 mb-3">
-                                        <label for="update_detail_content" class="form-label">Nội dung Cập nhật / Ghi chú chi tiết</label>
-                                        <textarea class="form-control" id="update_detail_content" name="content" rows="3" required></textarea>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="log_type_select" class="form-label">Loại Cập nhật</label>
-                                        <select class="form-select" id="log_type_select" name="log_type" required>
-                                            <option value="PROGRESS">PROGRESS - Cập nhật thông thường</option>
-                                            <option value="BLOCKED">BLOCKED - Đang bị nghẽn (Blocker)</option>
-                                            <option value="REQUEST_CLOSE">REQUEST_CLOSE - Yêu cầu đóng</option>
-                                        </select>
-                                        
-                                        <div id="helpCallDisplay" class="help-call-display">
-                                            <i class="fas fa-bullhorn animate__animated animate__flash"></i>
-                                            <span>ĐANG KÊU GỌI HỖ TRỢ</span>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 mb-3" id="helperSelectionBox" style="display: none;">
-                                        <label class="form-label text-danger fw-bold">Chọn người/bộ phận hỗ trợ *</label>
-                                        <select class="form-select" id="helper_code_select" multiple style="height: 150px; border: 2px solid var(--danger); background-color: #FFF5F5;">
-                                        </select>
-                                        <small class="text-muted d-block mt-1"><i class="fas fa-info-circle"></i> Giữ phím Ctrl/Command để chọn nhiều người.</small>
-                                    </div>
-                                </div>
-                            </form>
-                            <div class="d-flex justify-content-end mt-3">
-                                <button type="button" class="btn btn-warning me-2" id="helpCallBtn"><i class="fas fa-hand-paper me-1"></i> Kêu gọi Hỗ trợ</button>
-                                <button type="submit" class="btn btn-success" form="updateTaskForm" id="saveProgressBtn"><i class="fas fa-save me-1"></i> Ghi nhận Log</button>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="text-primary"><i class="fas fa-history me-1"></i> Lịch sử Tiến độ</h6>
-                            <div id="logHistoryContainer" style="max-height: 450px; overflow-y: auto;"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button></div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="modal fade" id="supervisorNoteModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                 <form id="supervisorNoteForm">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Phản hồi Log #<span id="noteLogIdDisplay"></span></h5>
+                        <h5 class="modal-title">Thêm công việc mới</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                         <input type="hidden" id="note_log_id">
-                         <div class="mb-3">
-                            <label for="note_content" class="form-label">Phản hồi Cấp trên</label>
-                            <textarea class="form-control" id="note_content" rows="4"></textarea>
-                         </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tiêu đề công việc <span class="text-danger">*</span></label>
+                            <input type="text" name="task_title" class="form-control" required placeholder="Ví dụ: Gọi điện cho KH A...">
+                        </div>
+                        
+                        <div class="mb-3 position-relative">
+                            <label class="form-label">Đối tượng (Khách hàng/Dự án)</label>
+                            <input type="text" id="create_object_id_input" class="form-control" placeholder="Gõ tên khách hàng để tìm..." autocomplete="off">
+                            <input type="hidden" name="object_id" id="create_object_id_selected">
+                            <select id="create_kh_search_results" class="form-select" size="5" style="display:none; position:absolute; width:100%; z-index:1000;"></select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Phân loại</label>
+                            <select name="task_type" class="form-select">
+                                <option value="GENERAL">Công việc chung</option>
+                                <option value="SALES">Kinh doanh / Sales</option>
+                                <option value="DOCUMENT">Chứng từ / Giấy tờ</option>
+                                <option value="DELIVERY">Giao hàng</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                        <button type="submit" class="btn btn-primary">Lưu Phản hồi</button>
+                        <button type="submit" name="create_task" value="1" class="btn btn-primary">Tạo Task</button>
                     </div>
-                 </form>
+                </form>
             </div>
         </div>
     </div>
 
-    <div class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-robot"></i></div>
-    <div class="chatbot-window" id="chatbotWindow">
-        <div class="chatbot-header" id="chatbotHeader">
-            <span>Trợ lý Ảo (AI)</span>
-            <div class="chatbot-header-controls">
-                <button class="chatbot-control-btn" id="chatbotMaximizeBtn"><i class="fas fa-expand-alt"></i></button>
-                <button class="chatbot-control-btn" id="chatbotClose"><i class="fas fa-times"></i></button>
+    <div class="modal fade" id="updateTaskModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <form id="updateTaskForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Cập nhật: <span id="updateTaskTitleDisplay" class="text-primary"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="update_task_id">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Mã Task</label>
+                                <div class="p-2 bg-light rounded font-monospace" id="updateTaskIdDisplay">...</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Đối tượng liên quan</label>
+                                <input type="text" id="update_object_id" class="form-control" readonly>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Cập nhật nội dung / Ghi chú mới</label>
+                            <textarea id="update_detail_content" class="form-control" rows="3" placeholder="Nhập nội dung cập nhật tiến độ..."></textarea>
+                        </div>
+
+                        <div class="row align-items-end mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Trạng thái / Loại Log</label>
+                                <select id="log_type_select" class="form-select">
+                                    <option value="PROGRESS">Cập nhật tiến độ (Bình thường)</option>
+                                    <option value="BLOCKED">Đang bị vướng (Blocked)</option>
+                                    <option value="REQUEST_CLOSE">Yêu cầu Đóng (Hoàn thành)</option>
+                                </select>
+                                <div id="helpCallDisplay" class="help-call-display mt-2">
+                                    <i class="fas fa-bullhorn me-2"></i> ĐANG YÊU CẦU HỖ TRỢ
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Tiến độ (%)</label>
+                                <input type="number" id="progress_percent" class="form-control" min="0" max="100">
+                            </div>
+                            <div class="col-md-3">
+                                <button type="button" class="btn btn-outline-danger w-100" id="helpCallBtn">
+                                    <i class="fas fa-hands-helping me-1"></i> Cần Hỗ trợ
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="helperSelectionBox" class="p-3 mb-3 bg-warning-subtle border border-warning rounded" style="display:none;">
+                            <label class="form-label fw-bold text-dark">Chọn người hoặc bộ phận cần nhờ:</label>
+                            <select id="helper_code_select" class="form-select" multiple>
+                                </select>
+                            <small class="text-muted">Giữ Ctrl để chọn nhiều người.</small>
+                        </div>
+
+                        <hr>
+                        <h6 class="text-muted mb-3"><i class="fas fa-history me-1"></i> Lịch sử cập nhật</h6>
+                        <div id="logHistoryContainer" style="max-height: 250px; overflow-y: auto;">
+                            </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="submit" class="btn btn-success"><i class="fas fa-save me-1"></i> Lưu Cập Nhật</button>
+                    </div>
+                </form>
             </div>
         </div>
-        <div class="chatbot-history" id="chatbotHistory">
-            <div class="chat-message-container">
-                <div class="chat-message chat-bot"><br>Chào bạn, tôi có thể giúp gì?</div>
+    </div>
+
+    <div class="modal fade" id="supervisorNoteModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-info">
+                <form id="supervisorNoteForm">
+                    <div class="modal-header bg-info-subtle">
+                        <h5 class="modal-title text-info-emphasis">Phản hồi của Cấp trên</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="note_log_id">
+                        <p>Đang phản hồi cho Log ID: <strong id="noteLogIdDisplay"></strong></p>
+                        <div class="mb-3">
+                            <label class="form-label">Nội dung chỉ đạo / Góp ý:</label>
+                            <textarea id="note_content" class="form-control" rows="3" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-info text-white">Gửi Phản hồi</button>
+                    </div>
+                </form>
             </div>
-        </div>
-        <div class="chatbot-input-area">
-            <input type="text" class="chatbot-input" id="chatbotInput" placeholder="Nhập câu hỏi...">
-            <button class="chatbot-send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
 
     <div id="task-context"
-         data-daily-tasks='{{ kanban_tasks | tojson | safe }}'
-         data-history-tasks='{{ history_tasks | tojson | safe }}'
-         data-is-admin='{{ is_admin | tojson | safe }}'
          data-base-url="{{ url_for('task_bp.task_dashboard') }}"
          data-view-mode="{{ view_mode }}"
          data-active-filter="{{ active_filter }}"
-         data-search-term="{{ text_search_term }}">
+         data-daily-tasks='{{ kanban_tasks | tojson | safe }}'
+         data-history-tasks='{{ history_tasks | tojson | safe }}'
+         data-is-admin="{{ is_admin | tojson | safe }}">
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
-    
+{% endblock %}
+
+{% block scripts %}
+    <script src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
     <script src="{{ url_for('static', filename='js/task_dashboard.js') }}"></script>
-    
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const toggleBtn = document.getElementById('chatbotToggle');
-        const closeBtn = document.getElementById('chatbotClose');
-        const maximizeBtn = document.getElementById('chatbotMaximizeBtn'); 
-        const windowEl = document.getElementById('chatbotWindow');
-        const historyEl = document.getElementById('chatbotHistory');
-        const inputEl = document.getElementById('chatbotInput');
-        const sendBtn = document.getElementById('chatbotSendBtn');
-
-        if (toggleBtn && windowEl && closeBtn) {
-            toggleBtn.addEventListener('click', () => windowEl.classList.toggle('active'));
-            closeBtn.addEventListener('click', () => windowEl.classList.remove('active'));
-        }
-
-        if (maximizeBtn && windowEl) {
-            maximizeBtn.addEventListener('click', () => {
-                windowEl.classList.toggle('maximized');
-                const icon = maximizeBtn.querySelector('i');
-                if (windowEl.classList.contains('maximized')) {
-                    icon.classList.remove('fa-expand-alt'); icon.classList.add('fa-compress-alt');
-                } else {
-                    icon.classList.add('fa-expand-alt'); icon.classList.remove('fa-compress-alt');
-                }
-            });
-        }
-
-        const sendMessage = () => {
-            if (!inputEl || !sendBtn || !historyEl) return;
-            const messageText = inputEl.value.trim();
-            if (messageText === '') return;
-            addMessageToHistory(messageText, 'user');
-            inputEl.value = '';
-            addMessageToHistory('...', 'bot', true);
-            fetch('/api/chatbot_query', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: messageText })
-            }).then(response => response.json()).then(data => { updateBotMessage(data.response); })
-            .catch(error => { updateBotMessage('Lỗi kết nối.'); });
-        };
-
-        if (sendBtn) sendBtn.addEventListener('click', sendMessage);
-        if (inputEl) inputEl.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
-
-        function addMessageToHistory(text, type, isLoading = false) {
-            const msgDiv = document.createElement('div'); msgDiv.classList.add('chat-message');
-            if (type === 'user') { msgDiv.classList.add('chat-user'); msgDiv.textContent = text; }
-            else { msgDiv.classList.add('chat-bot'); if (isLoading) { msgDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; msgDiv.id = 'bot-loading-message'; } else { msgDiv.innerHTML = text.replace(/\n/g, '<br>'); } }
-            historyEl.querySelector('.chat-message-container').appendChild(msgDiv);
-            historyEl.scrollTop = historyEl.scrollHeight;
-        }
-        function updateBotMessage(responseText) {
-            const loadingMsg = document.getElementById('bot-loading-message');
-            if (loadingMsg) {
-                loadingMsg.innerHTML = responseText.replace(/\n/g, '<br>');
-                loadingMsg.removeAttribute('id');
-            } else { addMessageToHistory(responseText, 'bot'); }
-            historyEl.scrollTop = historyEl.scrollHeight;
-        }
-    });
-    </script>
-
-</body>
-</html>
+{% endblock %}

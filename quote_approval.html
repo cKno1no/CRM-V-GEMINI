@@ -1,240 +1,200 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Dashboard Duyệt Chào Giá (v2)</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% extends "base.html" %}
+
+{% block title %}Duyệt Chào Giá (v2) | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* --- CUSTOM LAYOUT FOR APPROVAL --- */
+    .table-approval { 
+        border: 1px solid var(--border-color); width: 100%; 
+    }
+    .table-approval th { 
+        position: sticky; top: 0; z-index: 10;
+        background-color: var(--input-bg) !important; 
+        color: var(--secondary) !important;
+        font-weight: 700; font-size: 0.85rem; text-transform: uppercase;
+        padding: 12px 8px; border-bottom: 2px solid var(--border-color);
+        white-space: nowrap; text-align: center;
+    }
+    .table-approval td { 
+        vertical-align: middle; font-size: 0.9rem; 
+        border-bottom: 1px solid var(--border-color);
+        padding: 10px 8px; color: var(--text-dark);
+    }
+
+    /* Status Colors & Logic */
+    .quote-row { transition: background-color 0.2s; cursor: pointer; }
+    .quote-row:hover td { background-color: var(--input-bg) !important; }
     
-    <style>
-        /* --- 1. CORE STYLES --- */
-        :root {
-            --primary: #4318FF;
-            --primary-light: #F4F7FE;
-            --secondary: #A3AED0;
-            --text-dark: #2B3674;
-            --danger: #E31A1A;
-            --success: #05CD99;
-            --warning: #FFB547;
-            --bg-color: #F4F7FE;
-            --card-radius: 20px;
-            --input-bg: #F4F7FE;
-        }
-        
-        body { 
-            background-color: var(--bg-color); 
-            font-family: 'Inter', sans-serif; 
-            color: var(--text-dark); 
-            overflow-y: auto !important;
-        }
-        .container-fluid { max-width: 98%; margin-top: 30px; }
-        
-        /* --- 2. HEADER & LAYOUT --- */
-        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
-        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
-        
-        .btn-action {
-            padding: 10px 20px; border-radius: 14px; font-weight: 600; border: none;
-            text-decoration: none; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
-        .btn-back { background-color: white; color: var(--secondary); border: 1px solid #E0E5F2; }
-        .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
-        .btn-portal { background-color: var(--primary); color: white; }
-        .btn-so-approve { background-color: var(--success); color: white; }
+    .status-pass { border-left: 5px solid var(--success) !important; }
+    .status-fail { border-left: 5px solid var(--danger) !important; }
+    .status-pending { border-left: 5px solid var(--warning) !important; }
+    
+    .ratio-alert { color: var(--danger); font-weight: 800; }
+    .bg-highlight { background-color: rgba(5, 205, 153, 0.2) !important; transition: background-color 1s; }
+    .row-selected td { background-color: var(--input-bg) !important; font-weight: 700; color: var(--primary); }
 
-        /* --- 3. MAIN CARDS --- */
-        .main-card {
-            border: none; background: white; border-radius: var(--card-radius);
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12); margin-bottom: 25px; overflow: hidden;
-        }
-        .card-header-custom {
-            background-color: white; color: var(--text-dark); font-weight: 700; font-size: 1.1rem;
-            padding: 20px 25px; border-bottom: 1px solid var(--primary-light);
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .card-header-custom i { font-size: 1.1rem; margin-right: 12px; color: var(--primary); }
-        .card-body-custom { padding: 25px; background-color: white; }
-        
-        /* --- 4. FORMS & MODALS --- */
-        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
-        .form-control, .form-select {
-            border: none; background-color: var(--input-bg); border-radius: 16px;
-            padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none;
-        }
-        .form-control:focus, .form-select:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
-        .btn-primary { background-color: var(--primary); border: none; border-radius: 12px; font-weight: 600; padding: 12px; }
-        .btn-primary:hover { background-color: #3a14db; }
-        .btn-success { background-color: var(--success); border-color: var(--success); border-radius: 12px; font-weight: 600;}
-        .btn-secondary { background-color: #f0f0f0; color: var(--secondary); border: none; border-radius: 12px; font-weight: 600; }
-        .btn-secondary:hover { background-color: #e0e0e0; color: var(--text-dark); }
-        .btn-warning { background-color: var(--warning); border-color: var(--warning); border-radius: 12px; font-weight: 600;}
-        
-        .modal-content { border-radius: var(--card-radius); border: none; }
-        .modal-header { background-color: var(--primary-light); border-bottom: none; }
-        .modal-header .modal-title { color: var(--primary); font-weight: 700; }
-        .modal-header.bg-warning .modal-title { color: var(--text-dark); }
-        .modal-header.bg-primary .modal-title { color: white; }
+    /* Columns */
+    .col-ratio { width: 80px; text-align: right; }
+    .col-nvkd { width: 120px; text-align: center; }
+    .col-gt { width: 120px; text-align: right; font-weight: 700; }
+    .col-result { max-width: 250px; }
+    .col-nguoi-lap { color: var(--secondary); font-size: 0.85rem; }
 
-        /* --- 5. DATA TABLES --- */
-        .master-table-scroll { max-height: 90vh; overflow-y: auto; }
-        .table-approval { border: 1px solid var(--primary-light); width: 100%; }
-        .table-approval th { font-size: 0.95rem; }
-        
-        /* Thanh Lọc */
-        #custom-filter-box { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-grow: 1; }
-        .custom-filter-wrapper { display: flex; align-items: center; gap: 10px; flex-grow: 1; justify-content: flex-end; }
-        .custom-filter-wrapper label { font-weight: 600; color: var(--text-dark); font-size: 0.95rem; margin-bottom: 0; white-space: nowrap; }
-        .custom-filter-wrapper input { width: 300px; border: none; background: var(--input-bg); border-radius: 16px; padding: 8px 15px; height: 40px; font-size: 0.95rem; }
-        .btn-reset-filter { height: 40px; width: 40px; border-radius: 12px; font-size: 1rem; padding: 0; line-height: 1; }
-        div.dataTables_wrapper div.dataTables_filter { display: none !important; }
-        
-        /* Style Status */
-        .status-pass { border-left: 5px solid var(--success) !important; }
-        .status-fail { border-left: 5px solid var(--danger) !important; }
-        .status-pending { border-left: 5px solid var(--secondary) !important; }
-        .ratio-alert { color: var(--danger); }
-        .bg-highlight { background-color: #d4edda !important; transition: background-color 1s; }
+    /* Action Box */
+    .action-box { display: flex; justify-content: center; gap: 5px; }
+    .status-badge-action { 
+        background: var(--input-bg); color: var(--secondary); 
+        padding: 4px 8px; border-radius: 8px; font-size: 0.75rem; 
+    }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .table-responsive { overflow-x: auto; }
-            .table-approval th, .table-approval td { font-size: 0.75rem; padding: 6px 4px; }
-            .card-header-custom { flex-direction: column; align-items: flex-start; }
-            #custom-filter-box { margin-top: 10px; width: 100%; justify-content: flex-start; }
-            .col-nguoi-lap { display: none; }
-        }
-    </style>
-</head>
-<body>
-    <div class="container-fluid">
-        <div class="page-header">
-            <h1 class="page-title"><i class="fas fa-certificate me-2"></i> PHÊ DUYỆT BÁO GIÁ</h1>
-            <div class="d-flex gap-2">
-                <a href="{{ url_for('index') }}" class="btn-action btn-portal"><i class="fas fa-home me-1"></i> Về Portal</a>
-                <a href="{{ url_for('approval_bp.sales_order_approval_dashboard') }}" target="_blank" class="btn-action btn-so-approve"><i class="fas fa-file-invoice-dollar me-1"></i> Duyệt ĐH Bán</a>
-            </div>
-        </div>
+    /* Modal Styles */
+    .modal-header { background-color: var(--input-bg); border-bottom: 1px solid var(--border-color); }
+    .modal-title { color: var(--text-dark); font-weight: 700; }
+    .modal-body { background-color: var(--card-bg); color: var(--text-dark); }
+    .modal-footer { background-color: var(--card-bg); border-top: 1px solid var(--border-color); }
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <p style="font-size: 1.1em; font-weight: 500;" class="text-dark">
-                Chào mừng, <strong>{{ current_user.shortname|default('Guest') }}</strong> ({{ current_user.usercode }}).
-            </p>
-            <p class="text-muted small">Mặc định hiển thị Báo giá trong 7 ngày. Click Mã BG để xem chi tiết.</p>
-        </div>
+    /* Table Detail (Inside Modal) */
+    .table-detail th { 
+        background-color: var(--primary) !important; color: white !important; 
+        font-weight: 600; font-size: 0.8rem; text-align: center;
+    }
+    .table-detail td { 
+        color: var(--text-dark); vertical-align: middle; 
+        border-bottom: 1px solid var(--border-color); 
+    }
 
-        <div class="main-card mb-3">
-            <div class="card-body-custom" style="padding: 20px 25px;">
-                <form method="POST" action="{{ url_for('approval_bp.quote_approval_dashboard') }}" class="row g-3 align-items-end">
-                    <div class="col-md-3">
-                        <label for="date_from" class="form-label">Từ Ngày BG</label>
-                        <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
-                    </div>
-                    <div class="col-md-3">
-                        <label for="date_to" class="form-label">Đến Ngày BG</label>
-                        <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
-                    </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search me-1"></i> Lọc Ngày</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        
-        <div class="row g-3 align-items-start">
-            <div class="col-lg-12">
-                <div class="main-card master-panel">
-                    <div class="card-header-custom">
-                        <div><i class="fas fa-list-ul"></i> DANH SÁCH CHÀO GIÁ</div>
-                        <div id="custom-filter-box"></div>
-                    </div>
-                    <div class="card-body-custom p-3">
-                        <div class="table-responsive master-table-scroll">
-                            <table id="approval-table" class="table table-hover table-approval"> 
-                                <thead>
-                                    <tr>
-                                        <th class="col-hs">Hệ số <i class="fas fa-sort"></i></th> 
-                                        <th class="col-ma">Mã BG <i class="fas fa-sort"></i></th>
-                                        <th class="col-ngay">Ngày <i class="fas fa-sort"></i></th> 
-                                        <th class="col-khach">Khách hàng <i class="fas fa-sort"></i></th>
-                                        <th class="col-nvkd">NVKD <i class="fas fa-sort"></i></th> 
-                                        <th class="col-nguoi-lap">TKKD <i class="fas fa-sort"></i></th> 
-                                        <th class="col-gt">Tổng GT <i class="fas fa-sort"></i></th> 
-                                        <th class="col-result">KẾT QUẢ KIỂM TRA <i class="fas fa-sort"></i></th>
-                                        <th class="action-cell">Hành động</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for quote in quotes %}
-                                    {% set result = quote.ApprovalResult %}
-                                    {% set status = result.Passed %}
-                                    {% set approver_id = result.ApproverRequired %}
-                                    {% set row_class = 'status-pass' if status else ('status-pending' if 'PENDING' in result.Reason else 'status-fail') %}
-                                    
-                                    <tr id="master-{{ quote.QuotationID }}" 
-                                        class="quote-row {% if not status %} {{ row_class }} {% endif %}"
-                                        onclick="showDetails('{{ quote.QuotationID }}', this)"
-                                        data-quotationno="{{ quote.QuotationNo }}"
-                                        data-objectid="{{ quote.ClientID | default('') }}"
-                                        data-ratio="{{ result.ApprovalRatio | safe }}"
-                                        data-nvkd="{{ quote.EmployeeID | default('') }}" 
-                                        data-quotation-id="{{ quote.QuotationID | default('') }}">
-                                        
-                                        <td class="text-end col-ratio">
-                                            <span class="fw-bold {% if result.ApprovalRatio < 138 %} ratio-alert {% endif %}">
-                                                {{ result.ApprovalRatio }}
-                                            </span>
-                                        </td>
-                                        
-                                        <td>{{ quote.QuotationNo }}</td>
-                                        
-                                        <td>
-                                            {% if quote.QuotationDate %}
-                                                {{ quote.QuotationDate.strftime('%d/%m') }}
-                                            {% else %}
-                                                N/A
-                                            {% endif %}
-                                        </td>
-                                        
-                                        <td>{{ quote.ClientName | default('N/A') }}</td>
-                                        
-                                        <td class="col-nvkd" id="salesman-cell-{{ quote.QuotationID }}">
-                                            {{ quote.NVKDName | default(quote.SalesManID) }}
-                                            <button class="btn btn-xs btn-outline-primary p-0 px-1" style="font-size: 0.65rem;"
-                                                    onclick="event.stopPropagation(); openSalesmanModal('{{ quote.QuotationID }}', '{{ quote.QuotationNo }}', '{{ quote.SalesManID | default('') }}', '{{ quote.NVKDName | default('N/A') }}')">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                        </td>
-                                        <td class="col-nguoi-lap">{{ quote.SalesAdminName | default(quote.EmployeeID) }}</td> 
-                                        
-                                        <td class="text-end col-gt">{{ "{:,.0f}".format(quote.SaleAmount | float) }}</td>
-                                        
-                                        <td class="col-result">{{ result.Reason }}</td>
-                                        
-                                        <td class="action-cell">
-                                            <div class="action-box mx-auto">
-                                                {% if quote.NeedsCostOverride == 1 and not quote.HasCostOverrideData %}
-                                                    <button class="btn btn-warning btn-sm" onclick="event.stopPropagation(); openCostOverrideForm('{{ quote.QuotationID }}', '{{ quote.QuotationNo }}')">
-                                                        <i class="fas fa-money-bill-wave me-1"></i> Cost
-                                                    </button>
-                                                {% elif status and current_user_code in approver_id %}
-                                                    <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); approveQuote(this)">
-                                                        <i class="fas fa-check"></i> Duyệt
-                                                    </button>
-                                                {% else %}
-                                                    <span class="status-badge-action text-muted small">Chờ xử lý</span>
-                                                {% endif %}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
+    /* Filter Inputs */
+    .form-control { border: 1px solid var(--border-color); background-color: var(--input-bg); color: var(--text-dark); }
+    .form-control:focus { background-color: var(--card-bg); border-color: var(--primary); }
+
+    /* Mobile Responsive */
+    @media (max-width: 992px) {
+        .table-responsive { overflow-x: auto; }
+        .col-nguoi-lap, .col-khach { display: none; } /* Ẩn bớt cột trên mobile */
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}<i class="fas fa-certificate me-2"></i> PHÊ DUYỆT BÁO GIÁ{% endblock %}
+{% block page_sub %}Chào mừng, <strong>{{ current_user.shortname }}</strong> ({{ current_user.usercode }}){% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('index') }}" class="btn btn-back"><i class="fas fa-home me-2"></i>Portal</a>
+<a href="{{ url_for('approval_bp.sales_order_approval_dashboard') }}" target="_blank" class="btn btn-success text-white shadow-sm">
+    <i class="fas fa-file-invoice-dollar me-2"></i>Duyệt ĐH Bán
+</a>
+{% endblock %}
+
+{% block content %}
+    <div class="main-card mb-4">
+        <div class="card-body-custom" style="padding: 20px;">
+            <form method="POST" action="{{ url_for('approval_bp.quote_approval_dashboard') }}" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small text-muted text-uppercase">Từ Ngày</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted text-uppercase">Đến Ngày</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter me-2"></i> Lọc</button>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" id="customSearchInput" class="form-control border-start-0 ps-0" placeholder="Tìm Mã BG, Khách hàng...">
                     </div>
                 </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="main-card">
+        <div class="card-header-custom">
+            <span><i class="fas fa-list-ul me-2 text-primary"></i> DANH SÁCH CHÀO GIÁ CẦN DUYỆT</span>
+        </div>
+        <div class="card-body-custom p-0">
+            <div class="table-responsive" style="max-height: 90vh;">
+                <table id="approval-table" class="table table-hover table-approval mb-0"> 
+                    <thead>
+                        <tr>
+                            <th class="col-ratio">Hệ số</th> 
+                            <th>Mã BG</th>
+                            <th>Ngày</th> 
+                            <th class="col-khach text-start">Khách hàng</th>
+                            <th class="col-nvkd">NVKD</th> 
+                            <th class="col-nguoi-lap">TKKD</th> 
+                            <th class="col-gt">Tổng GT</th> 
+                            <th class="col-result text-start">KẾT QUẢ KIỂM TRA</th>
+                            <th class="text-center" style="width: 100px;">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for quote in quotes %}
+                        {% set result = quote.ApprovalResult %}
+                        {% set status = result.Passed %}
+                        {% set approver_id = result.ApproverRequired %}
+                        {% set row_class = 'status-pass' if status else ('status-pending' if 'PENDING' in result.Reason else 'status-fail') %}
+                        
+                        <tr id="master-{{ quote.QuotationID }}" 
+                            class="quote-row {% if not status %} {{ row_class }} {% endif %}"
+                            onclick="showDetails('{{ quote.QuotationID }}', this)"
+                            data-quotationno="{{ quote.QuotationNo }}"
+                            data-objectid="{{ quote.ClientID | default('') }}"
+                            data-ratio="{{ result.ApprovalRatio | safe }}"
+                            data-nvkd="{{ quote.EmployeeID | default('') }}" 
+                            data-quotation-id="{{ quote.QuotationID | default('') }}">
+                            
+                            <td class="text-end col-ratio">
+                                <span class="fw-bold {% if result.ApprovalRatio < 138 %} ratio-alert {% endif %}">
+                                    {{ result.ApprovalRatio }}
+                                </span>
+                            </td>
+                            
+                            <td class="fw-bold text-primary">{{ quote.QuotationNo }}</td>
+                            
+                            <td class="text-center">{{ quote.QuotationDate | format_date }}</td>
+                            
+                            <td class="col-khach text-start text-truncate" style="max-width: 200px;" title="{{ quote.ClientName }}">
+                                {{ quote.ClientName | default('N/A') }}
+                            </td>
+                            
+                            <td class="col-nvkd" id="salesman-cell-{{ quote.QuotationID }}">
+                                {{ quote.NVKDName | default(quote.SalesManID) }}
+                                <button class="btn btn-sm p-0 ms-1 text-muted" title="Đổi NVKD"
+                                        onclick="event.stopPropagation(); openSalesmanModal('{{ quote.QuotationID }}', '{{ quote.QuotationNo }}', '{{ quote.SalesManID | default('') }}', '{{ quote.NVKDName | default('N/A') }}')">
+                                    <i class="fas fa-pen-square"></i>
+                                </button>
+                            </td>
+                            <td class="col-nguoi-lap text-center">{{ quote.SalesAdminName | default(quote.EmployeeID) }}</td> 
+                            
+                            <td class="text-end col-gt text-dark">{{ quote.SaleAmount | format_tr }}</td>
+                            
+                            <td class="col-result text-start small">
+                                {{ result.Reason }}
+                            </td>
+                            
+                            <td class="text-center">
+                                <div class="action-box">
+                                    {% if quote.NeedsCostOverride == 1 and not quote.HasCostOverrideData %}
+                                        <button class="btn btn-warning btn-sm shadow-sm text-dark" onclick="event.stopPropagation(); openCostOverrideForm('{{ quote.QuotationID }}', '{{ quote.QuotationNo }}')">
+                                            <i class="fas fa-coins"></i> Cost
+                                        </button>
+                                    {% elif status and current_user_code in approver_id %}
+                                        <button class="btn btn-success btn-sm shadow-sm text-white" onclick="event.stopPropagation(); approveQuote(this)">
+                                            <i class="fas fa-check"></i> Duyệt
+                                        </button>
+                                    {% else %}
+                                        <span class="status-badge-action">Chờ xử lý</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -247,19 +207,17 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-0">
-                    <div id="detail-container">
-                        <p class="p-3 text-muted text-center">Đang tải chi tiết...</p>
-                    </div>
+                    <div id="detail-container"></div>
                 </div>
                 <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button></div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="costOverrideModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="costOverrideModal" tabindex="-1">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
-                <div class="modal-header bg-warning">
+                <div class="modal-header" style="background-color: var(--warning);">
                     <h5 class="modal-title text-dark"><i class="fas fa-money-bill-wave me-2"></i> Bổ sung Giá nhập (Cost) #<span id="quoteNoDisplay"></span></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
@@ -270,17 +228,17 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="button" class="btn btn-success" id="saveCostOverrideBtn"><i class="fas fa-save me-1"></i> Lưu</button>
+                    <button type="button" class="btn btn-success text-white" id="saveCostOverrideBtn"><i class="fas fa-save me-1"></i> Lưu</button>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="modal fade" id="salesmanUpdateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="salesmanUpdateModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">Thay đổi NVKD cho Báo giá</h5>
+                <div class="modal-header" style="background-color: var(--primary);">
+                    <h5 class="modal-title text-white">Thay đổi NVKD</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -304,38 +262,73 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="button" class="btn btn-success" id="saveSalesmanChangeBtn"><i class="fas fa-save me-1"></i> Lưu Thay đổi</button>
+                    <button type="button" class="btn btn-success text-white" id="saveSalesmanChangeBtn"><i class="fas fa-save me-1"></i> Lưu Thay đổi</button>
                 </div>
             </div>
         </div>
     </div>
-    
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}
+
+{% block scripts %}
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
     
     <script>
         let lastClickedRow = null;
 
-        function formatCurrency(value) {
-            if (value === null || value === undefined || value === '—' || String(value).trim() === '') return '—';
-            const num = parseFloat(String(value).replace(/,/g, '')); 
-            if (isNaN(num)) return '—';
-            return num.toFixed(0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        /**
+         * HÀM ĐỊNH DẠNG SỐ AN TOÀN (SỬA LỖI NaN)
+         * - Tự động loại bỏ dấu phẩy (,) có sẵn trong chuỗi từ server
+         * - Chuyển đổi sang Float an toàn
+         * - Trả về định dạng chuẩn Mỹ (1,234.56)
+         */
+        function formatNumberStandard(value) {
+            // 1. Kiểm tra giá trị rỗng/null
+            if (value === null || value === undefined || String(value).trim() === '') {
+                return '0';
+            }
+
+            // 2. Chuyển về chuỗi và loại bỏ dấu phẩy (,) nếu có
+            // Ví dụ: "1,200.00" -> "1200.00"
+            const cleanValue = String(value).replace(/,/g, '');
+
+            // 3. Parse sang số thực
+            const num = parseFloat(cleanValue);
+
+            // 4. Nếu vẫn lỗi NaN thì trả về 0
+            if (isNaN(num)) return '0';
+
+            // 5. Định dạng lại
+            return new Intl.NumberFormat('en-US').format(num);
         }
 
         // --- RENDER DETAIL TABLE ---
         function renderDetailTable(details, container) {
             let tableHtml = '<div class="table-responsive p-3"><table class="table table-sm table-striped table-bordered small mb-0 table-detail">';
-            tableHtml += '<thead><tr><th>Mã hàng</th><th>Tên hàng</th><th class="text-end">SL</th><th class="text-end">Đơn giá</th><th class="text-end">Đơn giá QĐ</th><th class="text-end">Thành tiền</th><th>Ghi chú</th></tr></thead><tbody>';
+            tableHtml += '<thead><tr><th class="text-center">Mã hàng</th><th>Tên hàng</th><th class="text-end">SL</th><th class="text-end">Đơn giá</th><th class="text-end">Đơn giá QĐ</th><th class="text-end">Thành tiền</th><th>Ghi chú</th></tr></thead><tbody>';
 
-            details.forEach(item => {
-                const DonGiaQuyDinh = formatCurrency(item.DonGiaQuyDinh || 0);
-                const DonGia = formatCurrency(item.DonGia || 0);
-                const price_ratio_color = (parseFloat(String(item.DonGia).replace(/,/g, '')) < parseFloat(String(item.DonGiaQuyDinh).replace(/,/g, ''))) ? 'text-danger' : 'text-success';
-                
-                tableHtml += `<tr><td class="text-center">${item.MaHang}</td><td>${item.TenHang || '—'}</td><td class="text-end">${formatCurrency(item.SoLuong)}</td><td class="text-end">${DonGia}</td><td class="text-end ${price_ratio_color}">${DonGiaQuyDinh}</td><td class="text-end fw-bold">${formatCurrency(item.ThanhTien)}</td><td>${item.Notes || '—'}</td></tr>`;
-            });
+            if (!details || details.length === 0) {
+                tableHtml += '<tr><td colspan="7" class="text-center text-muted">Không có dữ liệu chi tiết.</td></tr>';
+            } else {
+                details.forEach(item => {
+                    // 1. Lấy giá trị thô (Raw) để so sánh (Xóa dấu phẩy trước khi so sánh)
+                    const rawDonGia = parseFloat(String(item.DonGia || 0).replace(/,/g, ''));
+                    const rawDonGiaQD = parseFloat(String(item.DonGiaQuyDinh || 0).replace(/,/g, ''));
+
+                    // 2. Logic tô màu: Nếu Giá bán < Giá quy định -> Màu đỏ
+                    const price_ratio_color = (rawDonGia < rawDonGiaQD) ? 'text-danger fw-bold' : 'text-success';
+                    
+                    // 3. Render HTML dùng hàm formatNumberStandard đã sửa
+                    tableHtml += `<tr>
+                        <td class="text-center font-monospace">${item.MaHang || ''}</td>
+                        <td>${item.TenHang || '—'}</td>
+                        <td class="text-end">${formatNumberStandard(item.SoLuong)}</td>
+                        <td class="text-end">${formatNumberStandard(item.DonGia)}</td>
+                        <td class="text-end ${price_ratio_color}">${formatNumberStandard(item.DonGiaQuyDinh)}</td>
+                        <td class="text-end fw-bold">${formatNumberStandard(item.ThanhTien)}</td>
+                        <td>${item.Notes || ''}</td>
+                    </tr>`;
+                });
+            }
             tableHtml += '</tbody></table></div>';
             container.innerHTML = tableHtml;
         }
@@ -353,10 +346,16 @@
              $(rowElement).addClass('row-selected');
              lastClickedRow = rowElement;
 
-             fetch(`/api/get_quote_details/${quoteId}`).then(r => r.json()).then(details => { 
-                 if (details.error) throw new Error(details.error); 
-                 renderDetailTable(details, container); 
-             }).catch(e => container.innerHTML = `<p class="text-danger text-center">LỖI: ${e.message}</p>`);
+             fetch(`/api/get_quote_details/${quoteId}`)
+                .then(r => r.json())
+                .then(details => { 
+                     if (details.error) throw new Error(details.error); 
+                     renderDetailTable(details, container); 
+                 })
+                .catch(e => {
+                    console.error(e);
+                    container.innerHTML = `<p class="text-danger text-center p-3">LỖI KHI TẢI DỮ LIỆU: ${e.message}</p>`;
+                });
         }
         
         function approveQuote(buttonElement) {
@@ -378,51 +377,68 @@
             }).catch(e => { alert('Lỗi kết nối'); buttonElement.disabled = false; });
         }
         
-        // --- COST OVERRIDE ---
+        // --- COST OVERRIDE LOGIC & SALESMAN UPDATE ---
+        
+        // Cost Override: Mở form
         function openCostOverrideForm(quoteId, quoteNo) {
              const modal = new bootstrap.Modal(document.getElementById('costOverrideModal'));
              $('#quoteNoDisplay').text(quoteNo); $('#overrideQuoteId').val(quoteId);
              $('#costOverrideDetail').html('<p class="text-center">Đang tải...</p>');
              modal.show();
+             
              fetch(`/api/get_quote_cost_details/${quoteId}`).then(r => r.json()).then(details => {
-                let html = '<table class="table table-sm table-bordered"><thead><tr><th>Mã</th><th>Tên</th><th>SL</th><th>Giá bán</th><th>Cost</th><th>Note</th></tr></thead><tbody>';
-                details.forEach(i => { html += `<tr data-tx-id="${i.TransactionID}"><td>${i.InventoryID}</td><td>${i.InventoryName}</td><td>${i.QuoQuantity}</td><td>${formatCurrency(i.UnitPrice)}</td><td><input class="form-control form-control-sm cost-input" value="${formatCurrency(i.Cost)}"></td><td><input class="form-control form-control-sm note-input" value="${i.NOTE||''}"></td></tr>`; });
+                let html = '<table class="table table-sm table-bordered"><thead><tr><th>Mã</th><th>Tên</th><th>SL</th><th>Giá bán</th><th>Cost (Nhập)</th><th>Ghi chú</th></tr></thead><tbody>';
+                details.forEach(i => { 
+                    // Dùng hàm formatNumberStandard cho các giá trị hiển thị
+                    html += `<tr data-tx-id="${i.TransactionID}">
+                        <td>${i.InventoryID}</td>
+                        <td>${i.InventoryName}</td>
+                        <td>${i.QuoQuantity}</td>
+                        <td>${formatNumberStandard(i.UnitPrice)}</td>
+                        <td><input class="form-control form-control-sm cost-input" value="${formatNumberStandard(i.Cost)}" onfocus="this.select()"></td>
+                        <td><input class="form-control form-control-sm note-input" value="${i.NOTE||''}"></td>
+                    </tr>`; 
+                });
                 html += '</tbody></table>'; $('#costOverrideDetail').html(html);
              });
         }
         
+        // Cost Override: Lưu
         $('#saveCostOverrideBtn').on('click', function() {
              const updates = [];
              $('#costOverrideDetail tbody tr').each(function() {
-                 const cost = parseFloat($(this).find('.cost-input').val().replace(/,/g, '') || 0);
+                 // Clean dấu phẩy trước khi parse float để lưu
+                 const rawCostVal = $(this).find('.cost-input').val().replace(/,/g, '');
+                 const cost = parseFloat(rawCostVal || 0);
                  const note = $(this).find('.note-input').val();
-                 if(cost > 0 || note) updates.push({ transaction_id: $(this).data('tx-id'), cost: cost, note: note });
+                 
+                 // Chỉ đẩy lên nếu có dữ liệu
+                 if(cost >= 0 || note) {
+                     updates.push({ transaction_id: $(this).data('tx-id'), cost: cost, note: note });
+                 }
              });
+             
              if(!updates.length) return alert('Không có thay đổi.');
+             
              fetch('/api/save_quote_cost_override', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ quote_id: $('#overrideQuoteId').val(), updates: updates }) })
              .then(r => r.json()).then(res => { if(res.success) { alert('Thành công!'); window.location.reload(); } else alert(res.message); });
         });
 
-        // --- CẬP NHẬT LOGIC JS CHO NÚT LƯU SALESMAN ---
         $(document).ready(function() {
-            // Init DataTables (Giữ nguyên)
+            // DataTables Config
             const table = $('#approval-table').DataTable({
                 "paging": true, "pageLength": 25, "searching": true, "ordering": true, "info": true, 
-                "scrollY": "70vh", "scrollCollapse": true, 
+                "scrollY": "65vh", "scrollCollapse": true, 
                 "dom": 'rt<"row mt-3"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>', 
                 "order": [[1, 'asc']], 
-                "language": { "zeroRecords": "Không tìm thấy.", "info": "_START_ - _END_ / _TOTAL_", "paginate": { "next": "Sau", "previous": "Trước" } }
+                "language": { "zeroRecords": "Không tìm thấy.", "info": "Hiển thị _START_ đến _END_ của _TOTAL_", "paginate": { "next": ">", "previous": "<" } }
             });
 
-            // Filter (Giữ nguyên)
-            const customFilter = $('<div class="custom-filter-wrapper"><label>Lọc:</label><input type="search" id="customSearchInput" placeholder="Tìm kiếm..."></div>');
-            customFilter.find('input').on('keyup', function() { table.search(this.value).draw(); });
-            const resetBtn = $('<button class="btn btn-secondary btn-reset-filter"><i class="fas fa-undo-alt"></i></button>').on('click', function() { customFilter.find('input').val(''); table.search('').columns().search('').draw(); });
-            $('#custom-filter-box').empty().append(customFilter).append(resetBtn);
-
-            // Logic Update Salesman
-            let salesmanUpdateModalInstance = null;
+            // Custom Search Box Logic
+            $('#customSearchInput').on('keyup', function() { table.search(this.value).draw(); });
             
+            // Logic Salesman Update Modal
+            let salesmanUpdateModalInstance = null;
             window.openSalesmanModal = function(quoteId, quoteNo, currentSalesmanId, currentSalesmanName) {
                 if (!salesmanUpdateModalInstance) salesmanUpdateModalInstance = new bootstrap.Modal(document.getElementById('salesmanUpdateModal'));
                 $('#salesmanModalQuoteNo').text(quoteNo); $('#salesmanModalQuoteID').val(quoteId);
@@ -435,7 +451,6 @@
                 const button = $(this);
                 const quoteId = $('#salesmanModalQuoteID').val();
                 const newSalesmanId = $('#newSalesmanSelect').val();
-                const currentQuoteNo = $('#salesmanModalQuoteNo').text(); 
                 
                 if (!newSalesmanId) return alert('Vui lòng chọn NVKD mới.');
 
@@ -448,63 +463,7 @@
                 .then(r => r.json()).then(data => {
                     if (data.success) {
                         alert(data.message);
-                        
-                        const resultData = data.data || {};
-                        const newSalesmanText = $('#newSalesmanSelect option:selected').text();
-                        let newSalesmanName = resultData.NewSalesmanName || newSalesmanText.split('(')[0].trim();
-                        
-                        // 1. CẬP NHẬT Ô NVKD TRÊN BẢNG
-                        const cellId = 'salesman-cell-' + quoteId;
-                        const cellNode = document.getElementById(cellId);
-                        
-                        if (cellNode) {
-                            const newContent = `${newSalesmanName} 
-                                <button class="btn btn-xs btn-outline-primary p-0 px-1" style="font-size: 0.65rem;"
-                                        onclick="event.stopPropagation(); openSalesmanModal('${quoteId}', '${currentQuoteNo}', '${newSalesmanId}', '${newSalesmanName}')">
-                                    <i class="fas fa-edit"></i>
-                                </button>`;
-                            
-                            table.cell(cellNode).data(newContent);
-                            const rowNode = $(cellNode).closest('tr');
-
-                            // 2. CẬP NHẬT TRẠNG THÁI & LÝ DO
-                            if (resultData.AnalysisMsg) {
-                                const resultCell = rowNode.find('.col-result');
-                                if (resultCell.length) table.cell(resultCell[0]).data(resultData.AnalysisMsg);
-                            }
-
-                            // 3. CẬP NHẬT MÀU DÒNG
-                            rowNode.removeClass('status-pass status-fail status-pending');
-                            if (resultData.NewStatus === true) rowNode.addClass('status-pass');
-                            else rowNode.addClass('status-pending');
-
-                            // 4. [QUAN TRỌNG] CẬP NHẬT NÚT HÀNH ĐỘNG (ACTION BUTTON)
-                            // Tìm ô chứa nút hành động (.action-cell hoặc div .action-box)
-                            const actionBox = rowNode.find('.action-box'); 
-                            
-                            if (resultData.NewStatus === true) {
-                                // Nếu Trạng thái mới là Pass -> Hiện nút DUYỆT XANH
-                                actionBox.html(`
-                                    <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); approveQuote(this)">
-                                        <i class="fas fa-check"></i> Duyệt
-                                    </button>
-                                `);
-                            } else {
-                                // Nếu không Pass -> Hiện chữ Chờ xử lý
-                                actionBox.html(`
-                                    <span class="status-badge-action text-muted small">Chờ xử lý</span>
-                                `);
-                            }
-
-                            // 5. CẬP NHẬT DATA ATTRIBUTE
-                            rowNode.attr('data-nvkd', newSalesmanId);
-                            rowNode.data('nvkd', newSalesmanId);
-
-                            table.draw(false);
-                            rowNode.addClass('bg-highlight');
-                            setTimeout(() => rowNode.removeClass('bg-highlight'), 1500);
-                        }
-                        salesmanUpdateModalInstance.hide();
+                        window.location.reload(); // Reload để cập nhật lại bảng
                     } else {
                         alert('Lỗi: ' + data.message);
                     }
@@ -514,5 +473,4 @@
             });
         });
     </script>
-</body>
-</html>
+{% endblock %}

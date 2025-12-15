@@ -156,17 +156,24 @@ class TaskService:
     
     # --- KHỐI 1: TASK CẦN XỬ LÝ GẤP (HÔM NAY VÀ HÔM QUA) ---
     def get_kanban_tasks(self, user_code, is_admin=False, days_ago=3, view_mode='USER'):
-        """Lấy Task cho Kanban Board (3 ngày), hỗ trợ View Quản lý. (Yêu cầu 2)"""
+        """Lấy Task cho Kanban Board."""
         date_limit = (datetime.now() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
         
-        # Lọc UserCode/CapTren (Base filter)
         base_conditions = []
-        if view_mode == 'SUPERVISOR':
-            base_conditions.append(f"CapTren = '{user_code}'") 
-        elif not is_admin: 
-            base_conditions.append(f"UserCode = '{user_code}'") 
         
-        user_filter = " AND ".join(base_conditions) if base_conditions else "1=1"
+        # LOGIC PHÂN QUYỀN MỚI
+        if view_mode == 'SUPERVISOR':
+            if is_admin:
+                # 1. Admin ở View Quản lý: Xem TOÀN BỘ (Không lọc user)
+                base_conditions.append("1=1") 
+            else:
+                # 2. Manager thường ở View Quản lý: Xem nhân viên cấp dưới
+                base_conditions.append(f"CapTren = '{user_code}'")
+        else:
+            # 3. View Cá nhân (Cho cả Admin và User thường): Chỉ xem task của mình
+            base_conditions.append(f"UserCode = '{user_code}'")
+        
+        user_filter = " AND ".join(base_conditions)
 
         query = f"""
             SELECT T1.*,
@@ -188,19 +195,22 @@ class TaskService:
         return self._standardize_task_data(data)
     
     # --- KHỐI 2: TASK LỊCH SỬ VÀ RỦI RO (30 NGÀY) ---
+    # --- SỬA ĐỔI LOGIC LỊCH SỬ ---
     def get_filtered_tasks(self, user_code, filter_type='RISK', is_admin=False, days_ago=30, view_mode='USER', text_search_term=None): 
-        """Lấy Task cho bảng Lịch sử (30 ngày), hỗ trợ View Quản lý và lọc văn bản."""
-        """
-        Lấy danh sách Task theo loại bộ lọc (All/Pending/Completed/Risk/Help) trong 30 ngày qua.
-        """
+        """Lấy Task cho bảng Lịch sử."""
         date_limit, today_date = self._get_time_filter_params(days_ago)
         
         where_conditions = [f"TaskDate BETWEEN '{date_limit}' AND '{today_date}'"]
         
+        # LOGIC PHÂN QUYỀN MỚI (Tương tự Kanban)
         if view_mode == 'SUPERVISOR':
-            where_conditions.append(f"CapTren = '{user_code}'") # Lọc theo người GIAO VIỆC
-        elif not is_admin: 
-            where_conditions.append(f"UserCode = '{user_code}'") # Lọc theo người NHẬN VIỆC
+            if is_admin:
+                pass # Không thêm điều kiện lọc -> Lấy hết
+            else:
+                where_conditions.append(f"CapTren = '{user_code}'")
+        else:
+            # View Cá nhân
+            where_conditions.append(f"UserCode = '{user_code}'")
 
         if filter_type == 'COMPLETED':
             where_conditions.append("Status = 'COMPLETED'")
@@ -236,13 +246,20 @@ class TaskService:
         data = self._enrich_tasks_with_user_info(data)
         return self._standardize_task_data(data)
 
-    def get_kpi_summary(self, user_code, is_admin=False, days_ago=30):
+    
+    def get_kpi_summary(self, user_code, is_admin=False, days_ago=30, view_mode='USER'):
         """Tính toán tổng Task trong 30 ngày qua."""
         
         date_limit, today_date = self._get_time_filter_params(days_ago)
         where_conditions = [f"TaskDate BETWEEN '{date_limit}' AND '{today_date}'"]
         
-        if not is_admin:
+        # LOGIC PHÂN QUYỀN MỚI
+        if view_mode == 'SUPERVISOR':
+            if is_admin:
+                pass # Lấy hết
+            else:
+                where_conditions.append(f"CapTren = '{user_code}'")
+        else:
             where_conditions.append(f"UserCode = '{user_code}'")
 
         where_clause = " AND ".join(where_conditions)
@@ -379,20 +396,24 @@ class TaskService:
             return False
     
     # THÊM: Hàm lấy danh sách Helper đủ điều kiện (Req 2)
-    def get_eligible_helpers(self):
-        """
-        Lấy danh sách nhân viên hỗ trợ.
-        YÊU CẦU 4: Lọc [PHONG BAN] IS NOT NULL và <> '9. DU HOC'.
-        """
+    def get_eligible_helpers(self, division=None):
+        params = []
         query = f"""
             SELECT [USERCODE], [SHORTNAME] 
             FROM {config.TEN_BANG_NGUOI_DUNG}
             WHERE 
                 [PHONG BAN] IS NOT NULL 
                 AND RTRIM([PHONG BAN]) <> '9. DU HOC'
-            ORDER BY [SHORTNAME]
         """
-        return self.db.get_data(query)
+        
+        # Thêm logic lọc
+        if division:
+            query += " AND [Division] = ?"
+            params.append(division)
+            
+        query += " ORDER BY [SHORTNAME]"
+        
+        return self.db.get_data(query, tuple(params))
 
 
     # THÊM: Hàm tạo Task mới cho Helper (Req 3)
