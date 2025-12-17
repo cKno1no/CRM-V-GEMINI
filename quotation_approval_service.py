@@ -1,3 +1,4 @@
+from flask import current_app
 from datetime import datetime
 from db_manager import DBManager, safe_float
 import config
@@ -236,7 +237,7 @@ class QuotationApprovalService:
         try:
             details = self.db.get_data(detail_query, (quote_id,))
         except Exception as e:
-            print(f"LỖI SQL Chi tiết BG {quote_id}: {e}")
+            current_app.logger.error(f"LỖI SQL Chi tiết BG {quote_id}: {e}")
             return []
             
         if not details: return []
@@ -340,7 +341,7 @@ class QuotationApprovalService:
             if conn:
                 db.rollback(conn) 
             # Đảm bảo bạn thấy LỖI này trong Console/Log file
-            print(f"LỖI UPSERT COST OVERRIDE (CRITICAL): {e}") 
+            current_app.logger.error(f"LỖI UPSERT COST OVERRIDE (CRITICAL): {e}")
             return {"success": False, "message": f"Lỗi hệ thống khi lưu Cost Override: {str(e)}"}
         finally:
             if conn:
@@ -430,7 +431,7 @@ class QuotationApprovalService:
                 return {"success": False, "message": "Lệnh UPDATE không thực thi."}
                 
         except Exception as e:
-            print(f"LỖI UPDATE SALESMAN (SERVICE): {e}")
+            current_app.logger.error(f"LỖI UPDATE SALESMAN (SERVICE): {e}")
             return {"success": False, "message": f"Lỗi hệ thống: {str(e)}"}
 
     def get_quote_refresh_data(self, quote_id, user_code):

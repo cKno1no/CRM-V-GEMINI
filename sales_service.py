@@ -1,5 +1,6 @@
 # services/sales_service.py
 
+from flask import current_app
 from datetime import datetime
 from operator import itemgetter
 
@@ -13,32 +14,83 @@ class SalesService:
 
     def get_sales_performance_data(self, current_year, user_code, is_admin, division=None):
         """
-        [UPDATED] Tổng hợp KPI Sales sử dụng SP từ Config, có lọc theo Division.
+        [FIXED] Tổng hợp KPI Sales, đồng bộ PO Tồn chuẩn xác từ Sales Backlog.
         """
         try:
-            # Truyền thêm division vào danh sách tham số gọi SP
-            # SP trong SQL Server đã được sửa để nhận 4 tham số
+            # 1. Gọi SP Sales Performance (Lấy doanh số YTD, Tháng, Đăng ký)
             result_sets = self.db.execute_sp_multi(
                 config.SP_SALES_PERFORMANCE, 
                 (current_year, user_code, 1 if is_admin else 0, division)
             )
             
-            if not result_sets or not result_sets[0]:
-                return []
-                
-            data = result_sets[0]
+            data = result_sets[0] if result_sets and result_sets[0] else []
             
+            # Nếu không có dữ liệu Sales, vẫn phải trả về cấu trúc để tránh lỗi
+            if not data:
+                return []
+
+            # 2. [FIX ĐỒNG BỘ] Lấy dữ liệu Backlog chuẩn (YTD)
+            start_date = f"{current_year}-01-01"
+            end_date = datetime.now().strftime('%Y-%m-%d')
+            
+            # Lọc theo quyền: Admin lấy hết, User chỉ lấy của mình
+            salesman_filter = None if is_admin else user_code
+            
+            # Gọi hàm Backlog nội bộ
+            # Lưu ý: Hàm này trả về {'details': [...], 'summary': {...}}
+            backlog_result = self.get_sales_backlog(start_date, end_date, salesman_filter)
+            
+            # 3. Gom nhóm Backlog theo SalesmanID (Map: SalesManID -> Tổng tiền backlog)
+            backlog_map = {}
+            if backlog_result and 'details' in backlog_result:
+                for row in backlog_result['details']:
+                    # SalesManID có thể bị NULL hoặc khoảng trắng
+                    sm_id = str(row.get('SalesManID', '')).strip().upper()
+                    
+                    # Backlog chuẩn = GiaTriChuaGiao (như đã thống nhất ở Sales Backlog page)
+                    # Hoặc GiaTriDonHang nếu muốn tính tổng PO chưa xong (nhưng GiaTriChuaGiao chuẩn hơn về áp lực)
+                    # Tuy nhiên, yêu cầu của bạn là "PO Tồn = DS chờ YTD" (Tổng giá trị PO chưa hoàn tất)
+                    # Nên ta lấy GiaTriDonHang (vì Backlog page đang dùng Total PO để hiển thị KPI chính)
+                    
+                    # UPDATE: Theo logic đơn giản hóa ở Sales Backlog:
+                    # Pending Delivery = Total PO - Shipped Uninvoiced
+                    # Ở đây ta lấy GiaTriDonHang (Total PO) của các đơn chưa hoàn tất làm "PO Tồn"
+                    val = safe_float(row.get('GiaTriDonHang', 0))
+                    
+                    if sm_id:
+                        backlog_map[sm_id] = backlog_map.get(sm_id, 0.0) + val
+
+            # 4. Gán ngược vào Data Sales Performance
+            # Lưu ý: Cần xử lý trường hợp 1 Salesman xuất hiện nhiều lần (dù SP đã Group By nhưng phòng hờ)
+            processed_salesmen = set()
+
             for row in data:
+                # Ép kiểu an toàn
                 row['TotalSalesAmount'] = float(row.get('TotalSalesAmount') or 0)
                 row['CurrentMonthSales'] = float(row.get('CurrentMonthSales') or 0)
                 row['RegisteredSales'] = float(row.get('RegisteredSales') or 0)
-                row['PendingOrdersAmount'] = float(row.get('PendingOrdersAmount') or 0)
                 row['TotalOrders'] = int(row.get('TotalOrders') or 0)
                 
+                # Lấy ID Salesman hiện tại
+                sm_code = str(row.get('EmployeeID') or row.get('SalesManID') or '').strip().upper()
+                
+                # Gán Backlog (Nếu tìm thấy trong map)
+                if sm_code in backlog_map:
+                    row['PendingOrdersAmount'] = float(backlog_map[sm_code])
+                    # Sau khi gán, có thể xóa khỏi map để tránh cộng dồn nếu duplicate row (tùy logic)
+                else:
+                    row['PendingOrdersAmount'] = 0.0
+            
+            # 5. (Tùy chọn) Bổ sung các Salesman có Backlog nhưng chưa có Doanh số (mới bán đơn đầu tiên năm nay và chưa giao)
+            # Nếu cần thiết thì thêm code ở đây để append vào data. 
+            # Nhưng thường SP_SALES_PERFORMANCE đã FULL OUTER JOIN nên sẽ có đủ.
+
             return data
 
         except Exception as e:
-            print(f"Lỗi khi lấy KPI Sales (SP): {e}")
+            current_app.logger.error(f"Lỗi khi lấy KPI Sales (SP): {e}")
+            import traceback
+            traceback.print_exc()
             return []
 
     def get_order_detail_drilldown(self, sorder_id):
@@ -62,7 +114,7 @@ class SalesService:
                 detail['ThanhTien'] = f"{safe_float(detail.get('ThanhTien')):,.0f}"
             return details
         except Exception as e:
-            print(f"LỖI SQL DRILLDOWN DHB {sorder_id}: {e}")
+            current_app.logger.error(f"LỖI SQL DRILLDOWN DHB {sorder_id}: {e}")
             return []
 
     def get_client_details_for_salesman(self, employee_id, current_year):
@@ -287,8 +339,33 @@ class SalesService:
             return final_list, summary
             
         except Exception as e:
-            print(f"Lỗi get_profit_analysis: {e}")
+            current_app.logger.error(f"Lỗi get_profit_analysis: {e}")
             return [], {'Revenue': 0, 'COGS': 0, 'GrossProfit': 0, 'AvgMargin': 0}
+    
+    def get_sales_backlog(self, date_from, date_to, salesman_id=None):
+        if salesman_id == '': salesman_id = None
+        query = "EXEC Titan_Get_SalesBacklog ?, ?, ?"
+        try:
+            data = self.db.get_data(query, (date_from, date_to, salesman_id))
+            
+            # Tính toán Summary
+            total_backlog = sum(d['GiaTriDonHang'] for d in data)
+            shipped_uninvoiced = sum(d['GiaTriDaGiao_ChuaHD'] for d in data)
+            
+            # [FIX] Logic đơn giản hóa: Chưa Giao = Tổng - Đã Giao
+            # Điều này đảm bảo 3 ô KPI cộng trừ luôn khớp nhau tuyệt đối
+            pending_delivery = total_backlog - shipped_uninvoiced
+            
+            summary = {
+                'total_backlog': total_backlog,
+                'shipped_uninvoiced': shipped_uninvoiced,
+                'pending_delivery': pending_delivery,
+                'count': len(set(d['OrderID'] for d in data))
+            }
+            return {'details': data, 'summary': summary}
+        except Exception as e:
+            current_app.logger.error(f"Lỗi Sales Backlog: {e}")
+            return {'details': [], 'summary': {}}
 
 class InventoryService:
     def __init__(self, db_manager: DBManager):
@@ -305,7 +382,7 @@ class InventoryService:
             raw_data = self.db.get_data(sp_query, (None,))
             if raw_data: aging_data = raw_data
         except Exception as e:
-            print(f"Lỗi SP Aging: {e}")
+            current_app.logger.error(f"Lỗi SP Aging: {e}")
             return [], {'total_inventory': 0, 'total_quantity': 0, 'total_new_6_months': 0, 'total_over_2_years': 0, 'total_clc_value': 0}
 
         # [CONFIG]: ERP_IT1302
@@ -317,7 +394,7 @@ class InventoryService:
                 for row in i04_data:
                     i04_map[row['InventoryID']] = row['I04ID'] if row['I04ID'] and row['I04ID'].strip() else 'KHÁC'
         except Exception as e:
-            print(f"Lỗi mapping I04ID: {e}")
+            current_app.logger.error(f"Lỗi mapping I04ID: {e}")
 
         # [CONFIG]: TEN_BANG_NOI_DUNG_HD (Lấy tên nhóm I04)
         i04_name_map = {}
@@ -328,7 +405,7 @@ class InventoryService:
                 for row in name_data:
                     i04_name_map[row['LOAI']] = row['TEN']
         except Exception as e:
-            print(f"Lỗi lấy tên nhóm I04: {e}")
+            current_app.logger.error(f"Lỗi lấy tên nhóm I04: {e}")
 
         totals = {'total_inventory': 0, 'total_quantity': 0, 'total_new_6_months': 0, 'total_over_2_years': 0, 'total_clc_value': 0}
         groups = {}
@@ -404,3 +481,5 @@ class InventoryService:
             group['Items'] = sorted(group['Items'], key=lambda i: (i['Risk_CLC_Value'], i['Range_Over_720_V']), reverse=True)
 
         return sorted_groups, totals
+    
+    

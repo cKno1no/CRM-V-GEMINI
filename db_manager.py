@@ -1,11 +1,12 @@
 ﻿# db_manager.py
 
+from flask import current_app
 import pandas as pd
 from sqlalchemy import create_engine, text
 import config
 import time
 import math
-
+import logging  # <--- Thêm dòng này
 # =========================================================================
 # HÀM HELPER XỬ LÝ DỮ LIỆU
 # =========================================================================
@@ -61,7 +62,7 @@ def evaluate_condition(value, operator, threshold):
 class DBManager:
     def __init__(self):
         # KHỞI TẠO SQLALCHEMY ENGINE VỚI CONNECTION POOL
-        print(f"--- Init DB Connection Pool to {config.DB_SERVER} ---")
+        logging.info(f"--- Init DB Connection Pool to {config.DB_SERVER} ---")
         self.engine = create_engine(
             config.SQLALCHEMY_DATABASE_URI,
             pool_size=10,
@@ -101,9 +102,9 @@ class DBManager:
             # Chỉ in mã lỗi dạng ASCII an toàn hoặc encode/replace
             try:
                 error_msg = str(e).encode('utf-8', 'replace').decode('utf-8')
-                print(f"Lỗi get_data (Hybrid): {error_msg}") 
+                current_app.logger.error(f"Lỗi get_data (Hybrid): {error_msg}")
             except:
-                print("Lỗi get_data (Hybrid): (Lỗi Unicode khi in log)")
+                current_app.logger.error("Lỗi get_data (Hybrid): (Lỗi Unicode khi in log)")
                 
             return []
 
@@ -127,7 +128,7 @@ class DBManager:
             conn.commit()
             return True
         except Exception as e:
-            print(f"Lỗi execute_non_query: {e}")
+            current_app.logger.error(f"Lỗi execute_non_query: {e}")
             return False
         finally:
             if conn: conn.close()
@@ -190,7 +191,7 @@ class DBManager:
             return results
 
         except Exception as e:
-            print(f"Lỗi execute_sp_multi: {e}")
+            current_app.logger.error(f"Lỗi execute_sp_multi: {e}")
             return [[]] # Trả về list rỗng an toàn
         finally:
             if conn:
@@ -228,7 +229,7 @@ class DBManager:
             conn.commit()
             return int(row[0]) if row else None
         except Exception as e:
-            print(f"Lỗi log_progress_entry: {e}")
+            current_app.logger.error(f"Lỗi log_progress_entry: {e}")
             return None
         finally:
             if conn: conn.close()

@@ -5,6 +5,9 @@ import os
 import urllib.parse
 from datetime import datetime
 
+
+# Load biến môi trường từ file .env
+
 # =========================================================================
 # 1. CẤU HÌNH HẠ TẦNG (INFRASTRUCTURE)
 # =========================================================================
@@ -16,6 +19,7 @@ DB_PWD = os.getenv('DB_PWD')
 APP_SECRET_KEY = os.getenv('APP_SECRET_KEY')
 if not APP_SECRET_KEY:
     raise ValueError("LỖI: APP_SECRET_KEY không được thiết lập trong biến môi trường hoặc file .env")
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 UPLOAD_FOLDER_PATH = os.path.abspath('attachments')
 UPLOAD_FOLDER = 'path/to/your/attachments' # Cần trỏ đúng đường dẫn thực tế trên Server
@@ -139,7 +143,9 @@ SYSTEM_FEATURES_GROUPS = {
         # --- Đảm bảo 3 dòng này có mặt ---
         'THEME_DARK': 'Kích hoạt: Giao diện Tối (Dark Mode)',
         'THEME_FANTASY': 'Kích hoạt: Giao diện Fantasy (Sci-fi)',
-        'THEME_ADORABLE': 'Kích hoạt: Giao diện Adorable (GenZ)'
+        'THEME_ADORABLE': 'Kích hoạt: Giao diện Adorable (GenZ)',
+        'VIEW_PROFILE': 'Xem Hồ sơ & Góc Flex', # <--- THÊM DÒNG NÀY
+        'USE_CHATBOT': 'Sử dụng Trợ lý AI'
     },
     "2. CRM & BÁO CÁO THỊ TRƯỜNG": {
         'VIEW_PORTAL': 'Truy cập Portal Cá nhân',
@@ -251,6 +257,11 @@ SP_CREATE_COMMISSION = 'dbo.sp_CreateCommissionProposal'
 
 # Widget Portal (Dùng trong portal_service để hiện gợi ý dự phòng ngoài trang chủ)
 SP_REPLENISH_PORTAL = 'dbo.sp_GetPortalReplenishment'
+
+# --- E. BẢNG GAMIFICATION & PROFILE (TITAN OS) ---
+TABLE_TITAN_ITEMS = '[dbo].[TitanOS_SystemItems]'
+TABLE_TITAN_PROFILE = '[dbo].[TitanOS_UserProfile]'
+TABLE_TITAN_INVENTORY = '[dbo].[TitanOS_UserInventory]'
 
 # =========================================================================
 # 3. BỔ SUNG: JOB & SP HỖ TRỢ (Dành cho Scheduled Tasks hoặc Admin Tool)

@@ -1,5 +1,6 @@
 # services/sales_order_approval_service.py
 
+from flask import current_app
 from datetime import datetime
 from db_manager import DBManager, safe_float
 import config
@@ -65,7 +66,7 @@ class SalesOrderApprovalService:
         try:
             orders = self.db.get_data(order_query, tuple(where_params)) 
         except Exception as e:
-            print(f"LỖI TRUY VẤN DUYỆT ĐƠN HÀNG BÁN: {e}")
+            current_app.logger.error(f"LỖI TRUY VẤN DUYỆT ĐƠN HÀNG BÁN: {e}")
             return [] 
             
         if not orders: return []
@@ -77,7 +78,7 @@ class SalesOrderApprovalService:
             if processed_order and processed_order.get('ApprovalResult') is not None:
                 results.append(processed_order)
             else:
-                print(f"CẢNH BÁO: Bỏ qua đơn hàng {order.get('OrderID')} do thiếu ApprovalResult.")
+                current_app.logger.error(f"CẢNH BÁO: Bỏ qua đơn hàng {order.get('OrderID')} do thiếu ApprovalResult.")
         return results
 
     def _check_approval_criteria(self, order, current_user_code):
@@ -204,7 +205,7 @@ class SalesOrderApprovalService:
             details = self.db.get_data(detail_query, (sorder_id,))
             
         except Exception as e:
-            print(f"LỖI SQL Chi tiết DHB {sorder_id}: {e}")
+            current_app.logger.error(f"LỖI SQL Chi tiết DHB {sorder_id}: {e}")
             return []
             
         if not details: return []
@@ -280,7 +281,7 @@ class SalesOrderApprovalService:
         except Exception as e:
             if conn:
                 db.rollback(conn) 
-            print(f"LỖI DUYỆT DHB {order_id}: {e}")
+            current_app.logger.error(f"LỖI DUYỆT DHB {order_id}: {e}")
             return {"success": False, "message": f"Duyệt thất bại. Lỗi hệ thống: {str(e)}"}
         finally:
             if conn:

@@ -1,5 +1,6 @@
 # D:\CRM STDD\routes.py
 
+from flask import current_app
 import config 
 # --- SỬA LỖI: Thêm 'jsonify' vào dòng import ---
 from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify
@@ -21,8 +22,8 @@ def sales_lookup_dashboard():
     ROUTE: Dashboard tra cứu thông tin bán hàng.
     """
     
-    lookup_service  = current_app.lookup_service 
-    db_manager = current_app.db_manager
+    from app import lookup_service 
+    from app import db_manager # <-- THÊM VÀO ĐÂY
     # 1. Lấy thông tin người dùng
     user_code = session.get('user_code', 'GUEST') 
     
@@ -56,7 +57,7 @@ def sales_lookup_dashboard():
                 ip_address=request.remote_addr # Tạm dùng remote_addr
             )
         except Exception as e:
-            print(f"Lỗi ghi log sales_lookup: {e}")
+            current_app.logger.error(f"Lỗi ghi log sales_lookup: {e}")
         # --- KẾT THÚC GHI LOG ---
 
 
@@ -89,7 +90,7 @@ def api_quick_lookup():
     """
     API: Tra cứu nhanh Tồn kho/Giá QĐ (Không lọc KH)
     """
-    lookup_service  = current_app.lookup_service 
+    from app import lookup_service 
     
     item_search = request.form.get('item_search', '').strip()
     
@@ -100,7 +101,7 @@ def api_quick_lookup():
         data = lookup_service.get_quick_lookup_data(item_search)
         return jsonify(data)
     except Exception as e:
-        print(f"LỖI API quick_lookup: {e}")
+        current_app.logger.error(f"LỖI API quick_lookup: {e}")
         return jsonify({'error': f'Lỗi server: {e}'}), 500
 
 @sales_bp.route('/api/multi_lookup', methods=['POST'])
@@ -108,8 +109,8 @@ def api_multi_lookup():
     """
     API: Tra cứu nhiều mã (ngăn cách bằng dấu phẩy)
     """
-    lookup_service  = current_app.lookup_service 
-    db_manager = current_app.db_manager # <-- THÊM VÀO ĐÂY
+    from app import lookup_service 
+    from app import db_manager # <-- THÊM VÀO ĐÂY
     item_search = request.form.get('item_search', '').strip()
     
     if not item_search:
@@ -129,7 +130,7 @@ def api_multi_lookup():
         data = lookup_service.get_multi_lookup_data(item_search)
         return jsonify(data)
     except Exception as e:
-        print(f"LỖI API multi_lookup: {e}")
+        current_app.logger.error(f"LỖI API multi_lookup: {e}")
         return jsonify({'error': f'Lỗi server: {e}'}), 500
 
 @sales_bp.route('/api/backorder_details/<string:inventory_id>', methods=['GET'])
@@ -137,10 +138,8 @@ def api_get_backorder_details(inventory_id):
     """
     API: Lấy chi tiết BackOrder (PO) cho một mã hàng
     """
+    from app import lookup_service, db_manager # Import tại chỗ
     
-    lookup_service = current_app.lookup_service
-    db_manager = current_app.db_manager
-
     if not inventory_id:
         return jsonify({'error': 'Vui lòng cung cấp Mã Mặt hàng.'}), 400
         
@@ -159,5 +158,5 @@ def api_get_backorder_details(inventory_id):
         return jsonify(data)
         
     except Exception as e:
-        print(f"LỖI API backorder_details: {e}")
+        current_app.logger.error(f"LỖI API backorder_details: {e}")
         return jsonify({'error': f'Lỗi server: {e}'}), 500

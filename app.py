@@ -141,6 +141,9 @@ def login():
         if user_data:
             user = user_data[0]
             
+            # --- THIẾT LẬP SESSION ---
+            session.clear() # Xóa sạch session cũ để tránh rác
+            
             # Thiết lập Session
             session['logged_in'] = True
             session.permanent = True
@@ -269,4 +272,6 @@ def index():
 # MAIN
 # =========================================================================
 if __name__ == '__main__':
+    # Chỉ dùng dòng này khi Dev (Code/Sửa lỗi)
+    print("!!! CẢNH BÁO: ĐANG CHẠY CHẾ ĐỘ DEV. KHÔNG DÙNG CHO PRODUCTION !!!")
     app.run(debug=True, host='0.0.0.0', port=5000)

@@ -1,4 +1,5 @@
 # utils.py
+from flask import current_app
 from flask import session, redirect, url_for, flash, request, current_app, jsonify
 from functools import wraps
 import config
@@ -71,7 +72,7 @@ def save_uploaded_files(files):
                 file.save(os.path.join(config.UPLOAD_FOLDER, unique_filename))
                 saved_filenames.append(unique_filename)
             except Exception as e:
-                print(f"Lỗi lưu file {filename_clean}: {e}")
+                current_app.logger.error(f"Lỗi lưu file {filename_clean}: {e}")
                 
     return ', '.join(saved_filenames)
 

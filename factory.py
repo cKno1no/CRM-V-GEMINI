@@ -1,9 +1,15 @@
 # factory.py
-from flask import Flask
+from flask import current_app
+from flask import Flask, session, current_app, request
 from datetime import timedelta
 import os
 import redis
 import config
+from flask_session import Session
+# [NEW] Import Logger Setup
+from logger_setup import setup_production_logging
+from flask_caching import Cache  # <--- IMPORT MỚI
+
 
 # 1. Import DB Manager & Services
 from db_manager import DBManager
@@ -44,12 +50,45 @@ from blueprints.ap_bp import ap_bp
 from blueprints.user_bp import user_bp
 from blueprints.customer_analysis_bp import customer_analysis_bp
 
+# Khởi tạo đối tượng Cache (chưa gắn app)
+cache = Cache()
+
 def create_app():
     """Nhà máy khởi tạo ứng dụng Flask"""
     app = Flask(__name__, static_url_path='/static', static_folder='static')
     
+    # [NEW] KÍCH HOẠT LOGGING NGAY TẠI ĐÂY
+    setup_production_logging(app)
     # Cấu hình App
     app.secret_key = config.APP_SECRET_KEY
+
+    # --- CẤU HÌNH SERVER-SIDE SESSION (FIX LỖI COOKIE TRÀN) ---
+    # CẤU HÌNH SESSION HARD TIMEOUT (3 GIỜ)
+    # =========================================================
+    app.config['SESSION_TYPE'] = 'redis'
+    app.config['SESSION_PERMANENT'] = True  # Bắt buộc True để dùng Lifetime
+    app.config['SESSION_USE_SIGNER'] = True
+    
+    # Cấu hình Redis cho Session (DB 1)
+    app.config['SESSION_REDIS'] = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, db=1)
+    
+    # 1. Thời gian sống của Session: 6 Tiếng
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=6)
+    
+    # 2. [QUAN TRỌNG] Tắt chế độ tự động gia hạn
+    # False: Thời gian đếm ngược KHÔNG được reset khi user thao tác.
+    # User login lúc 8:00 -> Đúng 11:00 sẽ bị đá ra, dù lúc 10:59 đang bấm nút.
+    app.config['SESSION_REFRESH_EACH_REQUEST'] = False 
+
+    # 3. Cấu hình Cookie (Để tránh lỗi đăng nhập chập chờn)
+    app.config['SESSION_COOKIE_NAME'] = 'titan_session'
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SECURE'] = False # Đặt True nếu web chạy https
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    
+    # Khởi tạo Session Interface
+    Session(app)
+
     app.config['UPLOAD_FOLDER'] = config.UPLOAD_FOLDER_PATH
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=3)
 
@@ -64,8 +103,22 @@ def create_app():
         redis_client = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, db=0, decode_responses=True)
         redis_client.ping()
     except Exception as e:
-        print(f"Redis connection failed: {e}")
+        app.logger.error(f"Redis connection failed: {e}")
         redis_client = None
+
+    # --- CẤU HÌNH CACHE VỚI REDIS ---
+    app.config['CACHE_TYPE'] = 'RedisCache'
+    app.config['CACHE_REDIS_HOST'] = config.REDIS_HOST
+    app.config['CACHE_REDIS_PORT'] = config.REDIS_PORT
+    app.config['CACHE_REDIS_DB'] = 2  # Dùng DB số 2 (để tách biệt với Session DB 1)
+    app.config['CACHE_DEFAULT_TIMEOUT'] = 300  # Mặc định cache 5 phút
+    app.config['CACHE_KEY_PREFIX'] = 'titan_cache_' # Tiền tố để dễ quản lý key
+
+    # Kích hoạt Cache cho App
+    cache.init_app(app)
+    
+    # Gắn cache vào app để có thể gọi từ nơi khác (current_app.cache)
+    app.cache = cache
 
     # 3. KHỞI TẠO SERVICES (DEPENDENCY INJECTION)
     db_manager = DBManager()
@@ -96,10 +149,12 @@ def create_app():
     app.user_service = UserService(db_manager)
     
     app.chatbot_service = ChatbotService(
-        app.lookup_service, 
-        app.customer_service, 
-        app.delivery_service, 
-        redis_client
+        app.lookup_service,
+        app.customer_service,
+        app.delivery_service,
+        app.task_service,    # <--- THÊM DÒNG NÀY
+        app.config,
+        db_manager           # <--- THÊM DÒNG NÀY (để query trực tiếp)
     )
 
     # 4. ĐĂNG KÝ BLUEPRINTS
@@ -122,27 +177,57 @@ def create_app():
     # 5. Inject User Context
     from flask import session
     @app.context_processor
+    # 5. Inject User Context (CẬP NHẬT)
     def inject_user():
         def check_permission(feature_code):
             user_role = session.get('user_role', '').strip().upper()
-            # 1. ADMIN luôn đúng (Quyền tối thượng)
-            if user_role == config.ROLE_ADMIN: 
-                return True
-            
-            # 2. Kiểm tra danh sách quyền
+            if user_role == config.ROLE_ADMIN: return True
             permissions = session.get('permissions', [])
             return feature_code in permissions
 
-        return dict(current_user={
+        # Lấy thông tin cơ bản
+        user_code = session.get('user_code')
+        user_stats = {'Level': 1, 'CurrentXP': 0, 'next_level_xp': 1000, 'TitanCoins': 0, 'AvatarUrl': ''}
+        unlocked_themes = ['light'] # Mặc định ai cũng có Light
+        
+        # [NEW] LẤY DỮ LIỆU GAMIFICATION NẾU ĐÃ LOGIN
+        if user_code:
+            try:
+                # Gọi Service lấy Stats
+                stats = current_app.user_service.get_user_stats(user_code)
+                if stats: user_stats = stats
+                
+                # Gọi Service lấy Inventory (để check Theme)
+                inventory = current_app.user_service.get_user_inventory(user_code)
+                if inventory:
+                    # Lọc ra danh sách mã các món đồ đã sở hữu
+                    owned_items = [item['ItemCode'] for item in inventory]
+                    unlocked_themes.extend(owned_items)
+            except Exception as e:
+                current_app.logger.error(f"Lỗi load User Context: {e}")
+
+        # Tính toán danh hiệu (Title) dựa trên Level
+        lvl = user_stats.get('Level', 1)
+        if lvl < 5: title = "Newbie (Tập sự)"
+        elif lvl < 20: title = "Junior (Nhân viên)"
+        elif lvl < 30: title = "Senior (Chuyên viên)"
+        else: title = "Master (Doanh nhân)"
+
+        user_data = {
             'is_authenticated': session.get('logged_in', False),
-            'usercode': session.get('user_code'),
+            'usercode': user_code,
             'username': session.get('username'),
             'shortname': session.get('user_shortname'),
             'role': session.get('user_role'),
-            'cap_tren': session.get('cap_tren'),
-            'theme': session.get('theme', 'light'), # <--- THÊM DÒNG NÀY
+            'theme': session.get('theme', 'light'),
             'bo_phan': session.get('bo_phan'),
-            'can': check_permission # Helper mới
-        })
+            'can': check_permission,
+            # --- DỮ LIỆU GAME MỚI ---
+            'stats': user_stats,
+            'title': title,
+            'unlocked_themes': unlocked_themes
+        }
+
+        return dict(user_context=user_data, current_user=user_data)
 
     return app
