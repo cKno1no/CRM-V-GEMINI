@@ -1,5 +1,6 @@
 # blueprints/executive_bp.py
 
+from flask import current_app
 from flask import Blueprint, render_template, session, redirect, url_for, flash, request, jsonify, current_app
 from utils import login_required, permission_required, get_user_ip # Import thêm
 from datetime import datetime
@@ -40,7 +41,7 @@ def ceo_cockpit_dashboard():
         pending_actions = exec_service.get_pending_actions_count()
         top_sales = exec_service.get_top_sales_leaderboard(current_year)
     except Exception as e:
-        print(f"Lỗi load chart data: {e}")
+        current_app.logger.error(f"Lỗi load chart data: {e}")
         # Fallback data rỗng để không crash trang
         profit_chart_data = {}
         inventory_chart_data = {}

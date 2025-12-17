@@ -1,3 +1,4 @@
+from flask import current_app
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
 # FIX: Chỉ import login_required từ utils.py
 from utils import login_required, permission_required # Import thêm
@@ -72,7 +73,7 @@ def task_dashboard():
                         get_user_ip()
                     )
                 except Exception as e:
-                    print(f"Lỗi ghi log TASK_CREATE: {e}")
+                    current_app.logger.error(f"Lỗi ghi log TASK_CREATE: {e}")
                     
                 flash("Task mới đã được tạo thành công!", 'success')
             else:
@@ -179,7 +180,7 @@ def api_log_task_progress():
             return jsonify({'success': False, 'message': 'Lỗi CSDL khi ghi Log.'}), 500
 
     except Exception as e:
-        print(f"LỖI API LOG PROGRESS: {e}")
+        current_app.logger.error(f"LỖI API LOG PROGRESS: {e}")
         return jsonify({'success': False, 'message': f'Lỗi hệ thống: {str(e)}'}), 500
 
 @task_bp.route('/api/task/history/<int:task_id>', methods=['GET'])
@@ -194,7 +195,7 @@ def api_get_task_history(task_id):
         logs = task_service.get_task_history_logs(task_id)
         return jsonify(logs)
     except Exception as e:
-        print(f"LỖI API GET LOG HISTORY: {e}")
+        current_app.logger.error(f"LỖI API GET LOG HISTORY: {e}")
         return jsonify({'error': 'Lỗi khi tải lịch sử.'}), 500
 
 @task_bp.route('/api/task/add_feedback', methods=['POST'])
@@ -223,7 +224,7 @@ def api_add_supervisor_feedback():
             return jsonify({'success': False, 'message': 'Lỗi CSDL khi lưu phản hồi.'}), 500
 
     except Exception as e:
-        print(f"LỖI API ADD FEEDBACK: {e}")
+        current_app.logger.error(f"LỖI API ADD FEEDBACK: {e}")
         return jsonify({'success': False, 'message': f'Lỗi hệ thống: {str(e)}'}), 500
 
 @task_bp.route('/api/task/toggle_priority/<int:task_id>', methods=['POST'])
@@ -268,7 +269,7 @@ def api_get_eligible_helpers():
         formatted_helpers = [{'code': h['USERCODE'], 'name': f"{h['USERCODE']} - {h['SHORTNAME']}"} for h in helpers]
         return jsonify(formatted_helpers)
     except Exception as e:
-        print(f"Lỗi API lấy danh sách helper: {e}")
+        current_app.logger.error(f"Lỗi API lấy danh sách helper: {e}")
         return jsonify([]), 500
 
 @task_bp.route('/api/task/update', methods=['POST'])
@@ -345,5 +346,5 @@ def api_task_recent_updates():
         # Trả về list objects chứa TaskID và LastUpdated
         return jsonify(updated_tasks) 
     except Exception as e:
-        print(f"LỖI API GET RECENT UPDATES: {e}")
+        current_app.logger.error(f"LỖI API GET RECENT UPDATES: {e}")
         return jsonify({'error': 'Lỗi khi tải cập nhật gần nhất.'}), 500

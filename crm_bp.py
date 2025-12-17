@@ -1,3 +1,4 @@
+from flask import current_app
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
 # FIX: Import login_required từ app.py
 from utils import login_required, truncate_content, save_uploaded_files, permission_required # Import thêm
@@ -158,7 +159,7 @@ def dashboard_reports():
             session.get('user_code'), 'VIEW_REPORT_DASHBOARD', 'INFO', details, get_user_ip()
         )
     except Exception as e:
-        print(f"Lỗi ghi log VIEW_REPORT_DASHBOARD: {e}")
+        current_app.logger.error(f"Lỗi ghi log VIEW_REPORT_DASHBOARD: {e}")
 
     return render_template(
         'dashboard.html', 
@@ -239,7 +240,7 @@ def report_detail_page(report_stt):
                 get_user_ip()
             )
         except Exception as e:
-            print(f"Lỗi ghi log VIEW_REPORT_DETAIL: {e}")
+            current_app.logger.error(f"Lỗi ghi log VIEW_REPORT_DETAIL: {e}")
 
         report = report_data[0]
         # FIX: Gọi trực tiếp hàm đã import, KHÔNG dùng current_app.save_uploaded_files
@@ -333,7 +334,7 @@ def nhap_lieu():
             else:
                 message = "error: Thất bại khi thực thi INSERT SQL."
         except Exception as e:
-            print(f"LỖI TẠO BẢN GHI: {e}")
+            current_app.logger.error(f"LỖI TẠO BẢN GHI: {e}")
             message = f"error: Lỗi hệ thống SQL: {e}"
 
     return render_template(
@@ -487,5 +488,50 @@ def api_get_nhansu_list(ma_doi_tuong):
         data = db_manager.get_data(query, (ma_doi_tuong,))
         return jsonify(data if data else [])
     except Exception as e:
-        print(f"Lỗi API Nhân sự: {e}")
+        current_app.logger.error(f"Lỗi API Nhân sự: {e}")
         return jsonify([])
+    
+
+@crm_bp.route('/sales/backlog', methods=['GET', 'POST'])
+@login_required
+def sales_backlog_page():
+    sales_service = current_app.sales_service
+    task_service = current_app.task_service
+    
+    user_role = session.get('user_role', '').strip().upper()
+    user_code = session.get('user_code')
+    
+    today = datetime.now()
+    default_from = (today - timedelta(days=90)).strftime('%Y-%m-%d')
+    default_to = today.strftime('%Y-%m-%d')
+    
+    date_from = request.form.get('date_from') or request.args.get('date_from') or default_from
+    date_to = request.form.get('date_to') or request.args.get('date_to') or default_to
+    
+    # Logic Phân Quyền Lọc (Giữ nguyên)
+    salesman_list = []
+    selected_salesman = ''
+    
+    if user_role == config.ROLE_ADMIN:
+        salesman_list = task_service.get_eligible_helpers(division=None)
+        selected_salesman = request.form.get('salesman_id') or request.args.get('salesman_id') or ''
+    else:
+        selected_salesman = user_code
+
+    # Gọi Service (Lấy toàn bộ)
+    result = sales_service.get_sales_backlog(date_from, date_to, selected_salesman)
+    all_details = result['details']
+    summary = result['summary']
+
+    # [CHANGE] KHÔNG CẮT LIST NỮA. GỬI TOÀN BỘ XUỐNG CHO DATATABLES XỬ LÝ
+    
+    return render_template(
+        'sales_backlog.html',
+        data=all_details,  # Gửi full list
+        summary=summary,
+        date_from=date_from,
+        date_to=date_to,
+        salesman_list=salesman_list,
+        selected_salesman=selected_salesman,
+        is_admin=(user_role == config.ROLE_ADMIN)
+    )

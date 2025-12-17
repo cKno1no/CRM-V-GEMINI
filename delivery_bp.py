@@ -1,3 +1,4 @@
+from flask import current_app
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
 # FIX: Chỉ import login_required từ utils.py
 from utils import login_required, permission_required # Import thêm
@@ -58,7 +59,7 @@ def delivery_dashboard():
             "Truy cập Bảng Điều phối Giao vận", get_user_ip()
         )
     except Exception as e: 
-        print(f"Lỗi log: {e}")
+        current_app.logger.error(f"Lỗi log: {e}")
 
     return render_template(
         'delivery_dashboard.html',
@@ -117,7 +118,7 @@ def api_delivery_set_day():
             return jsonify({'success': False, 'message': 'Lỗi CSDL khi cập nhật Kế hoạch.'}), 500
 
     except Exception as e:
-        print(f"LỖI API set_day: {e}")
+        current_app.logger.error(f"LỖI API set_day: {e}")
         return jsonify({'success': False, 'message': f'Lỗi hệ thống: {str(e)}'}), 500
 
 @delivery_bp.route('/api/delivery/set_status', methods=['POST'])
@@ -160,7 +161,7 @@ def api_delivery_set_status():
             return jsonify({'success': False, 'message': 'Lỗi CSDL khi cập nhật Trạng thái.'}), 500
 
     except Exception as e:
-        print(f"LỖI API set_status: {e}")
+        current_app.logger.error(f"LỖI API set_status: {e}")
         return jsonify({'success': False, 'message': f'Lỗi hệ thống: {str(e)}'}), 500
 
 @delivery_bp.route('/api/delivery/get_items/<string:voucher_id>', methods=['GET'])

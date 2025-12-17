@@ -1,3 +1,4 @@
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 # FIX: Chỉ import các helper từ utils.py (Đã được định nghĩa sớm và không gây vòng lặp)
 from utils import login_required, truncate_content, permission_required # Import thêm 
@@ -21,18 +22,56 @@ def get_user_ip():
 
 # [ROUTES]
 
+# --- HÀM TẠO KEY CACHE (Đặt ngay trên route sales_dashboard) ---
+def make_dashboard_cache_key():
+    """Tạo key duy nhất cho mỗi User + Bộ lọc ngày"""
+    user_code = session.get('user_code', 'anon')
+    # Lấy tham số từ URL (GET) hoặc Form (POST) để cache đúng dữ liệu đang xem
+    # Nếu là POST (Lọc form), ta lấy từ form, nếu GET lấy từ args hoặc mặc định
+    if request.method == 'POST':
+        date_from = request.form.get('date_from', 'def_from')
+        date_to = request.form.get('date_to', 'def_to')
+        salesman = request.form.get('salesman_id', 'all')
+    else:
+        date_from = request.args.get('date_from', 'def_from')
+        date_to = request.args.get('date_to', 'def_to')
+        salesman = request.args.get('salesman_id', 'all')
+        
+    # Key ví dụ: sales_dash_KD010_2025-01-01_2025-01-31_all
+    return f"sales_dash_{user_code}_{date_from}_{date_to}_{salesman}"
+
 @kpi_bp.route('/sales_dashboard', methods=['GET', 'POST'])
 @login_required
 @permission_required('VIEW_SALES_DASHBOARD') # Áp dụng quyền mới
 def sales_dashboard():
-    """ROUTE: Bảng Tổng hợp Hiệu suất Sales."""
+    """ROUTE: Bảng Tổng hợp Hiệu suất Sales (ĐÃ CÓ CACHE)"""
+    
+    # 1. TẠO KEY VÀ KIỂM TRA CACHE
+    # Chỉ cache khi request là GET (xem mặc định) hoặc POST (Lọc).
+    # Tuy nhiên, cẩn thận với Flash message, cache HTML sẽ lưu luôn flash message cũ.
+    # Giải pháp an toàn nhất cho Dashboard nặng: Cache DỮ LIỆU TÍNH TOÁN, không cache HTML.
+    
+    cache_key = make_dashboard_cache_key()
+    
+    # Thử lấy dữ liệu đã tính toán từ Redis
+    # current_app.cache được lấy từ factory đã setup
+    cached_data = current_app.cache.get(cache_key)
+    
+    if cached_data:
+        # HIT CACHE: Có dữ liệu rồi -> Render ngay lập tức
+        current_app.logger.info(f"CACHE HIT: {cache_key}")
+        # Giải nén dữ liệu từ cache và return template
+        return render_template('sales_dashboard.html', **cached_data)
+
+    # =========================================================
+    # MISS CACHE: Nếu không có cache, chạy logic tính toán cũ
+    # =========================================================
     
     sales_service = current_app.sales_service
     db_manager = current_app.db_manager
     
     current_year = datetime.now().year
-    DIVISOR = 1000000.0 
-
+    
     user_role = session.get('user_role', '').strip().upper()
     is_admin = (user_role == config.ROLE_ADMIN) 
     user_code = session.get('user_code')
@@ -77,6 +116,25 @@ def sales_dashboard():
         'PendingOrdersAmount': total_pending_orders_amount_raw
     }
 
+    # =========================================================
+    # LƯU VÀO CACHE TRƯỚC KHI TRẢ VỀ
+    # =========================================================
+    
+    # Đóng gói toàn bộ biến cần thiết cho template vào 1 dictionary
+    render_context = {
+        'summary': summary_data,
+        'current_year': current_year,
+        'kpi_summary': kpi_summary,
+        'total_registered_sales': total_registered_sales_raw,
+        'total_monthly_sales': total_monthly_sales_raw,
+        'total_ytd_sales': total_ytd_sales_raw,
+        'total_orders': total_orders_raw,
+        'total_pending_orders_amount': total_pending_orders_amount_raw
+    }
+    
+    # Lưu vào Redis trong 6 tiếng
+    current_app.cache.set(cache_key, render_context, timeout=21600)
+
     # 4. Ghi Log
     try:
         db_manager.write_audit_log(
@@ -85,24 +143,10 @@ def sales_dashboard():
             get_user_ip()
         )
     except Exception as e:
-        print(f"Lỗi ghi log: {e}")
+        current_app.logger.error(f"Lỗi ghi log: {e}")
         
     # 5. Render Template
-    return render_template(
-        'sales_dashboard.html', 
-        summary=summary_data,
-        current_year=current_year,
-        
-        # Truyền biến kpi_summary đã tạo ở bước 3
-        kpi_summary=kpi_summary, 
-        
-        # Các biến phụ (nếu template cũ còn dùng)
-        total_registered_sales=total_registered_sales_raw,
-        total_monthly_sales=total_monthly_sales_raw,
-        total_ytd_sales=total_ytd_sales_raw,
-        total_orders=total_orders_raw,
-        total_pending_orders_amount=total_pending_orders_amount_raw
-    )
+    return render_template('sales_dashboard.html', **render_context)
 
 @kpi_bp.route('/sales_detail/<string:employee_id>', methods=['GET'])
 @login_required
@@ -141,7 +185,7 @@ def sales_detail(employee_id):
             get_user_ip()
         )
     except Exception as e:
-        print(f"Lỗi ghi log VIEW_SALES_DETAIL: {e}")
+        current_app.logger.error(f"Lỗi ghi log VIEW_SALES_DETAIL: {e}")
 
     return render_template(
         'sales_details.html', 
@@ -155,15 +199,45 @@ def sales_detail(employee_id):
         current_year=current_year
     )
 
+def make_realtime_cache_key():
+    """Key phụ thuộc vào User đang xem và Filter Salesman họ chọn"""
+    user_code = session.get('user_code', 'anon')
+    
+    # Lấy tham số filter (từ POST hoặc GET)
+    if request.method == 'POST':
+        salesman_filter = request.form.get('salesman_filter', 'all')
+    else:
+        # Nếu GET (mặc định vào trang), filter có thể rỗng
+        salesman_filter = request.args.get('salesman_filter', 'all')
+        
+    # Key ví dụ: realtime_KD010_all_2025
+    return f"realtime_{user_code}_{salesman_filter}_{datetime.now().year}"
+
 @kpi_bp.route('/realtime_dashboard', methods=['GET', 'POST'])
 @login_required
 @permission_required('VIEW_REALTIME_KPI') # Áp dụng quyền mới
 def realtime_dashboard():
-    """ROUTE: Dashboard KPI Bán hàng Thời gian thực."""
+    """ROUTE: Dashboard KPI Bán hàng Thời gian thực (CACHE 60s)."""
     
-    # FIX: Import DBManager Cục bộ
-    db_manager  = current_app.db_manager 
+    # =========================================================
+    # 1. KIỂM TRA CACHE
+    # =========================================================
+    cache_key = make_realtime_cache_key()
+    
+    # Thử lấy dữ liệu từ Redis
+    cached_data = current_app.cache.get(cache_key)
+    
+    if cached_data:
+        # HIT CACHE: Có dữ liệu -> Render ngay (Siêu nhanh)
+        # Vì là realtime nên log mức debug hoặc info tùy bạn
+        # current_app.logger.info(f"REALTIME CACHE HIT: {cache_key}")
+        return render_template('realtime_dashboard.html', **cached_data)
 
+    # =========================================================
+    # 2. MISS CACHE: TÍNH TOÁN DỮ LIỆU (LOGIC CŨ)
+    # =========================================================
+    
+    db_manager = current_app.db_manager 
 
     current_year = datetime.now().year
     user_division = session.get('division')
@@ -181,68 +255,86 @@ def realtime_dashboard():
         else:
             selected_salesman = None
     else:
-        # Nếu không phải Admin, chỉ thấy dữ liệu của mình
         selected_salesman = user_code
         
     users_data = []
     if is_admin:
-        # Thêm điều kiện lọc Division vào query_users
         query_users = f"""
         SELECT [USERCODE], [USERNAME], [SHORTNAME] 
         FROM {config.TEN_BANG_NGUOI_DUNG} 
         WHERE [PHONG BAN] IS NOT NULL 
         AND RTRIM([PHONG BAN]) != '9. DU HOC'
-        AND [Division] = ?  -- Thêm dòng này
+        AND [Division] = ? 
         ORDER BY [SHORTNAME] 
         """
         users_data = db_manager.get_data(query_users, (user_division,))
         
     salesman_name = "TẤT CẢ NHÂN VIÊN"
     if selected_salesman and selected_salesman.strip():
-        # Lấy tên salesman đã chọn
         name_data = db_manager.get_data(f"SELECT SHORTNAME FROM {config.TEN_BANG_NGUOI_DUNG} WHERE USERCODE = ?", (selected_salesman,))
         salesman_name = name_data[0]['SHORTNAME'] if name_data else selected_salesman
     
-    # Chuẩn bị tham số cho Stored Procedure
+    # Chuẩn bị tham số cho SP
     salesman_param_for_sp = selected_salesman.strip() if selected_salesman else None
     sp_params = (salesman_param_for_sp, current_year)
     
-    # Gọi Stored Procedure trả về 5 bộ kết quả
+    # Gọi SP (Nặng)
     all_results = db_manager.execute_sp_multi(config.SP_GET_REALTIME_KPI, sp_params)
 
     if not all_results or len(all_results) < 5:
-        flash("Lỗi tải dữ liệu: Không đủ 5 bộ kết quả từ Stored Procedure. Vui lòng kiểm tra SP.", 'danger')
-        all_results = [[]] * 5
-        
-    kpi_summary = all_results[0][0] if all_results[0] else {} # Kết quả đầu tiên là KPI Summary
-    pending_orders = all_results[1]
-    top_orders = all_results[2]
-    top_quotes = all_results[3]
-    upcoming_deliveries = all_results[4]
+        flash("Lỗi dữ liệu: SP không trả về đủ 5 bảng kết quả.", 'warning')
+        kpi_summary = {}
+        pending_orders = []
+        top_orders = []
+        top_quotes = []
+        upcoming_deliveries = []
+    else:
+        kpi_summary = all_results[0][0] if all_results[0] else {}
+        pending_orders = all_results[1] if all_results[1] else [] 
+        top_orders = all_results[2] if all_results[2] else []
+        top_quotes = all_results[3] if all_results[3] else []
+        upcoming_deliveries = all_results[4] if all_results[4] else []
+    
+    # Đồng bộ số liệu Backlog (Logic Fix lệch số)
+    sales_service = current_app.sales_service
+    start_date = f"{current_year}-01-01"
+    end_date = datetime.now().strftime('%Y-%m-%d')
 
-    # LOG VIEW_REALTIME_DASHBOARD (BỔ SUNG)
     try:
-        db_manager.write_audit_log(
-            user_code, 'VIEW_REALTIME_DASHBOARD', 'INFO', 
-            f"Truy cập Dashboard Realtime (Filter: {selected_salesman or 'ALL'})", 
-            get_user_ip()
-        )
-    except Exception as e:
-        print(f"Lỗi ghi log VIEW_REALTIME_DASHBOARD: {e}")
+        backlog_data = sales_service.get_sales_backlog(start_date, end_date, salesman_param_for_sp)
         
-    return render_template(
-        'realtime_dashboard.html', 
-        kpi_summary=kpi_summary, 
-        pending_orders=pending_orders, 
-        top_orders=top_orders,
-        top_quotes=top_quotes,
-        upcoming_deliveries=upcoming_deliveries,
-        users=users_data,
-        selected_salesman=selected_salesman,
-        salesman_name=salesman_name,
-        current_year=current_year,
-        is_admin=is_admin
-    )
+        real_pending_value = backlog_data['summary']['total_backlog']
+        real_pending_count = backlog_data['summary']['count']
+        
+        if kpi_summary:
+            kpi_summary['PendingValue'] = real_pending_value
+            kpi_summary['PendingOrdersAmount'] = real_pending_value 
+            kpi_summary['PendingCount'] = real_pending_count
+    except Exception as e:
+        current_app.logger.error(f"Lỗi đồng bộ Backlog Realtime: {e}")
+
+    # =========================================================
+    # 3. LƯU CACHE VÀ RETURN
+    # =========================================================
+    
+    # Đóng gói dữ liệu vào Dictionary context
+    render_context = {
+        'kpi_summary': kpi_summary,
+        'pending_orders': pending_orders,
+        'top_orders': top_orders,
+        'top_quotes': top_quotes,
+        'upcoming_deliveries': upcoming_deliveries,
+        'users': users_data,
+        'selected_salesman': selected_salesman,
+        'salesman_name': salesman_name,
+        'current_year': current_year,
+        'is_admin': is_admin
+    }
+    
+    # Lưu Cache trong 6 tiếng (Vì là Realtime nên time ngắn)
+    current_app.cache.set(cache_key, render_context, timeout=18600)
+    
+    return render_template('realtime_dashboard.html', **render_context)
 
 @kpi_bp.route('/inventory_aging', methods=['GET', 'POST'])
 @login_required
@@ -281,7 +373,7 @@ def inventory_aging_dashboard():
             get_user_ip()
         )
     except Exception as e:
-        print(f"Lỗi ghi log VIEW_INVENTORY_AGING: {e}")
+        current_app.logger.error(f"Lỗi ghi log VIEW_INVENTORY_AGING: {e}")
 
     return render_template(
         'inventory_aging.html', 
@@ -338,7 +430,7 @@ def ar_aging_dashboard():
             get_user_ip()
         )
     except Exception as e:
-        print(f"Lỗi ghi log VIEW_AR_AGING: {e}")
+        current_app.logger.error(f"Lỗi ghi log VIEW_AR_AGING: {e}")
 
     return render_template(
         'ar_aging.html', 
@@ -391,7 +483,7 @@ def ar_aging_detail_dashboard():
             get_user_ip()
         )
     except Exception as e:
-        print(f"Lỗi ghi log VIEW_AR_AGING_DETAIL: {e}")
+        current_app.logger.error(f"Lỗi ghi log VIEW_AR_AGING_DETAIL: {e}")
 
     # Tính Subtotal cho Nợ Quá hạn (Yêu cầu 1)
     total_overdue = sum(row.get('Debt_Total_Overdue', 0) for row in aging_details)
@@ -454,7 +546,7 @@ def ar_aging_detail_single_customer():
             get_user_ip() 
         )
     except Exception as e:
-        print(f"Lỗi ghi log VIEW_AR_AGING_DETAIL_SINGLE: {e}")
+        current_app.logger.error(f"Lỗi ghi log VIEW_AR_AGING_DETAIL_SINGLE: {e}")
 
     return render_template(
         'ar_aging_detail_single.html', 

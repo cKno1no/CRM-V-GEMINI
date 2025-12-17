@@ -1,3 +1,4 @@
+from flask import current_app
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
 # FIX: Chỉ import các helper từ utils.py (và get_user_ip nếu nó được chuyển từ app.py)
 from utils import login_required, permission_required, get_user_ip # Import thêm
@@ -36,11 +37,15 @@ def quote_approval_dashboard():
         
     quotes_for_review = approval_service.get_quotes_for_approval(user_code, date_from_str, date_to_str)
     
+    # [FIX] Lấy user_division từ session
+    user_division = session.get('user_division') 
+
     salesman_list = []
     try:
+        # Nếu user là Admin/GM thì division có thể là None để lấy tất cả (tùy logic của get_eligible_helpers)
         salesman_list = task_service.get_eligible_helpers(division=user_division)
     except Exception as e:
-        print(f"Lỗi tải danh sách NVKD cho Quote Approval: {e}")
+        current_app.logger.error(f"Lỗi tải danh sách NVKD cho Quote Approval: {e}")
 
     return render_template(
         'quote_approval.html',
@@ -123,7 +128,7 @@ def quick_approval_form():
             ip_address=get_user_ip()
         )
     except Exception as e:
-        print(f"Lỗi ghi log VIEW_QUICK_APPROVAL: {e}")
+        current_app.logger.error(f"Lỗi ghi log VIEW_QUICK_APPROVAL: {e}")
 
     return render_template(
         'quick_approval_form.html', 
@@ -228,7 +233,7 @@ def api_approve_order():
             return jsonify({'success': False, 'message': result['message']}), 400
 
     except Exception as e:
-        print(f"LỖI HỆ THỐNG API DUYỆT DHB: {e}")
+        current_app.logger.error(f"LỖI HỆ THỐNG API DUYỆT DHB: {e}")
         return jsonify({'success': False, 'message': f'Lỗi hệ thống: {str(e)}'}), 500
 
 # API Lấy chi tiết báo giá (SỬA LỖI: Dùng <path:quote_id>)
@@ -243,7 +248,7 @@ def api_get_quote_details(quote_id):
         details = approval_service.get_quote_details(quote_id)
         return jsonify(details)
     except Exception as e:
-        print(f"Lỗi API lấy chi tiết báo giá {quote_id}: {e}")
+        current_app.logger.error(f"Lỗi API lấy chi tiết báo giá {quote_id}: {e}")
         return jsonify({'error': 'Lỗi nội bộ khi truy vấn chi tiết.'}), 500
 
 # API LẤY CHI TIẾT COST OVERRIDE (API BỊ THIẾU GÂY LỖI 404)
@@ -259,7 +264,7 @@ def api_get_quote_cost_details(quote_id):
         details = approval_service.get_quote_cost_override_details(quote_id)
         return jsonify(details)
     except Exception as e:
-        print(f"Lỗi API lấy chi tiết Cost Override {quote_id}: {e}")
+        current_app.logger.error(f"Lỗi API lấy chi tiết Cost Override {quote_id}: {e}")
         return jsonify({'error': 'Lỗi nội bộ khi truy vấn chi tiết Cost Override.'}), 500
 
 @approval_bp.route('/api/get_order_details/<string:sorder_id>', methods=['GET'])
@@ -274,7 +279,7 @@ def api_get_order_details(sorder_id):
         details = order_approval_service.get_order_details(sorder_id)
         return jsonify(details)
     except Exception as e:
-        print(f"Lỗi API lấy chi tiết DHB {sorder_id}: {e}")
+        current_app.logger.error(f"Lỗi API lấy chi tiết DHB {sorder_id}: {e}")
         return jsonify({'error': 'Lỗi nội bộ khi truy vấn chi tiết.'}), 500
 
 @approval_bp.route('/api/quote/update_salesman', methods=['POST'])
@@ -341,7 +346,7 @@ def api_save_quote_cost_override():
             return jsonify({'success': False, 'message': result['message']}), 500
             
     except Exception as e:
-        print(f"LỖI API LƯU COST OVERRIDE: {e}")
+        current_app.logger.error(f"LỖI API LƯU COST OVERRIDE: {e}")
         return jsonify({'success': False, 'message': f'Lỗi hệ thống: {str(e)}'}), 500
 # ==================================
 @approval_bp.route('/quote_input_table', methods=['GET', 'POST'])
@@ -456,5 +461,5 @@ def api_update_quote_status():
         else:
             return jsonify({'success': False, 'message': 'Lỗi SQL'}), 500
     except Exception as e:
-        print(f"Lỗi update quote status: {e}")
+        current_app.logger.error(f"Lỗi update quote status: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500

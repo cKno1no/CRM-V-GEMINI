@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash, current_app
-from utils import login_required
+from utils import login_required, permission_required
 import config
 
 user_bp = Blueprint('user_bp', __name__)
@@ -82,3 +82,100 @@ def api_set_user_theme():
     session['theme'] = theme
     
     return jsonify({'success': True})
+
+@user_bp.route('/api/pet/status', methods=['GET'])
+@login_required
+def get_pet_status():
+    # Lấy thông tin Skin và Điểm từ DB
+    # Logic: Nếu Doanh số tháng > Target -> Trạng thái = "HAPPY"
+    return jsonify({
+        'skin': 'iron_man_robot',
+        'mood': 'happy',
+        'points': 1500
+    })
+
+@user_bp.route('/profile')
+@login_required
+@permission_required('VIEW_PROFILE') # <--- THÊM DÒNG NÀY ĐỂ KHÓA TRANG
+def profile():
+    """Hiển thị trang hồ sơ & cửa hàng."""
+    user_service = current_app.user_service
+    user_code = session.get('user_code')
+    
+    # 1. Lấy thông tin Stats (Level, XP)
+    user_stats = user_service.get_user_stats(user_code)
+    
+    # 2. Lấy kho đồ cá nhân
+    inventory = user_service.get_user_inventory(user_code)
+    
+    # 3. Lấy danh sách Shop
+    shop_items = user_service.get_shop_items(user_code)
+    
+    return render_template(
+        'user_profile.html', 
+        user_stats=user_stats, 
+        inventory=inventory,
+        shop_items=shop_items
+        # [QUAN TRỌNG] ĐÃ XÓA DÒNG: user_context=session
+        # Không được truyền user_context ở đây nữa, 
+        # hãy để factory.py tự động inject biến user_context có hàm .can()
+    )
+
+# --- API ENDPOINTS ---
+
+@user_bp.route('/api/user/buy_item', methods=['POST'])
+@login_required
+def buy_item():
+    item_code = request.json.get('item_code')
+    if not item_code:
+        return jsonify({'success': False, 'message': 'Thiếu mã vật phẩm'}), 400
+        
+    result = current_app.user_service.buy_item(session.get('user_code'), item_code)
+    return jsonify(result)
+
+@user_bp.route('/api/user/equip_item', methods=['POST'])
+@login_required
+def equip_item():
+    item_code = request.json.get('item_code')
+    if not item_code:
+        return jsonify({'success': False, 'message': 'Thiếu mã vật phẩm'}), 400
+        
+    result = current_app.user_service.equip_item(session.get('user_code'), item_code)
+    
+    # Nếu thành công, cập nhật luôn vào Session để giao diện đổi ngay lập tức
+    if result['success']:
+        # Cần logic check item type để update đúng session key (theme/pet)
+        # Tạm thời client sẽ reload trang để cập nhật
+        pass
+        
+    return jsonify(result)
+
+@user_bp.route('/api/user/upload_avatar', methods=['POST'])
+@login_required
+def upload_avatar():
+    if 'avatar' not in request.files:
+        return jsonify({'success': False, 'message': 'Không có file'})
+    
+    file = request.files['avatar']
+    if file.filename == '':
+        return jsonify({'success': False, 'message': 'Chưa chọn file'})
+        
+    if file:
+        result = current_app.user_service.update_avatar(session.get('user_code'), file)
+        
+        # Cập nhật session avatar nếu thành công
+        if result['success']:
+            session['avatar_url'] = result['url']
+            
+        return jsonify(result)
+
+@user_bp.route('/api/user/change_password', methods=['POST'])
+@login_required
+def change_password():
+    data = request.json
+    result = current_app.user_service.change_password(
+        session.get('user_code'), 
+        data.get('current_password'), 
+        data.get('new_password')
+    )
+    return jsonify(result)

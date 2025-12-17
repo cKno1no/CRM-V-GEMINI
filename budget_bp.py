@@ -1,5 +1,6 @@
 # blueprints/budget_bp.py
 
+from flask import current_app
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash, current_app
 from utils import login_required, permission_required # Import thêm
 from datetime import datetime, timedelta
@@ -31,7 +32,7 @@ def save_budget_files(files):
                 file.save(os.path.join(upload_path, unique_filename))
                 saved_filenames.append(unique_filename)
             except Exception as e:
-                print(f"Save file error: {e}")
+                current_app.logger.error(f"Save file error: {e}")
     return ";".join(saved_filenames) if saved_filenames else None
 
 @budget_bp.route('/budget/dashboard', methods=['GET'])
@@ -73,7 +74,7 @@ def budget_dashboard():
             ip_address=get_user_ip()
         )
     except Exception as e:
-        print(f"Log Error: {e}")
+        current_app.logger.error(f"Log Error: {e}")
 
     return render_template('budget_dashboard.html', 
                            budget_codes=budget_codes, 
@@ -180,7 +181,7 @@ def api_submit_request():
                 ip_address=get_user_ip()
             )
         except Exception as e:
-            print(f"Log Error: {e}")
+            current_app.logger.error(f"Log Error: {e}")
 
     return jsonify(result)
 
@@ -211,7 +212,7 @@ def api_approve_request():
                 ip_address=get_user_ip()
             )
         except Exception as e:
-            print(f"Log Error: {e}")
+            current_app.logger.error(f"Log Error: {e}")
 
     return jsonify({'success': success})
 
@@ -276,7 +277,7 @@ def payment_queue():
             ip_address=get_user_ip()
         )
     except Exception as e:
-        print(f"Log Error: {e}")
+        current_app.logger.error(f"Log Error: {e}")
 
     return render_template(
         'budget_payment_queue.html',
@@ -309,7 +310,7 @@ def api_confirm_payment():
                 ip_address=get_user_ip()
             )
         except Exception as e:
-            print(f"Log Error: {e}")
+            current_app.logger.error(f"Log Error: {e}")
 
     return jsonify({'success': success})
 
@@ -438,5 +439,5 @@ def api_get_group_details():
         details = budget_service.get_expense_details_by_group(group_name, year)
         return jsonify(details)
     except Exception as e:
-        print(f"Lỗi lấy chi tiết nhóm {group_name}: {e}")
+        current_app.logger.error(f"Lỗi lấy chi tiết nhóm {group_name}: {e}")
         return jsonify({'error': str(e)}), 500

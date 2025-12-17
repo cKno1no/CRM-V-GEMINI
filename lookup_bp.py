@@ -1,11 +1,9 @@
-from flask import Blueprint, request, session, jsonify, Response, render_template, redirect, url_for, flash, current_app
-# FIX: Chỉ import các helper từ utils.py
-from utils import login_required, permission_required # Import thêm
-from datetime import datetime
-import json
+from flask import Blueprint, request, session, jsonify, render_template, redirect, url_for, flash, current_app
+from utils import login_required, permission_required
+from forms import SalesLookupForm  # <--- IMPORT FORM BẢO MẬT
 import config 
 
-# [HÀM HELPER CẦN THIẾT] (ĐÃ BỔ SUNG)
+# [HÀM HELPER CẦN THIẾT]
 def get_user_ip():
     """Lấy địa chỉ IP của người dùng."""
     if request.headers.getlist("X-Forwarded-For"):
@@ -13,20 +11,14 @@ def get_user_ip():
     else:
        return request.remote_addr
 
-# FIX: ĐỊNH NGHĨA BLUEPRINT VỚI URL PREFIX ĐỂ KHỚP VỚI CẤU TRÚC /sales/
 lookup_bp = Blueprint('lookup_bp', __name__, url_prefix='/sales')
-
 
 # [ROUTES]
 
 @lookup_bp.route('/sales_lookup', methods=['GET', 'POST'])
 @login_required
-@permission_required('VIEW_SALES_LOOKUP') # Áp dụng quyền mới
+@permission_required('VIEW_SALES_LOOKUP')
 def sales_lookup_dashboard():
-    """ROUTE: Dashboard tra cứu thông tin bán hàng. (Phục vụ /sales/sales_lookup)"""
-    
-    # --- THAY ĐỔI QUAN TRỌNG: DÙNG current_app ---
-    # from app import lookup_service, db_manager <-- XÓA DÒNG NÀY
     lookup_service = current_app.lookup_service
     db_manager = current_app.db_manager
     
@@ -37,62 +29,76 @@ def sales_lookup_dashboard():
     show_block_3 = is_admin_or_gm
     show_block_2 = is_admin_or_gm or is_manager
     
-    item_search = ""
-    object_id = ""
-    object_id_display = ""
-    lookup_results = {} 
+    lookup_results = {}
     
-    if request.method == 'POST':
-        item_search = request.form.get('item_search', '').strip()
-        object_id = request.form.get('object_id', '').strip() 
-        object_id_display = request.form.get('object_id_display', '').strip()
+    # 1. Khởi tạo Form
+    form = SalesLookupForm(request.form if request.method == 'POST' else request.args)
+    
+    # Biến để giữ lại giá trị input khi render lại trang (tránh mất chữ user vừa gõ)
+    input_item_search = ''
+    input_object_id = ''
+
+    if request.method == 'POST' and form.validate():
+        # [SỬA] Lấy đúng tên trường item_search
+        item_search = form.item_search.data 
         
-        if not item_search:
-            flash("Vui lòng nhập Tên hoặc Mã Mặt hàng để tra cứu.", 'warning')
+        # Lấy object_id từ form (hoặc request.form nếu chưa đưa vào form)
+        # Ưu tiên lấy từ form nếu có field object_id, nếu không lấy thủ công
+        object_id = form.object_id.data if hasattr(form, 'object_id') else request.form.get('object_id', '').strip()
+        
+        # Cập nhật biến hiển thị lại
+        input_item_search = item_search
+        input_object_id = object_id
+
+        if not item_search and not object_id:
+             flash("Vui lòng nhập thông tin để tra cứu.", 'warning')
         else:
+            # Gọi Service
             lookup_results = lookup_service.get_sales_lookup_data(
                 item_search, object_id 
             )
-        
-        # LOG API_SALES_LOOKUP
-        try:
-            db_manager.write_audit_log(
-                user_code=session.get('user_code'),
-                action_type='API_SALES_LOOKUP',
-                severity='INFO',
-                details=f"Tra cứu (Form): item='{item_search}', kh='{object_id}'",
-                ip_address=get_user_ip()
-            )
-        except Exception as e:
-            print(f"Lỗi ghi log API_SALES_LOOKUP: {e}")
+            
+            # LOG
+            try:
+                db_manager.write_audit_log(
+                    user_code=session.get('user_code'),
+                    action_type='API_SALES_LOOKUP',
+                    severity='INFO',
+                    details=f"Tra cứu: item='{item_search}', kh='{object_id}'",
+                    ip_address=get_user_ip()
+                )
+            except Exception as e:
+                current_app.logger.error(f"Lỗi ghi log API_SALES_LOOKUP: {e}")
+    
+    elif request.method == 'POST' and not form.validate():
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"Lỗi nhập liệu [{field}]: {error}", 'danger')
 
     return render_template(
         'sales_lookup_dashboard.html', 
-        item_search=item_search,
-        object_id=object_id,
-        object_id_display=object_id_display,
+        form=form, 
         results=lookup_results,
         show_block_2=show_block_2,
-        show_block_3=show_block_3
+        show_block_3=show_block_3,
+        # [QUAN TRỌNG] Truyền lại giá trị user vừa nhập để ô input không bị trắng xóa
+        item_search=input_item_search, 
+        object_id=input_object_id,
+        object_id_display=request.form.get('object_id_display', '')
     )
 
 @lookup_bp.route('/total_replenishment', methods=['GET'])
 @login_required
-@permission_required('VIEW_TOTAL_REPLENISH') # Áp dụng quyền mới
+@permission_required('VIEW_TOTAL_REPLENISH')
 def total_replenishment_dashboard():
-    """
-    ROUTE: Hiển thị trang Báo cáo Dự phòng Tồn kho Tổng thể. (Phục vụ /sales/total_replenishment)
-    """
-    # --- THAY ĐỔI QUAN TRỌNG ---
+    """ROUTE: Báo cáo Dự phòng Tồn kho Tổng thể."""
     db_manager = current_app.db_manager
     
-    # 1. Kiểm tra Quyền
     user_role = session.get('user_role', '').strip().upper()
     if user_role not in [config.ROLE_ADMIN, config.ROLE_GM]:
         flash("Bạn không có quyền truy cập chức năng này.", 'danger')
         return redirect(url_for('index'))
 
-    # 2. Ghi Log
     try:
         db_manager.write_audit_log(
             user_code=session.get('user_code'),
@@ -102,9 +108,8 @@ def total_replenishment_dashboard():
             ip_address=get_user_ip()
         )
     except Exception as e:
-        print(f"Lỗi ghi log total_replenishment: {e}")
+        current_app.logger.error(f"Lỗi ghi log total_replenishment: {e}")
 
-    # 3. Gọi SP
     try:
         sp_data = db_manager.execute_sp_multi(config.SP_REPLENISH_TOTAL, None)
         alert_list = sp_data[0] if sp_data else []
@@ -112,24 +117,19 @@ def total_replenishment_dashboard():
         flash(f"Lỗi thực thi Stored Procedure: {e}", 'danger')
         alert_list = []
         
-    return render_template(
-        'total_replenishment.html', 
-        alert_list=alert_list
-    )
+    return render_template('total_replenishment.html', alert_list=alert_list)
 
 @lookup_bp.route('/export_total_replenishment', methods=['GET'])
 @login_required
 def export_total_replenishment():
-    """ROUTE: Xử lý xuất dữ liệu dự phòng tồn kho ra Excel."""
-    # --- THAY ĐỔI QUAN TRỌNG ---
+    """ROUTE: Xuất Excel (Stub)."""
     db_manager = current_app.db_manager
-    
     user_role = session.get('user_role', '').strip().upper()
+    
     if user_role not in [config.ROLE_ADMIN, config.ROLE_GM]:
-        flash("Bạn không có quyền truy cập chức năng này.", 'danger')
+        flash("Bạn không có quyền truy cập.", 'danger')
         return redirect(url_for('index'))
     
-    # LOG EXPORT_REPLENISHMENT
     try:
         db_manager.write_audit_log(
             user_code=session.get('user_code'),
@@ -139,33 +139,23 @@ def export_total_replenishment():
             ip_address=get_user_ip()
         )
     except Exception as e:
-        print(f"Lỗi ghi log EXPORT_REPLENISHMENT: {e}")
+        current_app.logger.error(f"Lỗi log export: {e}")
         
-    flash("Chức năng Xuất Excel chưa được hoàn thành.", 'warning')
+    flash("Chức năng Xuất Excel đang phát triển.", 'warning')
     return redirect(url_for('lookup_bp.total_replenishment_dashboard')) 
-
-
-# =========================================================================
-# ROUTE MỚI: DỰ PHÒNG KHÁCH HÀNG
-# =========================================================================
 
 @lookup_bp.route('/customer_replenishment', methods=['GET'])
 @login_required
-@permission_required('VIEW_CUST_REPLENISH') # Áp dụng quyền mới
+@permission_required('VIEW_CUST_REPLENISH')
 def customer_replenishment_dashboard():
-    """
-    ROUTE: Hiển thị trang Dự báo Dự phòng Khách hàng. (Phục vụ /sales/customer_replenishment)
-    """
-    # --- THAY ĐỔI QUAN TRỌNG ---
+    """ROUTE: Dự báo Dự phòng Khách hàng."""
     db_manager = current_app.db_manager
     
-    # 1. Kiểm tra Quyền (Thêm quyền SALES vì đây là báo cáo KH)
     user_role = session.get('user_role', '').strip().upper()
     if user_role not in [config.ROLE_ADMIN, config.ROLE_GM, config.ROLE_MANAGER]:
-        flash("Bạn không có quyền truy cập chức năng này.", 'danger')
+        flash("Bạn không có quyền truy cập.", 'danger')
         return redirect(url_for('index'))
 
-    # 2. Ghi Log
     try:
         db_manager.write_audit_log(
             user_code=session.get('user_code'),
@@ -175,9 +165,8 @@ def customer_replenishment_dashboard():
             ip_address=get_user_ip()
         )
     except Exception as e:
-        print(f"Lỗi ghi log customer_replenishment: {e}")
+        current_app.logger.error(f"Lỗi log customer_replenishment: {e}")
 
-    # 3. Render Template
     return render_template('customer_replenishment.html')
 
 
@@ -187,31 +176,32 @@ def customer_replenishment_dashboard():
 @login_required 
 def api_khachhang(ten_tat):
     """API tra cứu Khách hàng (Autocomplete)."""
-    
-    # --- THAY ĐỔI QUAN TRỌNG ---
+    # Nên thêm validate đầu vào ở đây nếu cần thiết
     customer_service = current_app.customer_service
-    
     data = customer_service.get_customer_by_name(ten_tat)
     return jsonify(data)
 
 @lookup_bp.route('/api/multi_lookup', methods=['POST'])
 @login_required 
 def api_multi_lookup():
-    """API: Tra cứu Tồn kho/Giá QĐ/BO cho nhiều mã (Tra nhanh)."""
-    
-    # --- THAY ĐỔI QUAN TRỌNG ---
+    """API: Tra cứu nhanh (Multi)."""
     lookup_service = current_app.lookup_service
     db_manager = current_app.db_manager
     
-    item_search = request.form.get('item_search', '').strip()
+    # Lấy dữ liệu thô
+    raw_search = request.form.get('item_search', '')
     
+    # [SECURE] Validate sơ bộ (Chống input quá dài hoặc ký tự lạ)
+    if len(raw_search) > 100 or ';' in raw_search or '--' in raw_search:
+         return jsonify({'error': 'Từ khóa không hợp lệ (Phát hiện ký tự cấm).'}), 400
+
+    item_search = raw_search.strip()
     if not item_search:
         return jsonify({'error': 'Vui lòng nhập Tên hoặc Mã Mặt hàng.'}), 400
         
     try:
         data = lookup_service.get_multi_lookup_data(item_search)
         
-        # LOG API_QUICK_LOOKUP
         db_manager.write_audit_log(
             user_code=session.get('user_code'),
             action_type='API_QUICK_LOOKUP',
@@ -219,20 +209,25 @@ def api_multi_lookup():
             details=f"Tra nhanh (Multi): item='{item_search}'",
             ip_address=get_user_ip()
         )
-        
         return jsonify(data)
     except Exception as e:
-        return jsonify({'error': f'Lỗi server: {e}'}), 500
+        current_app.logger.error(f"Lỗi API Multi Lookup: {e}")
+        return jsonify({'error': 'Lỗi máy chủ nội bộ.'}), 500
 
 @lookup_bp.route('/api/get_order_detail_drilldown/<path:voucher_no>', methods=['GET'])
 @login_required
 def api_get_order_detail_drilldown(voucher_no):
-    """API: Tra cứu chi tiết ĐH Bán bằng VoucherNo."""
-    
-    # --- THAY ĐỔI QUAN TRỌNG ---
+    """API: Tra cứu chi tiết ĐH Bán."""
     sales_service = current_app.sales_service
     db_manager = current_app.db_manager
     
+    # [SECURE] Validate VoucherNo (Chỉ cho phép chữ số, gạch ngang, gạch chéo)
+    # Ví dụ: SO/2025/01/001
+    import re
+    if not re.match(r'^[\w\/\-\.]+$', voucher_no):
+        return jsonify({'error': 'Mã chứng từ không hợp lệ.'}), 400
+    
+    # Dùng tham số hóa (?) trong câu query bên dưới (Đã có sẵn trong code cũ nhưng cần nhắc lại)
     sorder_id_query = f"SELECT TOP 1 SOrderID FROM {config.ERP_OT2001} WHERE VoucherNo = ?"
     sorder_id_data = db_manager.get_data(sorder_id_query, (voucher_no,))
     
@@ -240,57 +235,51 @@ def api_get_order_detail_drilldown(voucher_no):
          return jsonify({'error': f'Không tìm thấy SOrderID cho mã DHB {voucher_no}'}), 404
          
     sorder_id = sorder_id_data[0]['SOrderID']
-
     details = sales_service.get_order_detail_drilldown(sorder_id)
     return jsonify(details)
 
 @lookup_bp.route('/api/backorder_details/<string:inventory_id>', methods=['GET'])
 @login_required 
 def api_get_backorder_details(inventory_id):
-    """API: Lấy chi tiết BackOrder (PO) cho một mã hàng."""
-    
-    # --- THAY ĐỔI QUAN TRỌNG ---
+    """API: BackOrder Detail."""
     lookup_service = current_app.lookup_service
     db_manager = current_app.db_manager
     
     if not inventory_id:
-        return jsonify({'error': 'Vui lòng cung cấp Mã Mặt hàng.'}), 400
+        return jsonify({'error': 'Thiếu mã hàng.'}), 400
         
     try:
         data = lookup_service.get_backorder_details(inventory_id)
         
-        # LOG API_BACKORDER_DETAIL
         db_manager.write_audit_log(
             user_code=session.get('user_code'),
             action_type='API_BACKORDER_DETAIL',
             severity='INFO',
-            details=f"Xem chi tiết BackOrder cho: {inventory_id}",
+            details=f"Xem chi tiết BackOrder: {inventory_id}",
             ip_address=get_user_ip()
         )
-        
         return jsonify(data)
     except Exception as e:
-        return jsonify({'error': f'Lỗi server: {e}'}), 500
+        current_app.logger.error(f"Lỗi API Backorder: {e}")
+        return jsonify({'error': 'Lỗi xử lý.'}), 500
         
 @lookup_bp.route('/api/replenishment_details/<path:group_code>', methods=['GET'])
 @login_required
 def api_get_replenishment_details(group_code):
-    """API: Lấy chi tiết InventoryID cho một Nhóm Varchar05 (Req 1)."""
-    
-    # --- THAY ĐỔI QUAN TRỌNG ---
+    """API: Chi tiết nhóm hàng."""
     db_manager = current_app.db_manager
-    
     user_role = session.get('user_role', '').strip().upper()
-    if user_role not in [config.ROLE_ADMIN, config.ROLE_GM]: # Chỉ Admin và GM mới được xem chi tiết tổng thể
+    
+    if user_role not in [config.ROLE_ADMIN, config.ROLE_GM]:
         return jsonify({'error': 'Không có quyền.'}), 403
 
     if not group_code:
-        return jsonify({'error': 'Thiếu mã nhóm (Varchar05).'}), 400
+        return jsonify({'error': 'Thiếu mã nhóm.'}), 400
 
     try:
+        # Gọi SP với tham số hóa (Đã an toàn)
         data = db_manager.execute_sp_multi(config.SP_REPLENISH_GROUP, (group_code,))
         
-        # LOG VIEW_REPLENISH_DETAIL
         db_manager.write_audit_log(
             user_code=session.get('user_code'),
             action_type='VIEW_REPLENISH_DETAIL',
@@ -298,42 +287,35 @@ def api_get_replenishment_details(group_code):
             details=f"Xem chi tiết dự phòng nhóm: {group_code}",
             ip_address=get_user_ip()
         )
-        
         return jsonify(data[0] if data else [])
     except Exception as e:
-        return jsonify({'error': f'Lỗi server: {e}'}), 500
+        current_app.logger.error(f"Lỗi API Replenish Detail: {e}")
+        return jsonify({'error': 'Lỗi máy chủ.'}), 500
         
 @lookup_bp.route('/api/customer_replenishment/<string:customer_id>', methods=['GET'])
 @login_required
 def api_get_customer_replenishment_data(customer_id):
-    """
-    API: Lấy dữ liệu Dự phòng Khách hàng (Nhóm hàng) cho một mã KH. (Phục vụ AJAX)
-    """
-    # --- THAY ĐỔI QUAN TRỌNG ---
+    """API: Dự phòng theo KH."""
     db_manager = current_app.db_manager
-    
     user_role = session.get('user_role', '').strip().upper()
+    
     if user_role not in [config.ROLE_ADMIN, config.ROLE_GM, config.ROLE_MANAGER]:
         return jsonify({'error': 'Không có quyền.'}), 403
 
     if not customer_id:
-        return jsonify({'error': 'Thiếu mã khách hàng.'}), 400
+        return jsonify({'error': 'Thiếu mã KH.'}), 400
 
     try:
-        # Giả định SP là 'dbo.sp_GetCustomerReplenishmentNeeds'
         sp_data = db_manager.execute_sp_multi(config.SP_CROSS_SELL_GAP, (customer_id,))
         
-        # LOG API_CUSTOMER_REPLENISH
         db_manager.write_audit_log(
             user_code=session.get('user_code'),
             action_type='API_CUSTOMER_REPLENISH',
             severity='INFO',
-            details=f"Tra cứu dự phòng cho KH: {customer_id}",
+            details=f"Tra cứu dự phòng KH: {customer_id}",
             ip_address=get_user_ip()
         )
-        
-        # SP trả về kết quả trong tập hợp đầu tiên
         return jsonify(sp_data[0] if sp_data else [])
     except Exception as e:
-        print(f"Lỗi API get_customer_replenishment_data: {e}")
-        return jsonify({'error': f'Lỗi server: {e}'}), 500
+        current_app.logger.error(f"Lỗi API Cust Replenish: {e}")
+        return jsonify({'error': 'Lỗi máy chủ.'}), 500
