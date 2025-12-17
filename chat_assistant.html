@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Titan AI Command Center</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        /* --- THEME VARIABLES --- */
+        :root {
+            --primary: #4318FF; --text-color: #2B3674;
+            --glass-bg: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --bubble-bot: #FFFFFF; --bubble-user: #4318FF; --text-user: #FFF;
+            --primary-light: rgba(67, 24, 255, 0.3); /* Dùng cho hiệu ứng glow */
+        }
+        [data-theme="dark"] {
+            --primary: #7551FF; --text-color: #E3E8EF;
+            --glass-bg: rgba(11, 20, 55, 0.85); --glass-border: rgba(255, 255, 255, 0.1);
+            --bubble-bot: rgba(255, 255, 255, 0.1); --bubble-user: #7551FF;
+            --primary-light: rgba(117, 81, 255, 0.3);
+        }
+        [data-theme="fantasy"] {
+            --primary: #E91E63; --text-color: #FFF;
+            --glass-bg: rgba(45, 27, 78, 0.85); --glass-border: rgba(233, 30, 99, 0.3);
+            --bubble-bot: rgba(0, 0, 0, 0.4); --bubble-user: #E91E63;
+            --primary-light: rgba(233, 30, 99, 0.4);
+        }
+        [data-theme="adorable"] {
+            --primary: #FF6B81; --text-color: #2F3542;
+            --glass-bg: rgba(255, 255, 255, 0.9); --glass-border: #FFD1D6;
+            --bubble-bot: #FFF0F3; --bubble-user: #FF6B81;
+            --primary-light: rgba(255, 107, 129, 0.3);
+        }
+
+        /* --- GLOBAL & BACKGROUND --- */
+        body {
+            font-family: 'Quicksand', sans-serif;
+            height: 100vh; overflow: hidden; margin: 0;
+            color: var(--text-color);
+        }
+        .bg-image {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
+            background-size: cover; background-position: center; filter: blur(15px) brightness(0.9);
+            transform: scale(1.1); transition: background-image 0.5s ease-in-out;
+        }
+        .bg-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: rgba(0,0,0,0.2);
+        }
+
+        /* --- LAYOUT 3 COLUMNS --- */
+        .main-layout {
+            display: flex; height: 100%; padding: 40px; gap: 30px;
+            justify-content: center; align-items: stretch;
+        }
+
+        /* SIDE PANELS (Floating Cards) */
+        .side-panel {
+            width: 300px; /* Tăng nhẹ chiều rộng để chứa Grid Theme đẹp hơn */
+            display: flex; flex-direction: column; gap: 20px;
+            animation: fadeIn 0.8s ease-out;
+        }
+        .glass-card {
+            background: var(--glass-bg); backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border); border-radius: 20px;
+            padding: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .glass-card:hover { transform: translateY(-5px); }
+        
+        .suggestion-btn {
+            display: block; width: 100%; text-align: left; padding: 12px 15px;
+            margin-bottom: 10px; border: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.1); color: var(--text-color);
+            border-radius: 12px; cursor: pointer; transition: 0.2s;
+            font-size: 0.9rem;
+        }
+        .suggestion-btn:hover {
+            background: var(--primary); color: white; border-color: var(--primary);
+        }
+        .suggestion-btn i { width: 25px; }
+
+        /* --- [NEW] THEME SELECTOR GRID STYLES --- */
+        .theme-selector-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* 2 Cột */
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .theme-card-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 15px 10px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            color: var(--text-color);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            height: 90px;
+        }
+
+        [data-theme="dark"] .theme-card-btn,
+        [data-theme="fantasy"] .theme-card-btn {
+             background: rgba(0, 0, 0, 0.3);
+        }
+
+        .theme-card-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        /* Active State */
+        .theme-card-btn.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+            box-shadow: 0 0 20px var(--primary-light); /* Glow Effect */
+            transform: scale(1.05);
+            z-index: 2;
+        }
+
+        .theme-card-btn i.theme-icon {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+
+        .theme-card-btn span {
+            font-weight: 700;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        /* Locked State */
+        .theme-card-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            filter: grayscale(1);
+            background: rgba(0,0,0,0.05);
+        }
+
+        .lock-overlay {
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            font-size: 0.8rem;
+            color: var(--text-color);
+            opacity: 0.7;
+        }
+        .theme-card-btn.active .lock-overlay { color: white; }
+
+        /* --- [NEW] AVATAR STYLES --- */
+        .profile-avatar-container {
+            width: 90px;
+            height: 90px;
+            margin: 0 auto 15px auto;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 3px solid var(--primary);
+            background: var(--glass-bg); /* Nền cho icon mặc định */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .profile-avatar-container:hover {
+            transform: scale(1.05) rotate(5deg);
+        }
+
+        .profile-avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .default-avatar-icon {
+            font-size: 3rem;
+            color: var(--primary);
+            opacity: 0.8;
+        }
+
+        /* --- CENTER CHAT BOX --- */
+        .chat-wrapper {
+            flex-grow: 1; max-width: 900px; display: flex; flex-direction: column;
+            background: var(--glass-bg); backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border); border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2); position: relative;
+            animation: zoomIn 0.5s ease-out;
+        }
+
+        .chat-header {
+            padding: 20px 30px; border-bottom: 1px solid var(--glass-border);
+            display: flex; align-items: center; gap: 15px;
+        }
+        
+        .chat-messages {
+            flex-grow: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px;
+            scroll-behavior: smooth;
+        }
+        .chat-messages::-webkit-scrollbar { width: 6px; }
+        .chat-messages::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 10px; }
+
+        .message { display: flex; gap: 15px; max-width: 85%; align-items: flex-end; animation: slideUp 0.3s; }
+        .message.user { align-self: flex-end; flex-direction: row-reverse; }
+        
+        .avatar {
+            width: 45px; height: 45px; border-radius: 50%; overflow: hidden;
+            background: white; border: 2px solid var(--primary); flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        
+        .bubble {
+            padding: 15px 20px; border-radius: 20px; font-size: 1rem; line-height: 1.6;
+            position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .message.bot .bubble {
+            background: var(--bubble-bot); color: var(--text-color);
+            border-bottom-left-radius: 4px;
+        }
+        .message.user .bubble {
+            background: var(--bubble-user); color: var(--text-user);
+            border-bottom-right-radius: 4px;
+        }
+        
+        /* Markdown Style */
+        .bubble strong { font-weight: 700; color: var(--primary); }
+        [data-theme="dark"] .bubble strong { color: #FFD700; }
+        .bubble h3 { font-size: 1.2rem; border-bottom: 1px dashed var(--glass-border); padding-bottom: 5px; margin-top: 10px; }
+        .bubble ul { padding-left: 20px; margin: 5px 0; }
+
+        .input-area {
+            padding: 20px 30px; border-top: 1px solid var(--glass-border);
+            display: flex; gap: 15px; align-items: center;
+        }
+        .chat-input {
+            flex-grow: 1; border: 2px solid var(--glass-border); background: rgba(255,255,255,0.2);
+            border-radius: 30px; padding: 15px 25px; color: var(--text-color); outline: none;
+            transition: 0.3s; font-size: 1rem;
+        }
+        .chat-input:focus { border-color: var(--primary); background: rgba(255,255,255,0.9); color: #000; }
+        .btn-send {
+            width: 55px; height: 55px; border-radius: 50%; border: none;
+            background: var(--primary); color: white; font-size: 1.2rem;
+            cursor: pointer; transition: 0.2s; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .btn-send:hover { transform: scale(1.1); }
+
+        /* --- ANIMATIONS --- */
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes zoomIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 1200px) { .side-panel { display: none; } .chat-wrapper { width: 100%; max-width: 100%; } }
+    </style>
+</head>
+<body>
+
+    <div class="bg-image" id="bg-image"></div>
+    <div class="bg-overlay"></div>
+
+    <div class="main-layout">
+        
+        <div class="side-panel">
+            <div class="glass-card">
+                <h5 class="fw-bold mb-3"><i class="fas fa-bolt text-warning me-2"></i>Truy cập nhanh</h5>
+                
+                <button class="suggestion-btn" onclick="setInput('Giá mã 6205 cho khách Kraft?')">
+                    <i class="fas fa-tag text-primary"></i> Tra giá 6205 Kraft
+                </button>
+                
+                <button class="suggestion-btn" onclick="setInput('Tồn kho mã 22224 K C3 NSK')">
+                    <i class="fas fa-cubes text-danger"></i> Tồn 22224 K C3 NSK
+                </button>
+
+                <button class="suggestion-btn" onclick="setInput('Đơn hàng Tanamaz giao chưa?')">
+                    <i class="fas fa-shipping-fast text-success"></i> Check giao hàng Tanamaz
+                </button>
+                
+                <button class="suggestion-btn" onclick="setInput('Hôm nay tôi cần làm gì?')">
+                    <i class="fas fa-tasks text-info"></i> Việc cần làm hôm nay
+                </button>
+            </div>
+            
+            <div class="glass-card">
+                <h6 class="fw-bold opacity-75 text-center mb-3">Giao diện (Themes)</h6>
+                <div class="theme-selector-grid">
+                    
+                    {# --- [FIX] MACRO MỚI: THEME CARD --- #}
+                    {% macro theme_card(code, icon, name, display_name) %}
+                        {% set is_unlocked = (code in user_context.unlocked_themes) or (user_context.role == 'ADMIN') %}
+                        {% set is_active = (user_context.theme == code) %}
+                        
+                        <button class="theme-card-btn {{ 'active' if is_active else '' }}" 
+                                onclick="{% if is_unlocked %}setTheme('{{ code }}'){% else %}alert('Cần mở khóa Theme {{ display_name }} trong Titan Store!'){% endif %}" 
+                                title="{{ display_name }} {{ '(Đã khóa)' if not is_unlocked else '' }}"
+                                {{ 'disabled' if not is_unlocked else '' }}>
+                            
+                            {% if not is_unlocked %}
+                                <div class="lock-overlay"><i class="fas fa-lock"></i></div>
+                            {% endif %}
+                            
+                            <i class="fas {{ icon }} theme-icon"></i>
+                            <span>{{ display_name }}</span>
+                        </button>
+                    {% endmacro %}
+
+                    {{ theme_card('light', 'fa-sun', 'light', 'Business') }}
+                    {{ theme_card('dark', 'fa-moon', 'dark', 'Night Owl') }}
+                    {{ theme_card('fantasy', 'fa-dragon', 'fantasy', 'Sci-Fi') }}
+                    {{ theme_card('adorable', 'fa-heart', 'adorable', 'Gen Z') }}
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-wrapper">
+            <div class="chat-header">
+                <div class="avatar p-1">
+                    <lottie-player src="{{ url_for('static', filename='json/Fox-Audio.json') }}" background="transparent" speed="1" style="width: 100%; height: 100%;" loop autoplay></lottie-player>
+                </div>
+                <div>
+                    <h4 class="m-0 fw-bold">Titan AI Assistant</h4>
+                    <span class="badge bg-success bg-opacity-75"><i class="fas fa-circle fa-xs me-1"></i>Online</span>
+                </div>
+                <div class="ms-auto">
+                    <button onclick="window.close()" class="btn btn-sm btn-light bg-transparent border-0" title="Đóng">
+                        <i class="fas fa-times fs-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chat-box"></div>
+            
+            <div id="typing" class="px-5 pb-2" style="display:none; color: var(--primary); font-style: italic;">
+                <i class="fas fa-pen-nib fa-bounce me-2"></i>Titan đang soạn tin...
+            </div>
+
+            <div class="input-area">
+                <input type="text" id="user-input" class="chat-input" placeholder="Hỏi Titan bất cứ điều gì..." autofocus>
+                <button class="btn-send" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+
+        <div class="side-panel">
+            <div class="glass-card text-center main-profile-card">
+                
+                <div class="profile-avatar-container">
+                    {% if user_context.stats and user_context.stats.AvatarUrl %}
+                        <img src="{{ user_context.stats.AvatarUrl }}" class="profile-avatar-img" alt="Avatar">
+                    {% else %}
+                        <i class="fas fa-user-astronaut default-avatar-icon"></i>
+                    {% endif %}
+                </div>
+                
+                <h5 class="fw-bold mb-1">{{ user_context.shortname or 'Sếp' }}</h5>
+                
+                <span class="badge bg-warning text-dark mb-3">LV.{{ user_context.stats.Level }}: {{ user_context.title }}</span>
+                
+                <div class="progress mb-2" style="height: 8px; background: rgba(0,0,0,0.1);">
+                    {% set xp = user_context.stats.CurrentXP | default(0) %}
+                    {% set next_xp = user_context.stats.next_level_xp | default(1000) %}
+                    {% set pct = (xp / next_xp * 100) if next_xp > 0 else 0 %}
+                    <div class="progress-bar bg-warning" style="width: {{ pct }}%"></div>
+                </div>
+                <small class="opacity-75">{{ "{:,.0f}".format(xp) }} / {{ "{:,.0f}".format(next_xp) }} XP</small>
+            </div>
+
+            <div class="glass-card">
+                <h6 class="fw-bold border-bottom pb-2 mb-3">Thống kê phiên này</h6>
+                <div class="d-flex justify-content-between mb-2">
+                    <span><i class="fas fa-comment-dots me-2 text-primary"></i>Tin nhắn:</span>
+                    <strong><span id="msg-count">0</span></strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span><i class="fas fa-clock me-2 text-success"></i>Thời gian:</span>
+                    <strong><span id="session-time">00:00</span></strong>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. SETUP UI & THEME ---
+        const savedTheme = localStorage.getItem('titan_theme') || 'light';
+        setTheme(savedTheme);
+
+        // Random Background
+        const bg = document.getElementById('bg-image');
+        bg.style.backgroundImage = `url('https://picsum.photos/1920/1080?random=${new Date().getTime()}')`;
+
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('titan_theme', theme);
+        }
+
+        function setInput(text) {
+            const input = document.getElementById('user-input');
+            input.value = text;
+            input.focus();
+        }
+
+        // --- 2. CHAT LOGIC ---
+        let msgCount = 0;
+        let seconds = 0;
+        
+        // Timer
+        setInterval(() => {
+            seconds++;
+            const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const secs = (seconds % 60).toString().padStart(2, '0');
+            document.getElementById('session-time').innerText = `${mins}:${secs}`;
+        }, 1000);
+
+        // Auto Welcome
+        $(document).ready(() => {
+            setTimeout(() => {
+                addMessage("Chào Sếp! Em đã sẵn sàng nhận lệnh. Hôm nay Sếp cần kiểm tra gì không ạ?", 'bot');
+            }, 500);
+        });
+
+        // Handle Enter
+        $('#user-input').on('keypress', function (e) {
+            if(e.which === 13) sendMessage();
+        });
+
+        function addMessage(content, sender) {
+            msgCount++;
+            document.getElementById('msg-count').innerText = Math.floor(msgCount/2); // Đếm cặp câu
+
+            const avatarHtml = sender === 'bot' 
+                ? `<div class="avatar p-1"><lottie-player src="{{ url_for('static', filename='json/Fox-Audio.json') }}" speed="1" style="width: 100%; height: 100%;" loop autoplay></lottie-player></div>`
+                : `<div class="avatar d-flex align-items-center justify-content-center bg-light"><i class="fas fa-user text-secondary"></i></div>`;
+
+            // Parse Markdown
+            const parsedContent = marked.parse(content);
+
+            const html = `
+                <div class="message ${sender}">
+                    ${avatarHtml}
+                    <div class="bubble shadow-sm">${parsedContent}</div>
+                </div>
+            `;
+            $('#chat-box').append(html);
+            document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = $('#user-input');
+            const message = input.val().trim();
+            const currentTheme = document.documentElement.getAttribute('data-theme'); // Lấy theme hiện tại
+
+            if (!message) return;
+
+            addMessage(message, 'user');
+            input.val('');
+            $('#typing').slideDown();
+
+            // Gửi cả Theme xuống server
+            fetch('/api/chatbot_query', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    message: message,
+                    theme: currentTheme // <--- GỬI THEME ĐỂ ĐỔI PERSONA
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                $('#typing').slideUp();
+                addMessage(data.response, 'bot');
+            })
+            .catch(e => {
+                $('#typing').slideUp();
+                addMessage("❌ Mất kết nối server.", 'bot');
+            });
+        }
+    </script>
+</body>
+</html>

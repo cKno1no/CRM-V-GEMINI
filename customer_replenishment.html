@@ -1,216 +1,161 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Dự báo Dự phòng Khách hàng (v2)</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% extends "base.html" %}
+
+{% block title %}Dự báo Dự phòng Khách hàng | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* MAIN PANELS */
+    .master-panel, .detail-panel { 
+        height: 75vh; display: flex; flex-direction: column; 
+        background: var(--card-bg); border-radius: 16px;
+        box-shadow: var(--shadow-sm); overflow: hidden; border: 1px solid var(--border-color);
+    }
+    .master-table-container, .detail-table-container { flex-grow: 1; overflow-y: auto; }
+
+    .card-header-custom {
+        background-color: var(--card-bg); color: var(--text-dark);
+        font-weight: 700; font-size: 1.1rem; padding: 20px 25px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex; align-items: center;
+    }
+    .card-header-custom i { font-size: 1.1rem; margin-right: 12px; color: var(--primary); }
+    .card-body-custom { padding: 25px; background-color: var(--card-bg); }
+
+    /* FORMS */
+    .form-control, .form-select {
+        border: 1px solid var(--border-color); background-color: var(--input-bg); border-radius: 12px;
+        padding: 10px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none;
+    }
+    .form-control:focus { background-color: var(--card-bg); box-shadow: 0 0 0 2px var(--primary); }
     
-    <style>
-        /* --- 1. CORE STYLES (Đồng bộ) --- */
-        :root {
-            --primary: #4318FF;
-            --primary-light: #F4F7FE;
-            --secondary: #A3AED0;
-            --text-dark: #2B3674;
-            --danger: #E31A1A;
-            --success: #05CD99;
-            --warning: #FFB547;
-            --bg-color: #F4F7FE;
-            --card-radius: 20px;
-            --input-bg: #F4F7FE;
-        }
-        
-        body { 
-            background-color: var(--bg-color); 
-            font-family: 'Inter', sans-serif; 
-            color: var(--text-dark); 
-        }
-        .container-fluid { max-width: 98%; margin-top: 30px; }
+    .btn-primary { background-color: var(--primary); border: none; border-radius: 12px; font-weight: 600; padding: 10px 20px; }
+    .btn-primary:hover { background-color: var(--primary-dark); }
+    
+    /* Dropdown search */
+    .search-container { position: relative; }
+    .search-results-dropdown { 
+        width: 100%; border-radius: 12px; border: 1px solid var(--primary);
+        outline: none; display: none; position: absolute;
+        z-index: 1000; margin-top: 5px; background: var(--card-bg);
+        box-shadow: var(--shadow-md); color: var(--text-dark);
+    }
 
-        /* --- 2. HEADER --- */
-        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
-        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
-        
-        .btn-back {
-            background-color: white; color: var(--secondary); border: 1px solid #E0E5F2;
-            padding: 10px 20px; border-radius: 14px; font-weight: 600; text-decoration: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: all 0.2s;
-        }
-        .btn-back:hover { color: var(--text-dark); background-color: #f8f9fa; }
+    /* TABLES */
+    .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .data-table th { 
+        background-color: var(--input-bg) !important; color: var(--secondary) !important;
+        padding: 15px 10px; font-weight: 600; font-size: 0.85rem; text-transform: uppercase;
+        border-bottom: 2px solid var(--border-color); position: sticky; top: 0; z-index: 5;
+        text-align: center;
+    }
+    .data-table td { 
+        padding: 12px 10px; border-bottom: 1px solid var(--border-color); 
+        font-size: 0.9rem; color: var(--text-dark); vertical-align: middle;
+    }
+    .data-table tbody tr:hover { background-color: var(--input-bg); cursor: pointer; }
+    
+    /* Selected Row */
+    tr.master-row.selected td { 
+        background-color: rgba(67, 24, 255, 0.1) !important; 
+        font-weight: 700; color: var(--primary);
+        border-top: 1px solid var(--primary);
+        border-bottom: 1px solid var(--primary);
+    }
+    
+    /* KPI Boxes (Detail) */
+    .kpi-box {
+        border-radius: 12px; padding: 15px; text-align: center; height: 100%;
+        display: flex; flex-direction: column; justify-content: center;
+        border: 1px solid transparent;
+    }
+    .kpi-box .small { text-transform: uppercase; font-size: 0.75rem; margin-bottom: 5px; opacity: 0.8; font-weight: 600; }
+    .kpi-box h4 { font-weight: 800; margin: 0; font-size: 1.2rem; }
+    
+    .bg-danger-custom { background-color: rgba(227, 26, 26, 0.1); color: var(--danger); border-color: rgba(227, 26, 26, 0.2); }
+    .bg-success-custom { background-color: rgba(5, 205, 153, 0.1); color: var(--success); border-color: rgba(5, 205, 153, 0.2); }
+    .bg-warning-custom { background-color: rgba(255, 181, 71, 0.1); color: #B71C1C; border-color: rgba(255, 181, 71, 0.2); }
+    .bg-light-custom { background-color: var(--input-bg); color: var(--text-dark); border-color: var(--border-color); }
 
-        /* --- 3. MAIN CARDS & PANELS --- */
-        .main-card {
-            border: none; background: white; border-radius: var(--card-radius);
-            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
-            margin-bottom: 20px; overflow: hidden;
-        }
-        
-        .card-header-custom {
-            background-color: white; color: var(--text-dark);
-            font-weight: 700; font-size: 1.1rem; padding: 20px 25px;
-            border-bottom: 1px solid var(--primary-light);
-            display: flex; align-items: center;
-        }
-        .card-header-custom i { font-size: 1.1rem; margin-right: 12px; color: var(--primary); }
-        .card-body-custom { padding: 25px; background-color: white; }
-        
-        .master-panel, .detail-panel { height: 75vh; display: flex; flex-direction: column; }
-        .master-table-container, .detail-table-container { flex-grow: 1; overflow-y: auto; }
+    .deficit-col { color: var(--danger); font-weight: 700; }
+    .surplus-col { color: var(--success); font-weight: 600; }
+    .text-start { text-align: left !important; }
+    .text-end { text-align: right !important; }
+</style>
+{% endblock %}
 
-        /* --- 4. FORMS --- */
-        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
-        .form-control, .form-select {
-            border: none; background-color: var(--input-bg); border-radius: 16px;
-            padding: 12px 15px; font-size: 0.95rem; color: var(--text-dark); box-shadow: none;
-            height: 48px;
-        }
-        .form-control:focus { background-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
-        
-        .btn-primary { background-color: var(--primary); border: none; border-radius: 16px; font-weight: 600; height: 48px; transition: 0.2s; }
-        .btn-primary:hover { background-color: #3a14db; transform: translateY(-1px); }
-        
-        /* Dropdown search */
-        .search-container { position: relative; }
-        .search-results-dropdown { 
-            width: 100%; border-radius: 12px; border: 1px solid var(--primary);
-            outline: none; display: none; position: absolute;
-            z-index: 1000; margin-top: 5px; background: white;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        }
-        .button-column-fix { padding-top: 32px; }
+{% block page_title %}<i class="fas fa-user-clock me-2 text-success"></i> DỰ BÁO DỰ PHÒNG KHÁCH HÀNG{% endblock %}
+{% block page_sub %}Phân tích nhu cầu tái đặt hàng (ROP) theo từng khách.{% endblock %}
 
-        /* --- 5. TABLES --- */
-        .data-table { width: 100%; border-collapse: collapse; }
-        .data-table th { 
-            background-color: #FAFCFE !important; color: var(--secondary) !important;
-            padding: 15px 10px; font-weight: 600; font-size: 0.85rem; text-transform: uppercase;
-            border-bottom: 1px solid var(--primary-light); position: sticky; top: 0; z-index: 5;
-            text-align: center;
-        }
-        .data-table td { 
-            padding: 12px 10px; border-bottom: 1px solid var(--primary-light); 
-            font-size: 0.9rem; color: var(--text-dark); vertical-align: middle;
-        }
-        .data-table tbody tr:hover { background-color: var(--primary-light); cursor: pointer; }
-        
-        /* Selected Row */
-        tr.master-row.selected td { 
-            background-color: var(--primary-light) !important; 
-            font-weight: 700; color: var(--primary);
-            border-top: 1px solid var(--primary);
-            border-bottom: 1px solid var(--primary);
-        }
-        
-        /* Custom Colors */
-        .deficit-col { color: var(--danger); font-weight: 700; }
-        .surplus-col { color: var(--success); font-weight: 600; }
-        
-        .text-start { text-align: left !important; }
-        .text-end { text-align: right !important; }
-        
-        /* Detail KPI Boxes */
-        .kpi-box {
-            border-radius: 16px; padding: 15px; text-align: center; height: 100%;
-            display: flex; flex-direction: column; justify-content: center;
-        }
-        .kpi-box .small { text-transform: uppercase; font-size: 0.75rem; margin-bottom: 5px; opacity: 0.8; }
-        .kpi-box h4 { font-weight: 700; margin: 0; }
-        .bg-danger-custom { background-color: #FFF1F1; color: var(--danger); }
-        .bg-success-custom { background-color: #F0FFF9; color: var(--success); }
-        .bg-warning-custom { background-color: #FFF8E1; color: #B71C1C; }
-        .bg-light-custom { background-color: var(--input-bg); color: var(--text-dark); }
+{% block header_actions %}
+<a href="/" class="btn btn-back"><i class="fas fa-home me-2"></i>Portal</a>
+{% endblock %}
 
-    </style>
-</head>
-<body>
-    <div class="container-fluid">
-        
-        <!-- HEADER -->
-        <div class="page-header">
-            <h1 class="page-title"><i class="fas fa-user-clock me-2 text-success"></i> DỰ BÁO DỰ PHÒNG KHÁCH HÀNG</h1>
-            <a href="{{ url_for('index') }}" class="btn-back"><i class="fas fa-home me-2"></i>Về Portal</a>
+{% block content %}
+    <div class="main-card mb-4" style="background: var(--card-bg); border-radius: 16px; padding: 20px; border: 1px solid var(--border-color);">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-8 search-container"> 
+                <label class="form-label fw-bold">Chọn Khách hàng (VMS, Acecook...)</label>
+                <input type="text" id="kh_search_input" placeholder="Gõ Mã/Tên Khách hàng..." class="form-control">
+                <input type="hidden" id="kh_ma_selected">
+                <select id="kh_search_results" class="form-select search-results-dropdown" size="5"></select>
+                <small id="kh_status" class="form-text text-muted mt-2 ms-1">Hiển thị Top 20 mã hàng (Recurring).</small>
+            </div>
+            <div class="col-md-4"> 
+                <button class="btn btn-primary w-100" id="searchBtn">
+                    <i class="fas fa-search me-2"></i> Tra cứu
+                </button>
+            </div>
         </div>
-        
-        <!-- FILTER -->
-        <div class="main-card">
-            <div class="card-body-custom">
-                <div class="row g-3 align-items-start">
-                    <div class="col-md-8 search-container"> 
-                        <label class="form-label">Chọn Khách hàng (VMS, Acecook...)</label>
-                        <input type="text" id="kh_search_input" placeholder="Gõ Mã/Tên Khách hàng..." class="form-control">
-                        <small id="kh_status" class="form-text text-muted mt-2 ms-1">Hiển thị Top 20 mã hàng (Recurring).</small>
-                        
-                        <input type="hidden" id="kh_ma_selected">
-                        <select id="kh_search_results" class="form-select search-results-dropdown" size="5"></select>
-                    </div>
-                    <div class="col-md-4 button-column-fix"> 
-                        <button class="btn btn-primary w-100" id="searchBtn">
-                            <i class="fas fa-search me-2"></i> Tra cứu
-                        </button>
-                    </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="master-panel">
+                <div class="card-header-custom">
+                    <span><i class="fas fa-list-ul"></i> <span id="masterCardHeader">Danh sách Nhóm hàng</span></span>
+                </div>
+                <div class="master-table-container">
+                    <table class="data-table">
+                        <thead class="text-center">
+                            <tr>
+                                <th class="text-start">Nhóm Hàng</th>
+                                <th class="text-end">Thiếu/Dư (KH)</th>
+                                <th class="text-end">ROP</th>
+                                <th class="text-end">Tồn-BO (Chung)</th>
+                                <th class="text-end">Tiêu hao (Tháng)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultBody">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted p-5">
+                                    <i class="fas fa-search fa-3x mb-3 opacity-25"></i><br>
+                                    Vui lòng chọn khách hàng và nhấn "Tra cứu".
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
-        <!-- MASTER-DETAIL -->
-        <div class="row g-4">
-            <!-- LEFT: MASTER LIST -->
-            <div class="col-lg-7">
-                <div class="main-card master-panel">
-                    <div class="card-header-custom">
-                        <i class="fas fa-list-ul"></i> <span id="masterCardHeader">Danh sách Nhóm hàng</span>
-                    </div>
-                    <div class="master-table-container">
-                        <table class="data-table">
-                            <thead class="text-center">
-                                <tr>
-                                    <th class="text-start">Nhóm Hàng</th>
-                                    <th class="text-end">Thiếu/Dư (KH)</th>
-                                    <th class="text-end">ROP</th>
-                                    <th class="text-end">Tồn-BO (Chung)</th>
-                                    <th class="text-end">Tiêu hao (Tháng)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="resultBody">
-                                <tr>
-                                    <td colspan="5" class="text-center text-muted p-5">
-                                        <img src="https://cdn-icons-png.flaticon.com/512/7486/7486754.png" width="64" class="opacity-25 mb-3"><br>
-                                        Vui lòng chọn khách hàng và nhấn "Tra cứu".
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+        <div class="col-lg-5">
+            <div class="detail-panel">
+                <div class="card-header-custom">
+                    <span><i class="fas fa-info-circle"></i> <span id="detailCardHeader">Chi tiết Nhóm hàng</span></span>
                 </div>
-            </div>
-
-            <!-- RIGHT: DETAIL -->
-            <div class="col-lg-5">
-                <div class="main-card detail-panel">
-                    <div class="card-header-custom">
-                        <i class="fas fa-info-circle"></i> <span id="detailCardHeader">Chi tiết Nhóm hàng</span>
-                    </div>
-                    <div class="card-body-custom d-flex flex-column h-100">
-                        <div id="detail-summary" class="row g-3 mb-3"></div>
-                        <div id="detail-table" class="detail-table-container">
-                            <p class="text-center text-muted p-5">Vui lòng chọn một Nhóm hàng bên trái.</p>
-                        </div>
+                <div class="card-body-custom d-flex flex-column h-100 p-3">
+                    <div id="detail-summary" class="row g-3 mb-3"></div>
+                    <div id="detail-table" class="detail-table-container">
+                        <p class="text-center text-muted p-5">Vui lòng chọn một Nhóm hàng bên trái.</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+{% endblock %}
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- JAVASCRIPT GIỮ NGUYÊN LOGIC (Chỉ sửa class HTML trong string) -->
+{% block scripts %}
     <script>
-        // === HÀM FORMATCURRENCY ===
         function formatCurrency(num) {
             let numValue = parseFloat(num);
             if (isNaN(numValue)) { numValue = 0; }
@@ -260,7 +205,7 @@
                 $('#kh_search_results').hide();
                 $('#kh_ma_selected').val(id); 
                 $('#kh_search_input').val(displayText); 
-                $('#kh_status').html('<span class="text-success"><i class="fas fa-check-circle"></i> Khách hàng đã được chọn.</span>');
+                $('#kh_status').html('<span class="text-success fw-bold"><i class="fas fa-check-circle"></i> Khách hàng đã được chọn.</span>');
                 
                 $('#searchBtn').click(); 
             }
@@ -279,7 +224,6 @@
             
             header.text(`Chi tiết Nhóm: ${groupCode}`);
 
-            // CẬP NHẬT HTML CHO KPI BOX (Style mới)
             const deficitClass = luongThieuDu > 0 ? 'bg-danger-custom' : 'bg-success-custom';
             summaryDiv.html(`
                 <div class="col-md-4">
@@ -302,7 +246,7 @@
                 </div>
             `);
             
-            tableDiv.html('<p class="text-center mt-5"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết...</p>');
+            tableDiv.html('<p class="text-center mt-5 text-muted"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết...</p>');
 
             fetch(`/sales/api/replenishment_details/${encodeURIComponent(groupCode)}`)
                 .then(response => {
@@ -315,7 +259,6 @@
                         return;
                     }
 
-                    // CẬP NHẬT CLASS BẢNG CHI TIẾT
                     let tableHtml = '<table class="data-table">';
                     tableHtml += '<thead><tr>';
                     tableHtml += '<th class="text-start">Mã Hàng</th>';
@@ -401,5 +344,4 @@
             });
         });
     </script>
-</body>
-</html>
+{% endblock %}

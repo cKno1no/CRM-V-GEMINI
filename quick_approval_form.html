@@ -169,62 +169,185 @@
 {% endblock %}
 
 {% block scripts %}
-    <script>
-        function setupAutocomplete(inputId, listId, selectId) {
-            const input = document.getElementById(inputId);
-            const list = document.getElementById(listId);
-            const select = document.getElementById(selectId);
-            const options = Array.from(select.options).slice(1);
+<script>
+    // 1. SETUP AUTOCOMPLETE (Giữ nguyên logic tìm kiếm)
+    function setupAutocomplete(inputId, listId, selectId) {
+        const input = document.getElementById(inputId);
+        const list = document.getElementById(listId);
+        const select = document.getElementById(selectId);
+        const options = Array.from(select.options).slice(1);
 
-            input.addEventListener('input', function() {
-                const term = this.value.toLowerCase();
-                list.innerHTML = '';
-                if (term.length < 1) { list.style.display = 'none'; select.value = ""; return; }
+        input.addEventListener('input', function() {
+            const term = this.value.toLowerCase();
+            list.innerHTML = '';
+            
+            if (term.length < 1) { 
+                list.style.display = 'none'; 
+                select.value = ""; 
+                return; 
+            }
 
-                const matches = options.filter(opt => opt.text.toLowerCase().includes(term));
+            const matches = options.filter(opt => opt.text.toLowerCase().includes(term));
 
-                if (matches.length > 0) {
-                    matches.forEach(opt => {
-                        const div = document.createElement('div');
-                        div.className = 'suggestion-item ' + opt.className;
-                        div.textContent = opt.text;
-                        div.onclick = function() {
-                            input.value = opt.text;
-                            select.value = opt.value;
-                            list.style.display = 'none';
-                        };
-                        list.appendChild(div);
-                    });
-                    list.style.display = 'block';
-                } else {
-                    list.innerHTML = '<div class="suggestion-item text-muted">Không tìm thấy kết quả.</div>';
-                    list.style.display = 'block';
+            if (matches.length > 0) {
+                matches.forEach(opt => {
+                    const div = document.createElement('div');
+                    // Copy class để giữ màu (đỏ/cam)
+                    div.className = 'suggestion-item ' + opt.className;
+                    div.textContent = opt.text;
+                    div.onclick = function() {
+                        input.value = opt.text;
+                        select.value = opt.value;
+                        list.style.display = 'none';
+                        
+                        // Kích hoạt sự kiện change để debug nếu cần
+                        $(select).trigger('change');
+                    };
+                    list.appendChild(div);
+                });
+                list.style.display = 'block';
+            } else {
+                list.innerHTML = '<div class="suggestion-item text-muted">Không tìm thấy kết quả.</div>';
+                list.style.display = 'block';
+            }
+        });
+
+        // Tự động hiển thị lại khi focus nếu đã có text
+        input.addEventListener('focus', function() { 
+            if(this.value.trim() !== "") this.dispatchEvent(new Event('input')); 
+        });
+        
+        // Đóng list khi click ra ngoài
+        document.addEventListener('click', function(e) { 
+            if (!input.contains(e.target) && !list.contains(e.target)) list.style.display = 'none'; 
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        setupAutocomplete('quoteSearchInput', 'quoteSuggestions', 'quoteSelect');
+        setupAutocomplete('orderSearchInput', 'orderSuggestions', 'orderSelect');
+    });
+
+    // 2. LOGIC GỌI API DUYỆT (PHẦN QUAN TRỌNG CẦN THÊM VÀO)
+    $(document).ready(function() {
+        
+        // --- A. XỬ LÝ DUYỆT CHÀO GIÁ ---
+        $('#approveQuoteBtn').on('click', function() {
+            const selected = $('#quoteSelect option:selected');
+            const quoteId = selected.val();
+
+            if (!quoteId) {
+                alert('Vui lòng tìm kiếm và chọn một Chào Giá để duyệt.');
+                $('#quoteSearchInput').focus();
+                return;
+            }
+
+            // Lấy data attributes
+            const quoteNo = selected.data('quotationno');
+            const isPass = selected.data('is-pass'); // True/False
+            const needsOverride = selected.data('needs-override'); // True/False
+            const reason = selected.data('reason');
+
+            // Kiểm tra Logic Chặn cứng (Failed Hard)
+            // Nếu Không Pass VÀ Không cho phép Ghi đè -> Chặn
+            if (isPass === false && needsOverride === false) {
+                alert(`⛔ KHÔNG THỂ DUYỆT PHIẾU NÀY!\nLý do: ${reason}\n(Đây là lỗi bắt buộc, cần NV kinh doanh sửa lại)`);
+                return;
+            }
+
+            // Nếu Pass=False nhưng Override=True -> Cảnh báo vàng
+            let confirmMsg = `Xác nhận DUYỆT NHANH Chào giá: ${quoteNo}?`;
+            if (needsOverride === true) {
+                confirmMsg += `\n\n⚠️ CẢNH BÁO: Phiếu này đang vi phạm tỷ số duyệt (${reason}).\nBạn có chắc chắn muốn GHI ĐÈ (Override) và duyệt ngay không?`;
+            }
+
+            if (!confirm(confirmMsg)) return;
+
+            // Gửi API
+            const btn = $(this);
+            const originalText = btn.html();
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Đang xử lý...');
+
+            $.ajax({
+                url: '/api/approve_quote',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    quotation_no: quoteNo,
+                    quotation_id: quoteId,
+                    object_id: selected.data('objectid'),
+                    employee_id: selected.data('nvkd'),
+                    approval_ratio: selected.data('ratio')
+                }),
+                success: function(res) {
+                    alert('✅ ' + res.message);
+                    location.reload(); // Tải lại trang để cập nhật danh sách
+                },
+                error: function(err) {
+                    const msg = err.responseJSON ? err.responseJSON.message : 'Lỗi kết nối server';
+                    alert('❌ Lỗi: ' + msg);
+                    btn.prop('disabled', false).html(originalText);
                 }
             });
-
-            input.addEventListener('focus', function() { if(this.value.trim() !== "") this.dispatchEvent(new Event('input')); });
-            document.addEventListener('click', function(e) { if (!input.contains(e.target) && !list.contains(e.target)) list.style.display = 'none'; });
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            setupAutocomplete('quoteSearchInput', 'quoteSuggestions', 'quoteSelect');
-            setupAutocomplete('orderSearchInput', 'orderSuggestions', 'orderSelect');
         });
 
-        $(document).ready(function() {
-            // COPY NGUYÊN LOGIC DUYỆT TỪ FILE CŨ VÀO ĐÂY
-            // (Đoạn JS xử lý fetch approve_quote và approve_order)
-            // ...
-            
-            // Ví dụ ngắn gọn:
-            $('#approveQuoteBtn').on('click', function() {
-                const selected = $('#quoteSelect option:selected');
-                if (!selected.val()) return alert('Vui lòng chọn phiếu.');
-                if(!confirm(`Duyệt phiếu ${selected.data('quotationno')}?`)) return;
-                
-                // Call API...
-                alert("Đang xử lý (Cần copy logic JS cũ vào đây)");
+        // --- B. XỬ LÝ DUYỆT ĐƠN HÀNG BÁN (SO) ---
+        $('#approveOrderBtn').on('click', function() {
+            const selected = $('#orderSelect option:selected');
+            const sorderId = selected.val(); // Value của option là SOrderID
+
+            if (!sorderId) {
+                alert('Vui lòng tìm kiếm và chọn một Đơn Hàng để duyệt.');
+                $('#orderSearchInput').focus();
+                return;
+            }
+
+            const orderNo = selected.data('orderid');
+            const isPass = selected.data('is-pass');
+            const needsOverride = selected.data('needs-override');
+            const reason = selected.data('reason');
+
+            // Kiểm tra Logic Chặn cứng
+            if (isPass === false && needsOverride === false) {
+                alert(`⛔ KHÔNG THỂ DUYỆT ĐƠN HÀNG NÀY!\nLý do: ${reason}`);
+                return;
+            }
+
+            let confirmMsg = `Xác nhận DUYỆT NHANH Đơn hàng: ${orderNo}?`;
+            if (needsOverride === true) {
+                confirmMsg += `\n\n⚠️ CẢNH BÁO: Đơn hàng này có vấn đề về tỷ số (${reason}).\nBạn có chắc chắn muốn GHI ĐÈ và duyệt ngay không?`;
+            }
+
+            if (!confirm(confirmMsg)) return;
+
+            // Gửi API
+            const btn = $(this);
+            const originalText = btn.html();
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Đang xử lý...');
+
+            $.ajax({
+                url: '/api/approve_order',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    order_id: orderNo,
+                    sorder_id: sorderId,
+                    client_id: selected.data('clientid'),
+                    salesman_id: selected.data('salesmanid'),
+                    approval_ratio: selected.data('ratio')
+                }),
+                success: function(res) {
+                    alert('✅ ' + res.message);
+                    location.reload();
+                },
+                error: function(err) {
+                    const msg = err.responseJSON ? err.responseJSON.message : 'Lỗi kết nối server';
+                    alert('❌ Lỗi: ' + msg);
+                    btn.prop('disabled', false).html(originalText);
+                }
             });
         });
-    </script>
+
+    });
+</script>
 {% endblock %}

@@ -5,144 +5,74 @@
 {% block extra_css %}
 <style>
     /* ======================================= */
-    /* 1. BACKGROUND RANDOM SETUP (MỚI BỔ SUNG) */
+    /* 1. BACKGROUND RANDOM SETUP */
     /* ======================================= */
     .index-bg-image {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: -2; /* Nằm sau cùng */
-        background-position: center;
-        background-size: cover;
-        background-repeat: no-repeat;
-        filter: blur(10px); /* Hiệu ứng làm mờ nhẹ */
-        transform: scale(1.1); /* Phóng to để che viền mờ */
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
+        background-position: center; background-size: cover; background-repeat: no-repeat;
+        filter: blur(10px); transform: scale(1.1);
     }
-
     .index-bg-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: -1; /* Nằm giữa ảnh và nội dung */
-        /* Lớp phủ tối để làm nổi bật nội dung kính mờ phía trên */
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
         background-color: rgba(15, 23, 42, 0.6); 
     }
 
     /* ======================================= */
-    /* 2. LAYOUT & CONTENT WRAPPER (GIỮ NGUYÊN) */
+    /* 2. LAYOUT & CONTENT WRAPPER */
     /* ======================================= */
-    
-    /* Thiết lập biến màu kính mờ cho Wrapper */
-    :root {
-        --glass-bg: rgba(255, 255, 255, 0.85); /* Light Mode */
-    }
-    [data-theme="dark"] {
-        --glass-bg: rgba(11, 20, 55, 0.85); /* Dark Mode */
-    }
-    [data-theme="fantasy"], [data-theme="adorable"] {
-        --glass-bg: var(--card-bg);
-    }
+    :root { --glass-bg: rgba(255, 255, 255, 0.85); }
+    [data-theme="dark"] { --glass-bg: rgba(11, 20, 55, 0.85); }
+    [data-theme="fantasy"], [data-theme="adorable"] { --glass-bg: var(--card-bg); }
 
-    /* Container chính chứa menu */
     .content-wrapper {
-        position: relative;
-        z-index: 1;
-        padding: 40px 30px;
-        max-width: 900px;
-        margin: 5vh auto; /* Căn giữa */
-        background-color: var(--glass-bg); /* Nền kính mờ */
-        border-radius: 24px;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        position: relative; z-index: 1; padding: 40px 30px; max-width: 900px;
+        margin: 5vh auto; background-color: var(--glass-bg); border-radius: 24px;
+        backdrop-filter: blur(10px); box-shadow: 0 10px 40px rgba(0,0,0,0.2);
         border: 1px solid rgba(255,255,255,0.2);
     }
 
-    /* Tiêu đề đặc trưng */
     h1.portal-title {
-        font-weight: 900;
-        font-size: 2.5rem;
-        color: var(--text-dark); 
-        border-bottom: 2px solid var(--border-color);
-        padding-bottom: 15px;
-        margin-bottom: 30px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+        font-weight: 900; font-size: 2.5rem; color: var(--text-dark); 
+        border-bottom: 2px solid var(--border-color); padding-bottom: 15px; margin-bottom: 30px;
+        text-transform: uppercase; letter-spacing: 1px;
     }
 
     /* ======================================= */
-    /* 3. MENU STYLES (THEME AWARE) */
+    /* 3. MENU STYLES */
     /* ======================================= */
     .accordion-button {
-        font-weight: 700;
-        font-size: 1.15rem;
-        color: var(--text-dark) !important;
-        background-color: var(--card-bg) !important; 
-        border: 1px solid var(--border-color);
-        box-shadow: none;
-        padding: 1.2rem 1.5rem;
+        font-weight: 700; font-size: 1.15rem; color: var(--text-dark) !important;
+        background-color: var(--card-bg) !important; border: 1px solid var(--border-color);
+        box-shadow: none; padding: 1.2rem 1.5rem;
     }
     .accordion-button:not(.collapsed) {
-        background-color: var(--input-bg) !important; 
-        color: var(--primary) !important;
+        background-color: var(--input-bg) !important; color: var(--primary) !important;
         border-bottom: 1px solid var(--border-color);
     }
-    .accordion-item {
-        border: none;
-        margin-bottom: 15px;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: var(--shadow-sm);
-        background: transparent;
-    }
+    .accordion-item { border: none; margin-bottom: 15px; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm); background: transparent; }
 
-    /* Menu Links */
     .menu-link {
-        display: flex;
-        align-items: center;
-        padding: 15px 1.5rem;
-        text-decoration: none;
-        color: var(--text-dark);
-        transition: all 0.2s;
-        border-left: 4px solid transparent;
-        font-weight: 500;
-        background: var(--card-bg);
-        border-bottom: 1px solid var(--border-color);
+        display: flex; align-items: center; padding: 15px 1.5rem; text-decoration: none;
+        color: var(--text-dark); transition: all 0.2s; border-left: 4px solid transparent;
+        font-weight: 500; background: var(--card-bg); border-bottom: 1px solid var(--border-color);
     }
     .menu-link:hover {
-        background-color: var(--input-bg);
-        color: var(--primary);
-        border-left: 4px solid var(--primary);
-        padding-left: 2rem;
+        background-color: var(--input-bg); color: var(--primary);
+        border-left: 4px solid var(--primary); padding-left: 2rem;
     }
-    .menu-link i {
-        font-size: 1.2rem; width: 40px; color: var(--secondary);
-        transition: color 0.2s;
-    }
+    .menu-link i { font-size: 1.2rem; width: 40px; color: var(--secondary); transition: color 0.2s; }
 
-    /* Màu module đặc trưng */
-    .module-crm i { color: #34A853; }      
-    .module-kpi i { color: #DB4437; }      
-    .module-ceq i { color: #F4B400; }      
+    .module-crm i { color: #34A853; } .module-kpi i { color: #DB4437; } .module-ceq i { color: #F4B400; }      
+    .module-title-crm { color: #34A853; } .module-title-kpi { color: #DB4437; } .module-title-ceq { color: #F4B400; }
     
-    .module-title-crm { color: #34A853; }
-    .module-title-kpi { color: #DB4437; }
-    .module-title-ceq { color: #F4B400; }
+    .menu-link.planned { color: var(--secondary); opacity: 0.6; cursor: not-allowed; background-color: var(--input-bg); }
     
-    .menu-link.planned {
-        color: var(--secondary); opacity: 0.6; cursor: not-allowed;
-        background-color: var(--input-bg);
-    }
-    
-    /* Ẩn Header mặc định của Base để dùng Header riêng của Index */
     .page-header { display: none !important; }
     .container-fluid { padding: 0 !important; } 
     
-    /* Chatbot toggle position override */
-    .chatbot-toggle { bottom: 25px; right: 25px; width: 60px; height: 60px; font-size: 1.8rem; }
+    @media (max-width: 768px) {
+        .content-wrapper { margin: 0; border-radius: 0; height: 100vh; overflow-y: auto; }
+    }
 </style>
 {% endblock %}
 
@@ -151,21 +81,21 @@
     <div class="index-bg-overlay"></div>
 
     <div class="content-wrapper">
-        
         <header class="d-flex justify-content-between align-items-center mb-4">
-            <div class="logo-box">
-                </div>
+            <div class="logo-box"></div>
             <div class="d-flex gap-2">
-                {% if current_user.role == 'ADMIN' %}
+                {% if user_context.role == 'ADMIN' %}
                 <a href="/user_management" class="btn btn-sm btn-danger shadow-sm fw-bold">
                     <i class="fas fa-users-cog me-2"></i>Quản trị
                 </a>
                 {% endif %}
 
-                <a href="{{ url_for('change_password') }}" class="btn btn-sm btn-light border shadow-sm" style="background: var(--card-bg); color: var(--text-dark);">
-                    <i class="fas fa-key me-2"></i>Đổi MK
+                {% if user_context.can('VIEW_PROFILE') %}
+                <a href="/profile" class="btn btn-sm btn-primary shadow-sm fw-bold">
+                    <i class="fas fa-id-card me-2"></i>Hồ sơ cá nhân
                 </a>
-                
+                {% endif %}
+
                 <a href="/logout" class="btn btn-sm btn-light border shadow-sm" style="background: var(--card-bg); color: var(--text-dark);">
                     <i class="fas fa-sign-out-alt me-2"></i>Thoát
                 </a>
@@ -175,12 +105,11 @@
         <h1 class="portal-title text-center"><i class="fas fa-sitemap me-3"></i> PORTAL ĐIỀU HÀNH</h1>
         
         <p class="text-center mb-5" style="color: var(--text-dark); font-size: 1.1rem;">
-            Chào mừng, <strong style="color: var(--primary);">{{ current_user.shortname }}</strong> ({{ current_user.usercode }}) 
-            - Bộ phận: <span class="badge bg-secondary">{{ current_user.bo_phan }}</span>
+            Chào mừng, <strong style="color: var(--primary);">{{ user_context.shortname }}</strong> ({{ user_context.usercode }}) 
+            - Bộ phận: <span class="badge bg-secondary">{{ user_context.bo_phan }}</span>
         </p>
 
         <div class="accordion" id="mainAccordion">
-
             <div class="accordion-item">
                 <h2 class="accordion-header" id="headingCRM">
                     <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCRM">
@@ -189,18 +118,10 @@
                 </h2>
                 <div id="collapseCRM" class="accordion-collapse collapse show" data-bs-parent="#mainAccordion">
                     <div class="accordion-body p-0">
-                        <a href="/dashboard" class="menu-link module-crm" target="_blank">
-                            <i class="fas fa-file-invoice me-3"></i> Dashboard Báo cáo & Lịch sử
-                        </a>
-                        <a href="/nhaplieu" class="menu-link module-crm" target="_blank">
-                            <i class="fas fa-plus-circle me-3"></i> Lập Báo cáo Hiện diện Khách hàng
-                        </a>
-                        <a href="/task_dashboard" class="menu-link module-crm" target="_blank">
-                            <i class="fas fa-tasks me-3"></i> Quản lý Đầu việc & Giao việc
-                        </a>
-                        <a href="/delivery_dashboard" class="menu-link module-crm" target="_blank">
-                            <i class="fas fa-shipping-fast me-3"></i> Hoạch định & Thực thi giao vận
-                        </a>
+                        <a href="/dashboard" class="menu-link module-crm" target="_blank"><i class="fas fa-file-invoice me-3"></i> Dashboard Báo cáo & Lịch sử</a>
+                        <a href="/nhaplieu" class="menu-link module-crm" target="_blank"><i class="fas fa-plus-circle me-3"></i> Lập Báo cáo Hiện diện Khách hàng</a>
+                        <a href="/task_dashboard" class="menu-link module-crm" target="_blank"><i class="fas fa-tasks me-3"></i> Quản lý Đầu việc & Giao việc</a>
+                        <a href="/delivery_dashboard" class="menu-link module-crm" target="_blank"><i class="fas fa-shipping-fast me-3"></i> Hoạch định & Thực thi giao vận</a>
                     </div>
                 </div>
             </div>
@@ -213,34 +134,20 @@
                 </h2>
                 <div id="collapseKPI" class="accordion-collapse collapse" data-bs-parent="#mainAccordion">
                     <div class="accordion-body p-0">
-                        <a href="/quote_approval" class="menu-link module-kpi" target="_blank">
-                            <i class="fas fa-certificate me-3"></i> Theo dõi & Phê duyệt Báo giá
-                        </a>
-                        <a href="/sales/sales_lookup" class="menu-link module-kpi" target="_blank">
-                            <i class="fas fa-search-dollar me-3"></i> Tra cứu Giá & Tồn kho
-                        </a>
-                        <a href="/realtime_dashboard" class="menu-link module-kpi" target="_blank">
-                            <i class="fas fa-tachometer-alt me-3"></i> Chỉ số kinh doanh - Realtime
-                        </a>
-                        <a href="/quote_input_table" class="menu-link module-kpi" target="_blank">
-                            <i class="fas fa-bullseye me-3"></i> Bám sát & Hành động
-                        </a>
-                        <a href="/budget/dashboard" class="menu-link module-kpi" target="_blank">
-                            <i class="fas fa-wallet me-3"></i> Ngân sách & Chi tiêu
-                        </a>
-                        
-                        {% set is_finance_user = current_user.role|upper == 'ADMIN' or 'KTTC' in current_user.bo_phan %}
-                        <a href="{% if is_finance_user %}/ar_aging{% else %}#{% endif %}" 
-                           class="menu-link module-kpi {% if not is_finance_user %}planned{% endif %}" 
-                           target="{% if is_finance_user %}_blank{% else %}_self{% endif %}"
-                           {% if not is_finance_user %}onclick="alert('Bạn không có quyền truy cập module Tài chính.'); return false;"{% endif %}>
+                        <a href="/quote_approval" class="menu-link module-kpi" target="_blank"><i class="fas fa-certificate me-3"></i> Theo dõi & Phê duyệt Báo giá</a>
+                        <a href="/sales/sales_lookup" class="menu-link module-kpi" target="_blank"><i class="fas fa-search-dollar me-3"></i> Tra cứu Giá & Tồn kho</a>
+                        <a href="/realtime_dashboard" class="menu-link module-kpi" target="_blank"><i class="fas fa-tachometer-alt me-3"></i> Chỉ số kinh doanh - Realtime</a>
+                        <a href="/quote_input_table" class="menu-link module-kpi" target="_blank"><i class="fas fa-bullseye me-3"></i> Bám sát & Hành động</a>
+                        <a href="/budget/dashboard" class="menu-link module-kpi" target="_blank"><i class="fas fa-wallet me-3"></i> Ngân sách & Chi tiêu</a>
+                        {% set is_finance_user = user_context.role|upper == 'ADMIN' or 'KTTC' in user_context.bo_phan %}
+                        <a href="{% if is_finance_user %}/ar_aging{% else %}#{% endif %}" class="menu-link module-kpi {% if not is_finance_user %}planned{% endif %}" target="{% if is_finance_user %}_blank{% else %}_self{% endif %}" {% if not is_finance_user %}onclick="alert('Bạn không có quyền truy cập module Tài chính.'); return false;"{% endif %}>
                             <i class="fas fa-hand-holding-usd me-3"></i> Nhắc nợ & Thu tiền (AR)
                         </a>
                     </div>
                 </div>
             </div>
 
-            {% if current_user.role|upper in ['ADMIN', 'GM'] or 'KTTC' in current_user.bo_phan %}
+            {% if user_context.role|upper in ['ADMIN', 'GM'] or 'KTTC' in user_context.bo_phan %}
             <div class="accordion-item">
                 <h2 class="accordion-header" id="headingCEQ">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCEQ">
@@ -249,145 +156,31 @@
                 </h2>
                 <div id="collapseCEQ" class="accordion-collapse collapse" data-bs-parent="#mainAccordion">
                     <div class="accordion-body p-0">
-                        <a href="/inventory_aging" class="menu-link module-ceq" target="_blank">
-                            <i class="fas fa-warehouse me-3"></i> Phân tích Tuổi hàng Tồn kho
-                        </a>
-                        <a href="/sales/total_replenishment" class="menu-link module-ceq" target="_blank">
-                             <i class="fas fa-boxes me-3"></i> Dự báo Tồn kho Tổng thể
-                        </a>
-                        <a href="/ap_aging" class="menu-link module-ceq" target="_blank">
-                             <i class="fas fa-file-invoice-dollar me-3"></i> Quản lý Nợ phải trả (AP Aging)
-                        </a>
-                        <a href="/sales/profit_analysis" class="menu-link module-ceq" target="_blank">
-                             <i class="fas fa-chart-line me-3"></i> Lãi biên đơn hàng và khách hàng
-                        </a>
-                        <a href="/analysis/comparison" class="menu-link module-ceq" target="_blank">
-                             <i class="fas fa-balance-scale me-3"></i> Hiệu quả KD qua các kỳ
-                        </a>
-                        <a href="/budget/report/ytd" class="menu-link module-ceq" target="_blank">
-                             <i class="fas fa-chart-area me-3"></i> Ngân sách vs Thực chi
-                        </a>
+                        <a href="/inventory_aging" class="menu-link module-ceq" target="_blank"><i class="fas fa-warehouse me-3"></i> Phân tích Tuổi hàng Tồn kho</a>
+                        <a href="/sales/total_replenishment" class="menu-link module-ceq" target="_blank"><i class="fas fa-boxes me-3"></i> Dự báo Tồn kho Tổng thể</a>
+                        <a href="/ap_aging" class="menu-link module-ceq" target="_blank"><i class="fas fa-file-invoice-dollar me-3"></i> Quản lý Nợ phải trả (AP Aging)</a>
+                        <a href="/sales/profit_analysis" class="menu-link module-ceq" target="_blank"><i class="fas fa-chart-line me-3"></i> Lãi biên đơn hàng và khách hàng</a>
+                        <a href="/analysis/comparison" class="menu-link module-ceq" target="_blank"><i class="fas fa-balance-scale me-3"></i> Hiệu quả KD qua các kỳ</a>
+                        <a href="/budget/report/ytd" class="menu-link module-ceq" target="_blank"><i class="fas fa-chart-area me-3"></i> Ngân sách vs Thực chi</a>
                     </div>
                 </div>
             </div>
             {% endif %}
-
         </div>
     </div>
 
-    <div class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-robot"></i></div>
-
-    <div class="chatbot-window" id="chatbotWindow">
-        <div class="chatbot-header">
-            <span><i class="fas fa-sparkles me-2"></i>Trợ lý Ảo (AI)</span>
-            <div>
-                <button class="btn btn-sm text-white p-0 me-2" id="chatbotMaximizeBtn"><i class="fas fa-expand-alt"></i></button>
-                <button class="btn btn-sm text-white p-0" id="chatbotClose"><i class="fas fa-times"></i></button>
-            </div>
-        </div>
-        <div class="chatbot-history" id="chatbotHistory"></div>
-        <div class="chatbot-input-area">
-            <input type="text" class="chatbot-input" id="chatbotInput" placeholder="Hỏi tôi về tồn kho, giá...">
-            <button class="chatbot-send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button>
-        </div>
-    </div>
-{% endblock %}
+    {% endblock %}
 
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // --- 1. RANDOM BACKGROUND LOGIC (MỚI BỔ SUNG) ---
+        // --- RANDOM BACKGROUND ---
         const bgContainer = document.getElementById('random-bg-image');
-        // Sử dụng picsum.photos với tham số thời gian để tránh cache
-        const randomImageUrl = "https://picsum.photos/1920/1080?" + new Date().getTime();
-        
-        const img = new Image();
-        img.onload = function() {
-            // Khi ảnh tải xong, gán vào div nền
-            bgContainer.style.backgroundImage = `url('${randomImageUrl}')`;
-            bgContainer.style.opacity = 1;
-        };
-        img.src = randomImageUrl;
-
-        // --- 2. CHATBOT LOGIC (GIỮ NGUYÊN) ---
-        const toggleBtn = document.getElementById('chatbotToggle');
-        const closeBtn = document.getElementById('chatbotClose');
-        const maximizeBtn = document.getElementById('chatbotMaximizeBtn');
-        const windowEl = document.getElementById('chatbotWindow');
-        const historyEl = document.getElementById('chatbotHistory');
-        const inputEl = document.getElementById('chatbotInput');
-        const sendBtn = document.getElementById('chatbotSendBtn');
-        
-        // Tạo container tin nhắn
-        const messageContainer = document.createElement('div');
-        messageContainer.style.display = 'flex';
-        messageContainer.style.flexDirection = 'column';
-        messageContainer.style.width = '100%';
-        historyEl.appendChild(messageContainer);
-
-        // Tin nhắn chào mừng
-        addMessageToHistory('Chào bạn, tôi có thể giúp gì?\n1. Tra tồn kho\n2. Tra giá bán\n3. Lịch sử mua hàng', 'bot');
-
-        toggleBtn.addEventListener('click', () => windowEl.classList.toggle('active'));
-        closeBtn.addEventListener('click', () => windowEl.classList.remove('active'));
-        maximizeBtn.addEventListener('click', () => {
-            windowEl.classList.toggle('maximized');
-            maximizeBtn.innerHTML = windowEl.classList.contains('maximized') ? '<i class="fas fa-compress-alt"></i>' : '<i class="fas fa-expand-alt"></i>';
-        });
-
-        function sendMessage() {
-            const text = inputEl.value.trim();
-            if (!text) return;
-            addMessageToHistory(text, 'user');
-            inputEl.value = '';
-            addMessageToHistory('...', 'bot', true);
-
-            fetch('/api/chatbot_query', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: text })
-            })
-            .then(r => r.json())
-            .then(data => updateBotMessage(data.response))
-            .catch(() => updateBotMessage('Lỗi kết nối server.'));
-        }
-
-        sendBtn.addEventListener('click', sendMessage);
-        inputEl.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
-
-        function addMessageToHistory(text, type, isLoading = false) {
-            const msgDiv = document.createElement('div');
-            msgDiv.classList.add('chat-message');
-            // Thêm style inline hoặc class tùy theme, ở đây dùng class định nghĩa trong base hoặc inline cơ bản
-            msgDiv.style.marginBottom = '10px';
-            msgDiv.style.padding = '8px 12px';
-            msgDiv.style.borderRadius = '15px';
-            msgDiv.style.maxWidth = '85%';
-            msgDiv.style.wordWrap = 'break-word';
-
-            if (type === 'user') {
-                msgDiv.style.backgroundColor = 'var(--primary-light)'; 
-                msgDiv.style.color = 'var(--primary)';
-                msgDiv.style.alignSelf = 'flex-end';
-                msgDiv.style.marginLeft = '15%';
-            } else {
-                msgDiv.style.backgroundColor = 'var(--input-bg)';
-                msgDiv.style.color = 'var(--text-dark)';
-                msgDiv.style.alignSelf = 'flex-start';
-                msgDiv.style.marginRight = '15%';
-            }
-
-            if(isLoading) { msgDiv.id = 'bot-loading'; msgDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
-            else msgDiv.innerHTML = text.replace(/\n/g, '<br>');
-            
-            messageContainer.appendChild(msgDiv);
-            historyEl.scrollTop = historyEl.scrollHeight;
-        }
-
-        function updateBotMessage(text) {
-            const loading = document.getElementById('bot-loading');
-            if(loading) loading.remove();
-            addMessageToHistory(text, 'bot');
+        if (bgContainer) {
+            const randomImageUrl = "https://picsum.photos/1920/1080?" + new Date().getTime();
+            const img = new Image();
+            img.onload = function() { bgContainer.style.backgroundImage = `url('${randomImageUrl}')`; bgContainer.style.opacity = 1; };
+            img.src = randomImageUrl;
         }
     });
 </script>

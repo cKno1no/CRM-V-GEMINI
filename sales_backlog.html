@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Theo Dõi Doanh Số Chờ (Backlog) | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Custom DataTables Style cho đồng bộ Titan OS */
+    .dataTables_wrapper .dataTables_length select {
+        border-radius: 8px; padding: 5px; border: 1px solid var(--border-color);
+    }
+    .dataTables_wrapper .dataTables_filter input {
+        border-radius: 20px; padding: 5px 15px; border: 1px solid var(--border-color); margin-left: 10px;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: var(--primary) !important; color: white !important; border: none; border-radius: 5px;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+        background: var(--input-bg) !important; border: 1px solid var(--primary); color: var(--primary) !important;
+    }
+    table.dataTable thead th { border-bottom: 2px solid var(--border-color) !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold m-0" style="color: var(--text-dark);">
+                <i class="fas fa-hourglass-half me-2 text-primary"></i>Theo Dõi Doanh Số Chờ (Backlog)
+            </h2>
+            <p class="text-muted small m-0">Giám sát đơn hàng backlog (Logic: Chưa Giao = Tổng PO - Đã Giao Chưa HĐ)</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-success btn-sm shadow-sm" onclick="exportExcel()">
+                <i class="fas fa-file-excel me-1"></i> Xuất Excel
+            </button>
+        </div>
+    </div>
+
+    <div class="main-card mb-4">
+        <div class="card-body-custom">
+            <form method="POST" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Từ ngày</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Đến ngày</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+                </div>
+                {% if is_admin %}
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Nhân viên kinh doanh</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="fas fa-user-tie"></i></span>
+                        <select name="salesman_id" class="form-select">
+                            <option value="">-- Tất cả nhân viên --</option>
+                            {% for s in salesman_list %}
+                                <option value="{{ s.USERCODE }}" {{ 'selected' if selected_salesman == s.USERCODE else '' }}>
+                                    {{ s.SHORTNAME }} ({{ s.USERCODE }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="col-md-{{ '3' if is_admin else '6' }} d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">
+                        <i class="fas fa-filter me-2"></i> Cập nhật dữ liệu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row mb-4 g-3">
+        <div class="col-md-4">
+            <div class="card border-0 h-100 shadow-sm" style="background: linear-gradient(135deg, #0d6efd, #0a58ca); color: white; border-radius: 16px;">
+                <div class="card-body text-center p-4">
+                    <h6 class="text-uppercase opacity-75 fw-bold mb-2">Tổng Doanh Số Chờ (PO Còn)</h6>
+                    <h2 class="fw-bold mb-0 display-6">{{ "{:,.0f}".format(summary.total_backlog) }}</h2>
+                    <div class="mt-2 badge bg-white text-primary rounded-pill px-3">{{ summary.count }} Đơn hàng</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 h-100 shadow-sm" style="background: linear-gradient(135deg, #ffc107, #ffca2c); color: #000; border-radius: 16px;">
+                <div class="card-body text-center p-4">
+                    <h6 class="text-uppercase fw-bold mb-2">Đã Giao - Chưa Xuất HĐ</h6>
+                    <h2 class="fw-bold mb-0 display-6">{{ "{:,.0f}".format(summary.shipped_uninvoiced) }}</h2>
+                    <small class="d-block mt-2 fw-bold opacity-75">⚠️ Cần giục Kế toán xuất hóa đơn ngay!</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 h-100 shadow-sm" style="background: linear-gradient(135deg, #0dcaf0, #0aa2c0); color: white; border-radius: 16px;">
+                <div class="card-body text-center p-4">
+                    <h6 class="text-uppercase opacity-75 fw-bold mb-2">Chưa Giao Hàng</h6>
+                    <h2 class="fw-bold mb-0 display-6">{{ "{:,.0f}".format(summary.pending_delivery) }}</h2>
+                    <small class="d-block mt-2">Áp lực Sản xuất / Tồn kho (Tổng - Đã Giao)</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-card">
+        <div class="card-body-custom p-3">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="backlogTable" style="width:100%">
+                    <thead class="bg-light text-secondary">
+                        <tr style="font-size: 0.85rem; text-transform: uppercase;">
+                            <th class="ps-3">Ngày ĐH</th>
+                            <th>Số ĐH</th>
+                            <th>Khách Hàng</th>
+                            <th>Sales / Admin</th>
+                            <th>Mặt Hàng</th>
+                            <th class="text-center">SL Đặt</th>
+                            <th class="text-center">SL Giao</th>
+                            <th class="text-end">Tổng PO</th>
+                            <th class="text-end text-danger">Đã Giao (Chưa HĐ)</th>
+                            <th class="text-end text-info">Chưa Giao</th>
+                            <th class="text-center pe-3">Tuổi Nợ</th>
+                        </tr>
+                    </thead>
+                    <tbody style="font-size: 0.95rem;">
+                        {% for item in data %}
+                        <tr class="{{ 'bg-warning bg-opacity-10' if item.GiaTriDaGiao_ChuaHD > 0 else '' }}">
+                            <td class="ps-3 text-nowrap" data-order="{{ item.OrderDate.strftime('%Y%m%d') }}">
+                                {{ item.OrderDate.strftime('%d/%m/%Y') }}
+                            </td>
+                            
+                            <td><span class="fw-bold text-primary">{{ item.OrderID }}</span></td>
+                            <td><div class="fw-bold text-dark">{{ item.ClientName }}</div></td>
+                            
+                            <td>
+                                <div><i class="fas fa-user-tag me-1 text-muted"></i>{{ item.SalesmanName }}</div>
+                                <div class="small text-muted"><i class="fas fa-user-edit me-1"></i>{{ item.SalesAdminName or '---' }}</div>
+                            </td>
+                            
+                            <td>
+                                <div class="fw-bold">{{ item.InventoryID }}</div>
+                                <div class="small text-muted text-truncate" style="max-width: 150px;" title="{{ item.InventoryName }}">
+                                    {{ item.InventoryName }}
+                                </div>
+                            </td>
+                            
+                            <td class="text-center fw-bold">{{ "{:,.0f}".format(item.SoLuongDat) }}</td>
+                            
+                            <td class="text-center">
+                                {% if item.SoLuongDaGiao >= item.SoLuongDat %}
+                                    <span class="badge bg-success rounded-pill">Đủ</span>
+                                {% elif item.SoLuongDaGiao > 0 %}
+                                    <span class="badge bg-warning text-dark rounded-pill">{{ "{:,.0f}".format(item.SoLuongDaGiao) }}</span>
+                                {% else %}
+                                    <span class="text-muted small">-</span>
+                                {% endif %}
+                            </td>
+
+                            <td class="text-end fw-bold text-secondary" data-order="{{ item.GiaTriDonHang }}">
+                                {{ "{:,.0f}".format(item.GiaTriDonHang) }}
+                            </td>
+                            
+                            <td class="text-end fw-bold text-danger" data-order="{{ item.GiaTriDaGiao_ChuaHD }}">
+                                {% if item.GiaTriDaGiao_ChuaHD > 0 %}{{ "{:,.0f}".format(item.GiaTriDaGiao_ChuaHD) }}{% else %}-{% endif %}
+                            </td>
+                            
+                            <td class="text-end fw-bold text-info" data-order="{{ item.GiaTriChuaGiao }}">
+                                {% if item.GiaTriChuaGiao > 0 %}{{ "{:,.0f}".format(item.GiaTriChuaGiao) }}{% else %}-{% endif %}
+                            </td>
+                            
+                            <td class="text-center pe-3" data-order="{{ item.NgayCho }}">
+                                {% if item.NgayCho > 30 %}
+                                    <span class="badge bg-danger rounded-pill">{{ item.NgayCho }} ngày</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark border">{{ item.NgayCho }} ngày</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Kích hoạt DataTables
+        $('#backlogTable').DataTable({
+            "paging": true,       // Bật phân trang
+            "pageLength": 25,     // Mặc định 25 dòng
+            "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tất cả"]],
+            "searching": true,    // Bật tìm kiếm
+            "ordering": true,     // Bật sắp xếp
+            "info": true,         // Hiển thị thông tin (Dòng 1 đến 25...)
+            "autoWidth": false,
+            "order": [[ 0, "desc" ]], // Mặc định sắp xếp cột Ngày (cột 0) giảm dần
+            "language": {
+                "lengthMenu": "Hiển thị _MENU_ dòng",
+                "zeroRecords": "Không tìm thấy dữ liệu",
+                "info": "Hiển thị _START_ đến _END_ trong tổng số _TOTAL_ dòng",
+                "infoEmpty": "Không có dữ liệu",
+                "infoFiltered": "(lọc từ _MAX_ dòng)",
+                "search": "Tìm nhanh:",
+                "paginate": {
+                    "first": "Đầu",
+                    "last": "Cuối",
+                    "next": "Sau",
+                    "previous": "Trước"
+                }
+            }
+        });
+    });
+
+    function exportExcel() { alert("Chức năng xuất Excel đang được phát triển!"); }
+</script>
+{% endblock %}
