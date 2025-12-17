@@ -1,5 +1,6 @@
 # services/budget_service.py
 
+from flask import current_app
 from db_manager import DBManager, safe_float
 from datetime import datetime
 import config
@@ -11,7 +12,7 @@ try:
 except ImportError:
     # Fallback nếu chưa cấu hình utils để tránh lỗi crash app
     def send_notification_email(*args, **kwargs):
-        print("WARNING: send_notification_email not found in utils.py")
+        current_app.logger.info("WARNING: send_notification_email not found in utils.py")
 
 class BudgetService:
     def __init__(self, db_manager: DBManager):
@@ -224,9 +225,9 @@ class BudgetService:
                     
                     # 5.3 Gửi (Chạy ngầm không đợi)
                     send_notification_email(to_email, subject, body_html)
-                    print(f"📧 Notification sent to {to_email}")
+                    current_app.logger.info(f"📧 Notification sent to {to_email}")
             except Exception as e:
-                print(f"⚠️ Failed to send email: {e}")
+                current_app.logger.error(f"⚠️ Failed to send email: {e}")
 
             return {'success': True, 'message': 'Đã gửi đề nghị thành công.', 'request_id': req_id}
             

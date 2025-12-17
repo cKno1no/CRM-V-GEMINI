@@ -1,0 +1,21 @@
+[2025-12-17 15:39:56,030] INFO in logger_setup:56 [System]: Titan OS Startup: Hệ thống Logging đã kích hoạt.
+[2025-12-17 15:41:57,882] INFO in logger_setup:56 [System]: Titan OS Startup: Hệ thống Logging đã kích hoạt.
+[2025-12-17 15:44:38,682] INFO in logger_setup:56 [System]: Titan OS Startup: Hệ thống Logging đã kích hoạt.
+[2025-12-17 15:44:47,613] INFO in logger_setup:56 [System]: Titan OS Startup: Hệ thống Logging đã kích hoạt.
+[2025-12-17 15:48:06,403] INFO in logger_setup:56 [System]: Titan OS Startup: Hệ thống Logging đã kích hoạt.
+[2025-12-17 15:53:01,723] INFO in logger_setup:56 [System]: Titan OS Startup: Hệ thống Logging đã kích hoạt.
+[2025-12-17 15:54:38,373] INFO in logger_setup:56 [System]: Titan OS Startup: Hệ thống Logging đã kích hoạt.
+[2025-12-17 15:54:49,230] INFO in logger_setup:56 [System]: Titan OS Startup: Hệ thống Logging đã kích hoạt.
+[2025-12-17 16:27:54,464] INFO in logger_setup:56 [System]: Titan OS Startup: Hệ thống Logging đã kích hoạt.
+[2025-12-17 16:28:49,648] INFO in kpi_bp:62 [KD010]: CACHE HIT: sales_dash_KD010_def_from_def_to_all
+[2025-12-17 16:28:56,577] INFO in kpi_bp:62 [KD010]: CACHE HIT: sales_dash_KD010_def_from_def_to_all
+[2025-12-17 16:33:14,118] INFO in logger_setup:56 [System]: Titan OS Startup: Hệ thống Logging đã kích hoạt.
+[2025-12-17 16:34:03,664] INFO in kpi_bp:62 [KD010]: CACHE HIT: sales_dash_KD010_def_from_def_to_all
+[2025-12-17 16:34:09,305] INFO in kpi_bp:62 [KD010]: CACHE HIT: sales_dash_KD010_def_from_def_to_all
+[2025-12-17 16:46:48,238] INFO in logger_setup:56 [System]: Titan OS Startup: Hệ thống Logging đã kích hoạt.
+[2025-12-17 16:47:15,725] INFO in kpi_bp:62 [KD010]: CACHE HIT: sales_dash_KD010_def_from_def_to_all
+[2025-12-17 16:59:51,015] INFO in logger_setup:56 [System]: Titan OS Startup: Hệ thống Logging đã kích hoạt.
+[2025-12-17 17:00:08,965] INFO in chatbot_service:176 [KD010]: 🤖 AI Calling: check_product_info | Args: {'product_keywords': '22224 K C3 NSK'}
+[2025-12-17 17:00:13,472] INFO in chatbot_service:176 [KD010]: 🤖 AI Calling: check_product_info | Args: {'product_keywords': '6205', 'customer_name': 'Kraft'}
+[2025-12-17 17:00:20,946] INFO in chatbot_service:176 [KD010]: 🤖 AI Calling: check_product_info | Args: {'product_keywords': '6205', 'selection_index': 3.0, 'customer_name': 'VINA KRAFT'}
+[2025-12-17 17:07:14,798] INFO in logger_setup:56 [System]: Titan OS Startup: Hệ thống Logging đã kích hoạt.

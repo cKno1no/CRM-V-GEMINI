@@ -1,5 +1,6 @@
 # services/executive_service.py
 
+from flask import current_app
 from db_manager import DBManager, safe_float
 from datetime import datetime, timedelta
 import config
@@ -212,7 +213,7 @@ class ExecutiveService:
                 kpi_data['Inventory_Over_2Y'] = sum(safe_float(row['Range_Over_720_V']) for row in inv_data)
 
         except Exception as e:
-            print(f"Lỗi tính toán KPI Scorecards: {e}")
+            current_app.logger.error(f"Lỗi tính toán KPI Scorecards: {e}")
         
         return kpi_data
 
@@ -242,7 +243,7 @@ class ExecutiveService:
                     chart_data['profit'].append(round(profit / config.DIVISOR_VIEW, 2))
             return chart_data
         except Exception as e:
-            print(f"Lỗi biểu đồ: {e}")
+            current_app.logger.error(f"Lỗi biểu đồ: {e}")
             return {'categories': [], 'revenue': [], 'profit': []}
 
     def get_pending_actions_count(self):
@@ -346,7 +347,7 @@ class ExecutiveService:
                 'series': list(summary.values())
             }
         except Exception as e:
-            print(f"Lỗi chart tồn kho: {e}")
+            current_app.logger.error(f"Lỗi chart tồn kho: {e}")
             return {'labels': [], 'series': []}
 
     def get_top_categories_performance(self, current_year):
@@ -466,7 +467,7 @@ class ExecutiveService:
                 'drilldown': final_drilldown
             }
         except Exception as e:
-            print(f"Lỗi chart tồn kho: {e}")
+            current_app.logger.error(f"Lỗi chart tồn kho: {e}")
             return {'labels': [], 'series': [], 'drilldown': {}}
 
     # [UPDATED] 2. Cập nhật biểu đồ Xu hướng: Thêm Chi phí
@@ -512,7 +513,7 @@ class ExecutiveService:
                     
             return chart_data
         except Exception as e:
-            print(f"Lỗi biểu đồ trend: {e}")
+            current_app.logger.error(f"Lỗi biểu đồ trend: {e}")
             return {'categories': [], 'revenue': [], 'expenses': [], 'net_profit': []}
 
     # [NEW] 3. Biểu đồ Phễu Kinh doanh (Quote -> Order -> Revenue)
@@ -567,7 +568,7 @@ class ExecutiveService:
                 
             return result
         except Exception as e:
-            print(f"Lỗi funnel chart: {e}")
+            current_app.logger.error(f"Lỗi funnel chart: {e}")
             return {'categories': [], 'quotes': [], 'orders': [], 'revenue': []}
     
     def get_comparison_data(self, year1, year2):

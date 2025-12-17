@@ -1,415 +1,554 @@
-import re
-import pandas as pd
+# services/chatbot_service.py
+
+from flask import current_app
+import google.generativeai as genai
+from google.generativeai.types import FunctionDeclaration, Tool
+from flask import session
+import json
+from datetime import datetime
 from db_manager import safe_float
-from services.sales_lookup_service import SalesLookupService 
-from services.delivery_service import DeliveryService # Cần import cho Type Hint/Best Practice
+import traceback 
+import config 
 
 class ChatbotService:
-    # ĐÃ SỬA: Thêm delivery_service vào signature
-    def __init__(self, sales_lookup_service, customer_service, delivery_service, redis_client=None):
+    def __init__(self, sales_lookup_service, customer_service, delivery_service, task_service, app_config, db_manager):
         self.lookup_service = sales_lookup_service
         self.customer_service = customer_service
-        self.delivery_service = delivery_service # Gán Delivery Service
-        self.redis_client = redis_client
-        self.user_context = {} 
+        self.delivery_service = delivery_service
+        self.task_service = task_service
+        self.db = db_manager
         
-        self.intents = {
-            'CHECK_HISTORY': re.compile(r'(.+?)\s*(?:đã|có)?\s*mua\s+([\w\d\-,./]+)(?:\s*(?:chưa|không))?\??', re.IGNORECASE),
-            
-            'PRICE_CHECK': re.compile(
-                r'(giá|% giá)\s+([\w\d\-,./\s]+)\s+(?:cho|với)\s+(.+)|' +
-                r'([\w\d\-,./\s]+)\s+bán cho\s+(.+?)\s+giá nào\??|' +
-                r'(.+?)\s+mua\s+([\w\d\-,./\s]+)\s+giá nào\??', 
-                re.IGNORECASE
+        # 1. Cấu hình API
+        # [QUAN TRỌNG: SỬ DỤNG BIẾN MÔI TRƯỜNG TỪ CONFIG.PY]
+        api_key = "AIzaSyAWQcf-gTqydDhhER-X4I2O-Et-mBxAiJA"
+        genai.configure(api_key=api_key) 
+
+        # 2. DEFINITIONS (Tools cho AI)
+        self.tools_definitions = [
+            FunctionDeclaration(
+                name="check_product_info",
+                description="Tra cứu thông tin sản phẩm (Giá, Tồn kho, Lịch sử mua). Phân biệt rõ Tên Hàng và Tên Khách.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "product_keywords": {"type": "string", "description": "Mã hoặc tên sản phẩm (VD: '22210 NSK')"},
+                        "customer_name": {"type": "string", "description": "Tên khách hàng (VD: 'Kraft', 'Hoa Sen')"},
+                        "selection_index": {"type": "integer", "description": "Số thứ tự nếu user chọn từ danh sách trước đó"}
+                    },
+                    "required": ["product_keywords"]
+                }
             ),
-            
-            'CANCEL_INTENT': re.compile(r'^(bỏ qua|hủy|tra mới|cancel|skip|thoát)$', re.IGNORECASE),
-            
-            'HELP': re.compile(r'(giúp|help|\?|bạn có thể làm gì|hỗ trợ|menu)', re.IGNORECASE), 
-            
-            'SELECT_OPTION': re.compile(r'^(?:số\s*)?([1-5])$'), 
-            
-            'QUICK_LOOKUP': re.compile(r'^(?!.*\b(giá|mua|cho|với|help|giúp|hỗ trợ)\b)([\w\d\-,./\s]+)$', re.IGNORECASE), 
-            
-            # Cấu trúc FIX mới: 3 mẫu câu cố định
-            'CHECK_REPLENISHMENT': re.compile(
-                # P1/P2: (Group 1: KH, Group 2: I02ID) - Dùng chung 2 mẫu
-                r'^(?:đặt|dự)\s*dự\s*phòng\s*cho\s*(.+?)\s*theo\s*mã\s*(.+?)\??$' + r'|' + 
-                r'^dự\s*phòng\s*cho\s*(.+?)\s*theo\s*mã\s*(.+?)\??$' + r'|' + 
-                # P3: (Group 5: KH, Group 6: I02ID)
-                r'^dự\s*phòng\s*(.+?)\s*mã\s*(.+?)\??$',
-                re.IGNORECASE
+            FunctionDeclaration(
+                name="check_delivery_status",
+                description="Kiểm tra tình trạng giao hàng, các phiếu xuất kho.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "customer_name": {"type": "string", "description": "Tên khách hàng"},
+                        "selection_index": {"type": "integer", "description": "Số thứ tự user chọn"}
+                    },
+                    "required": ["customer_name"]
+                }
             ),
-            'CHECK_DELIVERY': re.compile(
-                # Mẫu cuối cùng: Dùng nhóm không trích xuất (?:...) để cố định phần đầu
-                r'^(?:tình trạng|tình hình)?\s*(giao hàng|vận chuyển)\s+cho\s+(.+?)\s*(chưa|không)?\??$', 
-                re.IGNORECASE
+            FunctionDeclaration(
+                name="check_replenishment",
+                description="Kiểm tra nhu cầu đặt hàng dự phòng (Safety Stock/ROP).",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "customer_name": {"type": "string", "description": "Tên khách hàng"},
+                        "i02id_filter": {"type": "string", "description": "Mã lọc phụ (VD: 'AB' hoặc mã I02ID cụ thể)"},
+                        "selection_index": {"type": "integer", "description": "Số thứ tự user chọn"}
+                    },
+                    "required": ["customer_name"]
+                }
             ),
+            FunctionDeclaration(
+                name="check_customer_overview",
+                description="Xem tổng quan về khách hàng (Doanh số, Công nợ).",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "customer_name": {"type": "string", "description": "Tên khách hàng"},
+                        "selection_index": {"type": "integer", "description": "Số thứ tự user chọn"}
+                    }
+                }
+            ),
+            FunctionDeclaration(
+                name="check_daily_briefing",
+                description="Tổng hợp công việc hôm nay (Task, Approval, Report).",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "scope": {"type": "string", "enum": ["today", "week"]}
+                    }
+                }
+            ),
+            # 6. Đọc báo cáo
+            FunctionDeclaration(
+                name="summarize_customer_report",
+                description="Đọc và tóm tắt báo cáo khách hàng.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "customer_name": {"type": "string", "description": "Tên khách hàng"},
+                        "months": {"type": "integer", "description": "Số tháng (mặc định 6)"},
+                        "selection_index": {"type": "integer", "description": "Số thứ tự user chọn"}
+                    },
+                    "required": ["customer_name"]
+                }
+            )
+        ]
             
+        # 3. Khởi tạo Model
+        valid_models = ['gemini-2.5-flash', 'gemini-2.0-flash-exp', 'gemini-flash-latest']
+        self.model = None
+        for m in valid_models:
+            try:
+                genai.GenerativeModel(m).generate_content("Hi")
+                self.model = genai.GenerativeModel(m, tools=[self.tools_definitions])
+                current_app.logger.info(f"✅ Chatbot Model: {m}")
+                break
+            except: continue
         
+        if not self.model:
+            self.model = genai.GenerativeModel('gemini-1.5-flash', tools=[self.tools_definitions])
+
+        # 4. Map Functions
+        self.functions_map = {
+            'check_product_info': self._wrapper_product_info,
+            'check_delivery_status': self._wrapper_delivery_status,
+            'check_replenishment': self._wrapper_replenishment,
+            'check_customer_overview': self._wrapper_customer_overview,
+            'check_daily_briefing': self._wrapper_daily_briefing,
+            'summarize_customer_report': self._wrapper_summarize_report
         }
 
-    # --- HÀM QUẢN LÝ NGỮ CẢNH ---
-    def _get_user_context(self, user_code):
-        if user_code not in self.user_context:
-            self.user_context[user_code] = {'intent': None, 'data': {}}
-        return self.user_context[user_code]
-
-    def _clear_user_context(self, user_code):
-        if user_code in self.user_context:
-            self.user_context[user_code] = {'intent': None, 'data': {}}
-            
-    def _set_user_context(self, user_code, intent, data):
-        self.user_context[user_code] = {'intent': intent, 'data': data}
-
-    # --- HÀM XỬ LÝ CHÍNH ---
-
-    def process_message(self, message_text, user_code, user_role):
-        message_text = message_text.strip() if message_text else "" 
-        context = self._get_user_context(user_code)
-        
+    # --- MAIN PROCESS ---
+    # --- MAIN PROCESS WITH DYNAMIC PERSONA ---
+    def process_message(self, message_text, user_code, user_role, theme='light'):
         try:
-            # --- 1. KIỂM TRA LỆNH HỦY ---
-            cancel_match = self.intents['CANCEL_INTENT'].match(message_text)
-            if cancel_match:
-                self._clear_user_context(user_code)
-                return "OK, đã hủy. Bạn muốn hỏi gì tiếp."
-
-            # --- 2. KIỂM TRA NGỮ CẢNH (NẾU CÓ) ---
-            if context.get('intent'):
-                response = self._handle_clarification(message_text, user_code, context)
-                if response is not None:
-                    self._clear_user_context(user_code)
-                    return response
-                else:
-                    self._clear_user_context(user_code)
-                    pass 
-            
-            # --- 3. XỬ LÝ NHƯ MỘT INTENT MỚI ---
-            
-            # (Hỏi trợ giúp)
-            help_match = self.intents['HELP'].search(message_text)
-            if help_match:
-                return self._handle_help() 
-            
-            # (Kiểm tra giao hàng)
-            delivery_match = self.intents['CHECK_DELIVERY'].search(message_text)
-            if delivery_match:
-                # Group 2 là Tên Khách hàng trong mẫu mới
-                if delivery_match.group(2): 
-                    customer_name = delivery_match.group(2).strip()
-                else:
-                    customer_name = None
-                
-                # Thêm kiểm tra chính xác tên KH
-                if not customer_name or len(customer_name) < 2:
-                    # Lỗi này có thể xảy ra nếu KH nhập cú pháp sai
-                    return "Xin lỗi, tôi không thể trích xuất tên khách hàng chính xác. (Cú pháp: 'Tình trạng giao hàng cho Tên_KH')"
-                
-                return self._process_multi_step_query(
-                    user_code, 'CHECK_DELIVERY', 'LXH_STATUS', customer_name
-                )
-            # (Kiểm tra nhu cầu Dự phòng)
-            replenishment_match = self.intents['CHECK_REPLENISHMENT'].match(message_text)
-            if replenishment_match:
-                
-                customer_name = None
-                i02id_filter = None
-
-                # Logic Phân tích Mẫu Cố Định
-                if replenishment_match.group(1): # Pattern 1: Đặt/Dự phòng cho X theo mã Y
-                    customer_name = replenishment_match.group(1).strip()
-                    i02id_filter = replenishment_match.group(2)
-                elif replenishment_match.group(3): # Pattern 2: Dự phòng cho X theo mã Y
-                    customer_name = replenishment_match.group(3).strip()
-                    i02id_filter = replenishment_match.group(4)
-                elif replenishment_match.group(5): # Pattern 3: Dự phòng X mã Y
-                    customer_name = replenishment_match.group(5).strip()
-                    i02id_filter = replenishment_match.group(6)
-                
-                # --- KIỂM TRA KHÁCH HÀNG ---
-                if not customer_name:
-                    return "Xin lỗi, tôi không thể trích xuất tên khách hàng theo mẫu câu chuẩn. (Thử: 'Dự phòng cho Vina Kraft theo mã AB')" 
-
-                context_data = {'i02id_filter': i02id_filter.upper() if i02id_filter else None}
-                
-                return self._process_multi_step_query(
-                    user_code, 'CHECK_REPLENISHMENT', 'REPLENISH', customer_name, context_data=context_data
-                )
-
-            # (Kiểm tra các intent còn lại)
-            
-            # (Kiểm tra lịch sử)
-            history_match = self.intents['CHECK_HISTORY'].match(message_text)
-            if history_match:
-                customer_name = history_match.group(1).strip()
-                item_term = history_match.group(2).strip()
-                return self._process_multi_step_query(
-                    user_code, 'CHECK_HISTORY', item_term, customer_name
-                )
-
-            # (Kiểm tra giá cho KH)
-            price_match = self.intents['PRICE_CHECK'].match(message_text)
-            if price_match:
-                if price_match.group(1): 
-                    item_term = price_match.group(2).strip()
-                    customer_name = price_match.group(3).strip()
-                elif price_match.group(4):
-                    item_term = price_match.group(4).strip()
-                    customer_name = price_match.group(5).strip()
-                else: 
-                    customer_name = price_match.group(6).strip()
-                    item_term = price_match.group(7).strip()
-                
-                return self._process_multi_step_query(
-                    user_code, 'PRICE_CHECK', item_term, customer_name
-                )
-            
-            # (Tra cứu nhanh)
-            lookup_match = self.intents['QUICK_LOOKUP'].match(message_text)
-            if lookup_match:
-                item_codes = lookup_match.group(2).strip() if lookup_match.group(2) else None
-                if item_codes:
-                    return self._handle_quick_lookup(item_codes)
-            
-            if not message_text:
-                return None 
-
-            return "Xin lỗi, tôi chưa hiểu ý định của bạn. Hãy thử gõ 'giúp'."
-        
-        except Exception as e:
-            if "'user_code'" in str(e): 
-                 print(f"LỖI FATAL CONTEXT: {e}")
-                 self._clear_user_context(user_code)
-                 return "Lỗi ngữ cảnh (user_code), vui lòng hỏi lại."
-                 
-            print(f"LỖI CHATBOT PROCESS: {e}")
-            return f"Lỗi hệ thống: {e}"
-
-    # --- CÁC HÀM XỬ LÝ MULTI-STEP VÀ CLARIFICATION ---
-
-    def _process_multi_step_query(self, user_code, intent, item_term, customer_name, context_data=None):
-        customers_found = self._find_customer(customer_name)
-        
-        if isinstance(customers_found, str):
-            context_to_save = {
-                'original_intent': intent,
-                'item_term': item_term, 
-                'customer_list': self.customer_service.get_customer_by_name(customer_name),
-                'last_question': customers_found 
+            # 1. Định nghĩa Persona
+            personas = {
+                'light': "Bạn là Trợ lý Kinh doanh chuyên nghiệp (Business Style). Trả lời ngắn gọn, tập trung vào số liệu.",
+                'dark': "Bạn là Hệ thống Titan OS (Formal). Phong cách trang trọng, lạnh lùng, chính xác.",
+                'fantasy': "Bạn là AI từ tương lai (Cyberpunk). Xưng hô Commander - System. Giọng hào hứng.",
+                'adorable': "Bạn là Bé Cáo AI (Gen Z). Xưng hô Em - Sếp. Dùng emoji 🦊💖✨. Giọng cute, năng động."
             }
-            if context_data:
-                 context_to_save.update(context_data)
-                 
-            self._set_user_context(user_code, 'ASK_CUSTOMER', context_to_save)
-            return customers_found 
-        
-        customer_obj = customers_found[0]
-        
-        if intent == 'CHECK_REPLENISHMENT' and context_data:
-             customer_obj.update(context_data)
-        
-        # Xử lý các Intent sau khi xác định KH
-        if intent == 'PRICE_CHECK':
-            return self._handle_price_check_final(item_term, customer_obj)
-        elif intent == 'CHECK_HISTORY':
-            return self._handle_check_history_final(item_term, customer_obj)
-        elif intent == 'CHECK_DELIVERY':
-            return self._handle_check_delivery_final(customer_obj) # <-- HÀM MỚI
-        elif intent == 'CHECK_REPLENISHMENT':
-            return self._handle_replenishment_check_final(customer_obj)
+            system_instruction = personas.get(theme, personas['light'])
+            
+            # 2. Context History
+            history = session.get('chat_history', [])
+            gemini_history = []
+            for h in history:
+                gemini_history.append({"role": "user", "parts": [h['user']]})
+                gemini_history.append({"role": "model", "parts": [h['bot']]})
 
+            # 3. Tạo Chat Session
+            chat = self.model.start_chat(history=gemini_history, enable_automatic_function_calling=False)
+            
+            self.current_user_code = user_code
+            self.current_user_role = user_role
 
-    def _handle_clarification(self, message_text, user_code, context):
-        intent = context.get('intent')
-        data = context.get('data', {})
-        
-        chosen_customer = None
-        
-        if intent == 'ASK_CUSTOMER':
-            customer_list = data.get('customer_list', [])
-            chosen_customer = self._find_choice(message_text, customer_list, 'FullName')
+            full_prompt = f"[System Instruction: {system_instruction}]\nUser says: {message_text}"
             
-            if not chosen_customer:
-                return None 
+            # Gửi tin nhắn đi
+            response = chat.send_message(full_prompt)
             
-            item_term = data.get('item_term') 
-            original_intent = data.get('original_intent')
+            final_text = ""
             
-            if data.get('i02id_filter'):
-                 chosen_customer['i02id_filter'] = data['i02id_filter']
+            # [FIX QUAN TRỌNG] KIỂM TRA FUNCTION CALL AN TOÀN TUYỆT ĐỐI
+            # Thay vì gọi response.text ngay (gây lỗi), ta kiểm tra từng phần (part)
             
-            if original_intent == 'PRICE_CHECK':
-                return self._handle_price_check_final(item_term, chosen_customer)
-            elif original_intent == 'CHECK_HISTORY':
-                return self._handle_check_history_final(item_term, chosen_customer)
-            elif original_intent == 'CHECK_DELIVERY':
-                 return self._handle_check_delivery_final(chosen_customer) # <-- HÀM MỚI
-            elif original_intent == 'CHECK_REPLENISHMENT':
-                return self._handle_replenishment_check_final(chosen_customer)
-        
-        return None 
+            function_call_part = None
+            if response.candidates and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    if part.function_call:
+                        function_call_part = part.function_call
+                        break
             
-    def _find_customer(self, customer_name):
-        try:
-            customers = self.customer_service.get_customer_by_name(customer_name)
-            if not customers:
-                return f"Không tìm thấy khách hàng nào có tên giống '{customer_name}'."
-            if len(customers) > 1:
-                return self._format_customer_options(customers, customer_name)
-            return customers 
+            if function_call_part:
+                # === XỬ LÝ NẾU AI MUỐN GỌI HÀM ===
+                fc = function_call_part
+                func_name = fc.name
+                func_args = dict(fc.args)
+                
+                current_app.logger.info(f"🤖 AI Calling: {func_name} | Args: {func_args}")
+                
+                if func_name in self.functions_map:
+                    try:
+                        api_result = self.functions_map[func_name](**func_args)
+                    except Exception as e:
+                        api_result = f"Lỗi thực thi hàm: {str(e)}"
+                        current_app.logger.error(f"❌ Function Error: {e}")
+                else:
+                    api_result = "Hàm không tồn tại."
+
+                # Gửi kết quả hàm lại cho AI để nó tổng hợp thành văn bản
+                final_res = chat.send_message({
+                    "function_response": {
+                        "name": func_name,
+                        "response": {"result": api_result}
+                    }
+                })
+                final_text = final_res.text
+                
+            else:
+                # === TRƯỜNG HỢP TRẢ LỜI BÌNH THƯỜNG ===
+                # Lúc này chắc chắn là text, gọi .text sẽ an toàn
+                try:
+                    final_text = response.text
+                except Exception as e:
+                    # Fallback nếu vẫn lỗi (hiếm gặp)
+                    final_text = "Em đã nhận được thông tin nhưng gặp chút lỗi hiển thị. Sếp hỏi lại giúp em nhé! 🦊"
+                    current_app.logger.error(f"⚠️ Lỗi đọc text: {e}")
+
+            # 5. Lưu lịch sử
+            history.append({'user': message_text, 'bot': final_text})
+            if len(history) > 10: history = history[-10:]
+            session['chat_history'] = history
+            
+            return final_text
+
         except Exception as e:
-            return f"Lỗi khi tìm khách hàng: {e}"
+            import traceback
+            traceback.print_exc()
+            return f"Hệ thống đang bận, vui lòng thử lại sau. (Lỗi: {str(e)})"
 
-    # ... (Các hàm helper khác: _find_choice, _format_customer_options, _handle_help) ...
+    # =========================================================================
+    # CÁC HÀM WRAPPER (Cầu nối giữa AI và Logic Gốc)
+    # =========================================================================
 
-    # --- HÀM XỬ LÝ GIAO HÀNG (DELIVERY) MỚI ---
-    def _handle_check_delivery_final(self, customer_object):
-        customer_id = customer_object['ID']
-        customer_display_name = customer_object['FullName']
+    def _resolve_customer(self, customer_name, selection_index):
+        """Hàm tìm khách hàng, hỗ trợ chọn số thứ tự từ ngữ cảnh"""
+        # 1. Ưu tiên chọn từ Session nếu có Index (Context "Số 5")
+        context_list = session.get('customer_search_results')
+        if selection_index is not None and context_list:
+            try:
+                idx = int(selection_index) - 1
+                if 0 <= idx < len(context_list):
+                    selected = context_list[idx]
+                    session.pop('customer_search_results', None)
+                    return [selected] 
+            except: pass
+
+        # 2. Nếu không có index, tìm theo tên
+        if not customer_name: return None
         
-        # Gọi hàm service với days_ago=7
-        recent_deliveries = self.delivery_service.get_recent_delivery_status(customer_id, days_ago=7)
-
-        if not recent_deliveries:
-            return f"Khách hàng **{customer_display_name}** không có Lệnh Xuất Hàng nào trong 7 ngày qua."
-
-        response_lines = [f"**Tình trạng giao hàng (7 ngày qua) cho {customer_display_name}:**"]
+        customers = self.customer_service.get_customer_by_name(customer_name)
+        if not customers: return "NOT_FOUND"
         
-        all_delivered = True
-        
-        for item in recent_deliveries:
-            status = item.get('DeliveryStatus', 'CHỜ').strip().upper()
-            planned_day = item.get('Planned_Day', 'POOL').strip().upper()
+        # 3. Tìm thấy nhiều -> Lưu Session
+        if len(customers) > 1:
+            session['customer_search_results'] = customers 
+            return "MULTIPLE"
             
-            if status != 'DA GIAO':
-                 all_delivered = False
-            
-            # Xử lý màu sắc và hiển thị
-            # <<< SỬA ĐỔI: THÊM ITEMCOUNT VÀO DÒNG ĐẦU TIÊN CỦA MỖI LXH >>>
-            item_count = item.get('ItemCount', 0)
-            line = f"- **LXH {item['VoucherNo']}** ({item_count} MH | Ngày: {item['VoucherDate']}):\n"
-            # <<< KẾT THÚC SỬA ĐỔI >>>
+        # 4. Tìm thấy 1
+        return customers
 
-            # 1. Hiển thị Kế hoạch (Vàng cam/Orange)
-            if planned_day == 'POOL':
-                planned_display = f'<span style="color: #F9AA33;">Chưa xếp lịch giao</span>'
+    # --- WRAPPER 1: TRA CỨU SẢN PHẨM ---
+    def _wrapper_product_info(self, product_keywords, customer_name=None, selection_index=None):
+        # A. Nếu KHÔNG có tên khách -> Tra cứu nhanh (Gọi hàm logic gốc)
+        if not customer_name and not selection_index:
+            return self._handle_quick_lookup(product_keywords)
+
+        # B. Nếu CÓ tên khách -> Giải quyết khách hàng
+        cust_result = self._resolve_customer(customer_name, selection_index)
+        
+        if cust_result == "NOT_FOUND":
+            return f"Không tìm thấy khách hàng '{customer_name}'. Đang tra nhanh mã '{product_keywords}'...\n" + \
+                   self._handle_quick_lookup(product_keywords)
+                   
+        if cust_result == "MULTIPLE":
+            return self._format_customer_options(session['customer_search_results'], customer_name)
+        
+        # C. Có khách hàng -> Gọi logic GIÁ và LỊCH SỬ từ file gốc
+        customer_obj = cust_result[0]
+        
+        # Gọi logic lấy dữ liệu
+        price_info_str = self._handle_price_check_final(product_keywords, customer_obj)
+        history_info_str = self._handle_check_history_final(product_keywords, customer_obj)
+        
+        # FORMAT MARKDOWN ĐẸP
+        return f"""
+### 📦 Kết quả tra cứu: {customer_obj['FullName']}
+---
+{price_info_str}
+
+{history_info_str}
+"""
+
+    # --- WRAPPER 2: GIAO HÀNG ---
+    def _wrapper_delivery_status(self, customer_name, selection_index=None):
+        current_app.logger.info(f"\n>>> DEBUG CHATBOT: Tìm khách '{customer_name}'")
+        
+        cust_result = self._resolve_customer(customer_name, selection_index)
+        
+        if cust_result == "NOT_FOUND": return f"❌ Không tìm thấy khách hàng '{customer_name}'."
+        if cust_result == "MULTIPLE": return self._format_customer_options(session['customer_search_results'], customer_name)
+        
+        # Lấy đối tượng khách hàng
+        customer_obj = cust_result[0]
+        customer_id = customer_obj['ID']
+        customer_full_name = customer_obj['FullName']
+        
+        current_app.logger.info(f">>> DEBUG CHATBOT: Đã chọn khách {customer_full_name} ({customer_id})")
+
+        try:
+            # Gọi service (Tăng lên 7 ngày để chắc chắn bắt được dữ liệu cũ)
+            recent_deliveries = self.delivery_service.get_recent_delivery_status(customer_id, days_ago=7)
+            
+            if not recent_deliveries:
+                # [FIX LỖI CŨ]: Đảm bảo dùng đúng tên biến customer_full_name đã khai báo ở trên
+                return f"ℹ️ Khách hàng **{customer_full_name}** không có Lệnh Xuất Hàng nào trong **7 ngày qua**."
+
+            # Format kết quả
+            res = f"### 🚚 Tình trạng giao hàng (7 ngày) - {customer_full_name}\n"
+            res += f"*Tổng cộng: {len(recent_deliveries)} đơn hàng*\n\n"
+            
+            for item in recent_deliveries:
+                status = str(item.get('DeliveryStatus', 'CHỜ')).strip().upper()
+                icon = "🟢" if status == 'DA GIAO' else "🟠"
+                date_str = item.get('VoucherDate', 'N/A')
+                v_no = item.get('VoucherNo', 'N/A')
+                
+                # Format dòng
+                res += f"**{icon} {v_no}** `({date_str})`\n"
+                res += f"- **SL mặt hàng:** {item.get('ItemCount', 0)}\n"
+                
+                if status == 'DA GIAO':
+                    res += f"- **Thực tế:** Đã giao ngày {item.get('ActualDeliveryDate', 'N/A')}\n"
+                else:
+                    plan = item.get('Planned_Day', 'POOL')
+                    plan_txt = "Chưa xếp lịch" if plan == 'POOL' else plan
+                    res += f"- **Kế hoạch:** {plan_txt}\n"
+                res += "\n"
+                
+            return res
+
+        except Exception as e:
+            # [QUAN TRỌNG]: In lỗi chi tiết ra CMD để bạn nhìn thấy
+            import traceback
+            traceback.print_exc() 
+            current_app.logger.error(f"❌ LỖI NGHIÊM TRỌNG TRONG WRAPPER DELIVERY: {e}")
+            return f"Lỗi hệ thống chi tiết: {str(e)}"
+
+    # --- WRAPPER 3: DỰ PHÒNG ---
+    def _wrapper_replenishment(self, customer_name, i02id_filter=None, selection_index=None):
+        cust_result = self._resolve_customer(customer_name, selection_index)
+        
+        if cust_result == "NOT_FOUND": return f"Không tìm thấy khách hàng '{customer_name}'."
+        if cust_result == "MULTIPLE": return self._format_customer_options(session['customer_search_results'], customer_name)
+        
+        customer_obj = cust_result[0]
+        if i02id_filter: customer_obj['i02id_filter'] = i02id_filter
+        
+        # [QUAN TRỌNG] Gọi hàm logic sử dụng LookupService (SP_CROSS_SELL_GAP)
+        return self._handle_replenishment_check_final(customer_obj)
+
+    # --- WRAPPER 4: TỔNG QUAN KHÁCH HÀNG ---
+    def _wrapper_customer_overview(self, customer_name, selection_index=None):
+        cust_result = self._resolve_customer(customer_name, selection_index)
+        
+        if cust_result == "NOT_FOUND": return f"❌ Không tìm thấy khách hàng '{customer_name}'."
+        if cust_result == "MULTIPLE": return self._format_customer_options(session['customer_search_results'], customer_name)
+        
+        return self._get_customer_detail(cust_result[0]['ID'])
+
+    # --- WRAPPER 5: DAILY BRIEFING (Giữ nguyên logic SQL Task đơn giản vì chưa có Service) ---
+    def _wrapper_daily_briefing(self, scope='today'):
+        user_code = self.current_user_code
+        res = f"📅 **Tổng quan công việc hôm nay:**\n"
+        
+        # 1. Tasks
+        sql_task = "SELECT Subject, Priority FROM Task_Master WHERE AssignedTo = ? AND Status != 'Done' AND DueDate <= GETDATE()"
+        tasks = self.db.get_data(sql_task, (user_code,))
+        if tasks:
+            res += "\n📌 **Việc cần làm:**\n" + "\n".join([f"- {t['Subject']} ({t['Priority']})" for t in tasks])
+        else:
+            res += "\n📌 **Việc cần làm:** Không có task quá hạn."
+
+        # 2. Approval (Đếm số lượng báo giá chờ duyệt)
+        sql_approval = "SELECT COUNT(*) as Cnt FROM OT2101 WHERE OrderStatus = 0" 
+        approval = self.db.get_data(sql_approval)
+        if approval and approval[0]['Cnt'] > 0:
+            res += f"\n\n💰 **Phê duyệt:** {approval[0]['Cnt']} Báo giá chờ duyệt."
+
+        return res
+
+    # --- WRAPPER 6: TÓM TẮT BÁO CÁO (RAG) ---
+    def _wrapper_summarize_report(self, customer_name, months=6, selection_index=None):
+        import traceback
+        
+        # Ép kiểu tháng
+        try: months = int(float(months)) if months else 6
+        except: months = 6
+            
+        current_app.logger.info(f"\n>>> DEBUG REPORT: Đang tìm báo cáo cho '{customer_name}' trong {months} tháng...")
+
+        # 1. Tìm ID và Tên chuẩn của khách hàng
+        cust_result = self._resolve_customer(customer_name, selection_index)
+        
+        if cust_result == "NOT_FOUND": return f"❌ Không tìm thấy khách hàng '{customer_name}'."
+        if cust_result == "MULTIPLE": return self._format_customer_options(session['customer_search_results'], customer_name)
+
+        customer_obj = cust_result[0]
+        customer_id = customer_obj['ID']
+        customer_full_name = customer_obj['FullName']
+        
+        # Tạo từ khóa tìm kiếm (Lấy tên rút gọn hoặc tên đầy đủ để quét nội dung)
+        # Ví dụ: Nếu tên là "CÔNG TY TNHH SUNSCO", ta nên tìm "SUNSCO"
+        # Logic đơn giản: Lấy phần tên chính (Đây là logic giả định, bạn có thể tùy chỉnh)
+        search_keyword = customer_full_name.split(' ')[0] if len(customer_full_name.split(' ')) > 1 else customer_full_name
+        # Tuy nhiên, để an toàn, ta tìm chính xác tên user nhập vào hoặc tên trong DB
+        search_keyword = customer_name if len(customer_name) > 3 else customer_full_name 
+
+        current_app.logger.info(f">>> DEBUG REPORT: ID={customer_id} | Keyword quét nội dung='%{search_keyword}%'")
+
+        # 2. Query SQL Nâng cấp (Tìm ObjectID HOẶC Nội dung chứa tên khách)
+        # Sử dụng OR để lấy cả báo cáo trực tiếp lẫn báo cáo tuần có nhắc tên
+        sql = f"""
+            SELECT TOP 30 
+                [Ngay] as CreatedDate, 
+                [Nguoi] as CreateUser,
+                CAST([Noi dung 1] AS NVARCHAR(MAX)) as Content1, 
+                CAST([Noi dung 2] AS NVARCHAR(MAX)) as Content2_Added,
+                CAST([Danh gia 2] AS NVARCHAR(MAX)) as Content3,
+                [Khach hang] as TaggedCustomerID -- Lấy thêm cột này để AI biết là báo cáo trực tiếp hay gián tiếp
+            FROM {config.TEN_BANG_BAO_CAO}
+            WHERE 
+                ([Ngay] >= DATEADD(month, -?, GETDATE()))
+                AND (
+                    [Khach hang] = ?  -- Điều kiện 1: Đúng ID khách hàng
+                    OR 
+                    (CAST([Noi dung 1] AS NVARCHAR(MAX)) LIKE N'%{search_keyword}%') -- Điều kiện 2: Nội dung nhắc đến tên
+                    OR 
+                    (CAST([Noi dung 2] AS NVARCHAR(MAX)) LIKE N'%{search_keyword}%')
+                )
+            ORDER BY [Ngay] DESC
+        """ 
+
+        try:
+            reports = self.db.get_data(sql, (months, customer_id))
+        except Exception as e:
+            current_app.logger.error("❌❌❌ LỖI SQL REPORT:")
+            traceback.print_exc()
+            return f"Lỗi hệ thống khi truy xuất dữ liệu mở rộng: {str(e)}"
+            
+        if not reports:
+            return f"ℹ️ Không tìm thấy báo cáo nào liên quan đến **{customer_full_name}** (kể cả trong báo cáo tuần) trong {months} tháng qua."
+
+        # 3. Tạo Context Text thông minh
+        context_text_raw = ""
+        related_count = 0
+        direct_count = 0
+        
+        for r in reports:
+            date_val = r.get('CreatedDate')
+            date_str = date_val.strftime('%d/%m/%Y') if date_val else 'N/A'
+            
+            # Ghép nội dung
+            c1 = str(r.get('Content1', '')).strip()
+            c2 = str(r.get('Content2_Added', '')).strip()
+            c3 = str(r.get('Content3', '')).strip()
+            content = ". ".join([p for p in [c1, c2, c3] if p])
+            
+            if not content or content == '.': continue 
+            
+            # Phân loại nguồn báo cáo để AI hiểu
+            tagged_id = str(r.get('TaggedCustomerID', '')).strip()
+            if tagged_id == str(customer_id):
+                source_type = "BÁO CÁO TRỰC TIẾP"
+                direct_count += 1
             else:
-                planned_display = planned_day
-            
-            # 2. Tô màu Trạng thái (Xanh lá/Green)
-            if status == 'DA GIAO':
-                 status_display = f'<span style="color: #34A853;">✅ DA GIAO</span>' 
-            else:
-                 status_display = f'**{status}**' # Giữ nguyên xanh dương/đậm cho trạng thái khác
-            
-            line += f"  > Kế hoạch: {planned_display} | Tình trạng: {status_display}\n"
-            # --- END LOGIC DÙNG HTML/CSS CƠ BẢN ---
-
-            if status == 'DA GIAO':
-                 line += f"  > Ngày giao: {item['ActualDeliveryDate']}"
-            elif item['EarliestRequestDate'] != '—':
-                 line += f"  > Y/C sớm nhất: {item['EarliestRequestDate']}"
-                 
-            response_lines.append(line)
+                source_type = "BÁO CÁO CHUNG/TUẦN (Có nhắc đến)"
+                related_count += 1
+                
+            context_text_raw += f"- [{date_str}] [{source_type}] {r['CreateUser']}: {content}\n"
         
-        if all_delivered and len(recent_deliveries) > 0:
-             response_lines.insert(0, f"✅ **ĐÃ XUẤT HÀNG/GIAO TẤT CẢ** ({len(recent_deliveries)} LXH) trong 7 ngày gần nhất.")
-            
-        return "\n".join(response_lines)
-
-    def _find_choice(self, text, options_list, field_name_to_match):
-        match_num = re.match(r'^(?:số\s*)?([1-5])$', text)
-        if match_num:
-            index = int(match_num.group(1)) - 1
-            if 0 <= index < len(options_list):
-                return options_list[index]
+        # 4. Prompt "Thông minh" (Smart Filtering)
+        system_prompt = (
+            f"Bạn là trợ lý Kinh doanh AI. Nhiệm vụ: Tóm tắt tình hình khách hàng {customer_full_name}.\n"
+            "Dữ liệu được cung cấp bao gồm:\n"
+            "1. Báo cáo trực tiếp: Dành riêng cho khách này.\n"
+            "2. Báo cáo chung (Báo cáo tuần): Có thể chứa thông tin của NHIỀU khách hàng khác nhau (Sunsco, C2, CSVC...).\n"
+            "----------------\n"
+            "YÊU CẦU QUAN TRỌNG:\n"
+            f"- Đối với 'Báo cáo chung', bạn phải LỌC CHÍNH XÁC thông tin liên quan đến '{search_keyword}' hoặc '{customer_full_name}'.\n"
+            "- BỎ QUA hoàn toàn thông tin của các khách hàng khác (như C2, CSVC...) nằm trong cùng dòng báo cáo.\n"
+            "- Tổng hợp lại thành: Tổng quan, Điểm Tốt, và Điểm Cần Cải Thiện.\n"
+            "- Trình bày Markdown rõ ràng."
+        )
         
-        text_lower = text.lower()
-        found_options = []
-        for item in options_list:
-            full_name = item.get(field_name_to_match, '').lower()
-            item_id_key = 'ID' if 'ID' in item else 'InventoryID'
-            item_id = item.get(item_id_key, '').lower()
-            
-            if text_lower == full_name or text_lower == item_id:
-                return item 
-            
-            if text_lower in full_name or (item_id and text_lower in item_id):
-                found_options.append(item)
-        
-        if len(found_options) == 1:
-            return found_options[0]
-            
-        return None
+        # Thống kê
+        summary_header = f"""
+### 📊 DỮ LIỆU TÌM THẤY
+- **Báo cáo trực tiếp:** {direct_count}
+- **Báo cáo chung (được nhắc tên):** {related_count}
+---
+"""
+        full_input = summary_header + context_text_raw
 
-    def _format_customer_options(self, customers, term, limit=5):
-        response = f"Tôi tìm thấy **{len(customers)}** khách hàng khớp với '{term}'. Vui lòng gõ số hoặc tên để chọn 1:\n"
-        for i, c in enumerate(customers[:limit]):
-            response += f"**{i+1}**. {c['FullName']} ({c['ID']})\n"
-        return response
-    
-    def _handle_help(self):
-        response = "**Tôi có thể giúp bạn với các cú pháp chuẩn nhất sau:**\n"
-        response += "1. **Tra cứu Tồn kho/Giá QĐ**\n   (Cú pháp: `Mã_hàng` hoặc `Hãng Mã_hàng`)\n   (Ví dụ: `22214` hoặc `nsk 6210zz`)\n"
-        response += "2. **Kiểm tra Giá bán & Lịch sử**\n   (Cú pháp: `giá Mã_hàng cho Tên_KH`)\n   (Ví dụ: `giá 22214 cho Vina Kraft`)\n"
-        response += "3. **Kiểm tra Đặt hàng Dự phòng**\n   (Cú pháp: `Dự phòng cho Tên_KH theo mã AB`)\n   (Ví dụ: `Dự phòng cho Vina Kraft theo mã AB`)\n"
-        response += "4. **Kiểm tra Lịch sử mua hàng**\n   (Cú pháp: `Tên_KH có mua Mã_hàng chưa`)\n (Ví dụ: `Hoa Sen mua 6320 chưa`)\n"
-        response += "5. **Kiểm tra Tình trạng giao hàng**\n   (Cú pháp: `Giao hàng cho Tên_KH chưa`)\n (Ví dụ: `Giao hàng cho VMS chưa`)\n"
-        return response
+        try:
+            summary_model = genai.GenerativeModel(
+                model_name=self.model.model_name,
+                system_instruction=system_prompt 
+            )
+            response = summary_model.generate_content(contents=[full_input])
+            return response.text
+        except Exception as e:
+            return f"Lỗi AI xử lý: {str(e)}"
 
-    def _handle_check_history_final(self, item_term, customer_object, limit=5):
-        customer_id = customer_object['ID']
-        customer_display_name = customer_object['FullName']
-        
-        items_found = self.lookup_service.get_quick_lookup_data(item_term)
-        if not items_found:
-            return f"Không tìm thấy mặt hàng nào khớp với '{item_term}'."
-
-        response_lines = [f"**Kết quả lịch sử mua '{item_term}' (KH: {customer_display_name}):**"]
-        items_to_show = items_found[:limit]
-        found_history = False
-
-        for item in items_to_show:
-            item_id = item['InventoryID']
-            item_name = item['InventoryName']
+    # =========================================================================
+    # LOGIC CỐT LÕI (SỬ DỤNG SERVICE - KHÔNG VIẾT SQL TRỰC TIẾP)
+    # ... (Các hàm helper khác giữ nguyên)
+    # =========================================================================
+    # 1. TRA CỨU NHANH
+    def _handle_quick_lookup(self, item_codes, limit=5):
+        try:
+            # Gọi Service SalesLookupService -> get_quick_lookup_data
+            data = self.lookup_service.get_quick_lookup_data(item_codes)
             
-            last_invoice_date = self.lookup_service.check_purchase_history(customer_id, item_id)
+            if not data:
+                return f"Không tìm thấy thông tin cho mã: '{item_codes}'."
             
-            line = f"- **{item_name}** ({item_id}): "
-            if last_invoice_date:
-                found_history = True
-                line += f"**Đã mua** (Gần nhất: {last_invoice_date})"
-            else:
-                line += "**Chưa mua**"
-            response_lines.append(line)
+            response_lines = [f"**Kết quả tra nhanh Tồn kho ('{item_codes}'):**"]
+            
+            for item in data[:limit]:
+                inv_id = item['InventoryID']
+                inv_name = item.get('InventoryName', 'N/A') 
+                ton = item.get('Ton', 0)
+                bo = item.get('BackOrder', 0)
+                gbqd = item.get('GiaBanQuyDinh', 0)
+                
+                line = f"- **{inv_name}** ({inv_id}):\n"
+                line += f"  Tồn: **{ton:,.0f}** | BO: **{bo:,.0f}** | Giá QĐ: **{gbqd:,.0f}**"
+                if bo > 0:
+                    line += f"\n  -> *Gợi ý: Mã này đang BackOrder.*"
+                response_lines.append(line)
+            
+            return "\n".join(response_lines)
+            
+        except Exception as e:
+            return f"Lỗi tra cứu nhanh: {e}"
 
-        if not found_history:
-             response_lines = [f"**Chưa.** Khách hàng **{customer_display_name}** chưa có lịch sử mua (hoặc chưa xuất HĐ) cho bất kỳ mặt hàng nào khớp với '{item_term}'."]
-            
-        if len(items_found) > limit:
-            response_lines.append(f"\n*(Hiển thị {limit} / {len(items_found)} mặt hàng khớp...)*")
-            
-        return "\n".join(response_lines)
-
+    # 2. KIỂM TRA GIÁ & BLOCK 1
     def _handle_price_check_final(self, item_term, customer_object, limit=5):
-        
         customer_id = customer_object['ID']
         customer_display_name = customer_object['FullName']
         
         try:
+            # Gọi Service SalesLookupService -> _get_block1_data (Đã dùng SP_GET_SALES_LOOKUP)
             block1 = self.lookup_service._get_block1_data(item_term, customer_id)
         except Exception as e:
-            return f"Lỗi khi gọi SP (Block 1): {e}"
+            return f"Lỗi khi gọi SP Block1: {e}"
         
         if not block1:
-            return f"Không tìm thấy mặt hàng nào khớp với '{item_term}' cho KH {customer_display_name}."
+            return f"Không tìm thấy mặt hàng '{item_term}' cho KH {customer_display_name}."
             
         response_lines = [f"**Kết quả giá cho '{item_term}' (KH: {customer_display_name}):**"]
         
-        items_to_show = block1[:limit]
-
-        for item in items_to_show:
+        for item in block1[:limit]:
             gbqd = item.get('GiaBanQuyDinh', 0)
             gia_hd = item.get('GiaBanGanNhat_HD', 0)
             ngay_hd = item.get('NgayGanNhat_HD', '—') 
@@ -420,125 +559,140 @@ class ChatbotService:
             if gia_hd > 0 and ngay_hd != '—':
                 percent_diff = ((gia_hd / gbqd) - 1) * 100 if gbqd > 0 else 0
                 symbol = "+" if percent_diff >= 0 else ""
-                line += f"\n  Giá HĐ gần nhất: **{gia_hd:,.0f}** (Ngày: {ngay_hd}) ({symbol}{percent_diff:.1}%)"
+                line += f"\n  Giá HĐ gần nhất: **{gia_hd:,.0f}** (Ngày: {ngay_hd}) ({symbol}{percent_diff:.1f}%)"
             else:
                 line += "\n  *(Chưa có lịch sử HĐ cho KH này)*"
             
             response_lines.append(line)
             
-        if len(block1) > limit:
-            response_lines.append(f"\n*(Hiển thị {limit} / {len(block1)} kết quả tìm thấy...)*")
+        return "\n".join(response_lines)
+
+    # 3. LỊCH SỬ MUA HÀNG
+    def _handle_check_history_final(self, item_term, customer_object, limit=5):
+        customer_id = customer_object['ID']
+        
+        # Dùng lại quick_lookup để tìm danh sách mã hàng trước
+        items_found = self.lookup_service.get_quick_lookup_data(item_term)
+        if not items_found:
+            return ""
+
+        response_lines = [f"**Lịch sử mua hàng:**"]
+        found_history = False
+
+        for item in items_found[:limit]:
+            item_id = item['InventoryID']
+            item_name = item['InventoryName']
+            
+            # Gọi Service SalesLookupService -> check_purchase_history
+            last_invoice_date = self.lookup_service.check_purchase_history(customer_id, item_id)
+            
+            line = f"- **{item_id}**: "
+            if last_invoice_date:
+                found_history = True
+                line += f"**Đã mua** (Gần nhất: {last_invoice_date})"
+            else:
+                line += "**Chưa mua**"
+            response_lines.append(line)
+
+        if not found_history:
+             return f"**Chưa.** KH chưa mua mặt hàng nào khớp với '{item_term}'."
             
         return "\n".join(response_lines)
 
-    def _handle_quick_lookup(self, item_codes, limit=5):
-        
-        try:
-            data = self.lookup_service.get_quick_lookup_data(item_codes)
-            
-            if not data:
-                return f"Không tìm thấy thông tin cho mã: '{item_codes}'."
-            
-            response_lines = ["**Kết quả tra nhanh Tồn kho:**"]
-            
-            items_to_show = data[:limit]
-            
-            for item in items_to_show:
-                inv_id = item['InventoryID']
-                inv_name = item.get('InventoryName', 'N/A') 
-                ton = item.get('Ton', 0)
-                bo = item.get('BackOrder', 0)
-                gbqd = item.get('GiaBanQuyDinh', 0)
-                
-                line = f"- **{inv_name}** ({inv_id}):\n"
-                line += f"  Tồn: **{ton:,.0f}** | BO: **{bo:,.0f}** | Giá QĐ: **{gbqd:,.0f}**"
-                
-                if bo > 0:
-                    line += f"\n  -> *Gợi ý: Mã này đang BackOrder. Anh nên đề xuất khách đặt dự phòng.*"
-                    
-                response_lines.append(line)
-            
-            if len(data) > limit:
-                response_lines.append(f"\n*(Hiển thị {limit} / {len(data)} kết quả tìm thấy...)*")
-            
-            return "\n".join(response_lines)
-            
-        except Exception as e:
-            print(f"Lỗi _handle_quick_lookup: {e}")
-            return f"Lỗi hệ thống khi tra cứu nhanh: {e}"
-            
-    # --- HÀM XỬ LÝ REPLENISHMENT MỚI VÀ ĐÃ SỬA ĐỔI ---
-    def _handle_replenishment_check_final(self, customer_object, limit=10):
+    # 4. GIAO HÀNG
+    def _handle_check_delivery_final(self, customer_object):
         customer_id = customer_object['ID']
         customer_display_name = customer_object['FullName']
         
-        # 1. Lấy I02ID Filter từ customer_object
+        # Gọi Service DeliveryService -> get_recent_delivery_status
+        # Hàm này đã query vào VIEW_DELIVERY chuẩn
+        recent_deliveries = self.delivery_service.get_recent_delivery_status(customer_id, days_ago=7)
+
+        if not recent_deliveries:
+            return f"Khách hàng **{customer_display_name}** không có Lệnh Xuất Hàng nào trong 7 ngày qua."
+
+        # [FIX]: Format Markdown bảng/list đẹp
+        res = f"### 🚚 Tình trạng giao hàng (7 ngày) - {customer_obj['FullName']}\n"
+        res += f"*Tổng cộng: {len(recent_deliveries)} đơn hàng*\n\n"
+        
+        for item in recent_deliveries:
+            status = item.get('DeliveryStatus', 'CHỜ').strip().upper()
+            icon = "🟢" if status == 'DA GIAO' else "🟠"
+            date_str = item.get('VoucherDate', 'N/A')
+            
+            # Dòng tiêu đề đậm
+            res += f"**{icon} LXH {item['VoucherNo']}** `({date_str})`\n"
+            
+            # Chi tiết thụt dòng
+            res += f"- **SL mặt hàng:** {item.get('ItemCount', 0)}\n"
+            if status == 'DA GIAO':
+                res += f"- **Thực tế:** Đã giao ngày {item.get('ActualDeliveryDate', 'N/A')}\n"
+            else:
+                plan = item.get('Planned_Day', 'POOL')
+                plan_txt = "Chưa xếp lịch" if plan == 'POOL' else plan
+                res += f"- **Kế hoạch:** {plan_txt}\n"
+            
+            res += "\n" # Xuống dòng giữa các item
+            
+        return res
+
+    # 5. DỰ PHÒNG (REPLENISHMENT)
+    def _handle_replenishment_check_final(self, customer_object, limit=10):
+        customer_id = customer_object['ID']
+        customer_display_name = customer_object['FullName']
         i02id_filter = customer_object.get('i02id_filter')
         
-        # 2. Gọi hàm mới từ SalesLookupService
+        # Gọi Service SalesLookupService -> get_replenishment_needs (Dùng SP_CROSS_SELL_GAP)
         data = self.lookup_service.get_replenishment_needs(customer_id)
-        
-        if not data:
-            return f"Khách hàng **{customer_display_name}** hiện không có dữ liệu nhu cầu dự phòng."
+        if not data: return f"KH **{customer_display_name}** không có nhu cầu dự phòng."
 
-        # 3. Lọc: Chỉ lấy các nhóm có Lượng Thiếu/Dư > 0 VÀ Lọc theo I02ID
-        deficit_items = [
-            item for item in data 
-            if safe_float(item.get('LuongThieuDu')) > 1 
-        ]
+        deficit_items = [i for i in data if safe_float(i.get('LuongThieuDu')) > 1]
         
-        # --- START FIX LOGIC LỌC I02ID ---
+        filter_note = ""
+        filtered_items = deficit_items
         if i02id_filter:
-            target_code = i02id_filter.upper()
-            
-            # Nếu filter là 'AB', ta coi đó là chỉ dẫn chung và bỏ qua kiểm tra I02ID
-            if target_code == 'AB':
-                filtered_items = deficit_items
-                filter_note = f" theo mã **AB**"
-            else:
-                # Nếu filter là mã cụ thể khác 'AB', áp dụng kiểm tra nghiêm ngặt (I02ID) và dự phòng (NhomHang)
+            target = i02id_filter.upper()
+            if target != 'AB':
                 filtered_items = [
-                    item for item in deficit_items 
-                    if (item.get('I02ID') and item['I02ID'].upper() == target_code) or
-                       (item.get('NhomHang') and item['NhomHang'].upper().startswith(f'{target_code}_')) 
+                    i for i in deficit_items 
+                    if (i.get('I02ID') == target) or (i.get('NhomHang', '').upper().startswith(f'{target}_'))
                 ]
-                filter_note = f" theo mã **{target_code}**"
-        else:
-            filtered_items = deficit_items
-            filter_note = ""
-        # --- END FIX LOGIC LỌC I02ID ---
+                filter_note = f" theo mã **{target}**"
 
+        if not filtered_items: return f"KH **{customer_display_name}** đủ hàng dự phòng{filter_note}."
 
-        if not filtered_items:
-            return f"Khách hàng **{customer_display_name}** hiện không có nhu cầu đặt hàng dự phòng nổi bật{filter_note}."
-            
-        # 4. Giới hạn Top 10 và Định dạng
-        top_items = filtered_items[:limit]
+        response_lines = [f"KH **{customer_display_name}** cần đặt **{len(filtered_items)}** nhóm hàng{filter_note}:"]
         
-        response_lines = [
-            f"Khách hàng **{customer_display_name}** cần đặt dự phòng cho **{len(filtered_items)}** nhóm hàng{filter_note}."
-        ]
-        
-        if len(filtered_items) > limit:
-             response_lines[0] += f" (Top {limit} hiển thị):"
-        else:
-             response_lines[0] += ":"
-
-        for i, item in enumerate(top_items):
-            nhom_hang = item.get('NhomHang', 'N/A')
-            thieu_du = safe_float(item.get('LuongThieuDu', 0))
-            rop = safe_float(item.get('DiemTaiDatROP', 0)) 
+        for i, item in enumerate(filtered_items[:limit]):
+            thieu = safe_float(item.get('LuongThieuDu', 0))
+            rop = safe_float(item.get('DiemTaiDatROP', 0))
             ton_bo = safe_float(item.get('TonBO', 0))
-            
-            # FIX 2a: Bỏ phần (Mã AB: N/A)
-            line = f"**{i+1}. {nhom_hang}**\n" 
-            # FIX 2b: Đổi nhãn 'Dự phòng' thành 'Tồn-BO'
-            line += f"  - Thiếu: **{thieu_du:,.0f}** | ROP: {rop:,.0f} | Tồn-BO: {ton_bo:,.0f}" 
+            line = f"**{i+1}. {item.get('NhomHang')}**\n  - Thiếu: **{thieu:,.0f}** | ROP: {rop:,.0f} | Tồn-BO: {ton_bo:,.0f}"
             response_lines.append(line)
             
-        if len(filtered_items) > limit:
-            response_lines.append(f"\n*(Và {len(filtered_items) - limit} nhóm khác...)*")
-            
-        response_lines.append("\n-> *Xem chi tiết tại Dashboard Dự phòng Khách hàng.*")
-        
         return "\n".join(response_lines)
+
+    # --- HELPERS ---
+    def _format_customer_options(self, customers, term, limit=5):
+        response = f"🔍 Tìm thấy **{len(customers)}** khách hàng tên '{term}'. Sếp chọn số mấy?\n"
+        for i, c in enumerate(customers[:limit]):
+            response += f"**{i+1}**. {c['FullName']} (Mã: {c['ID']})\n"
+        return response
+
+    def _get_customer_detail(self, cust_id):
+        # Hàm này vẫn dùng SQL trực tiếp vì nó đơn giản và dùng bảng chuẩn IT1202,
+        # nhưng nếu muốn an toàn tuyệt đối, bạn nên move nó sang CustomerService.
+        # Tạm thời giữ nguyên vì IT1202 là bảng chuẩn ERP.
+        sql = """
+            SELECT TOP 1 ObjectName, O05ID, Address, 
+            (SELECT SUM(ConLai) FROM AR_AgingDetail WHERE ObjectID = T1.ObjectID) as Debt
+            FROM IT1202 T1 WHERE ObjectID = ?
+        """
+        data = self.db.get_data(sql, (cust_id,))
+        if data:
+            c = data[0]
+            return (f"🏢 **{c['ObjectName']}** ({cust_id})\n"
+                    f"- Phân loại: {c['O05ID']}\n"
+                    f"- Công nợ: {c['Debt'] or 0:,.0f} VND\n"
+                    f"- Địa chỉ: {c['Address']}")
+        return "Lỗi lấy dữ liệu chi tiết."

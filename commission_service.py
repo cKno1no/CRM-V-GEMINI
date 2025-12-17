@@ -1,4 +1,5 @@
 # services/commission_service.py
+from flask import current_app
 from db_manager import DBManager, safe_float
 from datetime import datetime
 import config
@@ -36,7 +37,7 @@ class CommissionService:
             return new_voucher_id
 
         except Exception as e:
-            print(f"Lỗi tạo phiếu hoa hồng: {e}")
+            current_app.logger.error(f"Lỗi tạo phiếu hoa hồng: {e}")
             # Rollback nếu có lỗi
             if conn: 
                 conn.rollback()

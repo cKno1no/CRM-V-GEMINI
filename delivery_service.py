@@ -1,6 +1,7 @@
 # services/delivery_service.py
 # (Bản vá 13 - Logic CUỐI: Tab 1 GỘP TOÀN BỘ, Tab 2 DÙNG LẺ)
 
+from flask import current_app
 from db_manager import DBManager, safe_float
 import datetime as dt # Import thư viện gốc với alias
 from datetime import datetime, timedelta
@@ -15,7 +16,7 @@ except locale.Error:
     try:
         locale.setlocale(locale.LC_TIME, 'Vietnamese_Vietnam.1258')
     except locale.Error:
-        print("Warning: Locale 'vi_VN' or 'Vietnamese' not found. Day names might be in English.")
+        current_app.logger.info("Warning: Locale 'vi_VN' or 'Vietnamese' not found. Day names might be in English.")
 
 class DeliveryService:
     def __init__(self, db_manager: DBManager):
@@ -300,15 +301,17 @@ class DeliveryService:
         # Thêm phương thức này vào class DeliveryService
     def get_recent_delivery_status(self, object_id, days_ago=7):
         """
-        Lấy chi tiết LXH và trạng thái giao hàng cho một khách hàng trong N ngày gần nhất.
+        Lấy chi tiết LXH. (Fix lỗi conversion int)
         """
-        date_limit = (datetime.now() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
+        # Mở rộng phạm vi lên 30 ngày mặc định để dễ test, sau này chỉnh lại 7
+        search_days = 7 
+        date_limit = (datetime.now() - timedelta(days=search_days)).strftime('%Y-%m-%d')
         
         query = f"""
             SELECT TOP 20
                 VoucherNo, VoucherDate, Planned_Day, DeliveryStatus, 
                 EarliestRequestDate, ActualDeliveryDate,
-                ItemCount  -- <<< BỔ SUNG ITEMCOUNT
+                ISNULL(ItemCount, 0) as ItemCount -- Xử lý NULL ngay tại SQL
             FROM {config.DELIVERY_WEEKLY_VIEW}
             WHERE 
                 ObjectID = ? 
@@ -317,14 +320,31 @@ class DeliveryService:
         """
         data = self.db.get_data(query, (object_id,))
         
+        # SỬA ĐOẠN NÀY:
+        try:
+            # In ra để debug xem ID truyền vào đúng không
+            current_app.logger.info(f"--- DEBUG DELIVERY: Object ID={object_id}, Days={days_ago}")
+            data = self.db.get_data(query, (object_id,))
+        except Exception as e:
+            current_app.logger.error(f"--- DEBUG ERROR SQL: {e}")
+            return []
+        
         if not data:
+            current_app.logger.info("--- DEBUG: Không có data từ SQL")
             return []
             
         for row in data:
-            # Sử dụng hàm định dạng ngày tháng an toàn (từ self._format_date_safe)
             row['VoucherDate'] = self._format_date_safe(row.get('VoucherDate'))
             row['EarliestRequestDate'] = self._format_date_safe(row.get('EarliestRequestDate'))
             row['ActualDeliveryDate'] = self._format_date_safe(row.get('ActualDeliveryDate'))
-            row['ItemCount'] = int(safe_float(row.get('ItemCount', 0))) # <<< ĐẢM BẢO LÀ SỐ NGUYÊN
             
+            # [FIX QUAN TRỌNG]: Chống crash tuyệt đối cho ItemCount
+            try:
+                val = row.get('ItemCount')
+                # Chuyển về float trước rồi mới int để xử lý trường hợp 1.0
+                row['ItemCount'] = int(float(val)) if val is not None else 0
+            except:
+                row['ItemCount'] = 0
+            
+        current_app.logger.info(f"--- DEBUG: Lấy được {len(data)} dòng")
         return data

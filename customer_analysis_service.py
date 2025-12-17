@@ -1,3 +1,4 @@
+from flask import current_app
 from db_manager import DBManager, safe_float
 from datetime import datetime
 import config
@@ -66,7 +67,7 @@ class CustomerAnalysisService:
             
             return True, f"Lần xem thứ {current_count}/{limit}"
         except Exception as e:
-            print(f"Redis Error: {e}")
+            current_app.logger.error(f"Redis Error: {e}")
             return True, "Error checking limit" # Cho qua nếu lỗi hệ thống    
     # =========================================================================
     # 1. THÔNG TIN CƠ BẢN

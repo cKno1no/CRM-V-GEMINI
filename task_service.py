@@ -1,3 +1,4 @@
+from flask import current_app
 from db_manager import DBManager, safe_float
 import datetime as dt # Import thư viện gốc với alias
 from datetime import datetime, timedelta # Import các đối tượng phổ biến
@@ -150,7 +151,7 @@ class TaskService:
             self.db.execute_non_query(insert_query, params)
             return True
         except Exception as e:
-            print(f"LỖI TẠO TASK: {e}")
+            current_app.logger.error(f"LỖI TẠO TASK: {e}")
             return False
 
     
@@ -368,7 +369,7 @@ class TaskService:
         try:
             return self.db.execute_non_query(update_query, params)
         except Exception as e:
-            print(f"LỖI NOTE CẤP TRÊN: {e}")
+            current_app.logger.error(f"LỖI NOTE CẤP TRÊN: {e}")
             return False
 
     def get_task_by_id(self, task_id):
@@ -392,7 +393,7 @@ class TaskService:
         try:
             return self.db.execute_non_query(update_query, params)
         except Exception as e:
-            print(f"LỖI CẬP NHẬT PRIORITY: {e}")
+            current_app.logger.error(f"LỖI CẬP NHẬT PRIORITY: {e}")
             return False
     
     # THÊM: Hàm lấy danh sách Helper đủ điều kiện (Req 2)
@@ -452,7 +453,7 @@ class TaskService:
         try:
             return self.db.execute_non_query(insert_query, params)
         except Exception as e:
-            print(f"LỖI TẠO TASK YÊU CẦU HỖ TRỢ/GIAO VIỆC: {e}")
+            current_app.logger.error(f"LỖI TẠO TASK YÊU CẦU HỖ TRỢ/GIAO VIỆC: {e}")
             return False
     # --- PHẦN MỚI: Lấy chi tiết Log History ---
     def get_task_history_logs(self, task_id):

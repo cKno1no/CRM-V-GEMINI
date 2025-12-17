@@ -1,5 +1,6 @@
 # services/cross_sell_service.py
 
+from flask import current_app
 from db_manager import DBManager, safe_float
 from datetime import datetime
 import config
@@ -31,7 +32,7 @@ class CrossSellService:
             data = self.db.get_data(query)
             return {row['LOAI']: row['TEN'] for row in data} if data else {}
         except Exception as e:
-            print(f"Lỗi lấy tên nhóm I04: {e}")
+            current_app.logger.error(f"Lỗi lấy tên nhóm I04: {e}")
             return {}
 
     def get_cross_sell_dna(self, year=None): # Tham số 'year' giữ lại để tương thích nhưng không dùng nữa
