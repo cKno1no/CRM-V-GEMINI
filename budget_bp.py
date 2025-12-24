@@ -2,7 +2,7 @@
 
 from flask import current_app
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash, current_app
-from utils import login_required, permission_required # Import thêm
+from utils import login_required, permission_required, record_activity # Import thêm
 from datetime import datetime, timedelta
 import os
 from werkzeug.utils import secure_filename
@@ -187,6 +187,7 @@ def api_submit_request():
 
 @budget_bp.route('/api/budget/approve', methods=['POST'])
 @login_required
+@record_activity('APPROVE_BUDGET') # <--- Gắn thẻ vào đây
 def api_approve_request():
     """API: Duyệt/Từ chối."""
     budget_service  = current_app.budget_service 
@@ -289,6 +290,7 @@ def payment_queue():
 
 @budget_bp.route('/api/budget/pay', methods=['POST'])
 @login_required
+@record_activity('EXECUTE_PAYMENT') # <--- Gắn thẻ vào đây
 def api_confirm_payment():
     """API: Xác nhận đã chi tiền."""
     budget_service  = current_app.budget_service 

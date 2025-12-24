@@ -1,7 +1,7 @@
 from flask import current_app
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
 # FIX: Chỉ import login_required từ utils.py
-from utils import login_required, permission_required # Import thêm
+from utils import login_required, permission_required, record_activity # Import thêm
 from datetime import datetime, timedelta
 import config
 
@@ -124,6 +124,7 @@ def api_delivery_set_day():
 @delivery_bp.route('/api/delivery/set_status', methods=['POST'])
 @login_required
 @permission_required('DISPATCH_DELIVERY') # Áp dụng quyền mới
+@record_activity('DELIVERY_COMPLETED') # <--- Gắn thẻ vào đây
 def api_delivery_set_status():
     """API: (Kho) Cập nhật trạng thái Đã Soạn/Đã Giao."""
     

@@ -161,17 +161,24 @@
                                         <td class="text-end fw-bold text-danger">
                                             {{ req.Amount | format_tr }}
                                         </td>
-
                                         <td class="text-center pe-3">
-                                            {% if req.Status == 'APPROVED' %}
-                                                <span class="badge bg-success-subtle text-success rounded-pill">Duyệt</span>
-                                            {% elif req.Status == 'REJECTED' %}
-                                                <span class="badge bg-danger-subtle text-danger rounded-pill">Hủy</span>
-                                            {% elif req.Status == 'PAID' %}
-                                                <span class="badge bg-primary-subtle text-primary rounded-pill">Chi</span>
-                                            {% else %}
-                                                <span class="badge bg-warning-subtle text-warning rounded-pill">Chờ</span>
-                                            {% endif %}
+                                            <div class="d-flex flex-column align-items-center gap-1">
+                                                {% if req.Status == 'APPROVED' %}
+                                                    <span class="badge bg-success-subtle text-success rounded-pill mb-1">Duyệt</span>
+                                                    <a href="/budget/print/{{ req.RequestID }}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2 small" title="In phiếu">
+                                                        <i class="fas fa-print"></i>
+                                                    </a>
+                                                {% elif req.Status == 'REJECTED' %}
+                                                    <span class="badge bg-danger-subtle text-danger rounded-pill">Hủy</span>
+                                                {% elif req.Status == 'PAID' %}
+                                                    <span class="badge bg-primary-subtle text-primary rounded-pill mb-1">Chi</span>
+                                                    <a href="/budget/print/{{ req.RequestID }}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2 small" title="In phiếu">
+                                                        <i class="fas fa-print"></i>
+                                                    </a>
+                                                {% else %}
+                                                    <span class="badge bg-warning-subtle text-warning rounded-pill">Chờ</span>
+                                                {% endif %}
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}

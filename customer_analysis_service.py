@@ -480,3 +480,51 @@ class CustomerAnalysisService:
     # (Hàm sales_trend cũ đã được thay bằng get_sales_structure_stock_vs_order, xóa bỏ hoặc giữ làm legacy)
     # (Hàm cross_sell nếu không dùng cũng có thể bỏ)
     def get_sales_trend_5y(self, object_id): return {} # Placeholder nếu API cũ còn gọi
+
+    def get_category_analysis(self, object_id):
+        """
+        Cơ cấu nhóm hàng & Lãi biên (Sử dụng SP đồng bộ với CEO Cockpit).
+        """
+        current_year = datetime.now().year
+        
+        # Gọi Stored Procedure
+        try:
+            data = self.db.execute_sp("sp_GetCustomerCategoryAnalysis", (object_id, current_year))
+        except Exception as e:
+            # Fallback nếu lỗi SP (hoặc chưa chạy script SQL)
+            print(f"Error calling SP: {e}")
+            return {'labels': [], 'series': [], 'details': []}
+
+        # Xử lý dữ liệu trả về
+        labels = []
+        series = [] # Doanh thu cho biểu đồ Pie
+        details = [] # Chi tiết cho Chatbot đọc (bao gồm Lãi biên)
+
+        if data:
+            for row in data:
+                rev = safe_float(row['Revenue'])
+                cost = safe_float(row['Cost'])
+                profit = safe_float(row['GrossProfit'])
+                
+                # Tính % Margin
+                margin_pct = (profit / rev * 100) if rev > 0 else 0
+                
+                cat_name = row['CategoryName']
+                
+                labels.append(cat_name)
+                series.append(rev)
+                
+                details.append({
+                    'id': row['CategoryID'],
+                    'name': cat_name,
+                    'revenue': rev,
+                    'cost': cost,
+                    'profit': profit,
+                    'margin_pct': round(margin_pct, 1)
+                })
+
+        return {
+            'labels': labels,
+            'series': series,
+            'details': details # [NEW] Trường này chứa full thông tin lãi lỗ
+        }

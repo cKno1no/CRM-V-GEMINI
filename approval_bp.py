@@ -1,7 +1,7 @@
 from flask import current_app
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
 # FIX: Chỉ import các helper từ utils.py (và get_user_ip nếu nó được chuyển từ app.py)
-from utils import login_required, permission_required, get_user_ip # Import thêm
+from utils import login_required, permission_required, get_user_ip, record_activity # Import thêm
 from datetime import datetime, timedelta
 from db_manager import safe_float # Cần cho format/validation
 # LƯU Ý: Không import các service như approval_service, order_approval_service TỪ app ở đây.
@@ -141,6 +141,7 @@ def quick_approval_form():
 @approval_bp.route('/api/approve_quote', methods=['POST'])
 @login_required
 @permission_required('APPROVE_QUOTE')
+@record_activity('APPROVE_QUOTE') # <--- Gắn thẻ vào đây
 def api_approve_quote():
     """API: Thực hiện duyệt Chào Giá."""
     
@@ -189,6 +190,7 @@ def api_approve_quote():
 @approval_bp.route('/api/approve_order', methods=['POST'])
 @login_required
 @permission_required('APPROVE_ORDER')
+@record_activity('APPROVE_ORDER') # <--- Gắn thẻ vào đây
 def api_approve_order():
     """API: Thực hiện duyệt Đơn hàng Bán."""
     

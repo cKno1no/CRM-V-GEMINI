@@ -253,11 +253,19 @@ class BudgetService:
                 R.*, 
                 M.BudgetName, M.ParentCode,
                 U.SHORTNAME as RequesterName,
-                U2.SHORTNAME as CurrentApproverName -- <--- Cột này dùng để hiển thị Người duyệt
+                U2.SHORTNAME as CurrentApproverName,
+                
+                -- [MỚI] Lấy thêm Tên đối tượng thụ hưởng
+                ISNULL(O.ShortObjectName, O.ObjectName) AS ObjectName
+                
             FROM {config.TABLE_EXPENSE_REQUEST} R
             LEFT JOIN {config.TABLE_BUDGET_MASTER} M ON R.BudgetCode = M.BudgetCode
             LEFT JOIN {config.TEN_BANG_NGUOI_DUNG} U ON R.UserCode = U.USERCODE
             LEFT JOIN {config.TEN_BANG_NGUOI_DUNG} U2 ON R.CurrentApprover = U2.USERCODE
+            
+            -- [MỚI] Join với bảng IT1202 để lấy tên đối tượng
+            LEFT JOIN {config.ERP_IT1202} O ON R.ObjectID = O.ObjectID
+            
             WHERE {where_clause}
             ORDER BY R.RequestDate DESC
         """

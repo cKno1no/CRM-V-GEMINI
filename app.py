@@ -3,14 +3,69 @@
 
 from flask import render_template, request, redirect, url_for, flash, session
 import config
-from datetime import datetime # Import thêm để xử lý ngày tháng
+from datetime import datetime 
 
 # 1. IMPORT TỪ FACTORY VÀ UTILS
 from factory import create_app
-from utils import login_required
+from utils import login_required, get_user_ip, record_activity # [FIX] Import get_user_ip từ utils
 
 # 2. KHỞI TẠO APP TỪ NHÀ MÁY
 app = create_app()
+
+# =========================================================================
+# [MỚI] GLOBAL SECURITY MIDDLEWARE: CHẶN TRUY CẬP SAI CỔNG
+# =========================================================================
+@app.before_request
+def check_port_access():
+    """
+    Kiểm tra quyền truy cập Port trước mỗi request.
+    Ngăn chặn user STDP đã login chéo sang Port 5000 và ngược lại.
+    """
+    # Bỏ qua các file tĩnh (static) để không làm chậm trang
+    if request.endpoint and 'static' in request.endpoint:
+        return
+
+    # Chỉ kiểm tra nếu user đã đăng nhập
+    if session.get('logged_in'):
+        # 1. Lấy thông tin Division từ Session (đã lưu lúc login)
+        user_division = str(session.get('division') or '').strip().upper()
+        
+        # 2. Lấy Port hiện tại
+        current_port = '80'
+        if ':' in request.host:
+            current_port = request.host.split(':')[-1]
+
+        # 3. Logic Chặn (Giống hệt lúc Login)
+        violation = False
+        error_msg = ""
+
+        # Case A: User STDP đi lạc vào Port 5000
+        if user_division == 'STDP' and current_port == '5000':
+            violation = True
+            error_msg = "⛔ TRUY CẬP BỊ TỪ CHỐI: Tài khoản Hà Nội (STDP) không được phép truy cập cổng Sài Gòn (5000)."
+
+        # Case B: User SG (Non-STDP) đi lạc vào Port 5050
+        elif user_division != 'STDP' and current_port == '5050':
+            violation = True
+            error_msg = "⛔ TRUY CẬP BỊ TỪ CHỐI: Tài khoản Sài Gòn không được phép truy cập cổng Hà Nội (5050)."
+
+        # XỬ LÝ VI PHẠM
+        if violation:
+            # Ghi log cảnh báo
+            app.db_manager.write_audit_log(
+                user_code=session.get('user_code', 'UNKNOWN'), 
+                action_type='SECURITY_VIOLATION', 
+                severity='WARNING', 
+                details=f"Cố tình truy cập sai cổng {current_port} (Div: {user_division})", 
+                ip_address=get_user_ip() # [FIX] Dùng hàm từ utils
+            )
+            
+            # Xóa session ngay lập tức (Force Logout)
+            session.clear()
+            
+            # Trả về trang lỗi hoặc redirect về Login với thông báo
+            flash(error_msg, 'danger')
+            return redirect(url_for('login'))
 
 # =========================================================================
 # 3. GLOBAL TEMPLATE FILTERS (BỘ LỌC CHUẨN HÓA DỮ LIỆU)
@@ -18,105 +73,49 @@ app = create_app()
 
 @app.template_filter('format_tr')
 def format_tr(value):
-    """
-    [CHUẨN HÓA TIỀN TỆ]
-    Chuyển đổi số thành đơn vị Triệu (tr) với định dạng #,###.
-    Ví dụ: 
-      - 1,200,000 -> "1.2 tr"
-      - 1,500,000,000 -> "1,500 tr"
-      - 0 hoặc None -> "0 tr"
-    """
-    if value is None or value == '':
-        return "0 tr"
+    """[CHUẨN HÓA TIỀN TỆ] - Format Triệu (tr)"""
+    if value is None or value == '': return "0 tr"
     try:
         val = float(value)
-        if val == 0:
-            return "0 tr"
-            
-        # Chia cho 1 triệu
+        if val == 0: return "0 tr"
         in_million = val / 1000000.0
-        
-        # Logic hiển thị:
-        # - Dùng dấu phẩy (,) ngăn cách hàng nghìn (Chuẩn IT/Quốc tế)
-        # - Dùng dấu chấm (.) ngăn cách thập phân
-        
-        # Nếu số >= 1 tỷ (1000 triệu) -> Không cần số lẻ thập phân
-        if abs(in_million) >= 1000:
-            return "{:,.0f} tr".format(in_million)
-        
-        # Nếu < 1 tỷ -> Lấy 1 số thập phân
+        if abs(in_million) >= 1000: return "{:,.0f} tr".format(in_million)
         formatted = "{:,.1f}".format(in_million)
-        
-        # Nếu kết quả là số chẵn (vd: 120.0) -> Bỏ đuôi .0 thành 120
-        if formatted.endswith('.0'):
-            return "{:,.0f} tr".format(in_million)
-            
+        if formatted.endswith('.0'): return "{:,.0f} tr".format(in_million)
         return f"{formatted} tr"
-    except:
-        return "0 tr"
+    except: return "0 tr"
 
 @app.template_filter('format_date')
 def format_date(value):
-    """
-    [CHUẨN HÓA NGÀY THÁNG]
-    Chuyển đổi mọi định dạng ngày về: dd/mm/yyyy
-    Ví dụ: 2025-12-15 -> 15/12/2025
-    """
-    if not value:
-        return "-"
-    
-    # Nếu là object datetime của Python
+    """[CHUẨN HÓA NGÀY THÁNG] - dd/mm/yyyy"""
+    if not value: return "-"
     if isinstance(value, datetime) or hasattr(value, 'strftime'):
         return value.strftime('%d/%m/%Y')
-    
-    # Nếu là chuỗi (string) từ SQL
     if isinstance(value, str):
         try:
-            # Thử parse các dạng phổ biến
             if '-' in value:
-                # Dạng YYYY-MM-DD
                 date_obj = datetime.strptime(value[:10], '%Y-%m-%d')
                 return date_obj.strftime('%d/%m/%Y')
-            elif '/' in value:
-                # Nếu đã có dạng / thì giữ nguyên hoặc format lại nếu cần
-                return value 
-        except:
-            pass
-    
+            elif '/' in value: return value 
+        except: pass
     return str(value)
 
 @app.template_filter('format_number')
 def format_number(value):
-    """
-    [CHUẨN HÓA SỐ LƯỢNG]
-    Dành cho các cột Số lượng, Số lần... (Không có đơn vị tiền tệ)
-    Ví dụ: 1234 -> "1,234" (Null -> "-")
-    """
-    if value is None or value == '':
-        return "-"
+    """[CHUẨN HÓA SỐ LƯỢNG]"""
+    if value is None or value == '': return "-"
     try:
         val = float(value)
         if val == 0: return "0"
-        # Chỉ dùng dấu phẩy ngăn cách hàng nghìn, làm tròn số nguyên
         return "{:,.0f}".format(val)
-    except:
-        return str(value)
-
-# =========================================================================
-# HELPER FUNCTIONS
-# =========================================================================
-
-def get_user_ip():
-    if request.headers.getlist("X-Forwarded-For"):
-       return request.headers.getlist("X-Forwarded-For")[0]
-    else:
-       return request.remote_addr
+    except: return str(value)
 
 # =========================================================================
 # ROUTES XÁC THỰC (LOGIN / LOGOUT / PASSWORD)
 # =========================================================================
 
 @app.route('/login', methods=['GET', 'POST'])
+@record_activity('LOGIN') # <--- CHỈ CẦN THÊM DÒNG NÀY LÀ XONG
 def login():
     # Nếu đã login, điều hướng luôn
     if session.get('logged_in'):
@@ -129,8 +128,9 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        user_ip = get_user_ip() 
+        user_ip = get_user_ip() # [FIX] Dùng hàm từ utils
 
+        # Truy vấn lấy thông tin User
         query = f"""
             SELECT TOP 1 [USERCODE], [USERNAME], [SHORTNAME], [ROLE], [CAP TREN], [BO PHAN], [CHUC VU], [PASSWORD], [Division], [THEME]
             FROM {config.TEN_BANG_NGUOI_DUNG}
@@ -141,16 +141,33 @@ def login():
         if user_data:
             user = user_data[0]
             
-            # --- THIẾT LẬP SESSION ---
-            session.clear() # Xóa sạch session cũ để tránh rác
+            # --- [LOGIC MỚI] KIỂM TRA PORT & PHÂN LUỒNG ---
+            current_port = '80'
+            if ':' in request.host:
+                current_port = request.host.split(':')[-1]
             
-            # Thiết lập Session
+            user_division = str(user.get('Division') or '').strip().upper()
+            
+            # Rule chặn
+            if user_division == 'STDP' and current_port == '5000':
+                message = "⚠️ SAI CỔNG TRUY CẬP: Tài khoản Hà Nội (STDP) vui lòng đăng nhập ở cổng 5050."
+                flash(message, 'danger')
+                return render_template('login.html', message=message)
+
+            if user_division != 'STDP' and current_port == '5050':
+                message = "⚠️ SAI CỔNG TRUY CẬP: Tài khoản Sài Gòn vui lòng đăng nhập ở cổng 5000."
+                flash(message, 'danger')
+                return render_template('login.html', message=message)
+            
+            # --- THIẾT LẬP SESSION ---
+            session.clear() 
+            
             session['logged_in'] = True
             session.permanent = True
             session['user_code'] = user.get('USERCODE')
             session['username'] = user.get('USERNAME')
             session['user_shortname'] = user.get('SHORTNAME')
-            session['division'] = user.get('Division') 
+            session['division'] = user_division
             user_role = str(user.get('ROLE') or '').strip().upper()
             session['user_role'] = user_role
             session['theme'] = user.get('THEME') or 'light'
@@ -158,7 +175,6 @@ def login():
             session['bo_phan'] = "".join((user.get('BO PHAN') or '').split()).upper()
             session['chuc_vu'] = str(user.get('CHUC VU') or '').strip().upper()
             
-            # Security Stamp
             session['security_hash'] = user.get('PASSWORD')
 
             # Tải quyền hạn
@@ -174,18 +190,18 @@ def login():
                 user_code=user.get('USERCODE'),
                 action_type='LOGIN_SUCCESS',
                 severity='INFO',
-                details=f"Login thành công: {user_role}",
+                details=f"Login thành công tại Port {current_port}: {user_role}",
                 ip_address=user_ip
             )
 
             flash(f"Đăng nhập thành công! Chào mừng {user.get('SHORTNAME')}.", 'success')
             
-            # Điều hướng
             if user_role in [config.ROLE_ADMIN]: 
                 return redirect(url_for('executive_bp.ceo_cockpit_dashboard'))
             else:
                 return redirect(url_for('portal_bp.portal_dashboard'))
         else:
+            # Login thất bại
             app.db_manager.write_audit_log(
                 user_code=username, 
                 action_type='LOGIN_FAILED', 
@@ -201,7 +217,7 @@ def login():
 @app.route('/logout')
 def logout():
     user_code = session.get('user_code', 'GUEST')
-    user_ip = get_user_ip()
+    user_ip = get_user_ip() # [FIX] Dùng hàm từ utils
     
     app.db_manager.write_audit_log(
         user_code=user_code, 
@@ -223,7 +239,7 @@ def change_password():
         new_password = request.form.get('new_password')
         confirm_password = request.form.get('confirm_password')
         user_code = session.get('user_code')
-        user_ip = get_user_ip()
+        user_ip = get_user_ip() # [FIX] Dùng hàm từ utils
         
         if not old_password or not new_password:
             flash("Vui lòng nhập đầy đủ thông tin.", 'warning')
@@ -272,6 +288,5 @@ def index():
 # MAIN
 # =========================================================================
 if __name__ == '__main__':
-    # Chỉ dùng dòng này khi Dev (Code/Sửa lỗi)
     print("!!! CẢNH BÁO: ĐANG CHẠY CHẾ ĐỘ DEV. KHÔNG DÙNG CHO PRODUCTION !!!")
     app.run(debug=True, host='0.0.0.0', port=5000)

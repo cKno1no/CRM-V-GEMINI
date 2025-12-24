@@ -31,7 +31,7 @@ from services.commission_service import CommissionService
 from services.portal_service import PortalService
 from services.user_service import UserService
 from services.customer_analysis_service import CustomerAnalysisService
-
+from services.gamification_service import GamificationService
 
 # 2. Import Blueprints
 from blueprints.crm_bp import crm_bp
@@ -147,6 +147,7 @@ def create_app():
     # [FIX] Khởi tạo và gắn PortalService
     app.portal_service = PortalService(db_manager)
     app.user_service = UserService(db_manager)
+    app.gamification_service = GamificationService(db_manager)
     
     app.chatbot_service = ChatbotService(
         app.lookup_service,
@@ -175,9 +176,9 @@ def create_app():
     app.register_blueprint(customer_analysis_bp) # Đường dẫn mặc định sẽ theo định nghĩa trong bp
 
     # 5. Inject User Context
-    from flask import session
+   
     @app.context_processor
-    # 5. Inject User Context (CẬP NHẬT)
+    # 5. Inject User Context (ĐÃ FIX LỖI)
     def inject_user():
         def check_permission(feature_code):
             user_role = session.get('user_role', '').strip().upper()
@@ -185,49 +186,80 @@ def create_app():
             permissions = session.get('permissions', [])
             return feature_code in permissions
 
-        # Lấy thông tin cơ bản
+        # Dữ liệu mặc định (Tránh lỗi NoneType khi chưa login)
         user_code = session.get('user_code')
-        user_stats = {'Level': 1, 'CurrentXP': 0, 'next_level_xp': 1000, 'TitanCoins': 0, 'AvatarUrl': ''}
-        unlocked_themes = ['light'] # Mặc định ai cũng có Light
-        
-        # [NEW] LẤY DỮ LIỆU GAMIFICATION NẾU ĐÃ LOGIN
+        user_data_combined = {
+            'Level': 1, 'CurrentXP': 0, 'TotalCoins': 0, 
+            'NextLevelXP': 100, 'ProgressPercent': 0,
+            'AvatarUrl': '', 'ThemeColor': 'light', 
+            'EquippedPet': '', 'Title': 'Newbie'
+        }
+        unlocked_themes = ['light'] # Mặc định luôn có Light
+
+        # [NEW] LẤY DỮ LIỆU TỪ DB NẾU ĐÃ LOGIN
         if user_code:
             try:
-                # Gọi Service lấy Stats
-                stats = current_app.user_service.get_user_stats(user_code)
-                if stats: user_stats = stats
+                # 1. Gọi Service lấy Full Profile (Gộp cả Stats + Visuals)
+                # Hàm này đã có cơ chế "Self-healing" (Tự tạo data nếu thiếu)
+                profile_data = current_app.user_service.get_user_profile(user_code)
                 
-                # Gọi Service lấy Inventory (để check Theme)
-                inventory = current_app.user_service.get_user_inventory(user_code)
-                if inventory:
-                    # Lọc ra danh sách mã các món đồ đã sở hữu
-                    owned_items = [item['ItemCode'] for item in inventory]
-                    unlocked_themes.extend(owned_items)
+                if profile_data:
+                    user_data_combined.update(profile_data)
+
+                # 2. Lấy danh sách Theme đã mở khóa (Query trực tiếp bảng Inventory)
+                # Vì UserService không return full inventory trong hàm get_user_profile
+                inv_query = "SELECT ItemCode FROM TitanOS_UserInventory WHERE UserCode = ?"
+                inv_data = current_app.db_manager.get_data(inv_query, (user_code,))
+                
+                if inv_data:
+                    owned_items = [row['ItemCode'] for row in inv_data]
+                    # Chỉ lọc lấy các item là theme để đưa vào switcher
+                    valid_themes = ['dark', 'fantasy', 'adorable']
+                    for t in valid_themes:
+                        if t in owned_items:
+                            unlocked_themes.append(t)
+
             except Exception as e:
                 current_app.logger.error(f"Lỗi load User Context: {e}")
 
-        # Tính toán danh hiệu (Title) dựa trên Level
-        lvl = user_stats.get('Level', 1)
-        if lvl < 5: title = "Newbie (Tập sự)"
-        elif lvl < 20: title = "Junior (Nhân viên)"
-        elif lvl < 30: title = "Senior (Chuyên viên)"
-        else: title = "Master (Doanh nhân)"
+        # Tính toán danh hiệu (Title) hiển thị nếu DB chưa có
+        lvl = user_data_combined.get('Level', 1)
+        if not user_data_combined.get('Title'):
+            if lvl < 5: title = "Newbie (Tập sự)"
+            elif lvl < 20: title = "Junior (Nhân viên)"
+            elif lvl < 30: title = "Senior (Chuyên viên)"
+            else: title = "Master (Doanh nhân)"
+            user_data_combined['Title'] = title
 
-        user_data = {
+        # Đóng gói dữ liệu trả về template
+        final_context = {
             'is_authenticated': session.get('logged_in', False),
             'usercode': user_code,
             'username': session.get('username'),
             'shortname': session.get('user_shortname'),
             'role': session.get('user_role'),
-            'theme': session.get('theme', 'light'),
             'bo_phan': session.get('bo_phan'),
             'can': check_permission,
-            # --- DỮ LIỆU GAME MỚI ---
-            'stats': user_stats,
-            'title': title,
-            'unlocked_themes': unlocked_themes
+            
+            # --- DỮ LIỆU GAME & UI ---
+            # Ưu tiên lấy Theme từ DB (Equipped), nếu không có thì lấy Session
+            'theme': user_data_combined.get('ThemeColor') or session.get('theme', 'light'),
+            
+            # Truyền object chứa toàn bộ thông tin (Level, XP, Coin, Frame...)
+            'stats': user_data_combined, 
+            'current_user': user_data_combined, # Alias để dùng biến nào cũng được
+            
+            'unlocked_themes': unlocked_themes,
+            'title': user_data_combined['Title']
         }
 
-        return dict(user_context=user_data, current_user=user_data)
-
+        # Trả về 2 biến global để template dùng: user_context và current_user
+        return dict(user_context=final_context, current_user=final_context)
+# 6. Global Before Request (Chạy trước mỗi request)
+    @app.before_request
+    def before_request():
+        # Có thể thêm logic kiểm tra DB connection hoặc Global Security tại đây
+        pass
+    
+    # [QUAN TRỌNG] Phải trả về biến app, nếu không bên app.py sẽ nhận được None
     return app

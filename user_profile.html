@@ -1,491 +1,485 @@
 {% extends "base.html" %}
 
-{% block title %}Hồ sơ Nhân sự & Góc Flex{% endblock %}
+{% block title %}Hồ sơ & Góc Flex | Titan OS{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* --- 1. PROFILE HEADER --- */
-    .profile-header {
-        position: relative; overflow: hidden; border-radius: 0 0 30px 30px;
-        background: linear-gradient(135deg, var(--primary), #8E2DE2);
-        color: white; padding: 60px 20px 40px; text-align: center;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 30px;
-    }
-    .avatar-wrapper {
-        position: relative; width: 130px; height: 130px; margin: 0 auto 15px;
-    }
-    .profile-avatar {
-        width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
-        border: 4px solid rgba(255,255,255,0.8); box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        transition: transform 0.3s; background-color: #fff;
-    }
-    .upload-btn {
-        position: absolute; bottom: 5px; right: 5px; width: 38px; height: 38px;
-        background: #fff; border-radius: 50%; color: var(--primary);
-        display: flex; align-items: center; justify-content: center; cursor: pointer;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s;
-    }
-    .upload-btn:hover { transform: scale(1.1); background: #f8f9fa; }
-    
-    .level-badge {
-        background: linear-gradient(45deg, #FFD700, #FFB547); color: #000;
-        font-weight: 800; padding: 5px 15px; border-radius: 20px;
-        position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 0.95rem; z-index: 2;
-    }
-    .xp-container { max-width: 450px; margin: 0 auto; position: relative; }
-    .progress-custom { height: 12px; background: rgba(255,255,255,0.3); border-radius: 10px; overflow: hidden; }
-    .progress-bar-custom { background: #00E676; height: 100%; transition: width 1s ease-in-out; box-shadow: 0 0 10px rgba(0, 230, 118, 0.5); }
-    .xp-text { font-size: 0.9rem; margin-top: 8px; font-weight: 500; }
-
-    /* --- 2. TABS & SHOP --- */
-    .nav-pills-custom .nav-link {
-        color: var(--text-dark); background: var(--card-bg); margin-right: 10px;
-        border-radius: 12px; font-weight: 600; padding: 12px 25px;
-        border: 1px solid var(--border-color); transition: 0.2s;
-    }
-    .nav-pills-custom .nav-link.active {
-        background: var(--primary); color: white; border-color: var(--primary);
-        box-shadow: 0 5px 15px rgba(67, 24, 255, 0.3);
-    }
-    
-    .shop-item {
-        background: var(--card-bg); border-radius: 20px; border: 1px solid var(--border-color);
-        padding: 20px; text-align: center; transition: 0.3s; position: relative; overflow: hidden;
-        height: 100%; display: flex; flex-direction: column;
-    }
-    .shop-item:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); border-color: var(--primary); }
-    .item-icon { font-size: 3rem; margin-bottom: 10px; display: block; }
-    .item-type-badge {
-        font-size: 0.7rem; text-transform: uppercase; padding: 2px 8px; border-radius: 4px;
-        background: var(--input-bg); color: var(--secondary); margin-bottom: 10px; display: inline-block;
-    }
-    .item-price { font-weight: 800; color: #FFB547; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; gap: 5px; }
-    .shop-item.locked { filter: grayscale(0.8); opacity: 0.9; }
-    .locked-overlay {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.5); display: flex; flex-direction: column;
-        align-items: center; justify-content: center; color: white;
-        z-index: 10; backdrop-filter: blur(2px);
-    }
-
-    .system-card {
-        background: var(--card-bg); padding: 40px; border-radius: 20px;
-        box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);
-    }
-
-    /* --- 3. [NEW] 3D FLEX ROOM (GÓC FLEX) --- */
-    .flex-room-container {
-        perspective: 1200px;
-        height: 550px;
+    /* ========================================= */
+    /* 1. FLEX STAGE (SÂN KHẤU TƯƠNG TÁC) */
+    /* ========================================= */
+    .flex-stage-wrapper {
+        position: relative;
         width: 100%;
-        overflow: hidden;
-        background: radial-gradient(circle at center, #1a2a6c, #b21f1f, #fdbb2d); /* Default Fantasyish */
-        border-radius: 20px;
-        position: relative;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        transition: background 0.5s;
-        box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+        height: 70vh;
+        min-height: 500px;
+        background: radial-gradient(circle at center bottom, #2b3040 0%, #1a1c29 100%);
+        border-radius: 0 0 40px 40px;
+        overflow: hidden; 
+        margin-bottom: -60px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+        border-bottom: 4px solid rgba(255,255,255,0.1);
     }
 
-    /* Nền phòng thay đổi theo Theme */
-    [data-theme="light"] .flex-room-container { background: radial-gradient(circle, #89f7fe, #66a6ff); }
-    [data-theme="dark"] .flex-room-container { background: radial-gradient(circle, #232526, #414345); }
-    [data-theme="adorable"] .flex-room-container { background: radial-gradient(circle, #ff9a9e, #fad0c4); }
-
-    .room-stage {
-        width: 500px; height: 500px;
-        position: relative;
-        transform-style: preserve-3d;
-        transform: rotateX(60deg) rotateZ(0deg) scale(0.8);
-        transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    .stage-bg {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background-image: var(--bg-image);
+        background-size: cover; background-position: center;
+        opacity: 0.5; filter: blur(5px); z-index: 0; pointer-events: none;
     }
 
-    /* SÀN NHÀ */
-    .room-floor {
-        position: absolute; width: 100%; height: 100%;
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(5px);
-        border: 10px solid rgba(255,255,255,0.3);
-        box-shadow: 0 0 60px rgba(0,0,0,0.3);
-        display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
+    .draggable-item {
+        position: absolute; cursor: grab; z-index: 10; transition: transform 0.1s;
+        top: 50%; left: 50%; transform: translate(-50%, -50%); user-select: none;
     }
-    .floor-tile { border: 1px solid rgba(255,255,255,0.1); }
+    .draggable-item:active { cursor: grabbing; transform: translate(-50%, -50%) scale(1.05); }
 
-    /* TƯỜNG (Dựng đứng lên) */
-    .room-wall-left, .room-wall-right {
-        position: absolute; bottom: 0; width: 100%; height: 300px;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255,255,255,0.2);
-    }
-    .room-wall-left {
-        transform-origin: bottom center;
-        transform: rotateX(-90deg) translateZ(250px) translateY(0); /* Đẩy lùi về sau */
-        display: flex; justify-content: space-around; align-items: center; padding: 20px;
+    .interact-anim { animation: bounce 0.5s ease; }
+    @keyframes bounce { 
+        0%, 100% { transform: translate(-50%, -50%) scale(1); } 
+        50% { transform: translate(-50%, -50%) scale(1.2); } 
     }
 
-    /* VẬT PHẨM: TRANH TREO (Themes/Skills) */
-    .wall-frame {
-        width: 90px; height: 110px;
-        background: #fff; border: 5px solid #FFD700;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    /* AVATAR & PET COMPONENT */
+    .avatar-wrapper { width: 180px; height: 180px; position: relative; }
+    .main-avatar {
+        width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+        border: 4px solid rgba(255,255,255,0.8); box-shadow: 0 0 30px rgba(67, 24, 255, 0.6);
+        background: #fff; position: relative; z-index: 2;
+    }
+    .frame-lottie {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(1.65);
+        width: 100%; height: 100%; z-index: 3; pointer-events: none;
+    }
+    
+    .stage-info {
+        position: absolute; bottom: -50px; left: 50%; transform: translateX(-50%);
+        text-align: center; width: 300px; pointer-events: none;
+    }
+    .stage-name { 
+        font-family: 'Fredoka', sans-serif; font-size: 2rem; font-weight: 700; color: white;
+        text-shadow: 0 4px 10px rgba(0,0,0,0.8); background: rgba(0,0,0,0.3);
+        padding: 5px 20px; border-radius: 20px; backdrop-filter: blur(4px); display: inline-block;
+    }
+    .stage-title {
+        background: linear-gradient(90deg, #FFD700, #FFA500); color: #fff;
+        padding: 4px 15px; border-radius: 20px; font-weight: 800; font-size: 0.8rem;
+        text-transform: uppercase; box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+        position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+    }
+
+    .pet-wrapper { width: 250px; height: 250px; } /* Pet to hơn chút */
+    .chat-bubble {
+        position: absolute; top: -40px; right: -20px; background: white; color: #333;
+        padding: 8px 15px; border-radius: 15px 15px 0 15px; font-weight: bold; font-size: 0.85rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.3s;
+        pointer-events: none; width: max-content;
+    }
+    .pet-wrapper:hover .chat-bubble { opacity: 1; top: -50px; }
+
+    /* ========================================= */
+    /* 2. CARD & LAYOUT */
+    /* ========================================= */
+    .profile-body { position: relative; z-index: 20; padding-bottom: 50px; }
+    .glass-card {
+        background: var(--card-bg); border: 1px solid var(--border-color);
+        border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); overflow: hidden; height: 100%;
+    }
+    .xp-bar-container { background: var(--input-bg); height: 12px; border-radius: 10px; margin: 15px 0; overflow: hidden; }
+    .xp-bar-fill { height: 100%; background: linear-gradient(90deg, var(--warning), #FFD700); width: 0%; transition: width 1s; }
+
+    /* ========================================= */
+    /* 3. ITEM GRID SYSTEM (BIGGER & BETTER) */
+    /* ========================================= */
+    .category-header {
+        font-size: 1rem; font-weight: 800; color: var(--secondary);
+        text-transform: uppercase; letter-spacing: 1px; margin: 30px 0 20px 0;
+        display: flex; align-items: center;
+    }
+    .category-header::after { content: ''; flex: 1; height: 1px; background: var(--border-color); margin-left: 15px; }
+
+    /* [UPDATE 3] Grid to gấp 4 lần (min 220px) */
+    .item-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
+        gap: 20px;
+    }
+
+    .item-card {
+        aspect-ratio: 1/1; background: var(--input-bg);
+        border: 2px solid transparent; border-radius: 24px;
+        position: relative; cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        transition: 0.3s; cursor: pointer; position: relative;
+        overflow: hidden;
     }
-    .wall-frame:hover { transform: scale(1.1) translateZ(10px); border-color: var(--primary); }
-    .wall-frame i { font-size: 2.5rem; color: #333; margin-bottom: 5px; }
-    .wall-frame span { font-size: 0.65rem; font-weight: bold; text-align: center; color: #555; }
-    .wall-frame .active-badge { position: absolute; top: -10px; right: -10px; font-size: 1.2rem; color: #00E676; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); }
 
-    /* VẬT PHẨM: PET & DECOR (Trên sàn) */
-    .floor-item {
-        position: absolute;
-        transform-style: preserve-3d;
-        transition: 0.3s; cursor: pointer;
-        display: flex; justify-content: center; align-items: center;
+    .item-card:hover { transform: translateY(-8px); border-color: var(--primary); background: #fff; box-shadow: 0 15px 30px rgba(0,0,0,0.1); }
+    .item-card.active { border-color: var(--success); background: rgba(5, 205, 153, 0.05); box-shadow: inset 0 0 0 2px var(--success); }
+    
+    /* [UPDATE 5] Locked Item Style */
+    .item-card.locked {
+        cursor: not-allowed;
+        filter: grayscale(100%);
+        opacity: 0.7;
     }
-    /* Quan trọng: Dựng item đứng lên vuông góc với sàn */
-    .floor-item-inner {
-        transform: rotateX(-90deg) translateY(-50%) scale(1.5);
-        filter: drop-shadow(0 15px 10px rgba(0,0,0,0.4));
-        transition: 0.3s;
+    .item-card.locked:hover { transform: none; border-color: transparent; box-shadow: none; }
+    
+    .lock-overlay {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.1); z-index: 5;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: #555; font-weight: bold; font-size: 1.2rem;
     }
-    .floor-item:hover .floor-item-inner { transform: rotateX(-90deg) translateY(-70%) scale(1.7); }
 
-    /* KỆ CÚP */
-    .trophy-stand {
-        position: absolute; width: 120px; height: 120px;
-        top: 50%; left: 50%; transform: translate(-50%, -50%);
-        border: 2px dashed rgba(255,255,255,0.3);
-        border-radius: 50%;
-        display: flex; justify-content: center; align-items: center;
+    .equipped-badge {
+        position: absolute; top: 12px; right: 12px;
+        background: var(--success); color: white; width: 28px; height: 28px; border-radius: 50%;
+        font-size: 14px; display: flex; align-items: center; justify-content: center;
+        z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
-    .trophy-item {
-        font-size: 4rem; color: #FFD700;
-        transform: rotateX(-90deg) translateY(-30%);
-        filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.6));
-        animation: floatTrophy 3s infinite ease-in-out;
-    }
-    @keyframes floatTrophy { 0%, 100% { transform: rotateX(-90deg) translateY(-30%); } 50% { transform: rotateX(-90deg) translateY(-45%); } }
 
-    /* Controls */
-    .room-controls {
-        position: absolute; bottom: 20px; right: 20px;
-        display: flex; gap: 10px; z-index: 10;
+    /* [UPDATE 1] Item Preview To Nhất Có Thể */
+    .item-preview {
+        width: 100%; height: 100%; padding: 15px; /* Padding nhỏ để hình to ra */
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1; /* Thấp hơn giá tiền */
     }
-    .item-tooltip {
-        position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
-        background: rgba(0,0,0,0.8); color: white; padding: 4px 10px;
-        border-radius: 6px; font-size: 0.75rem; white-space: nowrap;
-        opacity: 0; transition: 0.2s; pointer-events: none;
+    .item-preview img, .item-preview lottie-player {
+        width: 100%; height: 100%; object-fit: contain;
     }
-    .wall-frame:hover .item-tooltip, .floor-item:hover .item-tooltip { opacity: 1; bottom: 110%; }
+
+    .item-meta {
+        position: absolute; bottom: 0; left: 0; width: 100%;
+        background: rgba(255,255,255,0.95); padding: 8px 0;
+        text-align: center; font-size: 0.9rem; font-weight: 700; color: var(--text-dark);
+        transform: translateY(100%); transition: transform 0.2s; z-index: 11;
+        backdrop-filter: blur(4px);
+    }
+    .item-card:hover .item-meta { transform: translateY(0); }
+    
+    /* [UPDATE 4] Price Tag Z-Index Fix */
+    .price-tag {
+        position: absolute; top: 12px; right: 12px;
+        background: var(--card-bg); color: var(--text-dark);
+        padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 800;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 4px;
+        z-index: 10; /* Cao hơn Lottie */
+    }
+
+    .nav-pills .nav-link { 
+        border-radius: 12px; font-weight: 700; padding: 12px 25px;
+        background: var(--input-bg); color: var(--secondary); margin-right: 15px;
+    }
+    .nav-pills .nav-link.active { background: var(--primary); color: #fff; box-shadow: 0 5px 15px rgba(67, 24, 255, 0.3); }
+
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid p-0">
-    
-    <div class="profile-header">
+
+<div class="flex-stage-wrapper" id="stage-area">
+    <div class="stage-bg"></div>
+    <div class="position-absolute top-0 start-50 translate-middle-x mt-3 text-white-50 small" style="z-index: 5;">
+        <i class="fas fa-hand-pointer me-1"></i> Kéo thả để sắp xếp góc Flex
+    </div>
+
+    <div class="draggable-item" id="drag-avatar" onclick="interactElement(this)">
         <div class="avatar-wrapper">
-            <div class="level-badge">LV.{{ user_stats.Level }}</div>
-            <img src="{{ user_stats.AvatarUrl or url_for('static', filename='img/default_avatar.png') }}" 
-                 class="profile-avatar" id="avatarPreview" alt="Avatar">
-            
-            <label for="avatarUpload" class="upload-btn" title="Đổi ảnh đại diện">
-                <i class="fas fa-camera"></i>
-            </label>
-            <input type="file" id="avatarUpload" accept="image/*" hidden onchange="previewAndUpload(this)">
-        </div>
-        
-        <h2 class="fw-bold mb-1">{{ user_context.shortname }}</h2>
-        <p class="opacity-75 mb-4">{{ user_context.bo_phan }} | {{ user_context.role }}</p>
-        
-        <div class="xp-container">
-            <div class="d-flex justify-content-between xp-text mb-1">
-                <span>XP: {{ "{:,.0f}".format(user_stats.CurrentXP) }} / {{ "{:,.0f}".format(user_stats.next_level_xp) }}</span>
-                <span class="fw-bold"><i class="fas fa-coins text-warning me-1"></i>{{ "{:,.0f}".format(user_stats.TitanCoins) }} Coins</span>
+            {% if user.AvatarFrame %}
+            <div class="frame-lottie">
+                <lottie-player src="{{ url_for('static', filename='assets/json/' + user.AvatarFrame + '.json') }}" background="transparent" speed="1" loop autoplay></lottie-player>
             </div>
-            <div class="progress-custom">
-                <div class="progress-bar-custom" style="width: {{ user_stats.xp_percent }}%;"></div>
+            {% endif %}
+            <img src="{{ user.AvatarUrl if user.AvatarUrl else url_for('static', filename='img/default_avatar.png') }}" class="main-avatar">
+            <div class="stage-info">
+                {% if user.Title %}<div class="stage-title"><i class="fas fa-crown me-1"></i>{{ user.Title }}</div>{% endif %}
+                <div class="stage-name">{{ user.SHORTNAME or user.USERNAME }}</div>
             </div>
-            <div class="text-end mt-1"><small style="opacity: 0.8">Tiến độ lên cấp tiếp theo</small></div>
         </div>
     </div>
 
-    <div class="container pb-5">
-        <ul class="nav nav-pills nav-pills-custom mb-5 justify-content-center" id="pills-tab" role="tablist">
-            <li class="nav-item">
-                <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#pills-store">
-                    <i class="fas fa-store me-2"></i>Titan Store
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" data-bs-toggle="pill" data-bs-target="#pills-inventory">
-                    <i class="fas fa-vr-cardboard me-2"></i>Góc Flex Của Tôi
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" data-bs-toggle="pill" data-bs-target="#pills-system">
-                    <i class="fas fa-user-shield me-2"></i>Tài Khoản
-                </button>
-            </li>
-        </ul>
+    {% if user.EquippedPet %}
+    <div class="draggable-item" id="drag-pet" style="left: 70%; top: 60%;" onclick="interactElement(this)">
+        <div class="pet-wrapper">
+            <div class="chat-bubble">Chào sếp! 🦊</div>
+            <lottie-player src="{{ url_for('static', filename='assets/json/' + user.EquippedPet + '.json') }}" background="transparent" speed="1" loop autoplay></lottie-player>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="position-absolute bottom-0 end-0 p-4" style="z-index: 20;">
+        <button class="btn btn-light rounded-circle shadow-lg" style="width: 50px; height: 50px;" onclick="document.getElementById('avatar-upload').click()"><i class="fas fa-camera text-primary"></i></button>
+        <input type="file" id="avatar-upload" hidden accept="image/*" onchange="uploadAvatar(this)">
+    </div>
+</div>
 
-        <div class="tab-content" id="pills-tabContent">
-            
-            <div class="tab-pane fade show active" id="pills-store">
-                <div class="row g-4">
-                    {% for item in shop_items %}
-                    <div class="col-md-3 col-6">
-                        {% set is_locked = user_stats.Level < item.MinLevel %}
-                        <div class="shop-item {{ 'locked' if is_locked else '' }}">
-                            {% if is_locked %}
-                            <div class="locked-overlay">
-                                <i class="fas fa-lock mb-2 fs-2"></i>
-                                <span class="fw-bold">Yêu cầu LV.{{ item.MinLevel }}</span>
-                            </div>
-                            {% endif %}
-                            <span class="item-type-badge">{{ item.ItemType }}</span>
-                            <div class="item-icon">{{ item.Icon }}</div>
-                            <h6 class="fw-bold text-truncate" title="{{ item.ItemName }}">{{ item.ItemName }}</h6>
-                            <p class="small text-muted mb-3" style="min-height: 40px;">{{ item.Description }}</p>
-                            <div class="mt-auto">
-                                {% if item.IsOwned %}
-                                    <button class="btn btn-sm btn-secondary w-100 rounded-pill" disabled><i class="fas fa-check me-1"></i>Đã sở hữu</button>
-                                {% else %}
-                                    <div class="item-price mb-2">{{ "{:,.0f}".format(item.Price) }} <i class="fas fa-coins"></i></div>
-                                    <button class="btn btn-sm btn-primary w-100 rounded-pill fw-bold" onclick="buyItem('{{ item.ItemCode }}', {{ item.Price }})" {{ 'disabled' if is_locked else '' }}>Mua ngay</button>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
+<div class="container profile-body">
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="glass-card p-4">
+                <h5 class="fw-bold mb-4 text-primary"><i class="fas fa-id-card me-2"></i>Hồ sơ</h5>
+                <div class="text-center mb-4">
+                    <h2 class="fw-bold m-0">{{ user.USERNAME }}</h2>
+                    <p class="text-muted">{{ user['CHUC VU'] }}</p>
+                </div>
+                <div class="info-row"><span class="info-label">Level</span><span class="info-val fw-bold text-dark">{{ user.Level }}</span></div>
+                <div class="xp-bar-container"><div class="xp-bar-fill" style="width: {{ user.ProgressPercent }}%"></div></div>
+                <div class="bg-light p-3 rounded-4 mt-3 d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center"><i class="fas fa-coins text-warning fa-2x me-3"></i><div><div class="small text-muted fw-bold">Coins</div><h4 class="mb-0 fw-bold">{{ "{:,}".format(user.TotalCoins) }}</h4></div></div>
+                    <button class="btn btn-sm btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#changePassModal"><i class="fas fa-key"></i></button>
                 </div>
             </div>
+        </div>
 
-            <div class="tab-pane fade" id="pills-inventory">
-                <div class="card border-0 mb-3 bg-transparent">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="fw-bold mb-0 text-muted"><i class="fas fa-cube me-2"></i>Không gian trưng bày</h5>
-                        <button class="btn btn-sm btn-outline-primary bg-white shadow-sm" onclick="shareFlex()"><i class="fas fa-camera me-2"></i>Chụp ảnh khoe ngay</button>
-                    </div>
-                </div>
+        <div class="col-lg-8">
+            <div class="glass-card p-4">
+                <ul class="nav nav-pills mb-4" id="pills-tab" role="tablist">
+                    <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-inventory"><i class="fas fa-box-open me-2"></i>Túi đồ</button></li>
+                    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-shop"><i class="fas fa-store me-2"></i>Cửa hàng</button></li>
+                </ul>
 
-                <div class="flex-room-container" id="flexRoom">
-                    <div class="room-stage" id="roomStage">
-                        
-                        <div class="room-wall-left">
-                            {% for item in inventory if item.ItemType in ['THEME', 'SKILL'] %}
-                            <div class="wall-frame" onclick="equipItem('{{ item.ItemCode }}')" title="{{ item.Description }}">
-                                <div class="item-tooltip">{{ item.ItemName }}</div>
-                                {% if item.IsEquipped %}<div class="active-badge"><i class="fas fa-check-circle"></i></div>{% endif %}
-                                <div class="text-center"><span style="font-size: 2rem;">{{ item.Icon }}</span></div>
-                                <span class="text-truncate w-100 px-1 mt-2">{{ item.ItemName }}</span>
-                            </div>
-                            {% else %}
-                            <div class="wall-frame" style="border-color: #ccc; filter: grayscale(1); opacity: 0.5;">
-                                <i class="fas fa-plus"></i><span>Trống</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-
-                        <div class="room-floor">
-                            {% for i in range(16) %}<div class="floor-tile"></div>{% endfor %}
-                            
-                            {% for item in inventory if item.ItemType == 'PET' %}
-                                {% set pos_top = [20, 60, 40, 70] | random %}
-                                {% set pos_left = [20, 70, 30, 60] | random %}
-                                
-                                <div class="floor-item" style="top: {{ pos_top }}%; left: {{ pos_left }}%;" onclick="equipItem('{{ item.ItemCode }}')">
-                                    <div class="item-tooltip">{{ item.ItemName }} {{ '(Đang dùng)' if item.IsEquipped else '' }}</div>
-                                    <div class="floor-item-inner">
-                                        {% if item.ItemCode == 'fox' %}
-                                            <lottie-player src="{{ url_for('static', filename='json/Fox-Audio.json') }}" background="transparent" speed="1" style="width: 80px; height: 80px;" loop autoplay></lottie-player>
-                                        {% else %}
-                                            <span style="font-size: 3.5rem;">{{ item.Icon }}</span>
-                                        {% endif %}
+                <div class="tab-content">
+                    
+                    <div class="tab-pane fade show active" id="tab-inventory">
+                        {% if inventory %}
+                            <div class="category-header"><i class="fas fa-paw me-2 text-warning"></i>Thú cưng (Pets)</div>
+                            <div class="item-grid">
+                                {# Lọc các item có Type là PET hoặc mã có chữ 'pet' #}
+                                {% for item in inventory if item.ItemType.strip().upper() == 'PET' %}
+                                    <div class="item-card {{ 'active' if item.ItemCode == user.EquippedPet }}" onclick="equipItem('{{ item.ItemCode }}')">
+                                        {% if item.ItemCode == user.EquippedPet %}<div class="equipped-badge"><i class="fas fa-check"></i></div>{% endif %}
+                                        <div class="item-preview">
+                                            <lottie-player src="{{ url_for('static', filename='assets/json/' + item.ItemCode + '.json') }}" background="transparent" speed="1" loop hover></lottie-player>
+                                        </div>
+                                        <div class="item-meta">{{ item.ItemCode|capitalize }}</div>
                                     </div>
-                                    {% if item.IsEquipped %}
-                                        <div class="position-absolute top-0 start-50 translate-middle badge bg-success" style="transform: rotateX(-90deg) !important; margin-top: -10px;">Active</div>
+                                {% else %}<div class="text-muted small fst-italic">Trống.</div>{% endfor %}
+                            </div>
+
+                            <div class="category-header mt-4"><i class="fas fa-crop-alt me-2 text-info"></i>Khung (Frames)</div>
+                            <div class="item-grid">
+                                {% for item in inventory if item.ItemType == 'FRAME' or 'frame' in item.ItemCode %}
+                                    <div class="item-card {{ 'active' if item.ItemCode == user.AvatarFrame }}" onclick="equipItem('{{ item.ItemCode }}')">
+                                        {% if item.ItemCode == user.AvatarFrame %}<div class="equipped-badge"><i class="fas fa-check"></i></div>{% endif %}
+                                        <div class="item-preview">
+                                            <lottie-player src="{{ url_for('static', filename='assets/json/' + item.ItemCode + '.json') }}" background="transparent" speed="1" loop hover></lottie-player>
+                                        </div>
+                                        <div class="item-meta">{{ item.ItemCode }}</div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="category-header mt-4"><i class="fas fa-palette me-2 text-danger"></i>Themes</div>
+                            <div class="item-grid">
+                                {% for item in inventory if item.ItemType == 'THEME' or item.ItemCode in ['light', 'dark', 'fantasy', 'adorable'] %}
+                                    <div class="item-card {{ 'active' if item.ItemCode == user.ThemeColor }}" onclick="equipItem('{{ item.ItemCode }}')">
+                                        {% if item.ItemCode == user.ThemeColor %}<div class="equipped-badge"><i class="fas fa-check"></i></div>{% endif %}
+                                        <div class="item-preview">
+                                            <lottie-player src="{{ url_for('static', filename='assets/json/' + item.ItemCode + '.json') }}" background="transparent" speed="1" loop hover></lottie-player>
+                                        </div>
+                                        <div class="item-meta">{{ item.ItemCode|capitalize }}</div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="category-header mt-4"><i class="fas fa-bolt me-2 text-warning"></i>Kỹ năng</div>
+                            <div class="item-grid">
+                                {% for item in inventory if item.ItemType.strip().upper() == 'SKILL' %}
+                                    <div class="item-card" onclick="equipItem('{{ item.ItemCode }}')">
+                                        <div class="item-preview">
+                                            <lottie-player src="{{ url_for('static', filename='assets/json/' + item.ItemCode + '.json') }}" background="transparent" speed="1" loop hover></lottie-player>
+                                        </div>
+                                        <div class="item-meta">{{ item.ItemCode|capitalize }}</div>
+                                    </div>
+                                {% else %}<div class="text-muted small fst-italic">Trống.</div>{% endfor %}
+                            </div>
+
+                            <div class="category-header mt-4"><i class="fas fa-tree me-2 text-success"></i>Trang trí</div>
+                            <div class="item-grid">
+                                {% for item in inventory if item.ItemType.strip().upper() == 'DECOR' %}
+                                    <div class="item-card" onclick="equipItem('{{ item.ItemCode }}')">
+                                        <div class="item-preview">
+                                            <lottie-player src="{{ url_for('static', filename='assets/json/' + item.ItemCode + '.json') }}" background="transparent" speed="1" loop hover></lottie-player>
+                                        </div>
+                                        <div class="item-meta">{{ item.ItemCode|capitalize }}</div>
+                                    </div>
+                                {% else %}<div class="text-muted small fst-italic">Trống.</div>{% endfor %}
+                            </div>
+
+                        {% else %}
+                            <div class="text-center py-5"><p class="text-muted">Túi đồ trống.</p></div>
+                        {% endif %}
+                    </div>
+
+                    <div class="tab-pane fade" id="tab-shop">
+                        
+                        <div class="category-header"><i class="fas fa-paw me-2 text-warning"></i>Mua Thú cưng</div>
+                        <div class="item-grid">
+                            {% for item in items if item.ItemType == 'PET' %}
+                                {% set is_locked = item.MinLevel > user.Level %}
+                                <div class="item-card {{ 'locked' if is_locked }}" 
+                                     onclick="{{ 'alertLocked(' + item.MinLevel|string + ')' if is_locked else 'buyItem(\'' + item.ItemCode + '\', ' + item.Price|string + ')' }}">
+                                    
+                                    {% if is_locked %}
+                                        <div class="lock-overlay"><i class="fas fa-lock mb-2"></i> Lv.{{ item.MinLevel }}</div>
+                                    {% else %}
+                                        <div class="price-tag"><i class="fas fa-coins text-warning"></i>{{ item.Price }}</div>
                                     {% endif %}
+                                    
+                                    <div class="item-preview">
+                                        <lottie-player src="{{ url_for('static', filename='assets/json/' + item.ItemCode + '.json') }}" background="transparent" speed="1" loop hover></lottie-player>
+                                    </div>
+                                    <div class="item-meta">{{ item.ItemName }}</div>
                                 </div>
                             {% endfor %}
-
-                            <div class="trophy-stand">
-                                {% if user_stats.Level >= 10 %}
-                                    <div class="trophy-item" title="Thành tựu: Cán mốc Level 10">🏆</div>
-                                {% elif current_user.role == 'ADMIN' %}
-                                    <div class="trophy-item" title="Admin Quyền Lực">👑</div>
-                                {% else %}
-                                    <div class="floor-item-inner" style="opacity: 0.3; font-size: 2rem;">Coming Soon</div>
-                                {% endif %}
-                            </div>
                         </div>
-                    </div>
 
-                    <div class="room-controls">
-                        <button class="btn btn-light rounded-circle shadow" onclick="rotateRoom('left')"><i class="fas fa-undo"></i></button>
-                        <button class="btn btn-light rounded-circle shadow" onclick="rotateRoom('right')"><i class="fas fa-redo"></i></button>
+                        <div class="category-header mt-4"><i class="fas fa-crop-alt me-2 text-info"></i>Mua Khung Avatar</div>
+                        <div class="item-grid">
+                            {% for item in items if item.ItemType == 'FRAME' %}
+                                {% set is_locked = item.MinLevel > user.Level %}
+                                <div class="item-card {{ 'locked' if is_locked }}" 
+                                     onclick="{{ 'alertLocked(' + item.MinLevel|string + ')' if is_locked else 'buyItem(\'' + item.ItemCode + '\', ' + item.Price|string + ')' }}">
+                                    {% if is_locked %}<div class="lock-overlay"><i class="fas fa-lock mb-2"></i> Lv.{{ item.MinLevel }}</div>
+                                    {% else %}<div class="price-tag"><i class="fas fa-coins text-warning"></i>{{ item.Price }}</div>{% endif %}
+                                    <div class="item-preview">
+                                        <lottie-player src="{{ url_for('static', filename='assets/json/' + item.ItemCode + '.json') }}" background="transparent" speed="1" loop hover></lottie-player>
+                                    </div>
+                                    <div class="item-meta">{{ item.ItemName }}</div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="category-header mt-4"><i class="fas fa-palette me-2 text-danger"></i>Mua Giao diện</div>
+                        <div class="item-grid">
+                            {% for item in items if item.ItemType == 'THEME' %}
+                                {% set is_locked = item.MinLevel > user.Level %}
+                                <div class="item-card {{ 'locked' if is_locked }}" 
+                                     onclick="{{ 'alertLocked(' + item.MinLevel|string + ')' if is_locked else 'buyItem(\'' + item.ItemCode + '\', ' + item.Price|string + ')' }}">
+                                    {% if is_locked %}<div class="lock-overlay"><i class="fas fa-lock mb-2"></i> Lv.{{ item.MinLevel }}</div>
+                                    {% else %}<div class="price-tag"><i class="fas fa-coins text-warning"></i>{{ item.Price }}</div>{% endif %}
+                                    <div class="item-preview">
+                                        <lottie-player src="{{ url_for('static', filename='assets/json/' + item.ItemCode + '.json') }}" background="transparent" speed="1" loop hover></lottie-player>
+                                    </div>
+                                    <div class="item-meta">{{ item.ItemName }}</div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="category-header mt-4"><i class="fas fa-bolt me-2 text-warning"></i>Mua Kỹ năng</div>
+                        <div class="item-grid">
+                            {% for item in items if item.ItemType.strip().upper() == 'SKILL' %}
+                                {% set is_locked = item.MinLevel > user.Level %}
+                                <div class="item-card {{ 'locked' if is_locked }}" 
+                                     onclick="{{ 'alertLocked(' + item.MinLevel|string + ')' if is_locked else 'buyItem(\'' + item.ItemCode + '\', ' + item.Price|string + ')' }}">
+                                    {% if is_locked %}<div class="lock-overlay"><i class="fas fa-lock mb-2"></i> Lv.{{ item.MinLevel }}</div>
+                                    {% else %}<div class="price-tag"><i class="fas fa-coins text-warning"></i>{{ item.Price }}</div>{% endif %}
+                                    <div class="item-preview">
+                                        <lottie-player src="{{ url_for('static', filename='assets/json/' + item.ItemCode + '.json') }}" background="transparent" speed="1" loop hover></lottie-player>
+                                    </div>
+                                    <div class="item-meta">{{ item.ItemName }}</div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="category-header mt-4"><i class="fas fa-tree me-2 text-success"></i>Mua Đồ Trang trí</div>
+                        <div class="item-grid">
+                            {% for item in items if item.ItemType.strip().upper() == 'DECOR' %}
+                                {% set is_locked = item.MinLevel > user.Level %}
+                                <div class="item-card {{ 'locked' if is_locked }}" 
+                                     onclick="{{ 'alertLocked(' + item.MinLevel|string + ')' if is_locked else 'buyItem(\'' + item.ItemCode + '\', ' + item.Price|string + ')' }}">
+                                    {% if is_locked %}<div class="lock-overlay"><i class="fas fa-lock mb-2"></i> Lv.{{ item.MinLevel }}</div>
+                                    {% else %}<div class="price-tag"><i class="fas fa-coins text-warning"></i>{{ item.Price }}</div>{% endif %}
+                                    <div class="item-preview">
+                                        <lottie-player src="{{ url_for('static', filename='assets/json/' + item.ItemCode + '.json') }}" background="transparent" speed="1" loop hover></lottie-player>
+                                    </div>
+                                    <div class="item-meta">{{ item.ItemName }}</div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
                     </div>
                 </div>
-                
-                <p class="text-center text-muted mt-3 small"><i class="fas fa-mouse-pointer me-1"></i>Click vào vật phẩm để Trang bị/Sử dụng. Dùng nút xoay để xem toàn cảnh.</p>
             </div>
-
-            <div class="tab-pane fade" id="pills-system">
-                <div class="row justify-content-center">
-                    <div class="col-md-6">
-                        <div class="system-card">
-                            <h5 class="fw-bold mb-4 text-center"><i class="fas fa-key me-2 text-primary"></i>Đổi Mật Khẩu</h5>
-                            <form id="changePassForm" onsubmit="changePassword(event)">
-                                <div class="mb-3">
-                                    <label class="form-label small fw-bold text-muted">Mật khẩu hiện tại</label>
-                                    <input type="password" name="current_password" class="form-control" required placeholder="••••••">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label small fw-bold text-muted">Mật khẩu mới</label>
-                                    <input type="password" name="new_password" class="form-control" required minlength="6" placeholder="Tối thiểu 6 ký tự">
-                                </div>
-                                <div class="mb-4">
-                                    <label class="form-label small fw-bold text-muted">Xác nhận mật khẩu mới</label>
-                                    <input type="password" name="confirm_password" class="form-control" required placeholder="Nhập lại mật khẩu mới">
-                                </div>
-                                <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold shadow-sm">
-                                    <i class="fas fa-save me-2"></i>Lưu Thay Đổi
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="changePassModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Đổi mật khẩu</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="password" id="old-pass" class="form-control mb-3" placeholder="Mật khẩu cũ">
+                <input type="password" id="new-pass" class="form-control" placeholder="Mật khẩu mới">
+            </div>
+            <div class="modal-footer"><button class="btn btn-primary w-100" onclick="changePassword()">Xác nhận đổi</button></div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // --- 1. JS FOR 3D ROOM ---
-    let currentRotation = 0;
-    
-    function rotateRoom(direction) {
-        const stage = document.getElementById('roomStage');
-        if (direction === 'left') {
-            currentRotation -= 45;
-        } else {
-            currentRotation += 45;
+    // --- DRAG LOGIC ---
+    function dragElement(elmnt) {
+        var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        elmnt.onmousedown = dragMouseDown;
+        function dragMouseDown(e) { e = e || window.event; pos3 = e.clientX; pos4 = e.clientY; document.onmouseup = closeDragElement; document.onmousemove = elementDrag; }
+        function elementDrag(e) { e = e || window.event; e.preventDefault(); pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY; pos3 = e.clientX; pos4 = e.clientY; elmnt.style.top = (elmnt.offsetTop - pos2) + "px"; elmnt.style.left = (elmnt.offsetLeft - pos1) + "px"; }
+        function closeDragElement() { document.onmouseup = null; document.onmousemove = null; }
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        dragElement(document.getElementById("drag-avatar"));
+        const pet = document.getElementById("drag-pet");
+        if(pet) dragElement(pet);
+    });
+    function interactElement(el) {
+        el.classList.add('interact-anim'); setTimeout(() => el.classList.remove('interact-anim'), 500);
+        if(el.id === 'drag-pet') {
+            const msgs = ["Chào sếp!", "Cố lên!", "Titan OS xịn!", "Đói quá..."];
+            const bubble = el.querySelector('.chat-bubble');
+            if(bubble) { bubble.innerText = msgs[Math.floor(Math.random()*msgs.length)]; bubble.style.opacity=1; setTimeout(()=>bubble.style.opacity=0, 3000); }
         }
-        // Giữ góc nghiêng X 60deg (nhìn từ trên xuống), chỉ xoay trục Z
-        stage.style.transform = `rotateX(60deg) rotateZ(${currentRotation}deg) scale(0.8)`;
     }
 
-    function shareFlex() {
-        alert("📸 Tách! Đã chụp ảnh Góc Flex.\nTính năng đăng lên Newsfeed đang được phát triển!");
-        const flash = document.createElement('div');
-        flash.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:white;z-index:9999;opacity:1;transition:opacity 0.5s;';
-        document.body.appendChild(flash);
-        setTimeout(() => { flash.style.opacity = 0; }, 50);
-        setTimeout(() => { flash.remove(); }, 500);
-    }
+    // --- GAME LOGIC ---
+    function alertLocked(level) { alert(`🔒 Vật phẩm này yêu cầu Level ${level} để mở khóa!`); }
 
-    // --- 2. EXISTING FUNCTIONS ---
-    function previewAndUpload(input) {
+    function uploadAvatar(input) {
         if (input.files && input.files[0]) {
-            const file = input.files[0];
-            const reader = new FileReader();
-            reader.onload = function(e) { document.getElementById('avatarPreview').src = e.target.result; }
-            reader.readAsDataURL(file);
-
-            const formData = new FormData();
-            formData.append('avatar', file);
-
-            fetch('/api/user/upload_avatar', { method: 'POST', body: formData })
-            .then(r => r.json())
-            .then(data => {
-                if(data.success) console.log('Avatar updated');
-                else alert('❌ Lỗi tải ảnh: ' + data.message);
-            })
-            .catch(err => alert('Lỗi kết nối: ' + err));
+            const formData = new FormData(); formData.append('avatar', input.files[0]); // <-- Đổi thành 'avatar'
+            fetch('/api/user/upload_avatar', {method: 'POST', body: formData}).then(r=>r.json()).then(data=>{
+                if(data.success) { location.reload(); } else alert(data.message);
+            });
         }
-    }
-
-    function changePassword(e) {
-        e.preventDefault();
-        const form = e.target;
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-
-        if (data.new_password !== data.confirm_password) {
-            alert('❌ Xác nhận mật khẩu không khớp!');
-            return;
-        }
-
-        const btn = form.querySelector('button[type="submit"]');
-        const oldText = btn.innerHTML;
-        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
-
-        fetch('/api/user/change_password', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
-        })
-        .then(r => r.json())
-        .then(res => {
-            if(res.success) {
-                alert('✅ Đổi mật khẩu thành công! Vui lòng đăng nhập lại.');
-                window.location.href = '/logout';
-            } else {
-                alert('❌ Lỗi: ' + res.message);
-                btn.disabled = false; btn.innerHTML = oldText;
-            }
-        })
-        .catch(err => {
-            alert('Lỗi hệ thống.');
-            btn.disabled = false; btn.innerHTML = oldText;
-        });
     }
 
     function buyItem(itemCode, price) {
-        if(!confirm(`Bạn muốn dùng ${price} Coins để mua vật phẩm này?`)) return;
-        fetch('/api/user/buy_item', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ item_code: itemCode })
-        })
-        .then(r => r.json())
-        .then(res => {
-            if(res.success) {
-                alert(res.message);
-                location.reload();
-            } else {
-                alert('❌ ' + res.message);
-            }
-        });
+        if(!confirm(`Mua với giá ${price} Coins?`)) return;
+        fetch('/api/user/buy_item', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ item_code: itemCode })})
+        .then(r=>r.json()).then(res=>{ alert(res.message); if(res.success) location.reload(); });
     }
 
     function equipItem(itemCode) {
-        fetch('/api/user/equip_item', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ item_code: itemCode })
-        })
-        .then(r => r.json())
-        .then(res => {
+        fetch('/api/user/equip_item', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ item_code: itemCode })})
+        .then(r=>r.json()).then(res=>{ 
             if(res.success) {
-                if(itemCode.includes('theme') || ['light','dark','fantasy','adorable'].includes(itemCode)) {
+                if(['light','dark','fantasy','adorable'].includes(itemCode)) {
                     document.documentElement.setAttribute('data-theme', itemCode);
                     localStorage.setItem('titan_theme', itemCode);
                 }
-                alert('✅ ' + res.message);
-                location.reload();
-            } else {
-                alert('❌ ' + res.message);
-            }
+                alert(res.message); location.reload();
+            } else alert(res.message);
         });
+    }
+    
+    function changePassword() {
+        const o = document.getElementById('old-pass').value; const n = document.getElementById('new-pass').value;
+        if(!o||!n) return alert("Nhập đủ thông tin");
+        fetch('/api/user/change_password', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({old_pass: o, new_pass: n})})
+        .then(r=>r.json()).then(res=>{ alert(res.message); if(res.success) location.reload(); });
     }
 </script>
 {% endblock %}

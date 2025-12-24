@@ -94,8 +94,8 @@
                             <th>Ngày tạo</th>
                             <th>Mã Phiếu</th>
                             <th>Người đề nghị</th>
-                            <th>Người duyệt</th> 
-                            <th>Khoản mục</th>
+                            <th>Người duyệt</th>
+                            <th>Đối tượng thụ hưởng</th> <th>Khoản mục</th>
                             <th class="text-end">Số tiền</th>
                             <th>Lý do & Hồ sơ</th>
                             <th class="text-center">Hành động</th>
@@ -113,6 +113,12 @@
                             <td>
                                 <span class="badge bg-info bg-opacity-10 text-info border border-info">{{ item.CurrentApproverName }}</span>
                             </td>
+                            
+                            <td>
+                                <div class="fw-bold text-dark">{{ item.ObjectName }}</div>
+                                <div class="small text-muted">{{ item.ObjectID }}</div>
+                            </td>
+
                             <td>
                                 <div class="text-dark">{{ item.BudgetName }}</div>
                                 <div class="small text-secondary font-monospace">{{ item.BudgetCode }}</div>
@@ -142,7 +148,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="8" class="text-center text-muted p-5">
+                            <td colspan="9" class="text-center text-muted p-5">
                                 <i class="fas fa-check-circle fa-3x mb-3 opacity-25"></i><br>
                                 Không có đề nghị nào cần duyệt lúc này.
                             </td>
@@ -168,6 +174,12 @@
                         <span class="info-label">Người đề nghị:</span>
                         <span class="info-val" id="md_requester">...</span>
                     </div>
+
+                    <div class="info-row">
+                        <span class="info-label">Đối tượng thụ hưởng:</span>
+                        <span class="info-val text-primary" id="md_object_info">...</span>
+                    </div>
+
                     <div class="info-row">
                         <span class="info-label">Số tiền:</span>
                         <span class="info-val text-primary fs-5" id="md_amount">...</span>
@@ -254,6 +266,12 @@
         function openReviewModal(item) {
             document.getElementById('md_request_id').value = item.RequestID;
             document.getElementById('md_requester').innerText = item.RequesterName;
+            
+            // [MỚI] Hiển thị Đối tượng thụ hưởng
+            const objName = item.ObjectName || '---';
+            const objId = item.ObjectID || '';
+            document.getElementById('md_object_info').innerText = objId ? `${objName} (${objId})` : objName;
+
             document.getElementById('md_amount').innerText = formatNumberExact(item.Amount) + ' VNĐ';
             document.getElementById('md_budget').innerText = `${item.BudgetName} (${item.BudgetCode})`;
             document.getElementById('md_reason').innerText = item.Reason;
@@ -272,6 +290,7 @@
                         link.href = `/attachments/${file}`;
                         link.target = '_blank';
                         link.className = 'btn btn-sm btn-light border shadow-sm text-primary';
+                        // Lấy tên file gốc (bỏ prefix timestamp)
                         const name = file.split('_').slice(2).join('_') || file;
                         link.innerHTML = `<i class="fas fa-file-download me-1"></i> ${name}`; 
                         attachList.appendChild(link);
@@ -291,6 +310,7 @@
             let pctActual = (ytdPlan > 0) ? (ytdActual / ytdPlan) * 100 : 0;
             let pctCurrent = (ytdPlan > 0) ? (currentAmount / ytdPlan) * 100 : 0;
 
+            // Nếu vượt quá 100% thì scale lại
             if (pctActual + pctCurrent > 100) {
                 const scale = 100 / (pctActual + pctCurrent);
                 pctActual *= scale; pctCurrent *= scale;

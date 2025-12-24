@@ -18,7 +18,7 @@
             --glass-bg: rgba(255, 255, 255, 0.75);
             --glass-border: rgba(255, 255, 255, 0.5);
             --bubble-bot: #FFFFFF; --bubble-user: #4318FF; --text-user: #FFF;
-            --primary-light: rgba(67, 24, 255, 0.3); /* Dùng cho hiệu ứng glow */
+            --primary-light: rgba(67, 24, 255, 0.3);
         }
         [data-theme="dark"] {
             --primary: #7551FF; --text-color: #E3E8EF;
@@ -61,10 +61,9 @@
             justify-content: center; align-items: stretch;
         }
 
-        /* SIDE PANELS (Floating Cards) */
+        /* SIDE PANELS */
         .side-panel {
-            width: 300px; /* Tăng nhẹ chiều rộng để chứa Grid Theme đẹp hơn */
-            display: flex; flex-direction: column; gap: 20px;
+            width: 300px; display: flex; flex-direction: column; gap: 20px;
             animation: fadeIn 0.8s ease-out;
         }
         .glass-card {
@@ -79,122 +78,44 @@
             display: block; width: 100%; text-align: left; padding: 12px 15px;
             margin-bottom: 10px; border: 1px solid var(--glass-border);
             background: rgba(255,255,255,0.1); color: var(--text-color);
-            border-radius: 12px; cursor: pointer; transition: 0.2s;
-            font-size: 0.9rem;
+            border-radius: 12px; cursor: pointer; transition: 0.2s; font-size: 0.9rem;
         }
         .suggestion-btn:hover {
             background: var(--primary); color: white; border-color: var(--primary);
         }
-        .suggestion-btn i { width: 25px; }
 
-        /* --- [NEW] THEME SELECTOR GRID STYLES --- */
-        .theme-selector-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr); /* 2 Cột */
-            gap: 12px;
-            margin-top: 10px;
-        }
-
+        /* --- THEME GRID --- */
+        .theme-selector-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 10px; }
         .theme-card-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 15px 10px;
-            background: rgba(255, 255, 255, 0.15);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            color: var(--text-color);
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-            height: 90px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 15px 10px; background: rgba(255, 255, 255, 0.15);
+            border: 1px solid var(--glass-border); border-radius: 16px; color: var(--text-color);
+            transition: all 0.3s; cursor: pointer; position: relative; overflow: hidden; height: 90px;
         }
-
-        [data-theme="dark"] .theme-card-btn,
-        [data-theme="fantasy"] .theme-card-btn {
-             background: rgba(0, 0, 0, 0.3);
-        }
-
-        .theme-card-btn:hover:not(:disabled) {
-            transform: translateY(-3px);
-            background: rgba(255, 255, 255, 0.25);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-
-        /* Active State */
+        [data-theme="dark"] .theme-card-btn, [data-theme="fantasy"] .theme-card-btn { background: rgba(0, 0, 0, 0.3); }
+        .theme-card-btn:hover:not(:disabled) { transform: translateY(-3px); background: rgba(255, 255, 255, 0.25); }
         .theme-card-btn.active {
-            background: var(--primary);
-            color: #fff;
-            border-color: var(--primary);
-            box-shadow: 0 0 20px var(--primary-light); /* Glow Effect */
-            transform: scale(1.05);
-            z-index: 2;
+            background: var(--primary); color: #fff; border-color: var(--primary);
+            box-shadow: 0 0 20px var(--primary-light); transform: scale(1.05); z-index: 2;
         }
-
-        .theme-card-btn i.theme-icon {
-            font-size: 1.8rem;
-            margin-bottom: 8px;
-        }
-
-        .theme-card-btn span {
-            font-weight: 700;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-        }
-
-        /* Locked State */
-        .theme-card-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            filter: grayscale(1);
-            background: rgba(0,0,0,0.05);
-        }
-
-        .lock-overlay {
-            position: absolute;
-            top: 5px;
-            right: 8px;
-            font-size: 0.8rem;
-            color: var(--text-color);
-            opacity: 0.7;
-        }
+        .theme-card-btn i.theme-icon { font-size: 1.8rem; margin-bottom: 8px; }
+        .theme-card-btn span { font-weight: 700; font-size: 0.8rem; text-transform: uppercase; }
+        .theme-card-btn:disabled { opacity: 0.6; cursor: not-allowed; filter: grayscale(1); background: rgba(0,0,0,0.05); }
+        .lock-overlay { position: absolute; top: 5px; right: 8px; font-size: 0.8rem; color: var(--text-color); opacity: 0.7; }
         .theme-card-btn.active .lock-overlay { color: white; }
 
-        /* --- [NEW] AVATAR STYLES --- */
+        /* --- AVATAR --- */
         .profile-avatar-container {
-            width: 90px;
-            height: 90px;
-            margin: 0 auto 15px auto;
-            border-radius: 50%;
-            overflow: hidden;
-            border: 3px solid var(--primary);
-            background: var(--glass-bg); /* Nền cho icon mặc định */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
+            width: 90px; height: 90px; margin: 0 auto 15px auto; border-radius: 50%; overflow: hidden;
+            border: 3px solid var(--primary); background: var(--glass-bg);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1); transition: transform 0.3s;
         }
+        .profile-avatar-container:hover { transform: scale(1.05) rotate(5deg); }
+        .profile-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+        .default-avatar-icon { font-size: 3rem; color: var(--primary); opacity: 0.8; }
 
-        .profile-avatar-container:hover {
-            transform: scale(1.05) rotate(5deg);
-        }
-
-        .profile-avatar-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .default-avatar-icon {
-            font-size: 3rem;
-            color: var(--primary);
-            opacity: 0.8;
-        }
-
-        /* --- CENTER CHAT BOX --- */
+        /* --- CHAT BOX --- */
         .chat-wrapper {
             flex-grow: 1; max-width: 900px; display: flex; flex-direction: column;
             background: var(--glass-bg); backdrop-filter: blur(20px);
@@ -202,12 +123,7 @@
             box-shadow: 0 20px 50px rgba(0,0,0,0.2); position: relative;
             animation: zoomIn 0.5s ease-out;
         }
-
-        .chat-header {
-            padding: 20px 30px; border-bottom: 1px solid var(--glass-border);
-            display: flex; align-items: center; gap: 15px;
-        }
-        
+        .chat-header { padding: 20px 30px; border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; gap: 15px; }
         .chat-messages {
             flex-grow: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px;
             scroll-behavior: smooth;
@@ -224,48 +140,42 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
         
-        .bubble {
-            padding: 15px 20px; border-radius: 20px; font-size: 1rem; line-height: 1.6;
-            position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        }
-        .message.bot .bubble {
-            background: var(--bubble-bot); color: var(--text-color);
-            border-bottom-left-radius: 4px;
-        }
-        .message.user .bubble {
-            background: var(--bubble-user); color: var(--text-user);
-            border-bottom-right-radius: 4px;
-        }
-        
-        /* Markdown Style */
+        .bubble { padding: 15px 20px; border-radius: 20px; font-size: 1rem; line-height: 1.6; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .message.bot .bubble { background: var(--bubble-bot); color: var(--text-color); border-bottom-left-radius: 4px; }
+        .message.user .bubble { background: var(--bubble-user); color: var(--text-user); border-bottom-right-radius: 4px; }
         .bubble strong { font-weight: 700; color: var(--primary); }
         [data-theme="dark"] .bubble strong { color: #FFD700; }
-        .bubble h3 { font-size: 1.2rem; border-bottom: 1px dashed var(--glass-border); padding-bottom: 5px; margin-top: 10px; }
-        .bubble ul { padding-left: 20px; margin: 5px 0; }
 
-        .input-area {
-            padding: 20px 30px; border-top: 1px solid var(--glass-border);
-            display: flex; gap: 15px; align-items: center;
-        }
+        .input-area { padding: 20px 30px; border-top: 1px solid var(--glass-border); display: flex; gap: 15px; align-items: center; }
         .chat-input {
             flex-grow: 1; border: 2px solid var(--glass-border); background: rgba(255,255,255,0.2);
-            border-radius: 30px; padding: 15px 25px; color: var(--text-color); outline: none;
-            transition: 0.3s; font-size: 1rem;
+            border-radius: 30px; padding: 15px 25px; color: var(--text-color); outline: none; transition: 0.3s; font-size: 1rem;
         }
         .chat-input:focus { border-color: var(--primary); background: rgba(255,255,255,0.9); color: #000; }
         .btn-send {
             width: 55px; height: 55px; border-radius: 50%; border: none;
-            background: var(--primary); color: white; font-size: 1.2rem;
-            cursor: pointer; transition: 0.2s; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            background: var(--primary); color: white; font-size: 1.2rem; cursor: pointer; transition: 0.2s; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
         .btn-send:hover { transform: scale(1.1); }
 
-        /* --- ANIMATIONS --- */
+        /* --- [NEW] WANDERING PET --- */
+        #wandering-pet {
+            position: fixed; width: 150px; height: 150px; z-index: 9999;
+            cursor: pointer; display: none; transition: transform 0.3s;
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
+        }
+        #wandering-pet:hover { transform: scale(1.2) rotate(10deg); }
+        #wandering-pet .pet-speech {
+            position: absolute; top: -40px; left: 50%; transform: translateX(-50%);
+            background: white; padding: 5px 12px; border-radius: 12px;
+            font-size: 0.8rem; font-weight: bold; color: var(--primary);
+            white-space: nowrap; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+        }
+        #wandering-pet:hover .pet-speech { opacity: 1; top: -50px; }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes zoomIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* --- RESPONSIVE --- */
         @media (max-width: 1200px) { .side-panel { display: none; } .chat-wrapper { width: 100%; max-width: 100%; } }
     </style>
 </head>
@@ -279,47 +189,26 @@
         <div class="side-panel">
             <div class="glass-card">
                 <h5 class="fw-bold mb-3"><i class="fas fa-bolt text-warning me-2"></i>Truy cập nhanh</h5>
-                
-                <button class="suggestion-btn" onclick="setInput('Giá mã 6205 cho khách Kraft?')">
-                    <i class="fas fa-tag text-primary"></i> Tra giá 6205 Kraft
-                </button>
-                
-                <button class="suggestion-btn" onclick="setInput('Tồn kho mã 22224 K C3 NSK')">
-                    <i class="fas fa-cubes text-danger"></i> Tồn 22224 K C3 NSK
-                </button>
-
-                <button class="suggestion-btn" onclick="setInput('Đơn hàng Tanamaz giao chưa?')">
-                    <i class="fas fa-shipping-fast text-success"></i> Check giao hàng Tanamaz
-                </button>
-                
-                <button class="suggestion-btn" onclick="setInput('Hôm nay tôi cần làm gì?')">
-                    <i class="fas fa-tasks text-info"></i> Việc cần làm hôm nay
-                </button>
+                <button class="suggestion-btn" onclick="setInput('Giá mã 6205 cho khách Kraft?')"><i class="fas fa-tag text-primary"></i> Tra giá 6205 Kraft</button>
+                <button class="suggestion-btn" onclick="setInput('Tồn kho mã 22224 K C3 NSK')"><i class="fas fa-cubes text-danger"></i> Tồn 22224 K C3 NSK</button>
+                <button class="suggestion-btn" onclick="setInput('Đơn hàng Tanamaz giao chưa?')"><i class="fas fa-shipping-fast text-success"></i> Check giao hàng Tanamaz</button>
+                <button class="suggestion-btn" onclick="setInput('Hôm nay tôi cần làm gì?')"><i class="fas fa-tasks text-info"></i> Việc cần làm hôm nay</button>
             </div>
             
             <div class="glass-card">
                 <h6 class="fw-bold opacity-75 text-center mb-3">Giao diện (Themes)</h6>
                 <div class="theme-selector-grid">
-                    
-                    {# --- [FIX] MACRO MỚI: THEME CARD --- #}
                     {% macro theme_card(code, icon, name, display_name) %}
                         {% set is_unlocked = (code in user_context.unlocked_themes) or (user_context.role == 'ADMIN') %}
                         {% set is_active = (user_context.theme == code) %}
-                        
                         <button class="theme-card-btn {{ 'active' if is_active else '' }}" 
                                 onclick="{% if is_unlocked %}setTheme('{{ code }}'){% else %}alert('Cần mở khóa Theme {{ display_name }} trong Titan Store!'){% endif %}" 
                                 title="{{ display_name }} {{ '(Đã khóa)' if not is_unlocked else '' }}"
                                 {{ 'disabled' if not is_unlocked else '' }}>
-                            
-                            {% if not is_unlocked %}
-                                <div class="lock-overlay"><i class="fas fa-lock"></i></div>
-                            {% endif %}
-                            
-                            <i class="fas {{ icon }} theme-icon"></i>
-                            <span>{{ display_name }}</span>
+                            {% if not is_unlocked %}<div class="lock-overlay"><i class="fas fa-lock"></i></div>{% endif %}
+                            <i class="fas {{ icon }} theme-icon"></i><span>{{ display_name }}</span>
                         </button>
                     {% endmacro %}
-
                     {{ theme_card('light', 'fa-sun', 'light', 'Business') }}
                     {{ theme_card('dark', 'fa-moon', 'dark', 'Night Owl') }}
                     {{ theme_card('fantasy', 'fa-dragon', 'fantasy', 'Sci-Fi') }}
@@ -331,16 +220,14 @@
         <div class="chat-wrapper">
             <div class="chat-header">
                 <div class="avatar p-1">
-                    <lottie-player src="{{ url_for('static', filename='json/Fox-Audio.json') }}" background="transparent" speed="1" style="width: 100%; height: 100%;" loop autoplay></lottie-player>
+                    <lottie-player id="header-pet-lottie" background="transparent" speed="1" style="width: 100%; height: 100%;" loop autoplay></lottie-player>
                 </div>
                 <div>
                     <h4 class="m-0 fw-bold">Titan AI Assistant</h4>
                     <span class="badge bg-success bg-opacity-75"><i class="fas fa-circle fa-xs me-1"></i>Online</span>
                 </div>
                 <div class="ms-auto">
-                    <button onclick="window.close()" class="btn btn-sm btn-light bg-transparent border-0" title="Đóng">
-                        <i class="fas fa-times fs-4"></i>
-                    </button>
+                    <button onclick="window.close()" class="btn btn-sm btn-light bg-transparent border-0" title="Đóng"><i class="fas fa-times fs-4"></i></button>
                 </div>
             </div>
 
@@ -358,19 +245,24 @@
 
         <div class="side-panel">
             <div class="glass-card text-center main-profile-card">
-                
-                <div class="profile-avatar-container">
+                <div class="profile-avatar-container" style="position: relative;">
+                    {% if user_context.stats and user_context.stats.AvatarFrame %}
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(1.6); width: 100%; height: 100%; z-index: 2; pointer-events: none;">
+                            <lottie-player 
+                                src="{{ url_for('static', filename='assets/json/' + user_context.stats.AvatarFrame + '.json') }}" 
+                                background="transparent" speed="1" loop autoplay>
+                            </lottie-player>
+                        </div>
+                    {% endif %}
+
                     {% if user_context.stats and user_context.stats.AvatarUrl %}
-                        <img src="{{ user_context.stats.AvatarUrl }}" class="profile-avatar-img" alt="Avatar">
+                        <img src="{{ user_context.stats.AvatarUrl }}" class="profile-avatar-img" alt="Avatar" style="z-index: 1; position: relative;">
                     {% else %}
-                        <i class="fas fa-user-astronaut default-avatar-icon"></i>
+                        <i class="fas fa-user-astronaut default-avatar-icon" style="z-index: 1;"></i>
                     {% endif %}
                 </div>
-                
                 <h5 class="fw-bold mb-1">{{ user_context.shortname or 'Sếp' }}</h5>
-                
                 <span class="badge bg-warning text-dark mb-3">LV.{{ user_context.stats.Level }}: {{ user_context.title }}</span>
-                
                 <div class="progress mb-2" style="height: 8px; background: rgba(0,0,0,0.1);">
                     {% set xp = user_context.stats.CurrentXP | default(0) %}
                     {% set next_xp = user_context.stats.next_level_xp | default(1000) %}
@@ -382,25 +274,28 @@
 
             <div class="glass-card">
                 <h6 class="fw-bold border-bottom pb-2 mb-3">Thống kê phiên này</h6>
-                <div class="d-flex justify-content-between mb-2">
-                    <span><i class="fas fa-comment-dots me-2 text-primary"></i>Tin nhắn:</span>
-                    <strong><span id="msg-count">0</span></strong>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <span><i class="fas fa-clock me-2 text-success"></i>Thời gian:</span>
-                    <strong><span id="session-time">00:00</span></strong>
-                </div>
+                <div class="d-flex justify-content-between mb-2"><span><i class="fas fa-comment-dots me-2 text-primary"></i>Tin nhắn:</span><strong><span id="msg-count">0</span></strong></div>
+                <div class="d-flex justify-content-between"><span><i class="fas fa-clock me-2 text-success"></i>Thời gian:</span><strong><span id="session-time">00:00</span></strong></div>
             </div>
         </div>
-
     </div>
+
+    <div id="wandering-pet" onclick="petInteraction(this)">
+        <div class="pet-speech">Sếp ơi làm việc đi! 👋</div>
+        <lottie-player id="wandering-lottie" background="transparent" speed="1" style="width: 100%; height: 100%;" loop autoplay></lottie-player>
+    </div>
+
+    {% set current_pet = user_context.stats.EquippedPet if user_context.stats and user_context.stats.EquippedPet else 'fox' %}
+    <script>
+        // Đường dẫn file JSON của Pet đang trang bị
+        const CURRENT_PET_FILE = "{{ url_for('static', filename='assets/json/') }}" + "{{ current_pet }}.json";
+        const USER_AVATAR_URL = "{{ user_context.stats.AvatarUrl if user_context.stats and user_context.stats.AvatarUrl else '' }}";
+    </script>
 
     <script>
         // --- 1. SETUP UI & THEME ---
         const savedTheme = localStorage.getItem('titan_theme') || 'light';
         setTheme(savedTheme);
-
-        // Random Background
         const bg = document.getElementById('bg-image');
         bg.style.backgroundImage = `url('https://picsum.photos/1920/1080?random=${new Date().getTime()}')`;
 
@@ -419,7 +314,6 @@
         let msgCount = 0;
         let seconds = 0;
         
-        // Timer
         setInterval(() => {
             seconds++;
             const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -427,35 +321,40 @@
             document.getElementById('session-time').innerText = `${mins}:${secs}`;
         }, 1000);
 
-        // Auto Welcome
         $(document).ready(() => {
+            // Load Pet vào Header ngay khi mở trang
+            const headerLottie = document.getElementById('header-pet-lottie');
+            if(headerLottie) headerLottie.load(CURRENT_PET_FILE);
+
+            // Bắt đầu đếm ngược Pet đi lạc
+            scheduleWanderingPet();
+
             setTimeout(() => {
                 addMessage("Chào Sếp! Em đã sẵn sàng nhận lệnh. Hôm nay Sếp cần kiểm tra gì không ạ?", 'bot');
             }, 500);
         });
 
-        // Handle Enter
-        $('#user-input').on('keypress', function (e) {
-            if(e.which === 13) sendMessage();
-        });
+        $('#user-input').on('keypress', function (e) { if(e.which === 13) sendMessage(); });
 
         function addMessage(content, sender) {
             msgCount++;
-            document.getElementById('msg-count').innerText = Math.floor(msgCount/2); // Đếm cặp câu
-
-            const avatarHtml = sender === 'bot' 
-                ? `<div class="avatar p-1"><lottie-player src="{{ url_for('static', filename='json/Fox-Audio.json') }}" speed="1" style="width: 100%; height: 100%;" loop autoplay></lottie-player></div>`
-                : `<div class="avatar d-flex align-items-center justify-content-center bg-light"><i class="fas fa-user text-secondary"></i></div>`;
-
-            // Parse Markdown
+            document.getElementById('msg-count').innerText = Math.floor(msgCount/2);
+            
+            let avatarHtml = '';
+            
+            if (sender === 'bot') {
+                avatarHtml = `<div class="avatar p-1"><lottie-player src="${CURRENT_PET_FILE}" speed="1" style="width: 100%; height: 100%;" loop autoplay></lottie-player></div>`;
+            } else {
+                // [FIX] Nếu User có Avatar ảnh -> Hiển thị ảnh. Không có -> Hiển thị icon.
+                if (USER_AVATAR_URL) {
+                    avatarHtml = `<div class="avatar"><img src="${USER_AVATAR_URL}" style="width:100%; height:100%; object-fit:cover;"></div>`;
+                } else {
+                    avatarHtml = `<div class="avatar d-flex align-items-center justify-content-center bg-light"><i class="fas fa-user text-secondary"></i></div>`;
+                }
+            }
+            
             const parsedContent = marked.parse(content);
-
-            const html = `
-                <div class="message ${sender}">
-                    ${avatarHtml}
-                    <div class="bubble shadow-sm">${parsedContent}</div>
-                </div>
-            `;
+            const html = `<div class="message ${sender}">${avatarHtml}<div class="bubble shadow-sm">${parsedContent}</div></div>`;
             $('#chat-box').append(html);
             document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
         }
@@ -463,22 +362,14 @@
         function sendMessage() {
             const input = $('#user-input');
             const message = input.val().trim();
-            const currentTheme = document.documentElement.getAttribute('data-theme'); // Lấy theme hiện tại
-
+            const currentTheme = document.documentElement.getAttribute('data-theme');
             if (!message) return;
-
             addMessage(message, 'user');
             input.val('');
             $('#typing').slideDown();
-
-            // Gửi cả Theme xuống server
             fetch('/api/chatbot_query', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ 
-                    message: message,
-                    theme: currentTheme // <--- GỬI THEME ĐỂ ĐỔI PERSONA
-                })
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ message: message, theme: currentTheme })
             })
             .then(r => r.json())
             .then(data => {
@@ -489,6 +380,50 @@
                 $('#typing').slideUp();
                 addMessage("❌ Mất kết nối server.", 'bot');
             });
+        }
+
+        // --- 3. [NEW] LOGIC PET ĐI LẠC ---
+        function scheduleWanderingPet() {
+            // Random từ 1-5 phút (60000ms - 300000ms)
+            const randomTime = Math.floor(Math.random() * (300000 - 60000 + 1)) + 60000;
+            // console.log("Pet sẽ đi lạc sau:", randomTime/1000, "giây");
+            setTimeout(() => {
+                showWanderingPet();
+                scheduleWanderingPet();
+            }, randomTime);
+        }
+
+        function showWanderingPet() {
+            const pet = document.getElementById('wandering-pet');
+            const lottie = document.getElementById('wandering-lottie');
+            lottie.load(CURRENT_PET_FILE); // Load đúng Pet
+
+            // Random vị trí dưới cùng (bottom 30%)
+            const randomLeft = Math.random() * (window.innerWidth - 150);
+            const randomBottom = Math.random() * (window.innerHeight * 0.3);
+
+            pet.style.left = `${randomLeft}px`;
+            pet.style.bottom = `${randomBottom}px`;
+            pet.style.display = 'block';
+
+            // Animation Slide Up
+            pet.animate([
+                { transform: 'translateY(100px)', opacity: 0 },
+                { transform: 'translateY(0)', opacity: 1 }
+            ], { duration: 500, easing: 'ease-out' });
+
+            // Tự ẩn sau 15s
+            setTimeout(() => { $(pet).fadeOut(); }, 15000);
+        }
+
+        function petInteraction(el) {
+            // Hiệu ứng Poof khi click
+            el.animate([
+                { transform: 'scale(1)' },
+                { transform: 'scale(1.3)' },
+                { transform: 'scale(0)', opacity: 0 }
+            ], { duration: 400 });
+            setTimeout(() => { el.style.display = 'none'; }, 350);
         }
     </script>
 </body>
