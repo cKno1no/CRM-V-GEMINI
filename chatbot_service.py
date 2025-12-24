@@ -27,7 +27,7 @@ class ChatbotService:
         self.analysis_service = CustomerAnalysisService(db_manager) 
 
         # 1. Cấu hình API
-        api_key = "AIzaSyBmGcNUGMchE99TNKiLkAKT-NceHJ-Tons"
+        api_key = "s"
         if not api_key:
             # [FIX] Dùng logger chuẩn thay vì current_app.logger
             logger.error("⚠️ CRITICAL: GEMINI_API_KEY not found in config!")
@@ -744,4 +744,5 @@ class ChatbotService:
             line = f"**{i+1}. {item.get('NhomHang')}**\n  - Thiếu: **{thieu:,.0f}** | ROP: {rop:,.0f} | Tồn-BO: {ton_bo:,.0f}"
             response_lines.append(line)
             
+
         return "\n".join(response_lines)
