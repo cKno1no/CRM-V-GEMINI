@@ -11,56 +11,91 @@ class SalesOrderApprovalService:
     def __init__(self, db_manager: DBManager):
         self.db = db_manager
 
-    def get_orders_for_approval(self, user_code, date_from, date_to):
+    def get_orders_for_approval(self, user_code, user_role, date_from=None, date_to=None):
         """
-        Truy vấn tất cả các Đơn hàng bán chưa duyệt (OrderStatus = 0) trong khoảng ngày.
+        Truy vấn danh sách Đơn hàng bán chờ duyệt (OrderStatus = 0).
+        Logic: Admin thấy hết. User thấy phiếu MÌNH TẠO (EmployeeID) VÀ CÓ QUYỀN DUYỆT.
         """
         
-        where_conditions = ["T1.OrderStatus = 0"]
+        # 1. Xử lý ngày tháng
+        if not date_from or not date_to:
+            now = datetime.now()
+            date_from = datetime(now.year, now.month, 1).strftime('%Y-%m-%d')
+            if now.month == 12:
+                date_to = datetime(now.year + 1, 1, 1).strftime('%Y-%m-%d')
+            else:
+                date_to = datetime(now.year, now.month + 1, 1).strftime('%Y-%m-%d')
+
+        # 2. Xây dựng điều kiện WHERE
+        # [RULE 4]: Phiếu chưa duyệt có OrderStatus = 0
+        where_conditions = ["T1.OrderStatus = 0"] 
         where_params = []
         
         if date_from and date_to:
              where_conditions.append("T1.OrderDate BETWEEN ? AND ?") 
              where_params.extend([date_from, date_to])
         
+        # [RULE 1 & 2]: Phân quyền
+        is_admin = (user_role in [config.ROLE_ADMIN, config.ROLE_GM])
+        
+        if not is_admin:
+            # Điều kiện A: Người tạo phiếu (Dùng EmployeeID theo yêu cầu)
+            where_conditions.append("T1.EmployeeID = ?")
+            where_params.append(user_code)
+            
+            # Điều kiện B: Có quyền duyệt loại phiếu này (Check bảng OT0006)
+            # (Logic: Chỉ thấy phiếu mình tạo MÀ mình cũng có quyền duyệt)
+            where_conditions.append("""
+                EXISTS (
+                    SELECT 1 FROM OT0006 
+                    WHERE VoucherTypeID = T1.VoucherTypeID 
+                    AND Approver = ?
+                )
+            """)
+            where_params.append(user_code)
+
         where_clause = " AND ".join(where_conditions)
         
-        # TRUY VẤN TỔNG HỢP (OT2001 Header)
-        # [CONFIG]: Tất cả các bảng đã được lấy từ config
+        # 3. Câu Query F-string
+        # [RULE 3]: Mã số phiếu là VoucherNo (OrderID), ID phiếu là SorderID
         order_query = f"""
             SELECT 
-                T1.VoucherNo AS OrderID,    
+                T1.VoucherNo AS OrderID,    -- Mã hiển thị (DDH/...)
+                T1.SOrderID,                -- ID duy nhất (Primary Key) - CHỈ SELECT 1 LẦN
                 T1.OrderDate,               
                 T1.SaleAmount AS SaleAmount,
-                T1.SalesManID, 
-                T1.VoucherTypeID, T1.ObjectID AS ClientID, 
-                T2.ShortObjectName AS ClientName,
-                T2.O05ID AS CustomerClass,         
-                T6.SHORTNAME AS SalesAdminName,  
-                T7.SHORTNAME AS NVKDName,        
+                T1.SalesManID,
+                T1.EmployeeID,
+                T1.VoucherTypeID, 
+                T1.ObjectID AS ClientID, 
+                ISNULL(T2.ShortObjectName, 'N/A') AS ClientName,
+                ISNULL(T2.O05ID, 'N/A') AS CustomerClass,         
+                ISNULL(T6.SHORTNAME, 'N/A') AS SalesAdminName,  
+                ISNULL(T7.SHORTNAME, 'N/A') AS NVKDName,        
                 
-                T1.SOrderID, 
+                -- Đã xóa dòng T1.SOrderID thừa ở đây --
                 
                 SUM(T4.ConvertedAmount) AS TotalSaleAmount, 
-                SUM(T4.OrderQuantity * T5.Recievedprice) AS TotalCost,
+                SUM(T4.OrderQuantity * ISNULL(T5.Recievedprice, 0)) AS TotalCost,
+                
                 MIN(CAST(CASE WHEN T4.Date01 IS NULL THEN 0 ELSE 1 END AS INT)) AS HasAllDate01,
                 MIN(CAST(CASE WHEN T4.QuotationID IS NULL THEN 0 ELSE 1 END AS INT)) AS IsFullyQuoted
-                
+
             FROM {config.ERP_OT2001} AS T1                        
             LEFT JOIN {config.ERP_IT1202} AS T2 ON T1.ObjectID = T2.ObjectID   
             LEFT JOIN {config.ERP_SALES_DETAIL} AS T4 ON T1.SOrderID = T4.SOrderID
             LEFT JOIN {config.ERP_ITEM_PRICING} AS T5 ON T4.InventoryID = T5.InventoryID        
-            
             LEFT JOIN {config.TEN_BANG_NGUOI_DUNG} AS T6 ON T1.EmployeeID = T6.USERCODE 
             LEFT JOIN {config.TEN_BANG_NGUOI_DUNG} AS T7 ON T1.SalesManID = T7.USERCODE 
             
             WHERE {where_clause}
             
             GROUP BY 
-                T1.VoucherNo, T1.OrderDate, T1.SaleAmount, T1.SalesManID, T1.VoucherTypeID, 
-                T1.ObjectID, T2.ShortObjectName, T2.O05ID, T6.SHORTNAME, T7.SHORTNAME, T1.SOrderID 
+                T1.VoucherNo, T1.SOrderID, T1.OrderDate, T1.SaleAmount, T1.SalesManID, T1.EmployeeID, 
+                T1.VoucherTypeID, T1.ObjectID, T2.ShortObjectName, T2.O05ID, 
+                T6.SHORTNAME, T7.SHORTNAME
             
-            ORDER BY T1.OrderDate ASC
+            ORDER BY T1.OrderDate DESC
         """
         
         try:
@@ -74,107 +109,132 @@ class SalesOrderApprovalService:
         results = []
         for order in orders:
             if order is None or not isinstance(order, dict): continue
+            
+            # 4. Kiểm tra logic nghiệp vụ để trả về ApprovalResult cho HTML
             processed_order = self._check_approval_criteria(order, user_code)
+            
+            # Đảm bảo có kết quả duyệt để HTML không bị lỗi
             if processed_order and processed_order.get('ApprovalResult') is not None:
                 results.append(processed_order)
             else:
-                current_app.logger.error(f"CẢNH BÁO: Bỏ qua đơn hàng {order.get('OrderID')} do thiếu ApprovalResult.")
+                current_app.logger.warning(f"Bỏ qua đơn hàng {order.get('OrderID')} do lỗi xử lý criteria.")
+        
         return results
 
     def _check_approval_criteria(self, order, current_user_code):
-        """Kiểm tra các quy tắc nghiệp vụ cho DHB."""
+        """
+        Kiểm tra các quy tắc nghiệp vụ cho DHB.
+        LOGIC ƯU TIÊN: Ratio (Cao nhất) -> Auto-Approve (Hạn mức) -> Quyền duyệt cấp cao.
+        """
         
-        approval_status = {'Passed': True, 'Reason': 'OK', 'ApproverRequired': current_user_code, 'ApproverDisplay': 'TỰ DUYỆT (SELF)', 'ApprovalRatio': 0}
+        approval_status = {
+            'Passed': True, 
+            'Reason': 'OK', 
+            'ApproverRequired': current_user_code, 
+            'ApproverDisplay': 'TỰ DUYỆT (SELF)', 
+            'ApprovalRatio': 0,
+            'NeedsOverride': False
+        }
         order['ApprovalResult'] = approval_status
         
+        # Lấy dữ liệu an toàn
         total_sale = safe_float(order.get('TotalSaleAmount'))
         total_cost = safe_float(order.get('TotalCost'))
-        customer_class = order.get('CustomerClass')
+        customer_class = str(order.get('CustomerClass', '')).strip().upper()
         sale_amount = safe_float(order.get('SaleAmount')) 
-        voucher_type = order.get('VoucherTypeID', '').strip()
+        voucher_type = str(order.get('VoucherTypeID', '')).strip()
         
         has_all_date01 = order.get('HasAllDate01') == 1
         is_fully_quoted = order.get('IsFullyQuoted') == 1
 
-        # --- KIỂM TRA ĐIỀU KIỆN 1 & 2a (Validation & DTK Exception) ---
-        
-        # 1. Check hợp lệ
+        # --- 1. KIỂM TRA ĐIỀU KIỆN CƠ BẢN (Validation) ---
         if not order.get('SalesManID') or total_sale == 0 or total_cost == 0 or not has_all_date01:
             approval_status['Passed'] = False
             approval_status['Reason'] = 'FAILED: Thiếu SalesmanID/Giá/Chi phí (Cost)/Date01 không đầy đủ.'
             return order
         
-        # 2. Kiểm tra 100% kế thừa từ chào giá (trừ DTK)
+        # --- 2. KIỂM TRA KẾ THỪA (Trừ DTK) ---
         if voucher_type != 'DTK' and not is_fully_quoted:
              approval_status['Passed'] = False
              approval_status['Reason'] = 'FAILED: DHB không 100% kế thừa từ Chào giá.'
              return order
 
-        # --- KIỂM TRA ĐIỀU KIỆN 3 (Tỷ số duyệt) ---
+        # --- 3. KIỂM TRA RATIO (ĐIỀU KIỆN TIÊN QUYẾT) ---
+        # Nếu Fail Ratio -> Chặn ngay lập tức, không xét hạn mức nữa.
+        
         required_ratio = 0
         ratio = 0
-        ratio_failed = False
         
-        if total_cost > 0 and total_sale > 0:
+        if total_cost > 0:
             ratio = 30 + 100 * (total_sale / total_cost)
             approval_status['ApprovalRatio'] = min(9999, round(ratio))
             
-            # [CONFIG]: Dùng RATIO từ config
+            # Lấy cấu hình tỷ lệ yêu cầu
             if customer_class == 'M': required_ratio = config.RATIO_REQ_CLASS_M
             elif customer_class == 'T': required_ratio = config.RATIO_REQ_CLASS_T
-                
+            
+            # [CHỐT CHẶN RATIO]
             if required_ratio > 0 and ratio < required_ratio:
                 approval_status['Passed'] = False
-                ratio_failed = True
-                approval_status['Reason'] = f'PENDING: Tỷ số ({round(ratio)}) < Y/C ({required_ratio}).'
+                approval_status['Reason'] = f'FAILED: Tỷ số ({round(ratio)}) < Y/C ({required_ratio}). (Không cho phép duyệt lỗ).'
                 approval_status['NeedsOverride'] = True
+                return order  # <--- RETURN NGAY, CHẶN LẠI HẾT
+                
         else:
-             approval_status['Reason'] = 'FAILED: Không tính được Tỷ số Duyệt (Sale/Cost = 0).'
              approval_status['Passed'] = False
-             ratio_failed = True
+             approval_status['Reason'] = 'FAILED: Cost = 0 (Lỗi dữ liệu).'
+             return order
 
-        # --- KIỂM TRA ĐIỀU KIỆN 2b & 4 (Xác định người duyệt) ---
+        # --- 4. XÁC ĐỊNH QUYỀN DUYỆT & AUTO-APPROVE ---
+        # (Chỉ chạy xuống đây khi Ratio đã OK)
+
+        limit_dtk = config.LIMIT_AUTO_APPROVE_DTK
+        limit_so = getattr(config, 'LIMIT_AUTO_APPROVE_SO', 20000000) 
+
+        is_auto_approve = False
+        auto_reason = ""
+
+        if voucher_type == 'DTK':
+            if sale_amount < limit_dtk:
+                is_auto_approve = True
+                auto_reason = f"TỰ DUYỆT (DTK < {limit_dtk/1000000:,.0f}M)"
+        else:
+            if sale_amount < limit_so:
+                is_auto_approve = True
+                auto_reason = f"TỰ DUYỆT (SO < {limit_so/1000000:,.0f}M)"
+
+        # --- 5. KẾT HỢP LOGIC ---
         
-        # [CONFIG]: Dùng LIMIT_AUTO_APPROVE_DTK
-        is_dtk_and_small = voucher_type == 'DTK' and sale_amount < config.LIMIT_AUTO_APPROVE_DTK
+        if is_auto_approve:
+            # Ratio OK + Hạn mức nhỏ -> TỰ DUYỆT
+            approval_status['Passed'] = True
+            approval_status['Reason'] = f"OK: {auto_reason}"
+            approval_status['ApproverDisplay'] = auto_reason
+            approval_status['ApproverRequired'] = current_user_code 
         
-        # 1. TRƯỜNG HỢP TỰ DUYỆT
-        if is_dtk_and_small and approval_status['Passed']:
-            approval_status['ApproverDisplay'] = 'TỰ DUYỆT (SELF - DTK < 100M)'
-            approval_status['ApproverRequired'] = current_user_code
-        
-        # 2. TRƯỜNG HỢP PHẢI XÉT NGƯỜI DUYỆT CẤP CAO
-        else: 
-            # [CONFIG]: Dùng bảng ERP_APPROVER_MASTER
-            approver_query = f"""
-                SELECT Approver 
-                FROM {config.ERP_APPROVER_MASTER} 
-                WHERE VoucherTypeID = ?
-            """
+        else:
+            # Ratio OK + Hạn mức lớn -> CẦN SẾP DUYỆT
+            
+            # Lấy danh sách sếp
+            approver_query = f"SELECT Approver FROM {config.ERP_APPROVER_MASTER} WHERE VoucherTypeID = ?"
             approver_data = self.db.get_data(approver_query, (voucher_type,))
-            
             approvers = [d['Approver'].strip() for d in approver_data if d.get('Approver')] if approver_data else []
-            
-            if not approvers:
-                approvers = [config.ROLE_ADMIN] # Mặc định là ADMIN
-
+            if not approvers: approvers = [config.ROLE_ADMIN]
             approvers_str = ", ".join(approvers)
             
             approval_status['ApproverDisplay'] = approvers_str
             approval_status['ApproverRequired'] = approvers_str
             
-            is_current_user_approver = current_user_code in approvers
+            # Kiểm tra quyền
+            is_authorized = current_user_code in approvers
 
-            if not is_current_user_approver:
-                 approval_status['Passed'] = False
-                 if not ratio_failed:
-                     approval_status['Reason'] = f"PENDING: Cần sự duyệt của {approvers_str}."
-                 else:
-                     approval_status['Reason'] = f"FAILED: {approval_status['Reason']} (Cần Sửa lỗi & Duyệt bởi {approvers_str})."
-            
-            elif is_current_user_approver and not approval_status['Passed']:
-                approval_status['Reason'] = f"FAILED: {approval_status['Reason']} (Bạn là người duyệt, Cần SỬA LỖI TRƯỚC KHI DUYỆT)."
-            
+            if not is_authorized:
+                approval_status['Passed'] = False
+                approval_status['Reason'] = f"PENDING: Vượt hạn mức, chờ duyệt bởi {approvers_str}."
+            else:
+                approval_status['Passed'] = True
+                approval_status['Reason'] = "OK: Đủ điều kiện duyệt (Cấp quản lý)."
+
         return order
 
     def get_order_details(self, sorder_id):
@@ -224,65 +284,96 @@ class SalesOrderApprovalService:
             
         return details
     
-    def approve_sales_order(self, order_id, sorder_id, client_id, salesman_id, approval_ratio, current_user):
+    
+    def approve_sales_order(self, sorder_no, sorder_id, object_id, employee_id, approval_ratio, current_user):
         """
-        Thực hiện phê duyệt Đơn hàng Bán và lưu log.
+        Thực hiện phê duyệt Đơn hàng.
+        [UPDATED]: Dùng SOrderID làm Key chính để UPDATE và SELECT.
+        sorder_id: SO2026... (Khóa chính)
+        sorder_no: DDH/... (Chỉ dùng để ghi log Audit cho dễ đọc)
         """
         db = self.db
         conn = None
         
+        # [QUAN TRỌNG] Clean input sorder_id để tránh khoảng trắng thừa gây lỗi
+        clean_sorder_id = sorder_id.strip() if sorder_id else ""
+
+        if not clean_sorder_id:
+             return {"success": False, "message": "Lỗi: Không nhận được SOrderID (Mã hệ thống)."}
+
         try:
             conn = db.get_transaction_connection()
             
-            # 1. Lấy thông tin cần thiết từ ERP
-            query_get_data = f"""
-                SELECT T1.SaleAmount, T1.OrderDate
-                FROM {config.ERP_OT2001} AS T1
-                WHERE T1.SOrderID = ? 
+            # 1. KIỂM TRA TỒN TẠI BẰNG SOrderID (Chính xác tuyệt đối)
+            query_get_info = f"""
+                SELECT SalesManID, OrderDate, VoucherNo 
+                FROM {config.ERP_OT2001} 
+                WHERE SOrderID = ? 
             """
-            data_detail = db.get_data(query_get_data, (sorder_id,)) 
+            info_data = db.get_data(query_get_info, (clean_sorder_id,))
             
-            if not data_detail:
-                raise Exception(f"Không tìm thấy dữ liệu DHB {order_id} trong ERP.")
-            
-            detail = data_detail[0]
-            sale_amount = safe_float(detail.get('SaleAmount'))
-            order_date = detail.get('OrderDate')
+            if not info_data:
+                raise Exception(f"Không tìm thấy đơn hàng trong hệ thống với ID: {clean_sorder_id}")
+                
+            create_user_id = info_data[0]['SalesManID'] 
+            order_date = info_data[0]['OrderDate']
+            real_voucher_no = info_data[0]['VoucherNo'] # Lấy mã DDH chuẩn từ DB
 
-            # 2. Thực hiện phê duyệt trong ERP
-            update_query_erp = f"""
+            # Tính tổng tiền (Dùng SOrderID)
+            query_sum = f"SELECT SUM(ConvertedAmount) as Total FROM {config.ERP_SALES_DETAIL} WHERE SorderID = ?"
+            sum_data = db.get_data(query_sum, (clean_sorder_id,))
+            total_amount = safe_float(sum_data[0]['Total']) if sum_data else 0
+
+            # 2. UPDATE STATUS DÙNG SOrderID
+            update_query = f"""
                 UPDATE {config.ERP_OT2001} 
                 SET OrderStatus = 1 
-                WHERE VoucherNo = ?
+                WHERE SOrderID = ?
             """
-            db.execute_query_in_transaction(conn, update_query_erp, (order_id,)) 
+            db.execute_query_in_transaction(conn, update_query, (clean_sorder_id,))
             
-            # 3. Lưu log vào bảng DUYETCT
-            # [CONFIG]: Dùng config.LOG_DUYETCT_TABLE thay vì chuỗi cứng
-            insert_query_log = f"""
-                INSERT INTO {config.LOG_DUYETCT_TABLE} (
+            # 3. Ghi Log DUYETCT (Dùng SOrderID cho MasoCT)
+            insert_log_duyet = f"""
+                INSERT INTO DUYETCT (
                     MACT, NGayCT, TySoDuyetCT, NGUOILAM, Tonggiatri, 
-                    MasoCT, MaKH, NguoiDuyet, Ngayduyet
+                    MasoCT, MaKH, NguoiDuyet, Ngayduyet, TINHTRANG
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, GETDATE())
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, GETDATE(), 0)
             """
-            params = (
-                order_id, order_date, approval_ratio, salesman_id, 
-                sale_amount, sorder_id, client_id, current_user
+            params_duyet = (
+                real_voucher_no, # MACT là DDH/...
+                order_date, 
+                approval_ratio, 
+                employee_id, 
+                total_amount, 
+                clean_sorder_id, # MasoCT là SO...
+                object_id, 
+                current_user
             )
+            db.execute_query_in_transaction(conn, insert_log_duyet, params_duyet)
 
-            db.execute_query_in_transaction(conn, insert_query_log, params)
+            # 4. Ghi Log OT6000 (Dùng SOrderID)
+            approve_id = f"{current_user}{datetime.now().strftime('%Y%m%d%H%M%S')}"
             
-            # 4. COMMIT
-            db.commit(conn) 
-
-            return {"success": True, "message": f"Đơn hàng Bán {order_id} đã duyệt thành công và lưu log vào {config.LOG_DUYETCT_TABLE}."}
+            insert_ot6000 = f"""
+                INSERT INTO {config.ERP_DB}.[dbo].[OT6000]
+                (ApproveID, SOrderID, Approver, LevelApprove, Approvedate, 
+                 CreateUserID, Createdate, LastModifyUserID, LastModifyDate, 
+                 StypeID, Notes, ApproveStatus)
+                VALUES (?, ?, ?, 1, GETDATE(), ?, GETDATE(), ?, GETDATE(), 'SO', '', 1)
+            """
+            params_ot6000 = (
+                approve_id, clean_sorder_id, current_user, 
+                create_user_id, current_user
+            )
+            db.execute_query_in_transaction(conn, insert_ot6000, params_ot6000)
+            
+            db.commit(conn)
+            
+            return {"success": True, "message": f"Duyệt thành công phiếu {real_voucher_no}."}
 
         except Exception as e:
-            if conn:
-                db.rollback(conn) 
-            current_app.logger.error(f"LỖI DUYỆT DHB {order_id}: {e}")
-            return {"success": False, "message": f"Duyệt thất bại. Lỗi hệ thống: {str(e)}"}
+            raise e
         finally:
             if conn:
                 conn.close()

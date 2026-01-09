@@ -79,9 +79,11 @@ def chat_assistant_page():
     permissions = session.get('permissions', [])
     
     # 1. Lấy thông tin Level
+    
     user_level = 1
     try:
-        stats = current_app.user_service.get_user_stats(user_code)
+        # [FIX] Đổi get_user_stats thành get_user_profile
+        stats = current_app.user_service.get_user_profile(user_code) 
         if stats: user_level = stats.get('Level', 1)
     except Exception as e:
         current_app.logger.error(f"Lỗi check level chatbot: {e}")

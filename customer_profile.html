@@ -315,7 +315,23 @@
     function renderStructureChart(data) {
         const options = {
             series: data.series,
-            chart: { type: 'bar', height: 350, stacked: true, toolbar: { show: false }, background: 'transparent' },
+            chart: { 
+                type: 'bar', 
+                height: 350, 
+                stacked: true, 
+                toolbar: { show: false }, 
+                background: 'transparent',
+                // --- [MỚI] THÊM SỰ KIỆN CLICK ---
+                events: {
+                    dataPointSelection: function(event, chartContext, config) {
+                        // Lấy năm tương ứng với cột được click
+                        const selectedYear = data.years[config.dataPointIndex];
+                        // Gọi hàm mở Modal với type YEAR_SALES
+                        openDrillDown('YEAR_SALES', selectedYear, `Chi tiết Doanh số năm ${selectedYear}`);
+                    }
+                }
+                // --------------------------------
+            },
             theme: { mode: 'light' }, 
             plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 2 } },
             xaxis: { categories: data.years, labels: { style: { colors: 'var(--text-dark)' } } },

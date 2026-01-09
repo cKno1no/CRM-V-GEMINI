@@ -97,7 +97,7 @@
     }
     .category-header::after { content: ''; flex: 1; height: 1px; background: var(--border-color); margin-left: 15px; }
 
-    /* [UPDATE 3] Grid to gấp 4 lần (min 220px) */
+    /* Grid to gấp 4 lần (min 220px) */
     .item-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
@@ -116,7 +116,7 @@
     .item-card:hover { transform: translateY(-8px); border-color: var(--primary); background: #fff; box-shadow: 0 15px 30px rgba(0,0,0,0.1); }
     .item-card.active { border-color: var(--success); background: rgba(5, 205, 153, 0.05); box-shadow: inset 0 0 0 2px var(--success); }
     
-    /* [UPDATE 5] Locked Item Style */
+    /* Locked Item Style */
     .item-card.locked {
         cursor: not-allowed;
         filter: grayscale(100%);
@@ -138,7 +138,7 @@
         z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
 
-    /* [UPDATE 1] Item Preview To Nhất Có Thể */
+    /* Item Preview To Nhất Có Thể */
     .item-preview {
         width: 100%; height: 100%; padding: 15px; /* Padding nhỏ để hình to ra */
         display: flex; align-items: center; justify-content: center;
@@ -157,7 +157,7 @@
     }
     .item-card:hover .item-meta { transform: translateY(0); }
     
-    /* [UPDATE 4] Price Tag Z-Index Fix */
+    /* Price Tag Z-Index Fix */
     .price-tag {
         position: absolute; top: 12px; right: 12px;
         background: var(--card-bg); color: var(--text-dark);
@@ -193,7 +193,7 @@
             <img src="{{ user.AvatarUrl if user.AvatarUrl else url_for('static', filename='img/default_avatar.png') }}" class="main-avatar">
             <div class="stage-info">
                 {% if user.Title %}<div class="stage-title"><i class="fas fa-crown me-1"></i>{{ user.Title }}</div>{% endif %}
-                <div class="stage-name">{{ user.SHORTNAME or user.USERNAME }}</div>
+                <div class="stage-name">{{ user.Nickname if user.Nickname else (user.SHORTNAME or user.USERNAME) }}</div>
             </div>
         </div>
     </div>
@@ -218,10 +218,21 @@
         <div class="col-lg-4">
             <div class="glass-card p-4">
                 <h5 class="fw-bold mb-4 text-primary"><i class="fas fa-id-card me-2"></i>Hồ sơ</h5>
+                
                 <div class="text-center mb-4">
-                    <h2 class="fw-bold m-0">{{ user.USERNAME }}</h2>
-                    <p class="text-muted">{{ user['CHUC VU'] }}</p>
+                    <div class="d-flex justify-content-center align-items-center gap-2">
+                        <h2 class="fw-bold m-0" id="display-name">
+                            {{ user.Nickname if user.Nickname else (user.SHORTNAME or user.USERNAME) }}
+                        </h2>
+                        
+                        <button class="btn btn-sm btn-outline-light border-0 text-muted" onclick="requestRename()" title="Đổi Nickname">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                    </div>
+
+                    <small class="text-muted">({{ user.USERNAME }}) - {{ user['CHUC VU'] }}</small>
                 </div>
+
                 <div class="info-row"><span class="info-label">Level</span><span class="info-val fw-bold text-dark">{{ user.Level }}</span></div>
                 <div class="xp-bar-container"><div class="xp-bar-fill" style="width: {{ user.ProgressPercent }}%"></div></div>
                 <div class="bg-light p-3 rounded-4 mt-3 d-flex align-items-center justify-content-between">
@@ -293,17 +304,26 @@
                                     </div>
                                 {% else %}<div class="text-muted small fst-italic">Trống.</div>{% endfor %}
                             </div>
-
-                            <div class="category-header mt-4"><i class="fas fa-tree me-2 text-success"></i>Trang trí</div>
+                            
+                            <div class="category-header mt-4"><i class="fas fa-magic me-2 text-primary"></i>Vật phẩm Tiêu thụ</div>
                             <div class="item-grid">
-                                {% for item in inventory if item.ItemType.strip().upper() == 'DECOR' %}
-                                    <div class="item-card" onclick="equipItem('{{ item.ItemCode }}')">
+                                {% for item in inventory if item.ItemType == 'CONSUMABLE' %}
+                                    <div class="item-card" 
+                                        id="inventory-item-{{ item.ItemCode }}" 
+                                        onclick="useConsumable('{{ item.ItemCode }}', '{{ item.ItemName }}')">
+                                        
                                         <div class="item-preview">
-                                            <lottie-player src="{{ url_for('static', filename='assets/json/' + item.ItemCode + '.json') }}" background="transparent" speed="1" loop hover></lottie-player>
+                                            {% if item.ItemCode == 'rename_card' %}
+                                                <i class="fas fa-id-card fa-4x text-info"></i>
+                                            {% else %}
+                                                <i class="fas fa-box fa-4x text-muted"></i>
+                                            {% endif %}
                                         </div>
-                                        <div class="item-meta">{{ item.ItemCode|capitalize }}</div>
+                                        <div class="item-meta">{{ item.ItemName }}</div>
                                     </div>
-                                {% else %}<div class="text-muted small fst-italic">Trống.</div>{% endfor %}
+                                {% else %}
+                                    <div class="text-muted small fst-italic">Trống.</div>
+                                {% endfor %}
                             </div>
 
                         {% else %}
@@ -365,33 +385,21 @@
                                 </div>
                             {% endfor %}
                         </div>
-
-                        <div class="category-header mt-4"><i class="fas fa-bolt me-2 text-warning"></i>Mua Kỹ năng</div>
+                        
+                        <div class="category-header mt-4"><i class="fas fa-magic me-2 text-primary"></i>Vật phẩm Tiêu thụ</div>
                         <div class="item-grid">
-                            {% for item in items if item.ItemType.strip().upper() == 'SKILL' %}
+                            {% for item in items if item.ItemType == 'CONSUMABLE' %}
                                 {% set is_locked = item.MinLevel > user.Level %}
                                 <div class="item-card {{ 'locked' if is_locked }}" 
                                      onclick="{{ 'alertLocked(' + item.MinLevel|string + ')' if is_locked else 'buyItem(\'' + item.ItemCode + '\', ' + item.Price|string + ')' }}">
                                     {% if is_locked %}<div class="lock-overlay"><i class="fas fa-lock mb-2"></i> Lv.{{ item.MinLevel }}</div>
                                     {% else %}<div class="price-tag"><i class="fas fa-coins text-warning"></i>{{ item.Price }}</div>{% endif %}
                                     <div class="item-preview">
-                                        <lottie-player src="{{ url_for('static', filename='assets/json/' + item.ItemCode + '.json') }}" background="transparent" speed="1" loop hover></lottie-player>
-                                    </div>
-                                    <div class="item-meta">{{ item.ItemName }}</div>
-                                </div>
-                            {% endfor %}
-                        </div>
-
-                        <div class="category-header mt-4"><i class="fas fa-tree me-2 text-success"></i>Mua Đồ Trang trí</div>
-                        <div class="item-grid">
-                            {% for item in items if item.ItemType.strip().upper() == 'DECOR' %}
-                                {% set is_locked = item.MinLevel > user.Level %}
-                                <div class="item-card {{ 'locked' if is_locked }}" 
-                                     onclick="{{ 'alertLocked(' + item.MinLevel|string + ')' if is_locked else 'buyItem(\'' + item.ItemCode + '\', ' + item.Price|string + ')' }}">
-                                    {% if is_locked %}<div class="lock-overlay"><i class="fas fa-lock mb-2"></i> Lv.{{ item.MinLevel }}</div>
-                                    {% else %}<div class="price-tag"><i class="fas fa-coins text-warning"></i>{{ item.Price }}</div>{% endif %}
-                                    <div class="item-preview">
-                                        <lottie-player src="{{ url_for('static', filename='assets/json/' + item.ItemCode + '.json') }}" background="transparent" speed="1" loop hover></lottie-player>
+                                        {% if item.ItemCode == 'rename_card' %}
+                                            <i class="fas fa-id-card fa-4x text-info"></i>
+                                        {% else %}
+                                            <i class="fas fa-box fa-4x text-muted"></i>
+                                        {% endif %}
                                     </div>
                                     <div class="item-meta">{{ item.ItemName }}</div>
                                 </div>
@@ -449,7 +457,7 @@
 
     function uploadAvatar(input) {
         if (input.files && input.files[0]) {
-            const formData = new FormData(); formData.append('avatar', input.files[0]); // <-- Đổi thành 'avatar'
+            const formData = new FormData(); formData.append('avatar', input.files[0]);
             fetch('/api/user/upload_avatar', {method: 'POST', body: formData}).then(r=>r.json()).then(data=>{
                 if(data.success) { location.reload(); } else alert(data.message);
             });
@@ -480,6 +488,95 @@
         if(!o||!n) return alert("Nhập đủ thông tin");
         fetch('/api/user/change_password', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({old_pass: o, new_pass: n})})
         .then(r=>r.json()).then(res=>{ alert(res.message); if(res.success) location.reload(); });
+    }
+
+    // [LOGIC MỚI] Kiểm tra sở hữu thẻ Rename từ dữ liệu server đổ về
+    // Jinja2 sẽ render ra true/false text vào đây
+    {% set has_card = false %}
+    {% for item in inventory %}
+        {% if item.ItemCode == 'rename_card' %}
+            {% set has_card = true %}
+        {% endif %}
+    {% endfor %}
+
+    const userHasRenameCard = {{ 'true' if has_card else 'false' }};
+
+    function requestRename() {
+        // BƯỚC 1: Kiểm tra tồn kho
+        if(confirm("Bạn cần 'Thẻ Đổi Tên' để thực hiện việc này.\nBạn có muốn đến Cửa hàng để mua không?")) {
+                // Chuyển tab sang Shop
+                var triggerEl = document.querySelector('button[data-bs-target="#tab-shop"]');
+                
+                // FIX: Create new instance if get returns null
+                var tabInstance = bootstrap.Tab.getInstance(triggerEl) || new bootstrap.Tab(triggerEl);
+                tabInstance.show();
+            }
+
+        // BƯỚC 2: Prompt xác nhận dùng thẻ
+        if (!confirm("⚠️ HÀNH ĐỘNG TIÊU THỤ VẬT PHẨM\n\nBạn có muốn sử dụng 1 'Thẻ Đổi Tên' để thay đổi biệt danh không?")) {
+            return;
+        }
+
+        // BƯỚC 3: Nhập tên mới
+        // BƯỚC 3: Nhập tên mới
+        let currentName = document.getElementById('display-name').innerText.trim();
+        let newName = prompt("Nhập biệt danh mới của bạn (Tối đa 20 ký tự):", currentName);
+
+        if (newName !== null) {
+            newName = newName.trim();
+            if (newName === "") return alert("❌ Tên không được để trống!");
+            if (newName.length > 20) return alert("❌ Tên quá dài! Tối đa 20 ký tự.");
+            
+            // [FIX] Thêm thông báo nếu tên trùng để user biết tại sao không chạy tiếp
+            if (newName === currentName) {
+                alert("⚠️ Bạn chưa thay đổi tên mới. Thao tác bị hủy.");
+                return;
+            }
+
+            // BƯỚC 4: Gọi API xử lý (Lưu & Xóa thẻ)
+            // Hiển thị loading nhẹ (tuỳ chọn)
+            document.body.style.cursor = 'wait';
+            
+            fetch('/api/user/use_rename_card', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ nickname: newName })
+            })
+            .then(r => r.json())
+            .then(res => {
+                document.body.style.cursor = 'default';
+                if (res.success) {
+                    // --- ĐOẠN LOGIC MỚI CẦN THÊM VÀO ĐÂY ---
+                    
+                    // 1. Cập nhật tên mới lên giao diện ngay lập tức
+                    document.getElementById('display-name').innerText = newName;
+                    
+                    // 2. XÓA VẬT PHẨM KHỎI UI NGAY LẬP TỨC
+                    const cardElement = document.getElementById('inventory-item-rename_card');
+                    if (cardElement) {
+                        cardElement.remove(); // Xóa node DOM
+                    }
+
+                    // 3. Thông báo thành công
+                    alert("✅ " + res.message);
+                    location.reload(); 
+                } else {
+                    alert("❌ Lỗi: " + res.message);
+                }
+            })
+            .catch(err => {
+                document.body.style.cursor = 'default';
+                alert("Lỗi kết nối server: " + err);
+            });
+        }
+    }
+
+    function useConsumable(itemCode, itemName) {
+        if (itemCode === 'rename_card') {
+            requestRename();
+        } else {
+            alert("Vật phẩm này chưa có hướng dẫn sử dụng!");
+        }
     }
 </script>
 {% endblock %}

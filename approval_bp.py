@@ -75,8 +75,16 @@ def sales_order_approval_dashboard():
     
     date_from_str = date_from_str or seven_days_ago
     date_to_str = date_to_str or today
-    
-    orders_for_review = order_approval_service.get_orders_for_approval(user_code, date_from_str, date_to_str)
+    # Lấy role từ session
+    user_role = session.get('user_role', '')
+
+    # Truyền đúng 4 tham số theo thứ tự
+    orders_for_review = order_approval_service.get_orders_for_approval(
+        user_code, 
+        user_role,      # <--- Cần thêm tham số này vào vị trí số 2
+        date_from_str, 
+        date_to_str
+    )
     
     return render_template(
         'sales_order_approval.html', 
@@ -190,44 +198,43 @@ def api_approve_quote():
 @approval_bp.route('/api/approve_order', methods=['POST'])
 @login_required
 @permission_required('APPROVE_ORDER')
-@record_activity('APPROVE_ORDER') # <--- Gắn thẻ vào đây
+@record_activity('APPROVE_ORDER')
 def api_approve_order():
     """API: Thực hiện duyệt Đơn hàng Bán."""
     
-    # FIX: Import Services Cần thiết Cục bộ
-    order_approval_service  = current_app.order_approval_service
-    db_manager = current_app.db_manager # ADD db_manager
+    order_approval_service = current_app.order_approval_service
+    db_manager = current_app.db_manager
     
     data = request.json
-    order_id = data.get('order_id')         
-    sorder_id = data.get('sorder_id')       
-    client_id = data.get('client_id')       
+    order_id = data.get('order_id')       # DDH/2026/01/054 (Mã hiển thị)
+    sorder_id = data.get('sorder_id')     # SO20260000000120 (Primary Key QUAN TRỌNG)
+    client_id = data.get('client_id')     
     salesman_id = data.get('salesman_id')   
     approval_ratio = data.get('approval_ratio')
     
     current_user_code = session.get('user_code')
     user_ip = get_user_ip()
     
-    if not current_user_code or not order_id or not sorder_id:
-        return jsonify({'success': False, 'message': 'Thiếu mã DHB hoặc SOrderID.'}), 400
+    # Kiểm tra kỹ SOrderID
+    if not current_user_code or not sorder_id:
+        return jsonify({'success': False, 'message': 'Lỗi dữ liệu: Thiếu SOrderID hệ thống.'}), 400
 
     try:
         result = order_approval_service.approve_sales_order(
-            order_id=order_id,
-            sorder_id=sorder_id,
-            client_id=client_id,
-            salesman_id=salesman_id,
+            sorder_no=order_id,        # Vẫn truyền để log hiển thị
+            sorder_id=sorder_id,       # <--- Service sẽ dùng cái này để Query/Update
+            object_id=client_id,       
+            employee_id=salesman_id,   
             approval_ratio=approval_ratio,
             current_user=current_user_code
         )
         
         if result['success']:
-            # GHI LOG APPROVE ORDER (BỔ SUNG)
             db_manager.write_audit_log(
                 user_code=current_user_code,
                 action_type='APPROVE_ORDER',
                 severity='INFO',
-                details=f"Duyệt Đơn hàng: SO{sorder_id} (ID: {order_id})",
+                details=f"Duyệt Đơn hàng ID: {sorder_id} ({order_id})",
                 ip_address=user_ip
             )
             return jsonify({'success': True, 'message': result['message']})

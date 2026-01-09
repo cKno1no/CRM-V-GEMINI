@@ -264,9 +264,13 @@
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">Tiêu đề công việc <span class="text-danger">*</span></label>
-                            <input type="text" name="task_title" class="form-control" required placeholder="Ví dụ: Gọi điện cho KH A...">
+                            <input type="text" name="task_title" class="form-control" required placeholder="...">
                         </div>
                         
+                        <div class="mb-3">
+                            <label class="form-label">Mô tả chi tiết / Ghi chú ban đầu</label>
+                            <textarea name="detail_content" class="form-control" rows="3" placeholder="Nhập nội dung chi tiết công việc..."></textarea>
+                        </div>
                         <div class="mb-3 position-relative">
                             <label class="form-label">Đối tượng (Khách hàng/Dự án)</label>
                             <input type="text" id="create_object_id_input" class="form-control" placeholder="Gõ tên khách hàng để tìm..." autocomplete="off">

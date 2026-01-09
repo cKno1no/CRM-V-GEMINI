@@ -403,27 +403,56 @@ class CustomerAnalysisService:
     # =========================================================================
     
     def get_category_analysis(self, object_id):
-        """Cơ cấu nhóm hàng (Cho biểu đồ Pie)."""
-        current_year = datetime.now().year
-        query = f"""
-            SELECT TOP 10 
-                T2.I04ID, 
-                ISNULL(T3.TEN, T2.I04ID) as CategoryName,
-                SUM(T1.ConvertedAmount) as Revenue
-            FROM {config.ERP_GIAO_DICH} T1
-            INNER JOIN {config.ERP_IT1302} T2 ON T1.InventoryID = T2.InventoryID
-            LEFT JOIN {config.TEN_BANG_NOI_DUNG_HD} T3 ON T2.I04ID = T3.LOAI
-            WHERE T1.ObjectID = ?
-            AND T1.TranYear = {current_year}
-            AND T1.CreditAccountID LIKE '{config.ACC_DOANH_THU}'
-            GROUP BY T2.I04ID, T3.TEN
-            ORDER BY Revenue DESC
         """
-        data = self.db.get_data(query, (object_id,))
+        Cơ cấu nhóm hàng & Lãi biên (Sử dụng SP đồng bộ với CEO Cockpit).
+        """
+        current_year = datetime.now().year
+        
+        # Gọi Stored Procedure
+        try:
+            # Dùng execute_sp_multi để an toàn
+            result_sets = self.db.execute_sp_multi("sp_GetCustomerCategoryAnalysis", (object_id, current_year))
+            data = result_sets[0] if result_sets and len(result_sets) > 0 else []
+            
+        except Exception as e:
+            current_app.logger.error(f"Error calling SP: {e}")
+            return {'labels': [], 'series': [], 'details': [], 'ids': []}
+
+        # Xử lý dữ liệu trả về
+        labels = []
+        series = [] 
+        ids = []      # <--- [MỚI] Danh sách ID để Drill-down
+        details = [] 
+
+        if data:
+            for row in data:
+                rev = safe_float(row.get('Revenue'))
+                cost = safe_float(row.get('Cost'))
+                profit = safe_float(row.get('GrossProfit'))
+                
+                margin_pct = (profit / rev * 100) if rev > 0 else 0
+                
+                cat_name = row.get('CategoryName', 'N/A')
+                cat_id = row.get('CategoryID') # Lấy ID nhóm
+                
+                labels.append(cat_name)
+                series.append(rev)
+                ids.append(cat_id) # <--- [MỚI] Thêm vào list ids
+                
+                details.append({
+                    'id': cat_id,
+                    'name': cat_name,
+                    'revenue': rev,
+                    'cost': cost,
+                    'profit': profit,
+                    'margin_pct': round(margin_pct, 1)
+                })
+
         return {
-            'labels': [d['CategoryName'] for d in data],
-            'series': [safe_float(d['Revenue']) for d in data],
-            'ids': [d['I04ID'] for d in data]
+            'labels': labels,
+            'series': series,
+            'ids': ids,    # <--- [MỚI] Trả về IDs cho Frontend dùng
+            'details': details 
         }
 
     # API Drill-down
@@ -459,21 +488,30 @@ class CustomerAnalysisService:
             """
              details = self.db.get_data(query, (object_id, filter_value))
 
+        
         formatted = []
         for row in details:
-            # Format generic
-            val_str = f"{safe_float(row.get('Amount', row.get('ConvertedAmount', 0))):,.0f}"
+            # [FIX 1] Trả về số nguyên gốc (Raw Number), để Frontend tự format
+            # Không dùng f-string "{...:,.0f}" ở đây
+            val_raw = safe_float(row.get('Amount', row.get('ConvertedAmount', 0)))
+            
             col1 = row.get('InventoryID', row.get('VoucherDate', ''))
             if hasattr(col1, 'strftime'): col1 = col1.strftime('%d/%m/%Y')
             
             col2 = row.get('InventoryName', row.get('VoucherNo', ''))
             
             col3 = ""
-            if 'Qty' in row: col3 = f"SL: {safe_float(row['Qty']):,.0f}"
-            elif 'VDescription' in row: col3 = row['VDescription']
+            if 'Qty' in row: 
+                # [FIX 2] Bỏ tiền tố "SL: ", chỉ format số lượng
+                col3 = f"{safe_float(row['Qty']):,.0f}"
+            elif 'VDescription' in row: 
+                col3 = row['VDescription']
 
             formatted.append({
-                'Col1': col1, 'Col2': col2, 'Col3': col3, 'Value': val_str
+                'Col1': col1, 
+                'Col2': col2, 
+                'Col3': col3, 
+                'Value': val_raw  # Trả về số (float/int)
             })
         return formatted
 
@@ -481,50 +519,4 @@ class CustomerAnalysisService:
     # (Hàm cross_sell nếu không dùng cũng có thể bỏ)
     def get_sales_trend_5y(self, object_id): return {} # Placeholder nếu API cũ còn gọi
 
-    def get_category_analysis(self, object_id):
-        """
-        Cơ cấu nhóm hàng & Lãi biên (Sử dụng SP đồng bộ với CEO Cockpit).
-        """
-        current_year = datetime.now().year
-        
-        # Gọi Stored Procedure
-        try:
-            data = self.db.execute_sp("sp_GetCustomerCategoryAnalysis", (object_id, current_year))
-        except Exception as e:
-            # Fallback nếu lỗi SP (hoặc chưa chạy script SQL)
-            print(f"Error calling SP: {e}")
-            return {'labels': [], 'series': [], 'details': []}
-
-        # Xử lý dữ liệu trả về
-        labels = []
-        series = [] # Doanh thu cho biểu đồ Pie
-        details = [] # Chi tiết cho Chatbot đọc (bao gồm Lãi biên)
-
-        if data:
-            for row in data:
-                rev = safe_float(row['Revenue'])
-                cost = safe_float(row['Cost'])
-                profit = safe_float(row['GrossProfit'])
-                
-                # Tính % Margin
-                margin_pct = (profit / rev * 100) if rev > 0 else 0
-                
-                cat_name = row['CategoryName']
-                
-                labels.append(cat_name)
-                series.append(rev)
-                
-                details.append({
-                    'id': row['CategoryID'],
-                    'name': cat_name,
-                    'revenue': rev,
-                    'cost': cost,
-                    'profit': profit,
-                    'margin_pct': round(margin_pct, 1)
-                })
-
-        return {
-            'labels': labels,
-            'series': series,
-            'details': details # [NEW] Trường này chứa full thông tin lãi lỗ
-        }
+    

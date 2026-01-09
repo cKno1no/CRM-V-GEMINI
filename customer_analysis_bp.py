@@ -1,10 +1,11 @@
 from flask import Blueprint, render_template, request, jsonify, current_app, session, flash, redirect, url_for
-from utils import login_required
+from utils import login_required, permission_required
 
 customer_analysis_bp = Blueprint('customer_analysis_bp', __name__)
 
 @customer_analysis_bp.route('/customer_360/<string:object_id>', methods=['GET'])
 @login_required
+@permission_required('VIEW_CUSTOMER_360')
 def customer_360_view(object_id):
     service = current_app.customer_analysis_service
     user_code = session.get('user_code')

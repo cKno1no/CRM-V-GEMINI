@@ -261,7 +261,6 @@ def report_detail_page(report_stt):
 # =========================================================================
 @crm_bp.route('/nhaplieu', methods=['GET', 'POST'])
 @login_required
-@record_activity('CREATE_REPORT_SHORT')
 def nhap_lieu():
     """Hàm xử lý Form nhập liệu và logic INSERT."""
     
@@ -328,13 +327,23 @@ def nhap_lieu():
             )
             
             if db_manager.execute_non_query(insert_query, params):
-                # Ghi Log
+                # 1. Ghi Log hệ thống (Audit Log)
                 db_manager.write_audit_log(
                     nguoi_bao_cao_code, 'REPORT_CREATE', 'INFO', 
                     f"Tạo báo cáo mới (Loại: {loai}, KH: {ma_khach_hang_value})", 
                     get_user_ip() # [ĐÃ SỬA] Gọi thẳng hàm import từ utils
                 )
+                # 2. [THÊM VÀO ĐÂY] Cộng điểm thưởng Gamification
+                # Chỉ chạy khi DB đã lưu thành công và TRƯỚC khi redirect
+                try:
+                    # Gọi service thông qua current_app
+                    current_app.gamification_service.log_activity(nguoi_bao_cao_code, 'CREATE_REPORT')
+                except Exception as e:
+                    # Log lỗi nhưng KHÔNG chặn dòng chảy chính (User vẫn thấy báo cáo thành công)
+                    current_app.logger.error(f"Lỗi cộng điểm Gamification: {e}")
+                # 3. Phản hồi về Client    
                 return redirect(url_for('crm_bp.dashboard_reports', success_message='Lưu thành công!'))
+            
             else:
                 message = "error: Thất bại khi thực thi INSERT SQL."
         except Exception as e:

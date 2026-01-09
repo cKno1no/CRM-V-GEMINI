@@ -137,22 +137,56 @@ class TaskService:
         today_date = datetime.now().strftime('%Y-%m-%d')
         return date_limit, today_date
         
-    def create_new_task(self, user_code, title, supervisor_code, task_type, attachments=None, object_id=None): # <-- Bổ sung task_type
-        """Tạo một Task mới, gán ngày hiện tại, CapTren và Attachments."""
-        
-        insert_query = f"""
-            INSERT INTO {self.TASK_TABLE} (UserCode, TaskDate, Status, Title, CapTren, Attachments, TaskType, ObjectID, LastUpdated, ProgressPercentage)
-            VALUES (?, GETDATE(), 'OPEN', ?, ?, ?, ?, ?, GETDATE(), 0)
+    def create_new_task(self, user_code, title, supervisor_code, task_type, attachments=None, object_id=None, detail_content=None):
         """
-        # Đảm bảo TaskType được truyền chính xác vào params
-        params = (user_code, title, supervisor_code, attachments, task_type.upper(), object_id)
-        
+        Tạo một Task mới.
+        [FIX]: Thêm DetailContent, xử lý an toàn SQL Params, và ghi Log khởi tạo.
+        """
+        conn = None
         try:
-            self.db.execute_non_query(insert_query, params)
-            return True
+            conn = self.db.get_transaction_connection()
+            cursor = conn.cursor()
+            
+            # 1. INSERT VÀO MASTER (Có DetailContent)
+            # Lưu ý: Không insert Priority nếu DB có default 'MEDIUM' để tránh lỗi thiếu param
+            insert_query = f"""
+                INSERT INTO {self.TASK_TABLE} 
+                (UserCode, TaskDate, Status, Title, CapTren, Attachments, TaskType, ObjectID, LastUpdated, ProgressPercentage, DetailContent)
+                OUTPUT INSERTED.TaskID -- Lấy ID ngay lập tức
+                VALUES (?, GETDATE(), 'OPEN', ?, ?, ?, ?, ?, GETDATE(), 0, ?)
+            """
+            
+            # [QUAN TRỌNG] Số lượng ? là 7, Params cũng phải là 7
+            params = (user_code, title, supervisor_code, attachments, task_type.upper(), object_id, detail_content)
+            
+            cursor.execute(insert_query, params)
+            row = cursor.fetchone()
+            
+            if row:
+                new_task_id = row[0]
+                
+                # 2. GHI LOG KHỞI TẠO (Để hiển thị trong lịch sử ngay từ đầu)
+                # Nếu có mô tả chi tiết thì ghi vào log luôn
+                initial_note = f"Khởi tạo công việc: {detail_content}" if detail_content else "Khởi tạo công việc mới."
+                
+                log_query = f"""
+                    INSERT INTO {self.TASK_LOG_TABLE} (TaskID, UserCode, UpdateDate, ProgressPercentage, UpdateContent, TaskLogType)
+                    VALUES (?, ?, GETDATE(), 0, ?, 'CREATE')
+                """
+                cursor.execute(log_query, (new_task_id, user_code, initial_note))
+                
+                conn.commit()
+                return True
+            else:
+                conn.rollback()
+                return False
+
         except Exception as e:
+            if conn: conn.rollback()
             current_app.logger.error(f"LỖI TẠO TASK: {e}")
             return False
+        finally:
+            if conn: conn.close()
 
     
     # --- KHỐI 1: TASK CẦN XỬ LÝ GẤP (HÔM NAY VÀ HÔM QUA) ---
@@ -323,16 +357,16 @@ class TaskService:
         """
         from flask import session # Đảm bảo session có sẵn nếu API cũ gọi
 
-        # 1. Xác định Log Type và Progress dựa trên Status cũ
-        if status.upper() == 'COMPLETED':
+        # [FIX LỖI] Thêm check "if status" trước khi gọi .upper()
+        if status and status.upper() == 'COMPLETED':  
             log_type = self.LOG_TYPE_REQUEST_CLOSE
             progress_percent = 100
-        elif status.upper() == 'HELP_NEEDED':
+        elif status and status.upper() == 'HELP_NEEDED':
             log_type = self.LOG_TYPE_HELP_CALL
-            progress_percent = 50 # Giả định 50% khi kêu gọi giúp đỡ
+            progress_percent = 50
         else:
             log_type = self.LOG_TYPE_PROGRESS
-            progress_percent = 50 
+            progress_percent = 50
 
         # 2. Ghi Log Tiến độ (Dùng user hiện tại)
         log_id = self.log_task_progress(
@@ -494,50 +528,50 @@ class TaskService:
     # --- SỬA ĐỔI: CẬP NHẬT TIẾN ĐỘ THÀNH GHI LOG MỚI ---
     def log_task_progress(self, task_id, user_code, progress_percent, content, log_type, helper_code=None):
         """
-        Ghi Log Tiến độ mới vào TPL. Cập nhật Status và Progress trên Task_Master.
-        [SỬA ĐỔI]: Tự động tạo Task cho Helper nếu là Help Call.
+        Ghi Log Tiến độ & Cập nhật Master.
+        [FIX]: REQUEST_CLOSE luôn ép về COMPLETED và 100%.
         """
         
-        # 1. Ghi Log vào TPL (Trả về LogID)
+        # 1. Xử lý Logic Trạng thái (Hard rule)
+        if log_type == self.LOG_TYPE_BLOCKED:
+             new_status = self.STATUS_BLOCKED
+        elif log_type == self.LOG_TYPE_REQUEST_CLOSE:
+             new_status = 'COMPLETED'
+             progress_percent = 100 # [FIX] Ép buộc 100%
+             if not content: content = "Đã hoàn thành công việc (Đóng task)."
+        elif log_type == self.LOG_TYPE_HELP_CALL:
+             new_status = 'HELP_NEEDED'
+        else:
+             new_status = 'PENDING' 
+        
+        # 2. Ghi Log vào TPL
         log_id = self.db.log_progress_entry(
             task_id, user_code, progress_percent, content, log_type, helper_code
         )
         
         if not log_id: return False
         
-        # 2. Xác định Status mới cho Master & Tạo Task Hỗ trợ
-        if log_type == self.LOG_TYPE_BLOCKED:
-             new_status = self.STATUS_BLOCKED
-        elif log_type == self.LOG_TYPE_REQUEST_CLOSE:
-             new_status = 'COMPLETED' if progress_percent == 100 else 'PENDING'
-        elif log_type == self.LOG_TYPE_HELP_CALL:
-             new_status = 'HELP_NEEDED'
-             
-             # [FIX] Tạo Task mới cho Helper ngay tại đây
-             if helper_code:
-                 original_task = self.get_task_by_id(task_id)
-                 if original_task:
-                     self.create_help_request_task(
-                         helper_code=helper_code,
-                         original_task_id=task_id,
-                         current_user_code=user_code,
-                         original_title=original_task.get('Title', 'Yêu cầu hỗ trợ'),
-                         original_object_id=original_task.get('ObjectID'),
-                         # Quan trọng: Truyền nội dung log hiện tại vào Task mới
-                         original_detail_content=content, 
-                         new_task_type=original_task.get('TaskType', 'KHAC')
-                     )
-
-        else:
-             new_status = 'PENDING' 
+        # 3. Xử lý Help Call (Tạo task con)
+        if log_type == self.LOG_TYPE_HELP_CALL and helper_code:
+             original_task = self.get_task_by_id(task_id)
+             if original_task:
+                 self.create_help_request_task(
+                     helper_code=helper_code,
+                     original_task_id=task_id,
+                     current_user_code=user_code,
+                     original_title=original_task.get('Title', 'Yêu cầu hỗ trợ'),
+                     original_object_id=original_task.get('ObjectID'),
+                     original_detail_content=content, 
+                     new_task_type=original_task.get('TaskType', 'KHAC')
+                 )
         
-        # 3. Cập nhật Master Task (Task_Master)
+        # 4. Cập nhật Master Task (Đồng bộ DetailContent mới nhất)
         update_master_query = f"""
             UPDATE {self.TASK_TABLE}
             SET LastUpdated = GETDATE(),
                 ProgressPercentage = ?, 
                 Status = ?,
-                DetailContent = ?
+                DetailContent = ?  -- [FIX] Cập nhật nội dung mới nhất vào Master
             WHERE TaskID = ?
         """
         self.db.execute_non_query(update_master_query, (progress_percent, new_status, content, task_id))

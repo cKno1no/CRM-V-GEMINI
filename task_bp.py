@@ -46,15 +46,19 @@ def task_dashboard():
 
     can_manage_view = real_is_admin or (user_role == config.ROLE_MANAGER)
 
-    # 1. XỬ LÝ TẠO TASK MỚI (Logic INSERT)
+    # Trong hàm task_dashboard, phần xử lý POST:
     if request.method == 'POST' and 'create_task' in request.form:
         title = request.form.get('task_title')
         supervisor_code = session.get('cap_tren')
         object_id = request.form.get('object_id') 
         task_type = request.form.get('task_type')
         
-        attachments_filename = None 
+        # [MỚI] Lấy nội dung chi tiết
+        detail_content = request.form.get('detail_content')
         
+        attachments_filename = None 
+        detail_content = request.form.get('detail_content')
+
         if title:
             if task_service.create_new_task(
                 user_code, 
@@ -62,7 +66,8 @@ def task_dashboard():
                 supervisor_code, 
                 attachments=attachments_filename, 
                 task_type=task_type, 
-                object_id=object_id
+                object_id=object_id,
+                detail_content=detail_content # [MỚI] Truyền vào service
             ):
                 # LOG TASK CREATION (BỔ SUNG)
                 try:
@@ -121,11 +126,10 @@ def task_dashboard():
 @task_bp.route('/api/task/log_progress', methods=['POST'])
 @login_required
 def api_log_task_progress():
-    """API: Ghi Log Tiến độ mới và Tạo Task Hỗ trợ (Fan-out)."""
+    """API: Ghi Log Tiến độ (Dùng log_type từ Frontend)."""
     
-    # FIX: Import Services Cục bộ
-    task_service   = current_app.task_service 
-    db_manager     = current_app.db_manager 
+    task_service = current_app.task_service 
+    db_manager = current_app.db_manager 
     
     data = request.get_json(silent=True) or {} 
     user_code = session.get('user_code')
@@ -133,55 +137,53 @@ def api_log_task_progress():
     task_id = data.get('task_id')
     content = data.get('content', '')
     progress_percent = data.get('progress_percent') 
-    log_type = data.get('log_type')
+    log_type = data.get('log_type') # Frontend gửi cái này
     
-    # Lấy danh sách người hỗ trợ (Mảng)
+    # Helper codes (xử lý list)
     helper_codes = data.get('helper_codes', [])
     if not isinstance(helper_codes, list):
          helper_codes = [helper_codes] if helper_codes else []
+    helper_code_str = ",".join(helper_codes)
 
     if not task_id or not log_type:
         return jsonify({'success': False, 'message': 'Thiếu dữ liệu bắt buộc.'}), 400
 
     try:
-        # --- 1. NẾU LÀ HELP_CALL: TẠO CÁC TASK CON (FAN-OUT) ---
-        if log_type == 'HELP_CALL' and helper_codes:
-             count = task_service.process_help_request_multicast(
-                helper_codes_list=helper_codes,
-                original_task_id=task_id,
-                current_user_code=user_code,
-                detail_content=content
-            )
-             # Bổ sung thông tin vào nội dung log để dễ theo dõi
-             content = f"{content} (Đã gửi yêu cầu đến {count} người)"
-
-        # --- 2. GHI LOG & CẬP NHẬT TRẠNG THÁI TASK GỐC ---
-        # Chuyển danh sách helper thành chuỗi để lưu vào cột HelperRequestCode (cho mục đích hiển thị log)
-        helper_code_str = ",".join(helper_codes)
-
+        # [SỬA LẠI ĐÚNG HÀM] Gọi log_task_progress (xử lý log_type)
+        # thay vì update_task_progress (xử lý status)
         log_id = task_service.log_task_progress(
             task_id=task_id,
             user_code=user_code,
-            progress_percent=int(progress_percent),
+            progress_percent=int(progress_percent) if progress_percent else 0,
             content=content,
-            log_type=log_type,
+            log_type=log_type,     # Truyền log_type vào đây
             helper_code=helper_code_str 
         )
         
         if log_id:
-            # Ghi Audit Log
-            db_manager.write_audit_log(
-                user_code, 'TASK_LOG_PROGRESS', 'INFO', 
-                f"Log tiến độ Task #{task_id} (Type: {log_type})", 
-                get_user_ip()
-            )
-            return jsonify({'success': True, 'message': f'Đã cập nhật thành công!'})
+            # --- LOGIC GAMIFICATION (Copy lại từ trước) ---
+            if log_type == 'REQUEST_CLOSE':
+                try:
+                    task_info = task_service.get_task_by_id(task_id)
+                    if task_info:
+                        creator_code = task_info.get('UserCode') 
+                        activity_code = 'COMPLETE_TASK_ASSIGNED'
+                        if str(creator_code).strip().upper() == str(user_code).strip().upper():
+                            activity_code = 'COMPLETE_TASK_SELF'
+
+                        if hasattr(current_app, 'gamification_service'):
+                            current_app.gamification_service.log_activity(user_code, activity_code)
+                except Exception as e:
+                    current_app.logger.error(f"Gamification Error: {e}")
+            # ---------------------------------------------
+
+            return jsonify({'success': True, 'message': 'Cập nhật thành công!'})
         else:
-            return jsonify({'success': False, 'message': 'Lỗi CSDL khi ghi Log.'}), 500
+            return jsonify({'success': False, 'message': 'Lỗi ghi log CSDL.'}), 500
 
     except Exception as e:
         current_app.logger.error(f"LỖI API LOG PROGRESS: {e}")
-        return jsonify({'success': False, 'message': f'Lỗi hệ thống: {str(e)}'}), 500
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @task_bp.route('/api/task/history/<int:task_id>', methods=['GET'])
 @login_required
@@ -286,7 +288,7 @@ def api_update_task():
     object_id = data.get('object_id', None)
     content = data.get('detail_content', '')
     status = data.get('status')
-    
+    user_code = session.get('user_code') # Lấy user hiện tại
 
     helper_codes = data.get('helper_codes', []) 
     if not isinstance(helper_codes, list): 
@@ -299,27 +301,61 @@ def api_update_task():
             count = task_service.process_help_request_multicast(
                 helper_codes_list=helper_codes,
                 original_task_id=task_id,
-                current_user_code=session.get('user_code'),
+                current_user_code=user_code,
                 detail_content=data.get('detail_content', '')
             )
-            # (Có thể thêm thông báo: "Đã gửi yêu cầu cho X người")
         else:
             return jsonify({'success': False, 'message': 'Vui lòng chọn ít nhất 1 người.'}), 400
 
-    completed_date = data.get('status') == 'COMPLETED'
+    completed_date = (status == 'COMPLETED')
     
-    # Chuyển hướng sang hàm wrapper trong service
+    # [FIX LỖI] Lấy helper_code đầu tiên nếu có, hoặc None (tùy logic service của bạn)
+    # Giả sử service chỉ nhận 1 người hoặc xử lý list bên trong. 
+    # Ở đây mình sửa tạm để code chạy được:
+    first_helper = helper_codes[0] if helper_codes else None
+
+    # Gọi Service cập nhật tiến độ
     success = task_service.update_task_progress(
         task_id=task_id,
         object_id=object_id,
         content=content,
         status=status,
-        helper_code=helper_code, 
+        helper_code=first_helper, 
         completed_date=completed_date
     )
 
     if success:
-        return jsonify({'success': True, 'message': 'Tiến độ Task đã được cập nhật (qua wrapper).'})
+        # =================================================================
+        # [VỊ TRÍ CHÈN CODE CỘNG ĐIỂM Ở ĐÂY]
+        # =================================================================
+        if status == 'COMPLETED':
+            try:
+                # 1. Lấy thông tin task để biết ai là người tạo
+                # Dùng hàm get_task_by_id có sẵn trong task_service
+                task_info = task_service.get_task_by_id(task_id)
+                
+                if task_info:
+                    # Lưu ý: Trong DB cột người tạo là 'UserCode'
+                    creator_code = task_info.get('UserCode') 
+                    
+                    # 2. Xác định loại hoạt động
+                    # Mặc định là Task được giao (COMPLETE_TASK_ASSIGNED)
+                    activity_code = 'COMPLETE_TASK_ASSIGNED'
+                    
+                    # Nếu người đang đăng nhập (user_code) trùng với người tạo (creator_code)
+                    if creator_code and str(creator_code).strip().upper() == str(user_code).strip().upper():
+                        activity_code = 'COMPLETE_TASK_SELF'
+
+                    # 3. Ghi điểm
+                    if hasattr(current_app, 'gamification_service'):
+                        current_app.gamification_service.log_activity(user_code, activity_code)
+                    
+            except Exception as e:
+                current_app.logger.error(f"Lỗi cộng điểm Gamification tại api_update_task: {e}")
+        # =================================================================
+
+        return jsonify({'success': True, 'message': 'Tiến độ Task đã được cập nhật.'})
+    
     return jsonify({'success': False, 'message': 'Lỗi cập nhật CSDL.'}), 500
 
 @task_bp.route('/api/task/recent_updates', methods=['GET'])

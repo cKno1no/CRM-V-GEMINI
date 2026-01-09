@@ -149,7 +149,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     startPolling();
-    
+    // [BỔ SUNG] Tự động set 100% khi chọn Hoàn thành
+    $('#log_type_select').on('change', function() {
+        if ($(this).val() === 'REQUEST_CLOSE') {
+            $('#progress_percent').val(100);
+        }
+    });
     // Event Listeners
     $('#create_object_id_input').on('input', debounce(function() {
          const inputElement = $('#create_object_id_input');

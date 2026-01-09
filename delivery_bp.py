@@ -34,8 +34,8 @@ def delivery_dashboard():
     is_thu_ky = str(user_bo_phan) == str(config.DEPT_THUKY)
     is_kho = str(user_bo_phan) == str(config.DEPT_KHO)
     
-    can_edit_planner = is_admin_or_gm
-    can_view_dispatch = is_admin_or_gm or is_kho or is_thu_ky
+    can_edit_planner = is_admin_or_gm or 'PLAN_DELIVERY' in session.get('permissions', [])
+    can_view_dispatch = is_admin_or_gm or is_kho or is_thu_ky or 'PLAN_DELIVERY' in session.get('permissions', [])
     can_edit_dispatch = is_admin_or_gm or is_kho
 
     grouped_tasks_json, ungrouped_tasks_json = delivery_service.get_planning_board_data()
@@ -90,8 +90,9 @@ def api_delivery_set_day():
     
     user_code = session.get('user_code')
     user_role = session.get('user_role', '').strip().upper()
-    if user_role not in [config.ROLE_ADMIN, config.ROLE_GM]:
-        return jsonify({'success': False, 'message': 'Bạn không có quyền thực hiện thao tác này.'}), 403
+
+    #if user_role not in [config.ROLE_ADMIN, config.ROLE_GM]:
+    #    return jsonify({'success': False, 'message': 'Bạn không có quyền thực hiện thao tác này.'}), 403
         
     data = request.json
     

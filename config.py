@@ -118,9 +118,9 @@ ROLE_SALES = 'SALES'
 
 # Mã Phòng ban (Đồng bộ với dữ liệu trong [GD - NGUOI DUNG])
 DEPT_KHO = '5.KHO'
-DEPT_THUKY = '3.THU KY'
+DEPT_THUKY = '3.THUKY'       # Xóa khoảng trắng
 DEPT_KTTC = '6.KTTC'
-DEPT_KINHDOANH = '2. KINH DOANH'
+DEPT_KINHDOANH = '2.KINHDOANH' # Xóa khoảng trắng
 
 # --- CẤU HÌNH BẢO MẬT CUSTOMER 360 ---
 CUSTOMER_360_VIEW_LIMIT = 7  # Giới hạn số lần xem/ngày
@@ -159,7 +159,8 @@ SYSTEM_FEATURES_GROUPS = {
         'VIEW_REALTIME_KPI': 'Xem Dashboard Sales Real-time',
         'VIEW_PROFIT_ANALYSIS': 'Phân tích Lợi nhuận gộp',
         'VIEW_CROSS_SELL': 'Phân tích Bán chéo (Cross-sell DNA)',
-        'VIEW_SALES_LOOKUP': 'Tra cứu Thông tin Bán hàng (Giá/Tồn)'
+        'VIEW_SALES_LOOKUP': 'Tra cứu Thông tin Bán hàng (Giá/Tồn)',
+        'VIEW_CUSTOMER_360': 'xem trang khách hàng 360'
     },
     "4. QUYỀN PHÊ DUYỆT (APPROVAL)": {
         'APPROVE_QUOTE': 'Duyệt Báo giá',

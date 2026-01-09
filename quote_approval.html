@@ -451,7 +451,8 @@
                 const button = $(this);
                 const quoteId = $('#salesmanModalQuoteID').val();
                 const newSalesmanId = $('#newSalesmanSelect').val();
-                
+                const newSalesmanText = $('#newSalesmanSelect option:selected').text(); // Lấy tên hiển thị
+
                 if (!newSalesmanId) return alert('Vui lòng chọn NVKD mới.');
 
                 button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Đang lưu...');
@@ -462,8 +463,61 @@
                 })
                 .then(r => r.json()).then(data => {
                     if (data.success) {
-                        alert(data.message);
-                        window.location.reload(); // Reload để cập nhật lại bảng
+                        // [TỐI ƯU UX]: Cập nhật giao diện ngay lập tức thay vì reload
+                        
+                        // 1. Đóng Modal
+                        const modalEl = document.getElementById('salesmanUpdateModal');
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        modal.hide();
+
+                        // 2. Tìm dòng (row) tương ứng trong bảng
+                        const row = $(`#master-${quoteId}`);
+                        
+                        // 3. Cập nhật cột NVKD
+                        // Tìm cell NVKD (có class col-nvkd hoặc id salesman-cell-...)
+                        const salesmanCell = $(`#salesman-cell-${quoteId}`);
+                        
+                        // Giữ lại nút edit, chỉ thay text
+                        const editBtnHtml = salesmanCell.find('button').prop('outerHTML');
+                        salesmanCell.html(`${newSalesmanText} ${editBtnHtml}`);
+
+                        // 4. Cập nhật kết quả phân tích (AnalysisMsg) từ phản hồi server
+                        // Server trả về: { success: true, data: { NewStatus: ..., AnalysisMsg: ... } }
+                        if (data.data) {
+                            // Cập nhật cột Kết quả
+                            row.find('.col-result').text(data.data.AnalysisMsg);
+                            
+                            // Cập nhật màu sắc dòng (class status-...)
+                            row.removeClass('status-pass status-fail status-pending');
+                            if (data.data.NewStatus === true) {
+                                row.addClass('status-pass');
+                            } else if (data.data.AnalysisMsg.includes('PENDING')) {
+                                row.addClass('status-pending');
+                            } else {
+                                row.addClass('status-fail');
+                            }
+
+                            // Cập nhật Nút Hành động (Action)
+                            const actionCell = row.find('td.text-center .action-box');
+                            if (data.data.NewStatus === true) {
+                                actionCell.html(`
+                                    <button class="btn btn-success btn-sm shadow-sm text-white" onclick="event.stopPropagation(); approveQuote(this)">
+                                        <i class="fas fa-check"></i> Duyệt
+                                    </button>
+                                `);
+                            } else {
+                                actionCell.html('<span class="status-badge-action">Chờ xử lý</span>');
+                            }
+                        }
+                        
+                        // Hiệu ứng highlight để báo hiệu thành công
+                        row.addClass('bg-highlight');
+                        setTimeout(() => row.removeClass('bg-highlight'), 2000);
+
+                        // Cập nhật lại thuộc tính data-nvkd cho nút edit để lần sau mở ra đúng
+                        row.data('nvkd', newSalesmanId);
+                        salesmanCell.find('button').attr('onclick', `event.stopPropagation(); openSalesmanModal('${quoteId}', '${row.data('quotationno')}', '${newSalesmanId}', '${newSalesmanText}')`);
+
                     } else {
                         alert('Lỗi: ' + data.message);
                     }

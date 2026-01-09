@@ -165,16 +165,15 @@ class UserService:
         query = f"""
             SELECT 
                 T1.USERCODE, T1.USERNAME, T1.SHORTNAME, T1.[CHUC VU], T1.[BO PHAN], T1.EMAIL,
-                -- Stats
                 S.Level, ISNULL(S.CurrentXP, 0) as CurrentXP, ISNULL(S.TotalCoins, 0) as TotalCoins,
-                -- Profile Visuals
                 ISNULL(P.AvatarFrame, '') as AvatarFrame,
                 ISNULL(P.Title, '') as Title,
                 ISNULL(P.NameEffect, '') as NameEffect,
-                ISNULL(P.EquippedTheme, 'light') as ThemeColor, -- [QUAN TRỌNG]: Map cột DB
-                ISNULL(P.EquippedPet, '') as EquippedPet,       -- [QUAN TRỌNG]: Map cột DB
+                ISNULL(P.EquippedTheme, 'light') as ThemeColor,
+                ISNULL(P.EquippedPet, '') as EquippedPet,
                 ISNULL(P.IsFlexing, 0) as IsFlexing,
-                P.AvatarUrl -- Lấy thêm AvatarUrl riêng của Profile (nếu có)
+                P.AvatarUrl,
+                ISNULL(P.Nickname, '') as Nickname -- <--- THÊM DÒNG NÀY
             FROM {config.TEN_BANG_NGUOI_DUNG} AS T1
             LEFT JOIN TitanOS_UserStats AS S ON T1.USERCODE = S.UserCode
             LEFT JOIN TitanOS_UserProfile AS P ON T1.USERCODE = P.UserCode
@@ -293,6 +292,38 @@ class UserService:
             return {'success': True, 'message': 'Đã trang bị!'}
         
         return {'success': True, 'message': 'Đã kích hoạt!'}
+    
+    def use_rename_card(self, user_code, new_nickname):
+        """Sử dụng thẻ đổi tên: Update Nickname và Xóa thẻ khỏi túi."""
+        # 1. Kiểm tra có thẻ trong túi không
+        check_item = self.db.get_data(
+            "SELECT ID FROM TitanOS_UserInventory WHERE UserCode=? AND ItemCode='rename_card' AND IsActive=1", 
+            (user_code,)
+        )
+        if not check_item:
+            return {'success': False, 'message': 'Bạn không có Thẻ Đổi Tên!'}
+        
+        item_id = check_item[0]['ID']
+        
+        # 2. Thực hiện đổi tên (Dùng Transaction)
+        conn = None
+        try:
+            conn = self.db.get_transaction_connection()
+            cursor = conn.cursor()
+            
+            # Update Nickname
+            cursor.execute("UPDATE TitanOS_UserProfile SET Nickname = ? WHERE UserCode = ?", (new_nickname, user_code))
+            
+            # Xóa vật phẩm đã dùng (Consumable)
+            cursor.execute("DELETE FROM TitanOS_UserInventory WHERE ID = ?", (item_id,))
+            
+            conn.commit()
+            return {'success': True, 'message': f'Đã đổi tên thành công sang: "{new_nickname}"'}
+        except Exception as e:
+            if conn: conn.rollback()
+            return {'success': False, 'message': str(e)}
+        finally:
+            if conn: conn.close()
 
     # =========================================================================
     # 5. BẢO MẬT CÁ NHÂN

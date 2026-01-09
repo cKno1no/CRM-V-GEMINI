@@ -70,7 +70,7 @@ class PortalService:
         # --- LOGIC LỌC CHUNG ---
         # [CONFIG]: Dùng mã phòng ban từ Config
         # Sử dụng getattr để tránh lỗi nếu config thiếu biến
-        dept_thuky = getattr(config, 'DEPT_THUKY', 'DEPT_3. THU KY')
+        dept_thuky = getattr(config, 'DEPT_THUKY', '3.THUKY')
         is_thu_ky = str(bo_phan).strip() == str(dept_thuky).strip()
         col_filter_erp = "EmployeeID" if is_thu_ky else "SalesManID"
         

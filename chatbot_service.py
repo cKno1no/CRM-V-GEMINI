@@ -27,7 +27,7 @@ class ChatbotService:
         self.analysis_service = CustomerAnalysisService(db_manager) 
 
         # 1. Cấu hình API
-        api_key = "s"
+        api_key = "AIzaSyBmGcNUGMchE99TNKiLkAKT-NceHJ-Tons"
         if not api_key:
             # [FIX] Dùng logger chuẩn thay vì current_app.logger
             logger.error("⚠️ CRITICAL: GEMINI_API_KEY not found in config!")
@@ -222,6 +222,13 @@ class ChatbotService:
     # =========================================================================
     def process_message(self, message_text, user_code, user_role, theme='light'):
         try:
+            # 1. Lấy thông tin User Profile để biết tên gọi
+            user_profile = self.db.get_data("SELECT Nickname, SHORTNAME FROM TitanOS_UserProfile P JOIN [GD - NGUOI DUNG] U ON P.UserCode = U.USERCODE WHERE P.UserCode = ?", (user_code,))
+            
+            user_name = "Sếp" # Mặc định
+            if user_profile:
+                # Ưu tiên Nickname, nếu không có thì dùng Shortname
+                user_name = user_profile[0].get('Nickname') or user_profile[0].get('SHORTNAME')
             # [LOGIC MỚI] Xử lý Persona động theo Pet
             pet_name = "AI"
             if theme == 'adorable':
@@ -231,7 +238,7 @@ class ChatbotService:
                 'light': "Bạn là Trợ lý Kinh doanh Titan (Business Style). Trả lời gãy gọn, súc tích, tập trung vào số liệu.",
                 'dark': "Bạn là Hệ thống Titan OS (Formal). Phong cách trang trọng, chính xác, khách quan.",
                 'fantasy': "Bạn là AI từ tương lai (Sci-Fi). Xưng hô: Commander - System. Giọng điệu máy móc, hào hứng.",
-                'adorable': f"Bạn là {pet_name} (Gen Z). Xưng hô: Em ({pet_name}) - Sếp. Dùng emoji 🦊🐻💖✨. Giọng cute, năng động, hỗ trợ nhiệt tình."
+                'adorable': f"Bạn là {pet_name} (Gen Z). Người dùng tên là {user_name}. Xưng hô: Em ({pet_name}) - Hãy gọi người dùng là {user_name} hoặc Sếp {user_name}. Dùng emoji 🦊🐻💖✨. Giọng cute, năng động, hỗ trợ nhiệt tình."
             }
             system_instruction = personas.get(theme, personas['light'])
             
@@ -744,5 +751,4 @@ class ChatbotService:
             line = f"**{i+1}. {item.get('NhomHang')}**\n  - Thiếu: **{thieu:,.0f}** | ROP: {rop:,.0f} | Tồn-BO: {ton_bo:,.0f}"
             response_lines.append(line)
             
-
         return "\n".join(response_lines)

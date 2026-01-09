@@ -205,6 +205,15 @@ def create_app():
                 
                 if profile_data:
                     user_data_combined.update(profile_data)
+                    
+                    # [LOGIC MỚI] Ưu tiên Nickname
+                    if profile_data.get('Nickname'):
+                        # Ghi đè SHORTNAME hiển thị bằng Nickname
+                        session['user_shortname'] = profile_data['Nickname'] 
+                        # Hoặc tạo biến riêng hiển thị
+                        user_data_combined['DisplayName'] = profile_data['Nickname']
+                    else:
+                        user_data_combined['DisplayName'] = session.get('user_shortname')
 
                 # 2. Lấy danh sách Theme đã mở khóa (Query trực tiếp bảng Inventory)
                 # Vì UserService không return full inventory trong hàm get_user_profile
@@ -223,7 +232,14 @@ def create_app():
                 current_app.logger.error(f"Lỗi load User Context: {e}")
 
         # Tính toán danh hiệu (Title) hiển thị nếu DB chưa có
-        lvl = user_data_combined.get('Level', 1)
+        try:
+            lvl = int(user_data_combined.get('Level', 1))
+        except (ValueError, TypeError):
+            lvl = 1 # Fallback về level 1 nếu lỗi
+        
+        # [QUAN TRỌNG] Cập nhật lại vào dictionary để template nhận được số INT
+        user_data_combined['Level'] = lvl 
+            
         if not user_data_combined.get('Title'):
             if lvl < 5: title = "Newbie (Tập sự)"
             elif lvl < 20: title = "Junior (Nhân viên)"
