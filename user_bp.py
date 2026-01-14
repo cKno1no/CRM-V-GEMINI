@@ -18,12 +18,22 @@ def user_management_page():
 
 # --- API ENDPOINTS ---
 
+
 @user_bp.route('/api/users/list', methods=['GET'])
 @login_required
 def api_get_users():
     if not check_admin_access(): return jsonify([]), 403
     user_division = session.get('division')
     users = current_app.user_service.get_all_users(division=user_division)
+    
+    # --- [ĐOẠN CODE CẦN THÊM ĐỂ SỬA LỖI] ---
+    # Chuyển đổi NaT (của Pandas) thành None để jsonify không bị lỗi
+    for u in users:
+        # Kiểm tra nếu CreatedDate là NaT (Not a Time)
+        if 'CreatedDate' in u and pd.isna(u['CreatedDate']):
+            u['CreatedDate'] = None
+    # ---------------------------------------
+
     return jsonify(users)
 
 @user_bp.route('/api/users/detail/<string:user_code>', methods=['GET'])

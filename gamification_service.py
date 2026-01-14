@@ -171,3 +171,38 @@ class GamificationService:
 
         # 5. Đánh dấu log đã xử lý
         self.db.execute_non_query("UPDATE TitanOS_Game_DailyLogs SET IsProcessed=1 WHERE UserCode = ? AND IsProcessed=0", (user_code,))
+
+    def create_hall_of_fame_story(self, author_code, target_code, title, content, tags, images_str=None, is_public=True):
+        """
+        Tạo story kèm danh sách ảnh.
+        """
+        try:
+            sql = """
+                INSERT INTO [dbo].[HR_HALL_OF_FAME] 
+                (TargetUserCode, AuthorUserCode, StoryTitle, StoryContent, Tags, ImagePaths, IsPublic, CreatedDate)
+                VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE())
+            """
+            public_bit = 1 if is_public else 0
+            # images_str là chuỗi đường dẫn ảnh ngăn cách bởi dấu phẩy hoặc chấm phẩy
+            self.db.execute_non_query(sql, (target_code, author_code, title, content, tags, images_str, public_bit))
+            return True, "Câu chuyện đã được lưu trữ mãi mãi!"
+        except Exception as e:
+            print(f"Error creating story: {e}")
+            return False, str(e)
+
+    def get_all_users_for_select(self):
+        """
+        Lấy danh sách nhân viên chi tiết (Kèm Chức vụ, Bộ phận) để gợi nhớ.
+        [FIX]: Dùng cột USERNAME thay vì FULLNAME.
+        """
+        try:
+            sql = """
+                SELECT USERCODE, SHORTNAME, USERNAME, [BO PHAN], [CHUC VU]
+                FROM [GD - NGUOI DUNG] 
+                WHERE [BO PHAN] IS NOT NULL  
+                ORDER BY SHORTNAME ASC
+            """
+            return self.db.get_data(sql)
+        except Exception as e:
+            print(f"Error fetching users: {e}")
+            return []

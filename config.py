@@ -82,6 +82,10 @@ LIMIT_AUTO_APPROVE_SO = 20000000.0   # 20 Triệu - Đơn hàng dưới mức n�
 RATIO_REQ_CLASS_M = 150 # Yêu cầu 150% cho khách loại M
 RATIO_REQ_CLASS_T = 138 # Yêu cầu 138% cho khách loại T
 
+# [NEW] Cấu hình Chống Gian lận (Anti-Fraud) cho DDH
+# Nếu (Tổng Tồn Kho / Tổng Đặt Hàng) > 30% -> Báo lỗi gian lận
+DDH_FRAUD_THRESHOLD = 30.0
+
 # =========================================================================
 # 4. CẤU HÌNH CROSS-SELL & KPI
 # =========================================================================

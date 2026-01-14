@@ -1,6 +1,7 @@
 # portal_bp.py
 from flask import Blueprint, render_template, session, redirect, url_for, current_app, flash, request
 from datetime import datetime
+from utils import login_required, permission_required, get_user_ip, record_activity, save_uploaded_files
 
 portal_bp = Blueprint('portal_bp', __name__)
 
@@ -84,3 +85,37 @@ def refresh_portal():
     
     flash("Đã cập nhật dữ liệu mới nhất.", "success")
     return redirect(url_for('portal_bp.portal_dashboard'))
+
+@portal_bp.route('/hall-of-fame/share', methods=['GET', 'POST'])
+@login_required
+def hall_of_fame_share():
+    gamification_service = current_app.gamification_service 
+    
+    if request.method == 'POST':
+        # Xử lý Upload Ảnh (Tối đa 5 ảnh)
+        files = request.files.getlist('story_images')
+        
+        # Sử dụng hàm save_uploaded_files từ utils.py (đã có trong dự án)
+        # Hàm này trả về chuỗi tên file ngăn cách bởi dấu phẩy
+        images_str = save_uploaded_files(files[:5]) if files else None
+
+        data = request.form
+        author_code = session.get('user_code')
+        target_code = data.get('target_user')
+        title = data.get('story_title')
+        content = data.get('story_content') # Đây sẽ là HTML từ Rich Editor
+        tags = data.get('story_tags')
+        
+        success, message = gamification_service.create_hall_of_fame_story(
+            author_code, target_code, title, content, tags, images_str
+        )
+        
+        if success:
+            # Thông điệp cảm ơn ấm áp
+            flash(f"Cảm ơn bạn đã gieo một hạt mầm hạnh phúc! Câu chuyện về đồng nghiệp {target_code} đã được lưu vào dòng chảy lịch sử của Titan.", 'success')
+            return redirect(url_for('portal_bp.hall_of_fame_share'))
+        else:
+            flash(f'Có chút trục trặc nhỏ: {message}', 'error')
+
+    users = gamification_service.get_all_users_for_select()
+    return render_template('hall_of_fame_create.html', users=users)

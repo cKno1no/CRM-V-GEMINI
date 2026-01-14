@@ -159,6 +159,37 @@ class SalesOrderApprovalService:
              approval_status['Reason'] = 'FAILED: DHB không 100% kế thừa từ Chào giá.'
              return order
 
+        # [NEW RULE]: CHỐNG GIAN LẬN DDH (DDH FRAUD PROTECTION)
+        # Logic: DDH là hàng đặt (không có tồn). Nếu check View Tồn kho thấy
+        # đang có hàng (đáp ứng > Threshold %) -> Bắt đổi sang SO/SIG.
+        # =================================================================
+        if voucher_type == 'DDH':
+            is_fraud, fraud_msg = self._validate_ddh_stock(order.get('SOrderID'))
+            
+            if is_fraud:
+                approval_status['Passed'] = False
+                approval_status['Reason'] = f'VIOLATION: {fraud_msg}'
+                # Set NeedsOverride = True nếu muốn cho Sếp ghi đè, 
+                # hoặc False nếu muốn chặn tuyệt đối (ở đây tôi để True để linh hoạt)
+                approval_status['NeedsOverride'] = True 
+                return order  # <--- RETURN NGAY, CHẶN LẠI
+        # =================================================================
+        # [NEW RULE]: KIỂM TRA PHÂN LOẠI SO vs SIG
+        # Logic: SO chỉ dành cho đơn nhỏ (< 20tr). Nếu >= 20tr bắt buộc dùng SIG.
+        # Ngăn chặn việc dùng sai loại phiếu để lách quy trình báo cáo.
+        # =================================================================
+        # Lấy dữ liệu và Hạn mức
+        sale_amount = safe_float(order.get('SaleAmount')) 
+        voucher_type = str(order.get('VoucherTypeID', '')).strip()
+        limit_so = getattr(config, 'LIMIT_AUTO_APPROVE_SO', 20000000)
+
+        if voucher_type == 'SO' and sale_amount >= limit_so:
+             approval_status['Passed'] = False
+             approval_status['Reason'] = (f"VIOLATION: Đơn hàng {sale_amount/1000000:,.1f}M >= {limit_so/1000000:,.1f}M. "
+                                          f"Vui lòng hủy và tạo phiếu SIG.")
+             approval_status['NeedsOverride'] = False # Chặn tuyệt đối, không cho sếp override cái sai này
+             return order
+
         # --- 3. KIỂM TRA RATIO (ĐIỀU KIỆN TIÊN QUYẾT) ---
         # Nếu Fail Ratio -> Chặn ngay lập tức, không xét hạn mức nữa.
         
@@ -170,8 +201,10 @@ class SalesOrderApprovalService:
             approval_status['ApprovalRatio'] = min(9999, round(ratio))
             
             # Lấy cấu hình tỷ lệ yêu cầu
-            if customer_class == 'M': required_ratio = config.RATIO_REQ_CLASS_M
-            elif customer_class == 'T': required_ratio = config.RATIO_REQ_CLASS_T
+            required_ratio = config.RATIO_REQ_CLASS_M # Mặc định cao nhất (Safe Default)
+            if customer_class == 'T': required_ratio = config.RATIO_REQ_CLASS_T
+            # Nếu là M hoặc NULL đều dính 150
+            
             
             # [CHỐT CHẶN RATIO]
             if required_ratio > 0 and ratio < required_ratio:
@@ -233,10 +266,60 @@ class SalesOrderApprovalService:
                 approval_status['Reason'] = f"PENDING: Vượt hạn mức, chờ duyệt bởi {approvers_str}."
             else:
                 approval_status['Passed'] = True
-                approval_status['Reason'] = "OK: Đủ điều kiện duyệt (Cấp quản lý)."
+                approval_status['Reason'] = "OK: Đủ điều kiện duyệt."
 
         return order
+    
+    def _validate_ddh_stock(self, sorder_id):
+        """
+        Kiểm tra tỷ lệ đáp ứng tồn kho (Fulfillable Ratio).
+        Chỉ tính lượng tồn kho CÓ THỂ dùng cho đơn hàng này, loại bỏ phần tồn kho dư thừa (Outliers).
+        """
+        try:
+            threshold = getattr(config, 'DDH_FRAUD_THRESHOLD', 30.0)
 
+            # [LOGIC MỚI]: Sử dụng CASE WHEN để lấy MIN(OrderQty, Stock)
+            # Ý nghĩa: Nếu tồn kho (T2.Ton) lớn hơn số đặt (T1.OrderQuantity), 
+            # chỉ tính phần bằng số đặt. Ngược lại lấy số tồn thực tế.
+            sql = f"""
+                SELECT 
+                    SUM(T1.OrderQuantity) AS TotalOrder,
+                    
+                    SUM(
+                        CASE 
+                            WHEN ISNULL(T2.Ton, 0) >= T1.OrderQuantity THEN T1.OrderQuantity
+                            ELSE ISNULL(T2.Ton, 0)
+                        END
+                    ) AS TotalFulfillable
+                    
+                FROM {config.ERP_SALES_DETAIL} AS T1
+                LEFT JOIN {config.VIEW_BACK_ORDER} AS T2 ON T1.InventoryID = T2.InventoryID
+                WHERE T1.SOrderID = ?
+            """
+            
+            data = self.db.get_data(sql, (sorder_id,))
+            
+            if not data: return False, "OK"
+            
+            total_order = safe_float(data[0]['TotalOrder'])
+            total_fulfillable = safe_float(data[0]['TotalFulfillable']) # Lượng hàng có thể lấy ngay từ kho
+            
+            if total_order == 0: return False, "OK"
+
+            # Tính tỷ lệ đáp ứng
+            fulfillable_ratio = (total_fulfillable / total_order) * 100
+            
+            # So sánh với ngưỡng (30%)
+            if fulfillable_ratio > threshold:
+                return True, (f"Phát hiện {round(fulfillable_ratio)}% đơn hàng vi phạm. "
+                              f"DDH chỉ dùng để đặt hàng theo PO của khách. Vui lòng làm đúng chứng từ.")
+            
+            return False, "OK"
+
+        except Exception as e:
+            current_app.logger.error(f"Lỗi check tồn kho DDH (Fulfillable Logic) {sorder_id}: {e}")
+            return False, "System Error Check Stock"
+        
     def get_order_details(self, sorder_id):
         """
         Truy vấn chi tiết mặt hàng cho Panel Detail DHB.

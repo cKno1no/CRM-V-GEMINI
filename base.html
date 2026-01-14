@@ -11,7 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Quicksand:wght@500;600;700&family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
     
     <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     {% block extra_css %}{% endblock %}
 
     <style>
@@ -352,6 +353,49 @@
             /* Pet mobile nhỏ hơn chút */
             #titan-pet-container { width: 120px; height: 120px; }
         }
+
+        /* --- [NEW] LEVEL UP CIRCLE MODAL --- */
+        .round-glow-popup {
+            border-radius: 50% !important; /* Ép thành hình tròn */
+            width: 380px !important;       /* Chiều rộng cố định */
+            height: 380px !important;      /* Chiều cao = Chiều rộng */
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            
+            /* Màu nền tỏa tròn từ tâm */
+            background: radial-gradient(circle, #ffffff 30%, #fff8e1 100%) !important;
+            
+            /* Hiệu ứng viền và bóng đổ */
+            border: 4px solid #FFD700 !important;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.6) !important;
+            
+            /* Animation: Sáng dần và Đập nhẹ */
+            animation: orbGlow 2s infinite alternate ease-in-out;
+            overflow: visible !important;
+        }
+
+        /* Hiệu ứng động: Sáng dần - Tối dần */
+        @keyframes orbGlow {
+            0% { 
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.5), inset 0 0 20px rgba(255, 215, 0, 0.2); 
+                transform: scale(1);
+                border-color: rgba(255, 215, 0, 0.5);
+            }
+            100% { 
+                box-shadow: 0 0 80px rgba(255, 215, 0, 1), 0 0 30px rgba(255, 140, 0, 0.6), inset 0 0 50px rgba(255, 215, 0, 0.5); 
+                transform: scale(1.02);
+                border-color: #fff;
+            }
+        }
+
+        /* Tinh chỉnh nội dung bên trong cho cân đối */
+        .level-up-content {
+            text-align: center;
+            z-index: 10;
+            padding: 20px;
+        }
     </style>
 </head>
 <body>
@@ -604,11 +648,14 @@
         }
 
         // Hàm nhận thưởng
+        // Hàm nhận thưởng (Đã nâng cấp hiệu ứng)
         function claimReward(mailId, btnElement) {
             if(!mailId) return;
-            const originalText = btnElement.innerHTML;
+            
+            // Hiệu ứng loading cho nút
+            const originalContent = btnElement.innerHTML;
             btnElement.disabled = true;
-            btnElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btnElement.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
             fetch('/api/mailbox/claim', {
                 method: 'POST',
@@ -618,14 +665,16 @@
             .then(r => r.json())
             .then(data => {
                 if(data.success) {
-                    // Update UI ngay lập tức
+                    // 1. Update UI thẻ bài ngay lập tức (làm mờ, đổi nút)
                     const card = document.getElementById(`mail-card-${mailId}`);
                     if(card) {
                         card.classList.add('bg-light', 'opacity-75');
-                        btnElement.parentElement.innerHTML = `<span class="text-success small fw-bold" style="font-size: 0.75rem;"><i class="fas fa-check-circle me-1"></i>Đã nhận</span>`;
+                        // Tìm div chứa nút và thay thế bằng text "Đã nhận"
+                        const actionDiv = btnElement.parentElement;
+                        actionDiv.innerHTML = `<span class="text-success small fw-bold"><i class="fas fa-check-circle me-1"></i>Đã nhận</span>`;
                     }
                     
-                    // Giảm badge
+                    // 2. Giảm badge số lượng
                     const badge = document.getElementById('mail-badge');
                     if(badge && !badge.classList.contains('d-none')) {
                         let count = parseInt(badge.innerText);
@@ -633,21 +682,119 @@
                         else badge.classList.add('d-none');
                     }
 
-                    let msg = `🎉 NHẬN QUÀ THÀNH CÔNG!`;
-                    if(data.coins_earned > 0) msg += `\n💰 +${data.coins_earned} Coins`;
-                    if(data.level_up) msg += `\n🚀 LÊN LEVEL MỚI: ${data.new_level}`;
-                    alert(msg);
+                    // --- 3. XỬ LÝ HIỆU ỨNG (LOGIC MỚI) ---
+                    if (data.level_up) {
+                        // A. Bắn pháo hoa
+                        fireFireworks();
+
+                        // B. Hiện Popup Hình Tròn Phát Sáng
+                        Swal.fire({
+                            // Nội dung HTML bên trong
+                            html: `
+                                <div class="level-up-content">
+                                    <div style="font-size: 1.2rem; color: #E65100; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px;">
+                                        Level Up!
+                                    </div>
+                                    
+                                    <div style="font-size: 6rem; font-weight: 900; line-height: 1; color: #4318FF; text-shadow: 0 5px 15px rgba(67, 24, 255, 0.3); margin: 10px 0;">
+                                        ${data.new_level}
+                                    </div>
+                                    
+                                    <div style="font-size: 1.1rem; color: #555; margin-bottom: 20px;">
+                                        Chúc mừng bạn đã đạt cấp độ mới!
+                                    </div>
+                                    
+                                    <div class="badge rounded-pill bg-warning text-dark border border-light shadow-sm px-4 py-2" style="font-size: 1.1rem;">
+                                        <i class="fas fa-coins me-2"></i>+${data.coins_earned} Coins
+                                    </div>
+                                </div>
+                            `,
+                            // [QUAN TRỌNG] Tắt hết style mặc định để dùng style tròn
+                            icon: null,
+                            title: null,
+                            buttonsStyling: false, // Tắt style nút mặc định
+                            showConfirmButton: true,
+                            confirmButtonText: 'Tuyệt vời!',
+                            
+                            // Style nút bấm riêng cho đẹp
+                            customClass: {
+                                popup: 'round-glow-popup', // Class CSS hình tròn đã định nghĩa
+                                confirmButton: 'btn btn-primary rounded-pill px-4 fw-bold mt-3 shadow-lg'
+                                
+                            },
+                            
+                            // Ảnh nền mờ ảo phía sau (Backdrop)
+                            backdrop: `
+                                rgba(11, 20, 55, 0.8)
+                                url("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExNXBpeGcwanhwNDA2d3Ntd2VlazNqZm00c3JhaWRtemN0YmpuMTIwNCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/9qKNE5R7PE7VZjJ4La/giphy.gif")
+                                left top
+                                no-repeat
+                            `,
+                            
+                            // --- [FIX QUAN TRỌNG: TỰ ĐỘNG ĐÓNG] ---
+                            timer: 5000,             // 5 giây
+                            timerProgressBar: true,  // Hiện thanh đếm ngược
+                            allowOutsideClick: true, 
+                            allowEscapeKey: true,
+
+                            // [FIX MỚI]: Vô hiệu hóa tính năng "Pause on Hover"
+                            didOpen: (toast) => {
+                                toast.addEventListener('mouseenter', Swal.resumeTimer); // Chuột vào -> Vẫn chạy tiếp
+                                toast.addEventListener('mouseleave', Swal.resumeTimer); // Chuột ra -> Vẫn chạy tiếp
+                            }
+                        });
+                    
+                    } else {
+                        // C. Chỉ nhận quà thường (Toast nhỏ góc màn hình)
+                        const Toast = Swal.mixin({
+                            toast: true, position: 'top-end',
+                            showConfirmButton: false, timer: 3000,
+                            timerProgressBar: true,
+                            didOpen: (toast) => {
+                                toast.addEventListener('mouseenter', Swal.stopTimer)
+                                toast.addEventListener('mouseleave', Swal.resumeTimer)
+                            }
+                        });
+                        
+                        let msg = 'Đã nhận quà thành công!';
+                        if(data.coins_earned > 0) msg = `+${data.coins_earned} Coins vào ví!`;
+                        
+                        Toast.fire({ icon: 'success', title: msg });
+                    }
+
                 } else {
-                    alert('⚠️ ' + data.msg);
+                    // Lỗi
+                    Swal.fire({ icon: 'error', title: 'Oops...', text: data.msg });
                     btnElement.disabled = false;
-                    btnElement.innerHTML = originalText;
+                    btnElement.innerHTML = originalContent;
                 }
             })
             .catch(err => {
-                alert('Lỗi kết nối.');
+                Swal.fire({ icon: 'error', title: 'Lỗi kết nối', text: 'Không thể nhận quà lúc này.' });
                 btnElement.disabled = false;
-                btnElement.innerHTML = originalText;
+                btnElement.innerHTML = originalContent;
             });
+        }
+
+        // Hàm bắn pháo hoa (Confetti)
+        function fireFireworks() {
+            var duration = 3 * 1000;
+            var animationEnd = Date.now() + duration;
+            var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+            function randomInRange(min, max) { return Math.random() * (max - min) + min; }
+
+            var interval = setInterval(function() {
+                var timeLeft = animationEnd - Date.now();
+
+                if (timeLeft <= 0) { return clearInterval(interval); }
+
+                var particleCount = 50 * (timeLeft / duration);
+                
+                // Bắn từ 2 bên góc
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+            }, 250);
         }
 
         // ============================================================

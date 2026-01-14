@@ -27,7 +27,7 @@ class ChatbotService:
         self.analysis_service = CustomerAnalysisService(db_manager) 
 
         # 1. Cấu hình API
-        api_key = "AIzaSyBmGcNUGMchE99TNKiLkAKT-NceHJ-Tons"
+        api_key = ""
         if not api_key:
             # [FIX] Dùng logger chuẩn thay vì current_app.logger
             logger.error("⚠️ CRITICAL: GEMINI_API_KEY not found in config!")
@@ -131,6 +131,20 @@ class ChatbotService:
                     },
                     "required": ["customer_name"]
                 }
+            ),
+
+            FunctionDeclaration(
+                name="get_titan_stories",
+                # [FIX] Dùng từ khóa mạnh để ép AI hiểu STDD là đối tượng hợp lệ
+                description="Kể chuyện Hall of Fame. Đối tượng hợp lệ bao gồm: 1. Các nhân sự (Titan). 2. CÔNG TY STDD (Ngôi nhà chung). Nếu hỏi về STDD, BẮT BUỘC dùng tool này.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "titan_name": {"type": "string", "description": "Tên nhân sự hoặc tên công ty (VD: 'STDD', 'Ngôi nhà chung')."},
+                        "tag_filter": {"type": "string", "description": "Chủ đề (Tag) muốn lọc."}
+                    },
+                    "required": ["titan_name"]
+                }
             )
         ]
             
@@ -165,7 +179,8 @@ class ChatbotService:
             'check_customer_overview': self._wrapper_customer_overview,
             'check_daily_briefing': self._wrapper_daily_briefing,
             'summarize_customer_report': self._wrapper_summarize_report,
-            'analyze_customer_deep_dive': self._wrapper_analyze_deep_dive
+            'analyze_customer_deep_dive': self._wrapper_analyze_deep_dive,
+            'get_titan_stories': self._wrapper_titan_stories
         }
     # --- HÀM KIỂM TRA QUYỀN SỞ HỮU SKILL ---
     def _check_user_has_skill(self, user_code, func_name):
@@ -234,13 +249,24 @@ class ChatbotService:
             if theme == 'adorable':
                 pet_name = self._get_equipped_pet_info(user_code)
             # 1. Định nghĩa Persona dựa trên Theme
-            personas = {
+            base_personas = {
                 'light': "Bạn là Trợ lý Kinh doanh Titan (Business Style). Trả lời gãy gọn, súc tích, tập trung vào số liệu.",
                 'dark': "Bạn là Hệ thống Titan OS (Formal). Phong cách trang trọng, chính xác, khách quan.",
                 'fantasy': "Bạn là AI từ tương lai (Sci-Fi). Xưng hô: Commander - System. Giọng điệu máy móc, hào hứng.",
                 'adorable': f"Bạn là {pet_name} (Gen Z). Người dùng tên là {user_name}. Xưng hô: Em ({pet_name}) - Hãy gọi người dùng là {user_name} hoặc Sếp {user_name}. Dùng emoji 🦊🐻💖✨. Giọng cute, năng động, hỗ trợ nhiệt tình."
             }
-            system_instruction = personas.get(theme, personas['light'])
+            
+            # [FIX QUAN TRỌNG] Thêm luật đặc biệt cho Hall of Fame vào mọi Persona
+            hall_of_fame_rule = """
+            QUY TẮC HALL OF FAME:
+            - 'Titan' bao gồm cả CON NGƯỜI và TẬP THỂ CÔNG TY (STDD).
+            - Nếu user hỏi 'kể về STDD', 'ngôi nhà chung', 'công ty', HÃY DÙNG TOOL `get_titan_stories` để kể chuyện.
+            - KHÔNG ĐƯỢC TỪ CHỐI kể chuyện về STDD với lý do 'nó là công ty'. Hãy nhân cách hóa nó.
+            """
+
+            selected_persona = base_personas.get(theme, base_personas['light'])
+            system_instruction = f"{selected_persona}\n{hall_of_fame_rule}"
+            
             
             # 2. Context History (Lấy từ Session)
             history = session.get('chat_history', [])
@@ -636,6 +662,191 @@ class ChatbotService:
             res += f"- 🎯 Cơ hội: Nên chào lại mã **{top_miss}** vì khách đã hỏi nhiều lần.\n"
 
         return res
+    
+    # =========================================================================
+    # [NEW] TITAN HALL OF FAME HANDLERS
+    # =========================================================================
+
+    def _wrapper_titan_stories(self, titan_name, tag_filter=None):
+        """
+        Hàm xử lý kể chuyện Hall of Fame - Version 5 (Unified Flow for Humans & STDD).
+        Logic: STDD đi chung luồng với Human: Tổng quan -> Chọn Tag -> Chi tiết.
+        """
+        try:
+            target_code = None
+            target_name = None
+            is_stdd_entity = False
+            
+            # Chuẩn hóa input để bắt mọi cách gọi tên công ty
+            clean_name = titan_name.strip().upper()
+            stdd_keywords = ['STDD', 'CÔNG TY', 'CONG TY', 'NGÔI NHÀ', 'NGOI NHA', 'TẬP THỂ']
+            
+            # --- [LOGIC 1] CHECK STDD (ĐỊNH DANH) ---
+            if any(k in clean_name for k in stdd_keywords) and len(clean_name) < 20: 
+                target_code = 'STDD'
+                target_name = 'Ngôi nhà chung STDD'
+                is_stdd_entity = True
+            else:
+                # --- LOGIC TÌM KIẾM NHÂN SỰ ---
+                sql_find_user = """
+                    SELECT TOP 1 UserCode, shortname, userName 
+                    FROM [GD - NGUOI DUNG]
+                    WHERE (shortname LIKE N'%{0}%') OR (userName LIKE N'%{0}%') OR (UserCode = '{0}')
+                """.format(titan_name)
+
+                
+                user_data = self.db.get_data(sql_find_user)
+                if not user_data:
+                    # Fallback: Check lại STDD lần cuối
+                    if 'STDD' in clean_name:
+                        target_code = 'STDD'
+                        target_name = 'Ngôi nhà chung STDD'
+                        is_stdd_entity = True
+                    else:
+                        return f"⚠️ Không tìm thấy đồng nghiệp nào tên là '{titan_name}' trong hệ thống Titan."
+                else:
+                    target_user = user_data[0]
+                    target_code = target_user['UserCode']
+                    target_name = target_user.get('Nickname') or target_user.get('FullName')
+
+            # --- [LOGIC 2] LẤY STORIES ---
+            sql_stories = """
+                SELECT StoryID, StoryTitle, StoryContent, AuthorUserCode, Tags 
+                FROM HR_HALL_OF_FAME 
+                WHERE TargetUserCode = ? AND IsPublic = 1
+            """
+            params = [target_code]
+
+            if tag_filter:
+                sql_stories += " AND Tags LIKE ?"
+                params.append(f"%{tag_filter}%")
+            
+            stories = self.db.get_data(sql_stories, tuple(params))
+
+            if not stories:
+                if is_stdd_entity:
+                     return "Hệ thống đã nhận diện yêu cầu về STDD nhưng chưa tìm thấy dữ liệu câu chuyện trong bảng Hall of Fame (TargetUserCode='STDD')."
+                return f"Hiện tại chưa có giai thoại nào về **{target_name}**."
+
+            # --- [LOGIC 3] XỬ LÝ DỮ LIỆU ĐẦU VÀO ---
+            context_data = ""
+            # Nếu là Tổng quan (chưa có tag), lấy nhiều chuyện để AI tóm tắt tốt hơn
+            limit = 3 if tag_filter else 15 
+            
+            # Biến phụ trợ để gom Tags cho menu
+            all_tags_list = []
+
+            for idx, s in enumerate(stories[:limit]):
+                # Auto-tag logic
+                if not s['Tags']:
+                    s['Tags'] = self._auto_generate_tags_if_missing(s['StoryID'], s['StoryContent'])
+                
+                if s['Tags']:
+                    # Gom tag để hiển thị menu
+                    t_list = [t.strip() for t in s['Tags'].split(',') if t.strip()]
+                    all_tags_list.extend(t_list)
+
+                context_data += f"""
+---
+[TƯ LIỆU #{idx+1}]
+- Tiêu đề: {s['StoryTitle']}
+- Tags: {s['Tags']}
+- Nội dung: "{s['StoryContent']}"
+"""
+
+            # --- [LOGIC 4] PHÂN LUỒNG TRẢ LỜI (CHUNG CHO CẢ STDD VÀ NGƯỜI) ---
+
+            # === MODE A: PORTRAIT (TỔNG QUAN & MENU) ===
+            if not tag_filter:
+                # Xử lý hiển thị Tags (Menu chọn)
+                from collections import Counter
+                # Đếm tần suất tag để hiển thị tag phổ biến nhất lên đầu
+                tag_counts = Counter(all_tags_list).most_common(10) 
+                tags_display = ", ".join([t[0] for t in tag_counts]) if tag_counts else "(Chưa phân loại)"
+                
+                # Tùy chỉnh Prompt cho STDD để nó "Nhân cách hóa"
+                if is_stdd_entity:
+                    role_instruction = """
+                    🔴 [LƯU Ý QUAN TRỌNG: NHÂN CÁCH HÓA]
+                    Đối tượng là **CÔNG TY/TẬP THỂ STDD**. Hãy viết về nó như viết tiểu sử của một **Vĩ Nhân** hoặc một **Người Mẹ Lớn**.
+                    Tập trung vào: Văn hóa, Lịch sử, Tinh thần đoàn kết.
+                    KHÔNG liệt kê khô khan. Hãy viết đầy cảm xúc và tự hào.
+                    """
+                else:
+                    role_instruction = f"Đối tượng là đồng nghiệp: **{target_name}**. Hãy viết tiểu sử tóm tắt về tính cách và đóng góp của họ."
+
+                return f"""
+                [MODE: PORTRAIT SUMMARY]
+                {role_instruction}
+                
+                NHIỆM VỤ: 
+                1. **Viết Tổng Quan (Portrait):** Tóm tắt chân dung của đối tượng dựa trên các tư liệu dưới đây. Độ dài: **200 - 300 từ**.
+                2. **Tạo Menu:** Cuối bài, BẮT BUỘC phải mời người dùng chọn một trong các chủ đề (Tags) sau để nghe kể chi tiết: 
+                   👉 {tags_display}
+                
+                DỮ LIỆU TƯ LIỆU:
+                {context_data}
+                """
+
+            # === MODE B: NARRATIVE (CHI TIẾT THEO TAG) ===
+            else:
+                # Tùy chỉnh Prompt cho STDD
+                if is_stdd_entity:
+                    style_instruction = """
+                    🔴 [STDD STORYTELLING MODE]
+                    Hãy kể câu chuyện về Ngôi nhà chung STDD xoay quanh chủ đề này.
+                    Hãy coi STDD là một thực thể sống động, có ký ức và tình cảm.
+                    """
+                else:
+                    style_instruction = f"Hãy kể câu chuyện về **{target_name}** xoay quanh chủ đề này."
+
+                return f"""
+                🔴 [SYSTEM ALERT: OVERRIDE PERSONA SETTINGS]
+                Mục đích: **STORYTELLING (KỂ CHUYỆN VĂN HỌC)**.
+                
+                {style_instruction}
+                Chủ đề được chọn: **{tag_filter}**.
+                
+                YÊU CẦU BẮT BUỘC:
+                1. **BỎ QUA** sự ngắn gọn. Hãy viết dài và sâu sắc.
+                2. **ĐỘ DÀI**: Tối thiểu 300 từ, tối đa 600 từ.
+                3. **PHONG CÁCH**: Hào hùng, truyền cảm hứng, xúc động.
+                
+                DỮ LIỆU CỐT TRUYỆN:
+                {context_data}
+                
+                Hãy bắt đầu kể ngay bây giờ:
+                """
+
+        except Exception as e:
+            current_app.logger.error(f"Titan Story Error: {e}")
+            return f"Lỗi hệ thống: {str(e)}"
+
+    def _auto_generate_tags_if_missing(self, story_id, content):
+        """
+        Hàm phụ trợ: Dùng AI tạo tag nếu bài viết chưa có, và update ngược vào DB.
+        """
+        try:
+            # 1. Gọi AI tạo tag (Dùng model 'flash' cho nhanh)
+            prompt = f"""
+            Đọc câu chuyện sau về nhân sự và đưa ra tối đa 3 Hashtag (#) mô tả đúng nhất (VD: #Leadership, #Funny, #Dedication, #Technical).
+            Chỉ trả về các hashtag cách nhau bằng dấu phẩy. Không giải thích gì thêm.
+            
+            Nội dung: "{content[:1000]}"
+            """
+            response = self.model.generate_content(prompt)
+            tags = response.text.strip().replace('\n', '')
+            
+            # 2. Update vào DB để lần sau không phải tạo lại
+            if tags:
+                sql_update = "UPDATE HR_HALL_OF_FAME SET Tags = ? WHERE StoryID = ?"
+                self.db.execute_non_query(sql_update, (tags, story_id)) # Giả sử db_manager có hàm execute_non_query
+                current_app.logger.info(f"✅ Auto-tagged Story {story_id}: {tags}")
+                return tags
+            return ""
+        except Exception as e:
+            current_app.logger.warning(f"⚠️ Auto-tag failed for Story {story_id}: {e}")
+            return ""
 
     def _format_customer_options(self, customers, term, limit=5):
         response = f"🔍 Tìm thấy **{len(customers)}** khách hàng tên '{term}'. Sếp chọn số mấy?\n"
@@ -752,3 +963,5 @@ class ChatbotService:
             response_lines.append(line)
             
         return "\n".join(response_lines)
+    
+    
