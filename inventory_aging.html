@@ -1,245 +1,186 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Phân tích Tồn kho & Tuổi hàng (I04 Master)</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% extends "base.html" %}
+
+{% block title %}Phân tích Tồn kho (Chuẩn Profit Dashboard){% endblock %}
+
+{% block extra_css %}
+<style>
+    /* TABLE STYLING GIỐNG PROFIT DASHBOARD */
+    .table-custom { table-layout: fixed; width: 100%; border-collapse: separate; border-spacing: 0; }
     
-    <style>
-        /* --- ĐỒNG BỘ CSS VARIABLES TỪ BASE.HTML (Giả lập để không cần extends nếu không muốn sửa layout) --- */
-        :root {
-            --primary: #4318FF; --bg-color: #F4F7FE; --text-dark: #2B3674;
-            --danger: #E31A1A; --success: #05CD99; --warning: #FFB547;
-            --card-bg: #FFFFFF; --border-color: #E0E5F2; --input-bg: #F4F7FE;
-            --card-radius: 20px;
-        }
-        
-        /* Nếu bạn extends base.html, hãy xóa đoạn :root trên đi */
-        
-        body { background-color: var(--bg-color); font-family: 'Inter', sans-serif; color: var(--text-dark); }
-        .container-fluid { max-width: 98%; margin-top: 30px; }
+    /* Header cố định */
+    .table-custom thead th {
+        background-color: var(--input-bg); color: var(--secondary);
+        font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+        padding: 12px 8px; border-bottom: 2px solid var(--border-color);
+        position: sticky; top: 0; z-index: 10;
+        vertical-align: middle;
+    }
 
-        /* HEADER & KPI */
-        .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
-        .page-title { font-size: 1.8rem; font-weight: 700; color: var(--text-dark); margin: 0; }
-        .btn-back { background: var(--card-bg); color: #A3AED0; border: 1px solid var(--border-color); padding: 10px 20px; border-radius: 14px; text-decoration: none; font-weight: 600; }
-        
-        .kpi-card { background: var(--card-bg); border-radius: 20px; padding: 20px; border: none; height: 100%; display: flex; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        .kpi-icon-box { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-right: 15px; }
-        .kpi-label { font-size: 0.75rem; color: #A3AED0; font-weight: 700; text-transform: uppercase; }
-        .kpi-value { font-size: 1.5rem; font-weight: 700; color: var(--text-dark); line-height: 1.2; }
-        .kpi-unit { font-size: 0.8rem; color: #A3AED0; }
-        
-        .icon-total { background: var(--input-bg); color: var(--primary); }
-        .icon-new { background: rgba(5, 205, 153, 0.1); color: var(--success); }
-        .icon-clc { background: rgba(156, 39, 176, 0.1); color: #9C27B0; }
-        .icon-risk { background: rgba(227, 26, 26, 0.1); color: var(--danger); }
+    /* Master Row (Dòng nhóm) */
+    .row-master { background-color: white; cursor: pointer; transition: background 0.2s; }
+    .row-master:hover { background-color: #F8F9FA; }
+    .row-master td { border-bottom: 1px solid #eee; padding: 12px 8px; vertical-align: middle; font-weight: 600; }
+    
+    /* Hiệu ứng khi mở */
+    .row-master.expanded { background-color: #F4F7FE; border-left: 3px solid var(--primary); }
+    .row-master.expanded td { color: var(--primary-dark); }
 
-        /* --- TABLE STYLES --- */
-        .main-card { background: var(--card-bg); border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); overflow: hidden; margin-top: 20px; }
-        .table-aging { width: 100%; border-collapse: collapse; }
-        
-        .table-aging th { 
-            position: sticky; top: 0; z-index: 100;
-            background-color: var(--input-bg); color: #A3AED0; font-weight: 700; font-size: 0.8rem; text-transform: uppercase;
-            padding: 15px 10px; border-bottom: 2px solid var(--border-color); text-align: right;
-        }
-        .table-aging th.text-start { text-align: left; }
-        .table-aging th.text-center { text-align: center; }
+    /* Detail Row (Dòng chi tiết) */
+    .row-detail { background-color: #FAFBFF; animation: slideDown 0.2s ease-out; }
+    .row-detail td { 
+        border-bottom: 1px dashed #E0E0E0; padding: 8px 8px; 
+        font-size: 0.85rem; color: #555; vertical-align: middle; 
+    }
+    
+    /* Utility */
+    .rotate-90 { transform: rotate(90deg); transition: transform 0.2s; }
+    .text-purple { color: #9C27B0; }
+    
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+{% endblock %}
 
-        /* Master Row */
-        .row-master { 
-            background-color: var(--input-bg); cursor: pointer; transition: background 0.2s;
-            border-top: 2px solid var(--card-bg);
-        }
-        .row-master:hover { background-color: #E3F2FD; }
-        .row-master td { padding: 12px 10px; font-weight: 700; color: var(--text-dark); border-bottom: 1px solid var(--border-color); font-size: 0.95rem; }
-        
-        .group-icon { transition: transform 0.2s; color: var(--primary); margin-right: 8px; }
-        .row-master.expanded .group-icon { transform: rotate(90deg); }
-
-        /* Detail Row */
-        .row-detail { display: none; background-color: var(--card-bg); }
-        .row-detail td { padding: 8px 10px; font-size: 0.9rem; color: #555; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
-        .row-detail:hover td { background-color: var(--input-bg); }
-
-        /* Highlights */
-        .val-total { color: var(--primary); }
-        .val-risk { color: var(--danger); }
-        .val-clc { color: #9C27B0; font-weight: 800; }
-        .bg-clc-alert { background-color: rgba(156, 39, 176, 0.05) !important; }
-
-        /* Filter inputs */
-        .form-control { border-radius: 12px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-dark); }
-        .form-control:focus { background: var(--card-bg); border-color: var(--primary); box-shadow: none; }
-        .btn-filter { background: var(--primary); color: white; border-radius: 12px; font-weight: 600; }
-
-        /* ... (Phần Responsive giữ nguyên) ... */
-    </style>
-</head>
-<body>
-    <div class="container-fluid">
-        <div class="page-header">
-            <h1 class="page-title"><i class="fas fa-cubes me-2 text-primary"></i> PHÂN TÍCH TỒN KHO (I04 MASTER)</h1>
-            <a href="/" class="btn-back"><i class="fas fa-arrow-left me-2"></i>Về Dashboard</a>
+{% block content %}
+<div class="container-fluid" x-data="inventoryApp()">
+    
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <h1 class="fw-bold m-0 text-dark"><i class="fas fa-cubes me-2 text-primary"></i> PHÂN TÍCH TỒN KHO</h1>
+        <div class="d-flex gap-2">
+             <div class="input-group shadow-sm" style="width: 300px;">
+                <span class="input-group-text bg-white border-0 ps-3"><i class="fas fa-search text-muted"></i></span>
+                <input type="text" x-model="search" class="form-control border-0" placeholder="Tìm nhanh nhóm hàng...">
+            </div>
+            <a href="/" class="btn btn-light border shadow-sm fw-bold"><i class="fas fa-arrow-left me-2"></i>Về Dashboard</a>
         </div>
+    </div>
 
-        <div class="row g-4 mb-4">
-            <div class="col-lg-3 col-md-6">
-                <div class="kpi-card">
-                    <div class="kpi-icon-box icon-total"><i class="fas fa-boxes"></i></div>
-                    <div>
-                        <div class="kpi-label">Tổng Tồn Kho</div>
-                        <div class="kpi-value">{{ kpi_total_inventory | format_tr }}</div>
-                        <div class="kpi-unit">Triệu VNĐ</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="kpi-card">
-                    <div class="kpi-icon-box icon-new"><i class="fas fa-leaf"></i></div>
-                    <div>
-                        <div class="kpi-label text-success">Tồn Mới (< 6T)</div>
-                        <div class="kpi-value text-success">{{ kpi_new_6_months | format_tr }}</div>
-                        <div class="kpi-unit">Triệu VNĐ</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="kpi-card">
-                    <div class="kpi-icon-box icon-clc"><i class="fas fa-ban"></i></div>
-                    <div>
-                        <div class="kpi-label" style="color: #9C27B0;">Hàng CLC (Cột D)</div>
-                        <div class="kpi-value" style="color: #9C27B0;">{{ kpi_clc_value | format_tr }}</div>
-                        <div class="kpi-unit">Triệu VNĐ</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="kpi-card">
-                    <div class="kpi-icon-box icon-risk"><i class="fas fa-exclamation-triangle"></i></div>
-                    <div>
-                        <div class="kpi-label text-danger">Rủi Ro (> 2 Năm)</div>
-                        <div class="kpi-value text-danger">{{ kpi_over_2_years | format_tr }}</div>
-                        <div class="kpi-unit">Triệu VNĐ</div>
-                    </div>
+    <div class="row g-4 mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="main-card p-3 h-100 d-flex align-items-center border-0 shadow-sm" style="background: white;">
+                <div class="rounded-circle p-3 me-3 d-flex align-items-center justify-content-center" style="background: #F4F7FE; color: var(--primary); width: 60px; height: 60px; font-size: 1.5rem;"><i class="fas fa-boxes"></i></div>
+                <div>
+                    <div class="small fw-bold text-secondary text-uppercase mb-1">Tổng Tồn Kho</div>
+                    <div class="fs-4 fw-bolder text-dark lh-1">{{ kpi_total_inventory | format_tr }}</div>
                 </div>
             </div>
         </div>
-
-        <div class="main-card mb-4" style="padding: 20px;">
-            <form method="POST" action="/inventory_aging" class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label small fw-bold text-secondary">Mã / Tên hàng</label>
-                    <input type="text" name="item_filter" class="form-control" value="{{ item_filter_term }}" placeholder="Tìm kiếm...">
+        <div class="col-lg-3 col-md-6">
+            <div class="main-card p-3 h-100 d-flex align-items-center border-0 shadow-sm" style="background: white;">
+                <div class="rounded-circle p-3 me-3 d-flex align-items-center justify-content-center" style="background: rgba(5, 205, 153, 0.1); color: var(--success); width: 60px; height: 60px; font-size: 1.5rem;"><i class="fas fa-leaf"></i></div>
+                <div>
+                    <div class="small fw-bold text-uppercase mb-1" style="color: var(--success);">Tồn Mới (< 6T)</div>
+                    <div class="fs-4 fw-bolder" style="color: var(--success);">{{ kpi_new_6_months | format_tr }}</div>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-bold text-secondary">Ngành hàng</label>
-                    <input type="text" name="category_filter" class="form-control" value="{{ category_filter }}" placeholder="Ví dụ: BẠC ĐẠN">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-bold text-secondary">Loại (I05)</label>
-                    <input type="text" name="i05id_filter" class="form-control" value="{{ i05id_filter }}" placeholder="S, A, B...">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-bold text-secondary">Giá trị Tồn</label>
-                    <input type="text" name="value_filter" class="form-control" value="{{ value_filter }}" placeholder="> 5000000">
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-filter w-100 py-2"><i class="fas fa-filter me-2"></i> Lọc</button>
-                </div>
-            </form>
+            </div>
         </div>
-
-        <div class="main-card">
-            <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
-                <table class="table mb-0 table-aging">
-                    <thead>
-                        <tr>
-                            <th style="width: 50px;"></th>
-                            <th class="text-start">Mã nhóm / Tên hàng</th>
-                            <th class="text-center">Loại</th>
-                            <th class="text-end">Tổng Tồn</th>
-                            <th class="text-end text-muted">0 - 180</th>
-                            <th class="text-end text-muted">181 - 360</th>
-                            <th class="text-end text-muted">361 - 540</th>
-                            <th class="text-end text-muted">541 - 720</th>
-                            <th class="text-end text-danger">> 720 (Rủi ro)</th>
-                            <th class="text-end" style="color: #9C27B0;">Cột D (CLC)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for group in aging_data %}
-                        
-                        {% set outer_index = loop.index %}
-
-                        <tr class="row-master" onclick="toggleGroup('grp-{{ outer_index }}', this)">
-                            <td class="text-center"><i class="fas fa-chevron-right group-icon"></i></td>
-                            <td class="text-start">
-                                <span class="text-primary">{{ group.GroupID }}</span>
-                                <span class="text-dark fw-bold ms-2">{{ group.GroupName }}</span>
-                                <span class="badge bg-white text-secondary border ms-2 rounded-pill">{{ group.Items|length }} mã</span>
-                            </td>
-                            <td></td> <td class="text-end val-total">{{ group.Group_TotalVal | format_tr }}</td>
-                            
-                            <td colspan="4"></td>
-                            
-                            <td class="text-end val-risk">{{ group.Group_Over720 | format_tr }}</td>
-                            <td class="text-end val-clc">{{ group.Group_CLC | format_tr }}</td>
-                        </tr>
-
-                        {% for item in group.Items %}
-                        <tr class="row-detail grp-{{ outer_index }} {{ 'bg-clc-alert' if item.Risk_CLC_Value > 0 else '' }}">
-                            <td></td> <td class="text-start ps-4">
-                                <div class="fw-bold text-dark" style="font-size: 0.85rem;">{{ item.InventoryID }}</div>
-                                <div class="text-muted small text-truncate" style="max-width: 400px;">{{ item.InventoryName }}</div>
-                            </td>
-                            <td class="text-center">
-                                <span class="badge bg-light text-dark border">{{ item.StockClass }}</span>
-                            </td>
-                            <td class="text-end fw-bold">{{ item.TotalCurrentValue | format_tr }}</td>
-                            
-                            <td class="text-end text-muted small">{{ item.Range_0_180_V | format_tr }}</td>
-                            <td class="text-end text-muted small">{{ item.Range_181_360_V | format_tr }}</td>
-                            <td class="text-end text-muted small">{{ item.Range_361_540_V | format_tr }}</td>
-                            <td class="text-end text-muted small">{{ item.Range_541_720_V | format_tr }}</td>
-                            
-                            <td class="text-end {{ 'text-danger fw-bold' if item.Range_Over_720_V > 0 else 'text-muted small' }}">
-                                {{ item.Range_Over_720_V | format_tr }}
-                            </td>
-                            <td class="text-end {{ 'val-clc' if item.Risk_CLC_Value > 0 else 'text-muted small' }}">
-                                {{ item.Risk_CLC_Value | format_tr }}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                        
-                        {% else %}
-                        <tr>
-                            <td colspan="10" class="text-center py-5 text-muted">Không tìm thấy dữ liệu phù hợp.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="col-lg-3 col-md-6">
+            <div class="main-card p-3 h-100 d-flex align-items-center border-0 shadow-sm" style="background: white;">
+                <div class="rounded-circle p-3 me-3 d-flex align-items-center justify-content-center" style="background: rgba(156, 39, 176, 0.1); color: #9C27B0; width: 60px; height: 60px; font-size: 1.5rem;"><i class="fas fa-ban"></i></div>
+                <div>
+                    <div class="small fw-bold text-uppercase mb-1" style="color: #9C27B0;">Hàng CLC (Cột D)</div>
+                    <div class="fs-4 fw-bolder" style="color: #9C27B0;">{{ kpi_clc_value | format_tr }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="main-card p-3 h-100 d-flex align-items-center border-0 shadow-sm" style="background: white;">
+                <div class="rounded-circle p-3 me-3 d-flex align-items-center justify-content-center" style="background: rgba(227, 26, 26, 0.1); color: var(--danger); width: 60px; height: 60px; font-size: 1.5rem;"><i class="fas fa-exclamation-triangle"></i></div>
+                <div>
+                    <div class="small fw-bold text-danger text-uppercase mb-1">Rủi Ro (> 2 Năm)</div>
+                    <div class="fs-4 fw-bolder text-danger">{{ kpi_over_2_years | format_tr }}</div>
+                </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function toggleGroup(groupId, row) {
-            row.classList.toggle('expanded');
-            const details = document.getElementsByClassName(groupId);
-            for (let tr of details) {
-                if (row.classList.contains('expanded')) {
-                    tr.style.display = 'table-row';
-                } else {
-                    tr.style.display = 'none';
-                }
+    <div class="main-card border-0 shadow-md">
+        <div class="table-responsive" style="min-height: 500px;">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th class="text-center" style="width: 4%;">#</th>
+                        <th style="width: 26%;">MÃ NHÓM / TÊN HÀNG</th>
+                        <th class="text-center" style="width: 6%;">LOẠI</th>
+                        <th class="text-end" style="width: 10%;">TỔNG TỒN</th>
+                        
+                        <th class="text-end text-muted" style="width: 9%;">0-180</th>
+                        <th class="text-end text-muted" style="width: 9%;">181-360</th>
+                        <th class="text-end text-muted" style="width: 9%;">361-540</th>
+                        <th class="text-end text-muted" style="width: 9%;">541-720</th>
+                        
+                        <th class="text-end text-danger" style="width: 9%;">> 720 (RISK)</th>
+                        <th class="text-end text-purple" style="width: 9%;">CỘT D (CLC)</th>
+                    </tr>
+                </thead>
+                
+                {% for group in aging_data %}
+                <tbody x-data="{ expanded: false, loaded: false }" 
+                       x-show="matchesSearch('{{ group.GroupName|lower }} {{ group.GroupID|lower }}')">
+                    
+                    <tr class="row-master" 
+                        :class="expanded ? 'expanded' : ''"
+                        @click="if(!loaded){ 
+                            htmx.trigger($el, 'loadDetail'); 
+                            loaded = true; 
+                        } 
+                        expanded = !expanded"
+                        
+                        hx-get="/api/inventory/group_detail/{{ group.GroupID }}"
+                        hx-trigger="loadDetail"
+                        hx-target="closest tbody"
+                        hx-swap="beforeend"> 
+                        
+                        <td class="text-center">
+                            <i class="fas fa-chevron-right text-primary rotate-90" 
+                               :style="expanded ? 'transform: rotate(90deg)' : 'transform: rotate(0deg)'"
+                               style="transition: transform 0.2s"></i>
+                        </td>
+                        
+                        <td class="text-truncate" style="max-width: 0;">
+                            <div class="d-flex align-items-center">
+                                <span class="fw-bold text-primary me-2">{{ group.GroupID }}</span>
+                                <span class="small text-muted text-truncate">{{ group.GroupName }}</span>
+                                <span class="badge bg-light text-secondary border rounded-pill ms-2 small">{{ group.Items|length }}</span>
+                            </div>
+                        </td>
+                        
+                        <td></td> <td class="text-end fw-bold text-dark">{{ group.Group_TotalVal | format_tr }}</td>
+                        
+                        <td></td><td></td><td></td><td></td>
+                        
+                        <td class="text-end fw-bold {{ 'text-danger' if group.Group_Over720 > 0 else 'text-muted opacity-50' }}">
+                            {{ group.Group_Over720 | format_tr }}
+                        </td>
+                        <td class="text-end fw-bold {{ 'text-purple' if group.Group_CLC > 0 else 'text-muted opacity-50' }}">
+                            {{ group.Group_CLC | format_tr }}
+                        </td>
+                    </tr>
+                    
+                    </tbody>
+                {% endfor %}
+            </table>
+            
+            {% if not aging_data %}
+            <div class="text-center py-5 text-muted">
+                <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i>
+                <p>Không có dữ liệu tồn kho nào.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function inventoryApp() {
+        return {
+            search: '',
+            matchesSearch(text) {
+                if (!this.search) return true;
+                return text.toLowerCase().includes(this.search.toLowerCase());
             }
         }
-    </script>
-</body>
-</html>
+    }
+</script>
+{% endblock %}

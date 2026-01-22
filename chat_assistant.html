@@ -6,424 +6,414 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Playfair+Display:wght@700&family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
 
     <style>
-        /* --- THEME VARIABLES --- */
+        /* --- CORE THEME VARIABLES --- */
         :root {
             --primary: #4318FF; --text-color: #2B3674;
-            --glass-bg: rgba(255, 255, 255, 0.75);
-            --glass-border: rgba(255, 255, 255, 0.5);
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.6);
             --bubble-bot: #FFFFFF; --bubble-user: #4318FF; --text-user: #FFF;
-            --primary-light: rgba(67, 24, 255, 0.3);
         }
         [data-theme="dark"] {
             --primary: #7551FF; --text-color: #E3E8EF;
-            --glass-bg: rgba(11, 20, 55, 0.85); --glass-border: rgba(255, 255, 255, 0.1);
-            --bubble-bot: rgba(255, 255, 255, 0.1); --bubble-user: #7551FF;
-            --primary-light: rgba(117, 81, 255, 0.3);
-        }
-        [data-theme="fantasy"] {
-            --primary: #E91E63; --text-color: #FFF;
-            --glass-bg: rgba(45, 27, 78, 0.85); --glass-border: rgba(233, 30, 99, 0.3);
-            --bubble-bot: rgba(0, 0, 0, 0.4); --bubble-user: #E91E63;
-            --primary-light: rgba(233, 30, 99, 0.4);
+            --glass-bg: rgba(11, 20, 55, 0.9); --glass-border: rgba(255, 255, 255, 0.1);
+            --bubble-bot: rgba(30, 41, 59, 0.8); --bubble-user: #7551FF;
         }
         [data-theme="adorable"] {
             --primary: #FF6B81; --text-color: #2F3542;
-            --glass-bg: rgba(255, 255, 255, 0.9); --glass-border: #FFD1D6;
+            --glass-bg: rgba(255, 255, 255, 0.92); --glass-border: #FFD1D6;
             --bubble-bot: #FFF0F3; --bubble-user: #FF6B81;
-            --primary-light: rgba(255, 107, 129, 0.3);
         }
 
-        /* --- GLOBAL & BACKGROUND --- */
         body {
             font-family: 'Quicksand', sans-serif;
-            height: 100vh; overflow: hidden; margin: 0;
-            color: var(--text-color);
+            height: 100vh; overflow: hidden; margin: 0; color: var(--text-color);
+            background-color: #f0f2f5;
         }
+        
         .bg-image {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
-            background-size: cover; background-position: center; filter: blur(15px) brightness(0.9);
-            transform: scale(1.1); transition: background-image 0.5s ease-in-out;
-        }
-        .bg-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
-            background: rgba(0,0,0,0.2);
+            background-size: cover; background-position: center; filter: blur(20px) opacity(0.6);
+            transition: background-image 0.5s;
         }
 
-        /* --- LAYOUT 3 COLUMNS --- */
+        /* --- LAYOUT --- */
         .main-layout {
-            display: flex; height: 100%; padding: 40px; gap: 30px;
-            justify-content: center; align-items: stretch;
+            display: flex; height: 100%; padding: 30px; gap: 25px;
+            max-width: 1600px; margin: 0 auto;
         }
 
-        /* SIDE PANELS */
-        .side-panel {
-            width: 300px; display: flex; flex-direction: column; gap: 20px;
-            animation: fadeIn 0.8s ease-out;
-        }
+        .side-panel { width: 320px; display: flex; flex-direction: column; gap: 20px; }
+        
         .glass-card {
             background: var(--glass-bg); backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border); border-radius: 20px;
-            padding: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s;
-        }
-        .glass-card:hover { transform: translateY(-5px); }
-        
-        .suggestion-btn {
-            display: block; width: 100%; text-align: left; padding: 12px 15px;
-            margin-bottom: 10px; border: 1px solid var(--glass-border);
-            background: rgba(255,255,255,0.1); color: var(--text-color);
-            border-radius: 12px; cursor: pointer; transition: 0.2s; font-size: 0.9rem;
-        }
-        .suggestion-btn:hover {
-            background: var(--primary); color: white; border-color: var(--primary);
+            border: 1px solid var(--glass-border); border-radius: 24px;
+            padding: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
         }
 
-        /* --- THEME GRID --- */
-        .theme-selector-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 10px; }
-        .theme-card-btn {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 15px 10px; background: rgba(255, 255, 255, 0.15);
-            border: 1px solid var(--glass-border); border-radius: 16px; color: var(--text-color);
-            transition: all 0.3s; cursor: pointer; position: relative; overflow: hidden; height: 90px;
-        }
-        [data-theme="dark"] .theme-card-btn, [data-theme="fantasy"] .theme-card-btn { background: rgba(0, 0, 0, 0.3); }
-        .theme-card-btn:hover:not(:disabled) { transform: translateY(-3px); background: rgba(255, 255, 255, 0.25); }
-        .theme-card-btn.active {
-            background: var(--primary); color: #fff; border-color: var(--primary);
-            box-shadow: 0 0 20px var(--primary-light); transform: scale(1.05); z-index: 2;
-        }
-        .theme-card-btn i.theme-icon { font-size: 1.8rem; margin-bottom: 8px; }
-        .theme-card-btn span { font-weight: 700; font-size: 0.8rem; text-transform: uppercase; }
-        .theme-card-btn:disabled { opacity: 0.6; cursor: not-allowed; filter: grayscale(1); background: rgba(0,0,0,0.05); }
-        .lock-overlay { position: absolute; top: 5px; right: 8px; font-size: 0.8rem; color: var(--text-color); opacity: 0.7; }
-        .theme-card-btn.active .lock-overlay { color: white; }
-
-        /* --- AVATAR --- */
-        .profile-avatar-container {
-            width: 90px; height: 90px; margin: 0 auto 15px auto; border-radius: 50%; overflow: hidden;
-            border: 3px solid var(--primary); background: var(--glass-bg);
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1); transition: transform 0.3s;
-        }
-        .profile-avatar-container:hover { transform: scale(1.05) rotate(5deg); }
-        .profile-avatar-img { width: 100%; height: 100%; object-fit: cover; }
-        .default-avatar-icon { font-size: 3rem; color: var(--primary); opacity: 0.8; }
-
-        /* --- CHAT BOX --- */
+        /* --- CHAT AREA --- */
         .chat-wrapper {
-            flex-grow: 1; max-width: 900px; display: flex; flex-direction: column;
+            flex-grow: 1; display: flex; flex-direction: column;
             background: var(--glass-bg); backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border); border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.2); position: relative;
-            animation: zoomIn 0.5s ease-out;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.1); overflow: hidden;
         }
-        .chat-header { padding: 20px 30px; border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; gap: 15px; }
+
         .chat-messages {
             flex-grow: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px;
             scroll-behavior: smooth;
         }
-        .chat-messages::-webkit-scrollbar { width: 6px; }
-        .chat-messages::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 10px; }
 
-        .message { display: flex; gap: 15px; max-width: 85%; align-items: flex-end; animation: slideUp 0.3s; }
+        .message { display: flex; gap: 15px; max-width: 85%; align-items: flex-end; }
         .message.user { align-self: flex-end; flex-direction: row-reverse; }
         
         .avatar {
             width: 45px; height: 45px; border-radius: 50%; overflow: hidden;
-            background: white; border: 2px solid var(--primary); flex-shrink: 0;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            background: #fff; border: 2px solid var(--primary); flex-shrink: 0;
         }
-        
-        .bubble { padding: 15px 20px; border-radius: 20px; font-size: 1rem; line-height: 1.6; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+
+        .bubble {
+            padding: 16px 22px; border-radius: 20px; font-size: 1rem; line-height: 1.6;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: relative;
+        }
         .message.bot .bubble { background: var(--bubble-bot); color: var(--text-color); border-bottom-left-radius: 4px; }
         .message.user .bubble { background: var(--bubble-user); color: var(--text-user); border-bottom-right-radius: 4px; }
-        .bubble strong { font-weight: 700; color: var(--primary); }
-        [data-theme="dark"] .bubble strong { color: #FFD700; }
+        
+        /* Markdown Styles within Bubble */
+        .bubble p { margin-bottom: 0.5rem; }
+        .bubble p:last-child { margin-bottom: 0; }
+        .bubble strong { font-weight: 700; color: inherit; filter: brightness(1.2); }
+        .bubble ul { padding-left: 20px; margin-bottom: 0.5rem; }
 
-        .input-area { padding: 20px 30px; border-top: 1px solid var(--glass-border); display: flex; gap: 15px; align-items: center; }
-        .chat-input {
-            flex-grow: 1; border: 2px solid var(--glass-border); background: rgba(255,255,255,0.2);
-            border-radius: 30px; padding: 15px 25px; color: var(--text-color); outline: none; transition: 0.3s; font-size: 1rem;
+        /* --- TITAN STORY CARD (NEW CSS) --- */
+        .titan-card-wrapper {
+            background: #fff; border-radius: 16px; overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 10px;
+            border: 1px solid rgba(0,0,0,0.05); position: relative; color: #333;
         }
-        .chat-input:focus { border-color: var(--primary); background: rgba(255,255,255,0.9); color: #000; }
+        [data-theme="dark"] .titan-card-wrapper { background: #1e272e; color: #d2dae2; border-color: #485460; }
+
+        .titan-card-wrapper::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+            background: linear-gradient(90deg, #FFD700, #FFA500, #FFD700);
+        }
+
+        .titan-card-header { padding: 25px 25px 15px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .titan-card-header h3 {
+            margin: 0; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.5rem; color: #2c3e50;
+        }
+        [data-theme="dark"] .titan-card-header h3 { color: #f1f2f6; }
+
+        .titan-badge {
+            display: inline-block; background: #f1f2f6; color: #57606f;
+            font-size: 0.8rem; padding: 4px 12px; border-radius: 20px;
+            margin-top: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        [data-theme="dark"] .titan-badge { background: #485460; color: #d2dae2; }
+
+        .titan-card-img { width: 100%; height: 220px; overflow: hidden; position: relative; }
+        .titan-card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s; }
+        .titan-card-img:hover img { transform: scale(1.05); }
+
+        /* --- NÂNG CẤP GIAO DIỆN HỒI KÝ BLOGGER --- */
+        .titan-card-body {
+            padding: 35px;
+            font-family: 'Merriweather', serif; /* Font chữ có chân trang trọng */
+            line-height: 2.1; /* Khoảng cách dòng thưa giúp đọc dài không mỏi mắt */
+            font-size: 1.05rem;
+            color: #2c3e50;
+            background: #fdfdfd;
+            background-image: radial-gradient(#e5e5e5 0.5px, transparent 0.5px); /* Hiệu ứng giấy mỹ thuật */
+            background-size: 20px 20px;
+            text-align: justify;
+        }
+
+        /* Hiệu ứng Chữ cái đầu dòng to (Drop Cap) như tạp chí chuyên nghiệp */
+        .titan-card-body p:first-of-type::first-letter {
+            font-family: 'Playfair Display', serif;
+            float: left;
+            font-size: 4rem;
+            line-height: 3.5rem;
+            padding-right: 12px;
+            color: #d35400; /* Màu nhấn thương hiệu */
+            font-weight: 700;
+        }
+
+        /* Định dạng trích dẫn (Blockquote) cho các câu nói tâm đắc */
+        .titan-card-body blockquote {
+            border-left: 4px solid #FFD700;
+            padding: 15px 25px;
+            margin: 30px 0;
+            font-style: italic;
+            background: rgba(255, 215, 0, 0.05);
+            color: #57606f;
+            font-size: 1.1rem;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* Tiêu đề phụ trong bài viết */
+        .titan-card-body strong {
+            display: block;
+            margin-top: 25px;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.25rem;
+            color: #2c3e50;
+        }
+        /* Style cho Tags trong Story */
+        .titan-tag { color: #d35400; font-weight: 700; cursor: pointer; }
+        .titan-tag:hover { text-decoration: underline; }
+
+        /* --- INPUT AREA --- */
+        .input-area { padding: 20px 30px; display: flex; gap: 15px; align-items: center; border-top: 1px solid var(--glass-border); }
+        .chat-input {
+            flex-grow: 1; border: 2px solid var(--glass-border); background: rgba(255,255,255,0.4);
+            border-radius: 30px; padding: 15px 25px; color: var(--text-color); outline: none; transition: 0.3s;
+        }
+        .chat-input:focus { border-color: var(--primary); background: #fff; }
         .btn-send {
             width: 55px; height: 55px; border-radius: 50%; border: none;
-            background: var(--primary); color: white; font-size: 1.2rem; cursor: pointer; transition: 0.2s; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            background: var(--primary); color: white; font-size: 1.2rem; cursor: pointer; 
+            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .btn-send:hover { transform: scale(1.1); }
+        .btn-send:disabled { background: #ccc; transform: none; }
 
-        /* --- [NEW] WANDERING PET --- */
-        #wandering-pet {
-            position: fixed; width: 150px; height: 150px; z-index: 9999;
-            cursor: pointer; display: none; transition: transform 0.3s;
-            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
+        /* --- UTILS --- */
+        .theme-btn {
+            width: 100%; padding: 12px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.2);
+            border-radius: 12px; color: var(--text-color); cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600;
         }
-        #wandering-pet:hover { transform: scale(1.2) rotate(10deg); }
-        #wandering-pet .pet-speech {
-            position: absolute; top: -40px; left: 50%; transform: translateX(-50%);
-            background: white; padding: 5px 12px; border-radius: 12px;
-            font-size: 0.8rem; font-weight: bold; color: var(--primary);
-            white-space: nowrap; opacity: 0; transition: opacity 0.3s; pointer-events: none;
-        }
-        #wandering-pet:hover .pet-speech { opacity: 1; top: -50px; }
+        .theme-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        
+        #wandering-pet { position: fixed; width: 120px; z-index: 999; cursor: pointer; display: none; }
+        [x-cloak] { display: none !important; }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
-        @keyframes zoomIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @media (max-width: 1200px) { .side-panel { display: none; } .chat-wrapper { width: 100%; max-width: 100%; } }
+        
     </style>
 </head>
-<body>
 
-    <div class="bg-image" id="bg-image"></div>
-    <div class="bg-overlay"></div>
+<body x-data="chatApp()" x-init="initApp()">
+
+    <div class="bg-image" :style="`background-image: url('https://picsum.photos/1920/1080?random=${bgRandom}')`"></div>
 
     <div class="main-layout">
         
-        <div class="side-panel">
+        <div class="side-panel d-none d-xl-flex">
             <div class="glass-card">
                 <h5 class="fw-bold mb-3"><i class="fas fa-bolt text-warning me-2"></i>Truy cập nhanh</h5>
-                <button class="suggestion-btn" onclick="setInput('Giá mã 6205 cho khách Kraft?')"><i class="fas fa-tag text-primary"></i> Tra giá 6205 Kraft</button>
-                <button class="suggestion-btn" onclick="setInput('Tồn kho mã 22224 K C3 NSK')"><i class="fas fa-cubes text-danger"></i> Tồn 22224 K C3 NSK</button>
-                <button class="suggestion-btn" onclick="setInput('Đơn hàng Tanamaz giao chưa?')"><i class="fas fa-shipping-fast text-success"></i> Check giao hàng Tanamaz</button>
-                <button class="suggestion-btn" onclick="setInput('Titan có thể giúp được gì?')"><i class="fas fa-tasks text-info"></i> Titan có thể giúp gì</button>
+                <template x-for="action in quickActions">
+                    <button class="theme-btn mb-2" style="justify-content: flex-start; text-align: left;" 
+                            @click="setInput(action.text)">
+                        <i :class="action.icon" class="me-2"></i> <span x-text="action.label"></span>
+                    </button>
+                </template>
             </div>
-            
+
             <div class="glass-card">
-                <h6 class="fw-bold opacity-75 text-center mb-3">Giao diện (Themes)</h6>
-                <div class="theme-selector-grid">
-                    {% macro theme_card(code, icon, name, display_name) %}
-                        {% set is_unlocked = (code in user_context.unlocked_themes) or (user_context.role == 'ADMIN') %}
-                        {% set is_active = (user_context.theme == code) %}
-                        <button class="theme-card-btn {{ 'active' if is_active else '' }}" 
-                                onclick="{% if is_unlocked %}setTheme('{{ code }}'){% else %}alert('Cần mở khóa Theme {{ display_name }} trong Titan Store!'){% endif %}" 
-                                title="{{ display_name }} {{ '(Đã khóa)' if not is_unlocked else '' }}"
-                                {{ 'disabled' if not is_unlocked else '' }}>
-                            {% if not is_unlocked %}<div class="lock-overlay"><i class="fas fa-lock"></i></div>{% endif %}
-                            <i class="fas {{ icon }} theme-icon"></i><span>{{ display_name }}</span>
-                        </button>
-                    {% endmacro %}
-                    {{ theme_card('light', 'fa-sun', 'light', 'Business') }}
-                    {{ theme_card('dark', 'fa-moon', 'dark', 'Night Owl') }}
-                    {{ theme_card('fantasy', 'fa-dragon', 'fantasy', 'Sci-Fi') }}
-                    {{ theme_card('adorable', 'fa-heart', 'adorable', 'Gen Z') }}
+                <h6 class="fw-bold text-center mb-3 opacity-75">Giao diện</h6>
+                <div class="d-grid gap-2 grid-cols-2" style="grid-template-columns: 1fr 1fr; display: grid;">
+                    <button class="theme-btn" :class="{ 'active': theme === 'light' }" @click="setTheme('light')"><i class="fas fa-sun"></i> Business</button>
+                    <button class="theme-btn" :class="{ 'active': theme === 'dark' }" @click="setTheme('dark')"><i class="fas fa-moon"></i> Dark</button>
+                    <button class="theme-btn" :class="{ 'active': theme === 'adorable' }" @click="setTheme('adorable')"><i class="fas fa-heart"></i> Gen Z</button>
+                    <button class="theme-btn" :class="{ 'active': theme === 'fantasy' }" @click="setTheme('fantasy')"><i class="fas fa-dragon"></i> Sci-Fi</button>
                 </div>
             </div>
         </div>
 
         <div class="chat-wrapper">
-            <div class="chat-header">
-                <div class="avatar p-1">
-                    <lottie-player id="header-pet-lottie" background="transparent" speed="1" style="width: 100%; height: 100%;" loop autoplay></lottie-player>
+            <div class="d-flex align-items-center p-3 border-bottom" style="background: rgba(255,255,255,0.3)">
+                <div class="avatar p-1 me-3">
+                    <lottie-player :src="petUrl" background="transparent" speed="1" loop autoplay></lottie-player>
                 </div>
                 <div>
-                    <h4 class="m-0 fw-bold">Titan AI Assistant</h4>
-                    <span class="badge bg-success bg-opacity-75"><i class="fas fa-circle fa-xs me-1"></i>Online</span>
+                    <h5 class="m-0 fw-bold">Titan AI Assistant</h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-success bg-opacity-75">Online</span>
+                        <small class="opacity-75" x-text="statusText"></small>
+                    </div>
                 </div>
-                <div class="ms-auto">
-                    <button onclick="window.close()" class="btn btn-sm btn-light bg-transparent border-0" title="Đóng"><i class="fas fa-times fs-4"></i></button>
-                </div>
+                <button class="btn btn-sm ms-auto text-secondary" onclick="window.close()"><i class="fas fa-times fs-4"></i></button>
             </div>
 
-            <div class="chat-messages" id="chat-box"></div>
-            
-            <div id="typing" class="px-5 pb-2" style="display:none; color: var(--primary); font-style: italic;">
-                <i class="fas fa-pen-nib fa-bounce me-2"></i>Titan đang soạn tin...
+            <div class="chat-messages" id="chat-box">
+                <template x-for="msg in messages" :key="msg.id">
+                    <div class="message" :class="msg.sender">
+                        
+                        <template x-if="msg.sender === 'bot'">
+                            <div class="avatar p-1">
+                                <lottie-player :src="petUrl" speed="1" style="width:100%;height:100%" loop autoplay></lottie-player>
+                            </div>
+                        </template>
+
+                        <div class="bubble">
+                            <div x-html="renderMessage(msg.text)"></div>
+                            <small class="opacity-50 d-block text-end mt-1" style="font-size: 0.7rem" x-text="msg.time"></small>
+                        </div>
+
+                        <template x-if="msg.sender === 'user'">
+                            <div class="avatar">
+                                <img src="{{ user_context.stats.AvatarUrl if user_context.stats and user_context.stats.AvatarUrl else 'https://cdn-icons-png.flaticon.com/512/149/149071.png' }}" 
+                                     style="width:100%;height:100%;object-fit:cover">
+                            </div>
+                        </template>
+
+                    </div>
+                </template>
+
+                <div x-show="isLoading" class="message bot" x-transition>
+                    <div class="avatar p-1">
+                        <lottie-player :src="petUrl" speed="1" style="width:100%;height:100%" loop autoplay></lottie-player>
+                    </div>
+                    <div class="bubble text-muted fst-italic">
+                        <i class="fas fa-pen-nib fa-bounce me-2"></i>Titan đang soạn tin...
+                    </div>
+                </div>
             </div>
 
             <div class="input-area">
-                <input type="text" id="user-input" class="chat-input" placeholder="Hỏi Titan bất cứ điều gì..." autofocus>
-                <button class="btn-send" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+                <input type="text" class="chat-input" placeholder="Hỏi Titan bất cứ điều gì..." 
+                       x-model="userInput" @keydown.enter="sendMessage()" autofocus>
+                <button class="btn-send" @click="sendMessage()" :disabled="isLoading || !userInput.trim()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
             </div>
         </div>
 
-        <div class="side-panel">
-            <div class="glass-card text-center main-profile-card">
-                <div class="profile-avatar-container" style="position: relative;">
-                    {% if user_context.stats and user_context.stats.AvatarFrame %}
-                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(1.6); width: 100%; height: 100%; z-index: 2; pointer-events: none;">
-                            <lottie-player 
-                                src="{{ url_for('static', filename='assets/json/' + user_context.stats.AvatarFrame + '.json') }}" 
-                                background="transparent" speed="1" loop autoplay>
-                            </lottie-player>
-                        </div>
-                    {% endif %}
-
-                    {% if user_context.stats and user_context.stats.AvatarUrl %}
-                        <img src="{{ user_context.stats.AvatarUrl }}" class="profile-avatar-img" alt="Avatar" style="z-index: 1; position: relative;">
-                    {% else %}
-                        <i class="fas fa-user-astronaut default-avatar-icon" style="z-index: 1;"></i>
-                    {% endif %}
+        <div class="side-panel d-none d-xxl-flex">
+            <div class="glass-card text-center">
+                <div class="mx-auto mb-3" style="width: 100px; height: 100px; position: relative;">
+                    <img src="{{ user_context.stats.AvatarUrl if user_context.stats and user_context.stats.AvatarUrl else 'https://cdn-icons-png.flaticon.com/512/149/149071.png' }}" 
+                         class="rounded-circle border border-3 border-primary shadow" style="width:100%;height:100%;object-fit:cover">
                 </div>
-                <h5 class="fw-bold mb-1">{{ user_context.shortname or 'Sếp' }}</h5>
-                <span class="badge bg-warning text-dark mb-3">LV.{{ user_context.stats.Level }}: {{ user_context.title }}</span>
-                <div class="progress mb-2" style="height: 8px; background: rgba(0,0,0,0.1);">
-                    {% set xp = user_context.stats.CurrentXP | default(0) %}
-                    {% set next_xp = user_context.stats.next_level_xp | default(1000) %}
-                    {% set pct = (xp / next_xp * 100) if next_xp > 0 else 0 %}
-                    <div class="progress-bar bg-warning" style="width: {{ pct }}%"></div>
+                <h5 class="fw-bold">{{ user_context.shortname or 'Sếp' }}</h5>
+                <span class="badge bg-warning text-dark mb-3">LV.{{ user_context.stats.Level }}</span>
+                
+                <div class="d-flex justify-content-between px-3 mt-3 border-top pt-3">
+                    <span class="text-muted">Tin nhắn</span>
+                    <strong x-text="messages.length"></strong>
                 </div>
-                <small class="opacity-75">{{ "{:,.0f}".format(xp) }} / {{ "{:,.0f}".format(next_xp) }} XP</small>
-            </div>
-
-            <div class="glass-card">
-                <h6 class="fw-bold border-bottom pb-2 mb-3">Thống kê phiên này</h6>
-                <div class="d-flex justify-content-between mb-2"><span><i class="fas fa-comment-dots me-2 text-primary"></i>Tin nhắn:</span><strong><span id="msg-count">0</span></strong></div>
-                <div class="d-flex justify-content-between"><span><i class="fas fa-clock me-2 text-success"></i>Thời gian:</span><strong><span id="session-time">00:00</span></strong></div>
             </div>
         </div>
+
     </div>
 
-    <div id="wandering-pet" onclick="petInteraction(this)">
-        <div class="pet-speech">Sếp ơi làm việc đi! 👋</div>
-        <lottie-player id="wandering-lottie" background="transparent" speed="1" style="width: 100%; height: 100%;" loop autoplay></lottie-player>
+    <div id="wandering-pet" x-show="showPet" x-transition.duration.500ms @click="petInteract()">
+        <lottie-player :src="petUrl" speed="1" style="width:100%;height:100%" loop autoplay></lottie-player>
     </div>
 
-    {% set current_pet = user_context.stats.EquippedPet if user_context.stats and user_context.stats.EquippedPet else 'fox' %}
     <script>
-        // Đường dẫn file JSON của Pet đang trang bị
-        const CURRENT_PET_FILE = "{{ url_for('static', filename='assets/json/') }}" + "{{ current_pet }}.json";
-        const USER_AVATAR_URL = "{{ user_context.stats.AvatarUrl if user_context.stats and user_context.stats.AvatarUrl else '' }}";
-    </script>
+        function chatApp() {
+            return {
+                theme: localStorage.getItem('titan_theme') || 'light',
+                messages: [],
+                userInput: '',
+                isLoading: false,
+                bgRandom: new Date().getTime(),
+                statusText: 'Sẵn sàng',
+                showPet: false,
+                petUrl: "{{ url_for('static', filename='assets/json/') }}" + "{{ user_context.stats.EquippedPet if user_context.stats and user_context.stats.EquippedPet else 'fox' }}" + ".json",
+                
+                quickActions: [
+                    { text: 'Giá mã 6205 cho khách Kraft?', label: 'Tra giá 6205 Kraft', icon: 'fas fa-tag text-primary' },
+                    { text: 'Đơn hàng Tanamaz giao chưa?', label: 'Check giao hàng Tanamaz', icon: 'fas fa-shipping-fast text-success' },
+                    { text: 'Kể về Sếp Đông chủ đề Lãnh đạo', label: 'Hồ sơ Titan: Sếp Đông', icon: 'fas fa-book-open text-warning' }
+                ],
 
-    <script>
-        // --- 1. SETUP UI & THEME ---
-        const savedTheme = localStorage.getItem('titan_theme') || 'light';
-        setTheme(savedTheme);
-        const bg = document.getElementById('bg-image');
-        bg.style.backgroundImage = `url('https://picsum.photos/1920/1080?random=${new Date().getTime()}')`;
+                initApp() {
+                    this.setTheme(this.theme);
+                    // Welcome message
+                    setTimeout(() => {
+                        this.addMsg('bot', "Chào Sếp! Em đã sẵn sàng nhận lệnh. Hôm nay Sếp cần kiểm tra gì không ạ? 🦊");
+                    }, 500);
+                    // Start wandering pet loop
+                    this.schedulePet();
+                },
 
-        function setTheme(theme) {
-            document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('titan_theme', theme);
-        }
+                setTheme(val) {
+                    this.theme = val;
+                    document.documentElement.setAttribute('data-theme', val);
+                    localStorage.setItem('titan_theme', val);
+                },
 
-        function setInput(text) {
-            const input = document.getElementById('user-input');
-            input.value = text;
-            input.focus();
-        }
+                setInput(text) {
+                    this.userInput = text;
+                },
 
-        // --- 2. CHAT LOGIC ---
-        let msgCount = 0;
-        let seconds = 0;
-        
-        setInterval(() => {
-            seconds++;
-            const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
-            const secs = (seconds % 60).toString().padStart(2, '0');
-            document.getElementById('session-time').innerText = `${mins}:${secs}`;
-        }, 1000);
+                addMsg(sender, text) {
+                    this.messages.push({
+                        id: Date.now(),
+                        sender: sender,
+                        text: text,
+                        time: new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'})
+                    });
+                    this.$nextTick(() => {
+                        const box = document.getElementById('chat-box');
+                        box.scrollTop = box.scrollHeight;
+                    });
+                },
 
-        $(document).ready(() => {
-            // Load Pet vào Header ngay khi mở trang
-            const headerLottie = document.getElementById('header-pet-lottie');
-            if(headerLottie) headerLottie.load(CURRENT_PET_FILE);
+                renderMessage(rawText) {
+                    // Nếu text chứa HTML card (bắt đầu bằng <div class="titan-card...), trả về luôn
+                    if (rawText.trim().startsWith('<div class="titan-card')) {
+                        return rawText;
+                    }
+                    // Ngược lại parse Markdown
+                    return marked.parse(rawText);
+                },
 
-            // Bắt đầu đếm ngược Pet đi lạc
-            scheduleWanderingPet();
+                async sendMessage() {
+                    const text = this.userInput.trim();
+                    if (!text) return;
+                    
+                    this.addMsg('user', text);
+                    this.userInput = '';
+                    this.isLoading = true;
+                    this.statusText = 'Đang suy nghĩ...';
 
-            setTimeout(() => {
-                addMessage("Chào Sếp! Em đã sẵn sàng nhận lệnh. Hôm nay Sếp cần kiểm tra gì không ạ?", 'bot');
-            }, 500);
-        });
+                    try {
+                        const res = await fetch('/api/chatbot_query', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ message: text, theme: this.theme })
+                        });
+                        const data = await res.json();
+                        
+                        this.addMsg('bot', data.response);
+                    } catch (e) {
+                        this.addMsg('bot', "❌ Mất kết nối server. Sếp thử lại nhé!");
+                    } finally {
+                        this.isLoading = false;
+                        this.statusText = 'Online';
+                    }
+                },
 
-        $('#user-input').on('keypress', function (e) { if(e.which === 13) sendMessage(); });
-
-        function addMessage(content, sender) {
-            msgCount++;
-            document.getElementById('msg-count').innerText = Math.floor(msgCount/2);
-            
-            let avatarHtml = '';
-            
-            if (sender === 'bot') {
-                avatarHtml = `<div class="avatar p-1"><lottie-player src="${CURRENT_PET_FILE}" speed="1" style="width: 100%; height: 100%;" loop autoplay></lottie-player></div>`;
-            } else {
-                // [FIX] Nếu User có Avatar ảnh -> Hiển thị ảnh. Không có -> Hiển thị icon.
-                if (USER_AVATAR_URL) {
-                    avatarHtml = `<div class="avatar"><img src="${USER_AVATAR_URL}" style="width:100%; height:100%; object-fit:cover;"></div>`;
-                } else {
-                    avatarHtml = `<div class="avatar d-flex align-items-center justify-content-center bg-light"><i class="fas fa-user text-secondary"></i></div>`;
+                // Pet Logic
+                schedulePet() {
+                    const randomTime = Math.random() * (300000 - 60000) + 60000;
+                    setTimeout(() => {
+                        this.showPet = true;
+                        const petEl = document.getElementById('wandering-pet');
+                        petEl.style.left = Math.random() * (window.innerWidth - 150) + 'px';
+                        petEl.style.bottom = '-150px';
+                        petEl.style.display = 'block';
+                        
+                        // Simple animation logic would go here or use CSS classes
+                        setTimeout(() => this.showPet = false, 15000);
+                        this.schedulePet();
+                    }, randomTime);
+                },
+                
+                petInteract() {
+                    this.showPet = false;
                 }
             }
-            
-            const parsedContent = marked.parse(content);
-            const html = `<div class="message ${sender}">${avatarHtml}<div class="bubble shadow-sm">${parsedContent}</div></div>`;
-            $('#chat-box').append(html);
-            document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
-        }
-
-        function sendMessage() {
-            const input = $('#user-input');
-            const message = input.val().trim();
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            if (!message) return;
-            addMessage(message, 'user');
-            input.val('');
-            $('#typing').slideDown();
-            fetch('/api/chatbot_query', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ message: message, theme: currentTheme })
-            })
-            .then(r => r.json())
-            .then(data => {
-                $('#typing').slideUp();
-                addMessage(data.response, 'bot');
-            })
-            .catch(e => {
-                $('#typing').slideUp();
-                addMessage("❌ Mất kết nối server.", 'bot');
-            });
-        }
-
-        // --- 3. [NEW] LOGIC PET ĐI LẠC ---
-        function scheduleWanderingPet() {
-            // Random từ 1-5 phút (60000ms - 300000ms)
-            const randomTime = Math.floor(Math.random() * (300000 - 60000 + 1)) + 60000;
-            // console.log("Pet sẽ đi lạc sau:", randomTime/1000, "giây");
-            setTimeout(() => {
-                showWanderingPet();
-                scheduleWanderingPet();
-            }, randomTime);
-        }
-
-        function showWanderingPet() {
-            const pet = document.getElementById('wandering-pet');
-            const lottie = document.getElementById('wandering-lottie');
-            lottie.load(CURRENT_PET_FILE); // Load đúng Pet
-
-            // Random vị trí dưới cùng (bottom 30%)
-            const randomLeft = Math.random() * (window.innerWidth - 150);
-            const randomBottom = Math.random() * (window.innerHeight * 0.3);
-
-            pet.style.left = `${randomLeft}px`;
-            pet.style.bottom = `${randomBottom}px`;
-            pet.style.display = 'block';
-
-            // Animation Slide Up
-            pet.animate([
-                { transform: 'translateY(100px)', opacity: 0 },
-                { transform: 'translateY(0)', opacity: 1 }
-            ], { duration: 500, easing: 'ease-out' });
-
-            // Tự ẩn sau 15s
-            setTimeout(() => { $(pet).fadeOut(); }, 15000);
-        }
-
-        function petInteraction(el) {
-            // Hiệu ứng Poof khi click
-            el.animate([
-                { transform: 'scale(1)' },
-                { transform: 'scale(1.3)' },
-                { transform: 'scale(0)', opacity: 0 }
-            ], { duration: 400 });
-            setTimeout(() => { el.style.display = 'none'; }, 350);
         }
     </script>
 </body>

@@ -1,0 +1,37 @@
+{% for item in items %}
+<tr class="row-detail" x-show="expanded" x-transition.opacity style="display: none;">
+    <td></td>
+    
+    <td class="ps-4 text-truncate" style="max-width: 0;">
+        <div class="d-flex align-items-center">
+            <div style="width: 24px; height: 24px; background: #EEE; color: #777; border-radius: 50%; 
+                        display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: bold; margin-right: 10px; flex-shrink: 0;">
+                {{ item.InventoryID[:1] }}
+            </div>
+            <div style="overflow: hidden;">
+                <div class="fw-bold text-dark small">{{ item.InventoryID }}</div>
+                <div class="text-muted small text-truncate" title="{{ item.InventoryName }}">{{ item.InventoryName }}</div>
+            </div>
+        </div>
+    </td>
+    
+    <td class="text-center">
+        <span class="badge bg-white border text-secondary rounded-pill px-2">{{ item.StockClass }}</span>
+    </td>
+    
+    <td class="text-end fw-bold text-dark small">{{ item.TotalCurrentValue | format_tr }}</td>
+    
+    <td class="text-end text-muted small">{{ item.Range_0_180_V | format_tr }}</td>
+    <td class="text-end text-muted small">{{ item.Range_181_360_V | format_tr }}</td>
+    <td class="text-end text-muted small">{{ item.Range_361_540_V | format_tr }}</td>
+    <td class="text-end text-muted small">{{ item.Range_541_720_V | format_tr }}</td>
+    
+    <td class="text-end small {{ 'text-danger fw-bold' if item.Range_Over_720_V > 0 else 'text-muted opacity-25' }}">
+        {{ item.Range_Over_720_V | format_tr }}
+    </td>
+    
+    <td class="text-end small {{ 'fw-bold text-purple' if item.Risk_CLC_Value > 0 else 'text-muted opacity-25' }}">
+        {{ item.Risk_CLC_Value | format_tr }}
+    </td>
+</tr>
+{% endfor %}

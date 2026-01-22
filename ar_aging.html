@@ -27,7 +27,7 @@
     .kpi-value { color: var(--text-dark); font-size: 1.6rem; font-weight: 700; line-height: 1; }
     .text-danger-custom { color: var(--danger); }
     
-    /* TABLE STYLES */
+    /* TABLE STYLES - Optimized for HTMX */
     .table-aging { width: 100%; border-collapse: separate; border-spacing: 0; }
     
     .table-aging th { 
@@ -61,10 +61,10 @@
     .customer-link { color: var(--primary); text-decoration: none; font-weight: 600; }
     .customer-link:hover { text-decoration: underline; color: var(--primary-dark); }
 
-    /* Theme override for datatables */
-    .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_info { color: var(--secondary) !important; padding: 10px; }
-    .dataTables_wrapper .dataTables_paginate .paginate_button { color: var(--secondary) !important; }
-    .dataTables_wrapper .dataTables_filter { display: none; }
+    /* Loading Indicator Overlay */
+    .htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
+    .htmx-request .htmx-indicator { opacity: 1; }
+    .htmx-request.htmx-indicator { opacity: 1; }
 </style>
 {% endblock %}
 
@@ -106,17 +106,32 @@
         </div>
     </div>
     
-    <div class="main-card mb-4">
+    <div class="main-card mb-4" x-data>
         <div class="card-body-custom" style="padding: 20px;">
-            <form method="POST" action="{{ url_for('kpi_bp.ar_aging_dashboard') }}" class="row g-3 align-items-end">
+            <form hx-post="{{ url_for('kpi_bp.ar_aging_dashboard') }}" 
+                  hx-target="#ar-table-container"
+                  hx-select="#ar-table-container" 
+                  hx-swap="outerHTML"
+                  class="row g-3 align-items-end">
+                
                 <div class="col-md-4">
                     <label for="customer_name" class="form-label">Lọc theo Tên Khách hàng</label>
-                    <input type="text" name="customer_name" id="customer_name" class="form-control" 
-                            value="{{ customer_name_filter | default('') }}" placeholder="Nhập tên KH (ví dụ: Vina Kraft)...">
+                    <div class="input-group">
+                        <span class="input-group-text border-0 bg-transparent ps-3" style="position: absolute; z-index: 10;"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" name="customer_name" id="customer_name" class="form-control ps-5" 
+                            value="{{ customer_name_filter | default('') }}" 
+                            placeholder="Nhập tên KH (ví dụ: Vina Kraft)..."
+                            hx-post="{{ url_for('kpi_bp.ar_aging_dashboard') }}" 
+                            hx-trigger="keyup changed delay:500ms" 
+                            hx-target="#ar-table-container"
+                            hx-select="#ar-table-container" 
+                            hx-swap="outerHTML">
+                    </div>
                 </div>
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-search me-2"></i> Lọc
+                        <i class="fas fa-filter me-2"></i> Lọc ngay
+                        <span class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status"></span>
                     </button>
                 </div>
             </form>
@@ -124,8 +139,8 @@
     </div>
 
     <div class="main-card">
-        <div class="card-body-custom p-0">
-            <div class="table-responsive">
+        <div class="card-body-custom p-0" id="ar-table-container">
+            <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
                 <table id="ar-aging-table" class="table table-hover mb-0 table-aging">
                     <thead>
                         <tr>
@@ -136,10 +151,10 @@
                             <th class="text-end">Tổng Nợ</th>
                             <th class="text-end">Quá Hạn</th>
                             <th class="text-end">Trong hạn</th>
-                            <th class="text-end">1-30 ngày</th>
-                            <th class="text-end">31-90 ngày</th>
-                            <th class="text-end">91-180 ngày</th>
-                            <th class="text-end">> 180 ngày</th>
+                            <th class="text-end text-muted small">1-30 ngày</th>
+                            <th class="text-end text-muted small">31-90 ngày</th>
+                            <th class="text-end text-muted small">91-180 ngày</th>
+                            <th class="text-end text-danger small">> 180 ngày</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -155,32 +170,35 @@
                             
                             <td class="text-center small text-muted">{{ row.ReDueDays }}</td>
                             
-                            <td class="text-end fw-bold" data-order="{{ row.TotalDebt }}">
+                            <td class="text-end fw-bold">
                                 {{ row.TotalDebt | format_tr }}
                             </td>
-                            <td class="text-end debt-overdue" data-order="{{ row.TotalOverdueDebt }}">
+                            <td class="text-end debt-overdue">
                                 {{ row.TotalOverdueDebt | format_tr }}
                             </td>
                             
-                            <td class="text-end text-success" data-order="{{ row.Debt_Current }}">
+                            <td class="text-end text-success">
                                 {{ row.Debt_Current | format_tr }}
                             </td>
-                            <td class="text-end text-secondary" data-order="{{ row.Debt_Range_1_30 }}">
+                            <td class="text-end text-secondary small">
                                 {{ row.Debt_Range_1_30 | format_tr }}
                             </td>
-                            <td class="text-end text-secondary" data-order="{{ row.Debt_Range_31_90 }}">
+                            <td class="text-end text-secondary small">
                                 {{ row.Debt_Range_31_90 | format_tr }}
                             </td>
-                            <td class="text-end debt-warn-91" data-order="{{ row.Debt_Range_91_180 }}">
+                            <td class="text-end debt-warn-91">
                                 {{ row.Debt_Range_91_180 | format_tr }}
                             </td>
-                            <td class="text-end debt-over-180" data-order="{{ row.Debt_Over_180 }}">
+                            <td class="text-end debt-over-180">
                                 {{ row.Debt_Over_180 | format_tr }}
                             </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="11" class="text-center text-muted py-4">Không tìm thấy dữ liệu công nợ theo tiêu chí lọc.</td>
+                            <td colspan="11" class="text-center text-muted py-5">
+                                <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i><br>
+                                Không tìm thấy dữ liệu công nợ theo tiêu chí lọc.
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -190,25 +208,4 @@
     </div>
 {% endblock %}
 
-{% block scripts %}
-    <script>
-        $(document).ready(function() {
-            $('#ar-aging-table').DataTable({
-                "paging": true,
-                "pageLength": 25,
-                "lengthChange": true,
-                "searching": false, 
-                "ordering": true,
-                "info": true,
-                "order": [[5, 'desc'], [4, 'desc']], // Sắp xếp theo Quá Hạn
-                "language": {
-                    "lengthMenu": "Hiển thị _MENU_ mục",
-                    "zeroRecords": "Không tìm thấy dữ liệu.",
-                    "info": "Hiển thị trang _PAGE_ / _PAGES_",
-                    "infoEmpty": "Không có dữ liệu",
-                    "paginate": { "next": "Sau", "previous": "Trước" }
-                }
-            });
-        });
-    </script>
-{% endblock %}
+{# Xóa block scripts cũ dùng jQuery DataTables #}

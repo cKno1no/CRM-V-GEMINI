@@ -122,8 +122,12 @@ def quick_approval_form():
         user_code, ninety_days_ago, today
     )
     
+    # [FIX] Thêm tham số user_role vào đây
     orders = order_approval_service.get_orders_for_approval(
-        user_code, ninety_days_ago, today
+        user_code, 
+        user_role, # <--- BỔ SUNG THAM SỐ NÀY
+        ninety_days_ago, 
+        today
     )
     
     # LOG VIEW_QUICK_APPROVAL (BỔ SUNG)

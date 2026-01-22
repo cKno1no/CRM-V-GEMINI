@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -8,401 +8,118 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.css"/>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Quicksand:wght@500;600;700&family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
     
+    <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+
     <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
     {% block extra_css %}{% endblock %}
 
     <style>
-        /* ========================================= */
-        /* 1. DESIGN SYSTEM & THEMES */
-        /* ========================================= */
-        
-        /* --- DEFAULT: LIGHT MODE --- */
+        /* CSS Variables & Global Styles */
         :root {
-            --primary: #4318FF;
-            --primary-dark: #2A0EBB;
-            --primary-light: #F4F7FE;
-            --secondary: #A3AED0;
-            --text-dark: #2B3674;
-            --danger: #E31A1A;
-            --success: #05CD99;
-            --warning: #FFB547;
-            --info: #33CCFF;
-            
-            --bg-color: #F4F7FE;
-            --card-bg: #FFFFFF;
-            --input-bg: #F4F7FE;
-            --border-color: #E0E5F2;
-            
-            --card-radius: 20px;
-            --shadow-sm: 0 4px 10px rgba(112, 144, 176, 0.08);
+            --primary: #4318FF; --primary-dark: #2A0EBB; --primary-light: #F4F7FE;
+            --secondary: #A3AED0; --text-dark: #2B3674; --danger: #E31A1A;
+            --success: #05CD99; --warning: #FFB547; --info: #33CCFF;
+            --bg-color: #F4F7FE; --card-bg: #FFFFFF; --input-bg: #F4F7FE; --border-color: #E0E5F2;
+            --card-radius: 20px; --shadow-sm: 0 4px 10px rgba(112, 144, 176, 0.08);
             --shadow-md: 0px 18px 40px rgba(112, 144, 176, 0.12);
-            --bg-image: none;
-            --font-main: 'Inter', sans-serif;
-            --font-header: 'Inter', sans-serif;
+            --bg-image: none; --font-main: 'Inter', sans-serif; --font-header: 'Inter', sans-serif;
         }
 
-        /* --- DARK MODE --- */
         [data-theme="dark"] {
-            --primary: #7551FF;
-            --primary-dark: #5A3BC4;
-            --primary-light: #1B254B;
-            --secondary: #A3AED0;
-            --text-dark: #E3E8EF;
-            --danger: #FF5B5B;
-            
-            --bg-color: #0B1437;
-            --card-bg: #111C44;
-            --input-bg: #1B254B;
-            --border-color: #2B3674;
-            
-            --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.2);
-            --shadow-md: 0px 18px 40px rgba(0, 0, 0, 0.4);
-            --bg-image: none;
+            --primary: #7551FF; --primary-dark: #5A3BC4; --primary-light: #1B254B;
+            --secondary: #A3AED0; --text-dark: #E3E8EF; --danger: #FF5B5B;
+            --bg-color: #0B1437; --card-bg: #111C44; --input-bg: #1B254B; --border-color: #2B3674;
         }
-
-        /* --- FANTASY MODE --- */
         [data-theme="fantasy"] {
-            --primary: #E91E63;
-            --primary-dark: #C2185B;
-            --primary-light: rgba(255, 255, 255, 0.2);
-            --text-dark: #FFFFFF;
-            --secondary: #E0E0E0;
-            
-            --bg-color: #2d1b4e;
-            --card-bg: rgba(255, 255, 255, 0.15); /* Glassmorphism */
-            --input-bg: rgba(0, 0, 0, 0.3);
-            --border-color: rgba(255, 255, 255, 0.2);
-            
+            --primary: #E91E63; --primary-dark: #C2185B; --primary-light: rgba(255, 255, 255, 0.2);
+            --text-dark: #FFFFFF; --secondary: #E0E0E0; --bg-color: #2d1b4e;
+            --card-bg: rgba(255, 255, 255, 0.15); --input-bg: rgba(0, 0, 0, 0.3); --border-color: rgba(255, 255, 255, 0.2);
             --bg-image: url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5980?auto=format&fit=crop&w=1920&q=80');
         }
-
-        /* --- ADORABLE MODE (ROBIN STYLE) --- */
         [data-theme="adorable"] {
-            --primary: #FF6B81;           /* Coral Pink */
-            --primary-dark: #FF4757;
-            --primary-light: #FFECEE;     
-            --secondary: #747D8C;
-            --text-dark: #2F3542;
-            --danger: #FF6348;
-            --success: #2ED573;
-            --warning: #FFA502;
-            --info: #1E90FF;
-
-            --bg-color: #FDF2F5;
-            --card-bg: #FFFFFF;
-            --input-bg: #F8F9FA;
-            --border-color: #F1F2F6;
-            
-            --card-radius: 30px;
-            --shadow-sm: 0 5px 15px rgba(255, 107, 129, 0.15);
-            --shadow-md: 0 15px 35px rgba(255, 107, 129, 0.1);
-            
-            --font-main: 'Quicksand', sans-serif; 
-            --font-header: 'Fredoka', sans-serif;
-            
+            --primary: #FF6B81; --primary-dark: #FF4757; --primary-light: #FFECEE;
+            --secondary: #747D8C; --text-dark: #2F3542; --bg-color: #FDF2F5;
+            --card-bg: #FFFFFF; --input-bg: #F8F9FA; --border-color: #F1F2F6;
+            --font-main: 'Quicksand', sans-serif; --font-header: 'Fredoka', sans-serif;
             --bg-image: radial-gradient(#FFD1D6 15%, transparent 16%), radial-gradient(#FFD1D6 15%, transparent 16%);
         }
 
-        /* ========================================= */
-        /* 2. GLOBAL STYLES */
-        /* ========================================= */
-        body { 
-            font-family: var(--font-main); 
-            background-color: var(--bg-color); 
-            color: var(--text-dark); 
-            -webkit-font-smoothing: antialiased;
-            transition: background-color 0.3s, color 0.3s;
-            min-height: 100vh;
-            
-            background-image: var(--bg-image);
-            background-size: cover;
-            background-attachment: fixed;
-            background-position: center;
-        }
-        
-        /* ADORABLE MODE OVERRIDES */
-        [data-theme="adorable"] body {
-            background-size: 30px 30px; 
-            background-position: 0 0, 15px 15px;
-        }
-        
-        [data-theme="adorable"] .page-title, 
-        [data-theme="adorable"] h1, [data-theme="adorable"] h2, 
-        [data-theme="adorable"] h3, [data-theme="adorable"] h4, 
-        [data-theme="adorable"] .card-header-custom {
-            font-family: var(--font-header);
-            letter-spacing: 0.5px;
-        }
-
-        [data-theme="adorable"] .btn {
-            border-radius: 50px;
-            text-transform: uppercase;
-            font-size: 0.8rem;
-            letter-spacing: 1px;
-            padding: 12px 24px;
-        }
-        
-        [data-theme="adorable"] .main-card {
-            border-top: 5px solid var(--primary);
-        }
-
-        /* Glassmorphism for Fantasy */
-        [data-theme="fantasy"] .main-card, 
-        [data-theme="fantasy"] .card, 
-        [data-theme="fantasy"] .modal-content,
-        [data-theme="fantasy"] .dropdown-menu {
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
+        body { font-family: var(--font-main); background-color: var(--bg-color); color: var(--text-dark); background-image: var(--bg-image); background-size: cover; background-attachment: fixed; min-height: 100vh; transition: background 0.3s, color 0.3s; }
         .container-fluid { max-width: 1600px; padding: 30px 20px; }
-
-        /* Card Style */
-        .main-card {
-            background: var(--card-bg);
-            border-radius: var(--card-radius);
-            box-shadow: var(--shadow-md);
-            border: 1px solid var(--border-color);
-            margin-bottom: 25px;
-            overflow: hidden;
-            transition: background-color 0.3s, border-color 0.3s, transform 0.2s;
-        }
-
-        .card-header-custom {
-            padding: 20px 25px;
-            border-bottom: 1px solid var(--border-color);
-            font-weight: 700;
-            color: var(--text-dark);
-            font-size: 1.1rem;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-
-        .card-body-custom { padding: 25px; }
-
-        /* Form Elements */
-        .form-control, .form-select {
-            border: 1px solid transparent;
-            background-color: var(--input-bg);
-            border-radius: 12px;
-            padding: 12px 15px;
-            font-size: 0.95rem;
-            color: var(--text-dark);
-            transition: all 0.2s;
-        }
-        
-        [data-theme="dark"] .form-control, [data-theme="fantasy"] .form-control,
-        [data-theme="adorable"] .form-control {
-            border: 1px solid var(--border-color);
-        }
-        
-        [data-theme="fantasy"] option { background-color: #2d1b4e; color: white; }
-
-        .form-control:focus, .form-select:focus {
-            background-color: var(--card-bg);
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.2);
-            color: var(--text-dark);
-        }
-        
-        [data-theme="adorable"] .form-control:focus {
-            box-shadow: 0 0 0 3px rgba(255, 107, 129, 0.25);
-        }
-
-        .form-label { font-weight: 600; color: var(--text-dark); font-size: 0.9rem; margin-bottom: 8px; }
-
-        /* Buttons */
-        .btn {
-            border-radius: 14px;
-            font-weight: 600;
-            padding: 10px 20px;
-            transition: transform 0.2s;
-        }
-        .btn:active { transform: scale(0.98); }
-        
-        .btn-primary { background-color: var(--primary); border: none; box-shadow: var(--shadow-sm); }
-        .btn-primary:hover { background-color: var(--primary-dark); }
-        
-        .btn-back { background: var(--card-bg); color: var(--secondary); border: 1px solid var(--border-color); }
-        .btn-back:hover { color: var(--text-dark); border-color: var(--primary); }
-
-        /* Alert/Flash Messages */
-        .alert-custom {
-            border: none;
-            border-radius: 16px;
-            box-shadow: var(--shadow-sm);
-        }
-
-        /* MAILBOX STYLES */
-        .mail-item {
-            padding: 12px 15px;
-            border-bottom: 1px solid var(--border-color);
-            transition: background-color 0.2s;
-        }
-        .mail-item:last-child { border-bottom: none; }
-        .mail-item:hover { background-color: var(--input-bg); }
-        .mail-title { font-weight: 700; color: var(--text-dark); font-size: 0.9rem; }
-        .mail-meta { font-size: 0.8rem; color: var(--secondary); margin-bottom: 5px; }
-        .mail-content { font-size: 0.85rem; color: var(--text-dark); opacity: 0.8; margin-bottom: 8px; }
-
-        /* --- 3. PET AI STYLES (UPDATED) --- */
-        #titan-pet-wrapper {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-            transition: all 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-        }
-
-        .pet-bubble {
-            background: white;
-            border: 2px solid var(--primary);
-            padding: 10px 15px;
-            border-radius: 15px;
-            border-bottom-right-radius: 2px;
-            margin-bottom: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-dark);
-            max-width: 200px;
-            display: none; /* Ẩn mặc định, hiện bằng JS */
-            animation: floatBubble 2s infinite ease-in-out;
-        }
-
-        #titan-pet-container {
-            width: 150px; /* Kích thước chuẩn */
-            height: 150px;
-            cursor: pointer;
-            position: relative;
-            transition: transform 0.2s;
-            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));
-        }
-        
-        #titan-pet-container:hover {
-            transform: scale(1.05);
-        }
-        
-        /* Hiệu ứng rung lắc khi bị từ chối */
-        @keyframes shake {
-            0% { transform: translateX(0); }
-            25% { transform: translateX(-5px) rotate(-5deg); }
-            50% { transform: translateX(5px) rotate(5deg); }
-            75% { transform: translateX(-5px) rotate(-5deg); }
-            100% { transform: translateX(0); }
-        }
-
-        /* Nút Thu nhỏ / Mở rộng */
-        .pet-toggle-btn {
-            position: absolute;
-            top: 0;
-            right: 0;
-            background: rgba(255, 255, 255, 0.6);
-            border: 1px solid var(--border-color);
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            font-size: 12px;
-            color: var(--text-dark);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 10000;
-            backdrop-filter: blur(4px);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            transition: all 0.2s;
-        }
-        .pet-toggle-btn:hover { background: white; color: var(--primary); transform: scale(1.1); }
-
-        /* TRẠNG THÁI THU NHỎ */
-        #titan-pet-wrapper.minimized {
-            bottom: 10px;
-            right: 10px;
-        }
-        #titan-pet-wrapper.minimized #titan-pet-container {
-            width: 60px;
-            height: 60px;
-            opacity: 0.8;
-        }
-        #titan-pet-wrapper.minimized .pet-bubble {
-            display: none !important;
-        }
-        
-        @keyframes floatBubble {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
-        }
-
-        /* --- 4. MOBILE OPTIMIZATION --- */
-        @media (max-width: 768px) {
-            .container-fluid { padding: 15px 10px; }
-            .page-header { flex-direction: column; align-items: flex-start !important; gap: 15px; }
-            .page-title { font-size: 1.5rem !important; }
-            .page-header .d-flex { width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-            .main-card form .row > div { width: 100%; margin-bottom: 10px; }
-            .btn { width: 100%; padding: 12px; font-size: 1rem; }
-            
-            /* Pet mobile nhỏ hơn chút */
-            #titan-pet-container { width: 120px; height: 120px; }
-        }
-
-        /* --- [NEW] LEVEL UP CIRCLE MODAL --- */
-        .round-glow-popup {
-            border-radius: 50% !important; /* Ép thành hình tròn */
-            width: 380px !important;       /* Chiều rộng cố định */
-            height: 380px !important;      /* Chiều cao = Chiều rộng */
-            padding: 0 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            
-            /* Màu nền tỏa tròn từ tâm */
-            background: radial-gradient(circle, #ffffff 30%, #fff8e1 100%) !important;
-            
-            /* Hiệu ứng viền và bóng đổ */
-            border: 4px solid #FFD700 !important;
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.6) !important;
-            
-            /* Animation: Sáng dần và Đập nhẹ */
-            animation: orbGlow 2s infinite alternate ease-in-out;
-            overflow: visible !important;
-        }
-
-        /* Hiệu ứng động: Sáng dần - Tối dần */
-        @keyframes orbGlow {
-            0% { 
-                box-shadow: 0 0 20px rgba(255, 215, 0, 0.5), inset 0 0 20px rgba(255, 215, 0, 0.2); 
-                transform: scale(1);
-                border-color: rgba(255, 215, 0, 0.5);
-            }
-            100% { 
-                box-shadow: 0 0 80px rgba(255, 215, 0, 1), 0 0 30px rgba(255, 140, 0, 0.6), inset 0 0 50px rgba(255, 215, 0, 0.5); 
-                transform: scale(1.02);
-                border-color: #fff;
-            }
-        }
-
-        /* Tinh chỉnh nội dung bên trong cho cân đối */
-        .level-up-content {
-            text-align: center;
-            z-index: 10;
-            padding: 20px;
-        }
+        .main-card { background: var(--card-bg); border-radius: var(--card-radius); box-shadow: var(--shadow-md); border: 1px solid var(--border-color); margin-bottom: 25px; overflow: hidden; }
+        .btn { border-radius: 14px; font-weight: 600; padding: 10px 20px; }
+        .form-control, .form-select { border: 1px solid transparent; background-color: var(--input-bg); border-radius: 12px; color: var(--text-dark); }
+        .form-control:focus { background-color: var(--card-bg); border-color: var(--primary); box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.2); color: var(--text-dark); }
+        .round-glow-popup { border-radius: 50% !important; width: 380px !important; height: 380px !important; padding: 0 !important; background: radial-gradient(circle, #ffffff 30%, #fff8e1 100%) !important; border: 4px solid #FFD700 !important; animation: orbGlow 2s infinite alternate ease-in-out; }
+        @keyframes orbGlow { 0% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.5); transform: scale(1); } 100% { box-shadow: 0 0 80px rgba(255, 215, 0, 1); transform: scale(1.02); } }
+        @media (max-width: 768px) { .container-fluid { padding: 15px 10px; } }
     </style>
+    
+
+    <script>
+        // 1. NHẬN CẤU HÌNH TỪ BACKEND (Python -> JS)
+        // Sử dụng default để tránh lỗi nếu biến chưa được truyền
+        const APP_CONFIG = {
+            DIVISOR: {{ config.DIVISOR_VIEW | default(1000000) }}, 
+            LOCALE: 'vi-VN',
+            CURRENCY_SUFFIX: ' tr',
+            DATE_FMT: 'DD/MM/YYYY' 
+        };
+
+        // 2. BỘ CÔNG CỤ FORMATTER DÙNG CHUNG (GLOBAL)
+        window.TitanUtils = {
+            // Format tiền tệ chuẩn KPI (Chia triệu, thêm đuôi)
+            // Dùng cho AlpineJS: x-text="TitanUtils.formatCurrency(item.value)"
+            formatCurrency: function(val) {
+                if (val === undefined || val === null || val === '') return '0';
+                let num = parseFloat(val);
+                if (isNaN(num)) return '0';
+
+                // Chia cho hằng số (1.000.000)
+                let reducedVal = num / APP_CONFIG.DIVISOR;
+
+                // Format số
+                let formatted = new Intl.NumberFormat(APP_CONFIG.LOCALE, { 
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 1 
+                }).format(reducedVal);
+
+                return formatted + APP_CONFIG.CURRENCY_SUFFIX;
+            },
+
+            // Format số lượng / tiền nguyên bản (Chỉ thêm dấu phẩy)
+            formatNumber: function(val) {
+                if (val === undefined || val === null) return '0';
+                return new Intl.NumberFormat(APP_CONFIG.LOCALE).format(val);
+            },
+
+            // Format ngày tháng (Giả sử input là string YYYY-MM-DD hoặc ISO)
+            formatDate: function(dateStr) {
+                if (!dateStr) return '';
+                try {
+                    const d = new Date(dateStr);
+                    return d.toLocaleDateString(APP_CONFIG.LOCALE); // Ra dd/mm/yyyy
+                } catch (e) { return dateStr; }
+            }
+        };
+        
+        // Alias ngắn gọn để dùng trong Alpine (nếu muốn)
+        window.fmtMoney = window.TitanUtils.formatCurrency;
+        window.fmtNum = window.TitanUtils.formatNumber;
+    </script>
 </head>
-<body>
+<body x-data="globalApp()" x-init="initApp()" :data-theme="theme">
 
     <div class="container-fluid">
         {% block header %}
-        <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div class="page-header d-flex justify-content-between align-items-center mb-4" x-data="mailboxWidget()">
             <div>
                 <h1 class="page-title fw-bold m-0" style="font-size: 1.8rem; color: var(--text-dark);">
                     {% block page_title %}Titan OS{% endblock %}
@@ -413,34 +130,54 @@
             </div>
             
             <div class="d-flex align-items-center gap-2">
-                
                 <div class="dropdown d-inline-block">
                     <button class="btn btn-sm shadow-sm position-relative" type="button" 
                             id="mailboxDropdown" data-bs-toggle="dropdown" aria-expanded="false" 
-                            onclick="loadMailboxData()"
+                            @click="loadMailbox()"
                             style="background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-dark);">
                         <i class="fas fa-envelope fs-6"></i>
-                        <span id="mail-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none border border-light">
-                            0
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light"
+                              x-show="unreadCount > 0"
+                              x-text="unreadCount > 9 ? '9+' : unreadCount"
+                              style="display: none;">
                         </span>
                     </button>
-                    
                     <div class="dropdown-menu dropdown-menu-end shadow border-0 p-0" aria-labelledby="mailboxDropdown" 
                          style="width: 320px; border-radius: 12px; background-color: var(--card-bg); max-height: 500px; overflow-y: auto; z-index: 1050;">
-                        
                         <div class="p-3 border-bottom d-flex justify-content-between align-items-center" style="border-color: var(--border-color) !important;">
                             <h6 class="m-0 fw-bold d-flex align-items-center" style="color: var(--text-dark);">
-                                <i class="fas fa-gift me-2 text-primary"></i>Hòm thư & Quà tặng
+                                <i class="fas fa-gift me-2 text-primary"></i>Hòm thư
                             </h6>
-                            <button class="btn btn-sm btn-link text-muted p-0" onclick="loadMailboxData()" title="Làm mới">
-                                <i class="fas fa-sync-alt"></i>
+                            <button class="btn btn-sm btn-link text-muted p-0" @click.stop="loadMailbox()" title="Làm mới">
+                                <i class="fas fa-sync-alt" :class="{'fa-spin': loading}"></i>
                             </button>
                         </div>
-
                         <div id="mailbox-list">
-                            <div class="text-center py-4 text-muted small">
-                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang tải...
-                            </div>
+                            <div x-show="loading" class="text-center py-4 text-muted small"><span class="spinner-border spinner-border-sm" role="status"></span> Đang tải...</div>
+                            <div x-show="!loading && mails.length === 0" class="text-center text-muted py-4 opacity-50"><i class="fas fa-inbox fa-3x mb-2"></i><p class="small m-0">Hòm thư trống</p></div>
+                            <template x-for="mail in mails" :key="mail.MailID || mail.id">
+                                <div class="p-3 border-bottom position-relative" :class="mail.IsClaimed ? 'bg-light opacity-75' : 'bg-white'">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <h6 class="fw-bold mb-0 text-truncate pe-2" :class="mail.IsClaimed ? 'text-secondary' : 'text-primary'" style="max-width: 200px;">
+                                            <i class="fas" :class="getIcon(mail)"></i> <span x-text="mail.Title || 'Thông báo'"></span>
+                                        </h6>
+                                        <small class="text-muted" style="font-size: 0.7rem;" x-text="formatDate(mail.CreatedTime)"></small>
+                                    </div>
+                                    <div class="text-muted small mb-2" style="font-size: 0.8rem; line-height: 1.4;" x-html="mail.Content"></div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="fw-bold small">
+                                            <span x-show="mail.Total_XP > 0" class="me-2 text-info" x-text="'+' + mail.Total_XP + ' XP'"></span>
+                                            <span x-show="mail.Total_Coins > 0" class="text-warning" x-text="'+' + mail.Total_Coins + ' Coins'"></span>
+                                        </div>
+                                        <div x-show="!mail.IsClaimed">
+                                            <button class="btn btn-sm btn-primary px-3 fw-bold rounded-pill" style="font-size: 0.75rem;" @click="claimReward(mail)" :disabled="mail.processing">
+                                                <i class="fas fa-gift me-1"></i> <span x-text="mail.processing ? '...' : 'Nhận'"></span>
+                                            </button>
+                                        </div>
+                                        <div x-show="mail.IsClaimed"><span class="text-success small fw-bold"><i class="fas fa-check-circle me-1"></i>Đã nhận</span></div>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </div>
                 </div>
@@ -451,16 +188,15 @@
                         <i class="fas fa-palette me-1"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 12px; background-color: var(--card-bg);">
-                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('light', true)" style="color: var(--text-dark);"><i class="fas fa-sun me-2 text-warning"></i> Business (Light)</a></li>
+                        <li><a class="dropdown-item py-2" href="#" @click.prevent="setTheme('light')"><i class="fas fa-sun me-2 text-warning"></i> Business</a></li>
                         {% if user_context.role == 'ADMIN' or user_context.can('THEME_DARK') %}
-                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('dark', true)" style="color: var(--text-dark);"><i class="fas fa-moon me-2 text-primary"></i> Night Owl (Dark)</a></li>
+                        <li><a class="dropdown-item py-2" href="#" @click.prevent="setTheme('dark')"><i class="fas fa-moon me-2 text-primary"></i> Night Owl</a></li>
                         {% endif %}
                         {% if user_context.role == 'ADMIN' or user_context.can('THEME_FANTASY') %}
-                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('fantasy', true)" style="color: var(--text-dark);"><i class="fas fa-magic me-2 text-danger"></i> Sci-fi (Fantasy)</a></li>
+                        <li><a class="dropdown-item py-2" href="#" @click.prevent="setTheme('fantasy')"><i class="fas fa-magic me-2 text-danger"></i> Fantasy</a></li>
                         {% endif %}
                         {% if user_context.role == 'ADMIN' or user_context.can('THEME_ADORABLE') %}
-                        <li><hr class="dropdown-divider" style="border-color: var(--border-color);"></li>
-                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('adorable', true)" style="color: var(--text-dark);"><i class="fas fa-heart me-2 text-danger"></i> Adorable (GenZ)</a></li>
+                        <li><a class="dropdown-item py-2" href="#" @click.prevent="setTheme('adorable')"><i class="fas fa-heart me-2 text-danger"></i> Adorable</a></li>
                         {% endif %}
                     </ul>
                 </div>
@@ -472,418 +208,77 @@
         </div>
         {% endblock %}
 
-        <div id="flash-messages">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-custom alert-dismissible fade show mb-4" role="alert" style="background-color: var(--card-bg); color: var(--text-dark); border-left: 5px solid var(--{{ category if category != 'message' else 'primary' }});">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-info-circle me-3 fs-4 text-{{ category }}"></i>
-                            <div>{{ message }}</div>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-        </div>
-
+        {% include 'components/_sidebar.html' %}
+        {% include 'components/_flash_messages.html' %}
         {% block content %}{% endblock %}
     </div>
 
-    {% set user_level = user_context.stats.Level if user_context.stats else 1 %}
-    {% set can_use_bot = (user_context.role == 'ADMIN') or (user_context.can('USE_CHATBOT')) or (user_level >= 5) %}
-
-    <div id="titan-pet-wrapper">
-        <div id="pet-bubble" class="pet-bubble">
-            Chào sếp! 👇
-        </div>
-
-        <button class="pet-toggle-btn" onclick="togglePet(event)" title="Thu nhỏ/Mở rộng">
-            <i class="fas fa-minus" id="pet-toggle-icon"></i>
-        </button>
-
-        <div id="titan-pet-container" 
-             data-allowed="{{ 'true' if can_use_bot else 'false' }}"
-             onclick="handlePetClick(event)">
-             
-            {% set equipped_pet = user_context.stats.EquippedPet if user_context.stats and user_context.stats.EquippedPet else 'fox' %}
-    
-            <lottie-player 
-                src="{{ url_for('static', filename='assets/json/' + equipped_pet + '.json') }}" 
-                background="transparent" 
-                speed="1" 
-                style="width: 100%; height: 100%; {{ 'filter: grayscale(100%); opacity: 0.8;' if not can_use_bot else '' }}" 
-                loop 
-                autoplay>
-            </lottie-player>
-        </div>
-    </div>
-
+    {% include 'components/_chatbot_widget.html' %}
     <div id="watermark-user-id" data-user="{{ user_context.usercode if user_context else 'GUEST' }}" style="display:none;"></div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.datatables.net/v/bs5/dt-1.11.5/datatables.min.js"></script>
     
     <script>
-        const DB_THEME = "{{ user_context.theme | default('light') }}";
-
-        // ============================================================
-        // 1. QUẢN LÝ HÒM THƯ (MAILBOX)
-        // ============================================================
-
-        // Hàm gọi khi nhấn vào nút hòm thư để tải danh sách
-        function loadMailboxData() {
-            const container = document.getElementById('mailbox-list');
-            console.log("🚀 Bắt đầu tải hòm thư...");
-
-            // Hiện loading nếu chưa có nội dung (tránh giật màn hình)
-            if (!container.innerHTML.trim() || !container.innerHTML.includes('mail-card')) {
-                container.innerHTML = '<div class="text-center py-4 text-muted small"><span class="spinner-border spinner-border-sm"></span> Đang tải dữ liệu...</div>';
-            }
-
-            fetch('/api/mailbox')
-                .then(r => {
-                    if (!r.ok) throw new Error("Lỗi Server: " + r.status);
-                    return r.json();
-                })
-                .then(data => {
-                    console.log("✅ Dữ liệu hòm thư:", data);
-                    updateMailBadge(data); // Cập nhật badge số lượng
-
-                    if (!data || data.length === 0) {
-                        container.innerHTML = `
-                            <div class="text-center text-muted py-4 opacity-50">
-                                <i class="fas fa-inbox fa-3x mb-2"></i>
-                                <p class="small m-0">Hòm thư trống</p>
-                            </div>`;
-                        return;
+        function globalApp() {
+            return {
+                theme: localStorage.getItem('titan_theme') || 'light',
+                initApp() { this.setTheme(this.theme, false); },
+                setTheme(themeName, saveToDb = true) {
+                    this.theme = themeName;
+                    localStorage.setItem('titan_theme', themeName);
+                    if (saveToDb) {
+                        fetch('/api/user/set_theme', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ theme: themeName }) }).catch(console.error);
                     }
+                }
+            }
+        }
 
-                    let html = '';
-                    data.forEach((mail, index) => {
-                        try {
-                            // Xử lý ID (hỗ trợ cả hoa/thường)
-                            const mailID = mail.MailID || mail.mailid || mail.id;
-                            const isRead = mail.IsClaimed;
-
-                            // Xử lý ngày tháng an toàn
-                            let dateStr = 'Vừa xong';
-                            if (mail.CreatedTime) {
-                                try {
-                                    dateStr = new Date(mail.CreatedTime).toLocaleString('vi-VN');
-                                } catch (e) {
-                                    dateStr = mail.CreatedTime; // Fallback nếu lỗi format
-                                }
-                            }
-
-                            // Icon loại thư
-                            let icon = 'fa-envelope';
-                            if (mail.Total_Coins > 0) icon = 'fa-coins text-warning';
-                            else if (mail.Total_XP > 0) icon = 'fa-star text-info';
-
-                            // Nút hành động
-                            // Lưu ý: Dùng '${mailID}' (có nháy đơn) để tránh lỗi nếu ID là chuỗi
-                            const btnAction = isRead 
-                                ? `<span class="text-success small fw-bold" style="font-size: 0.75rem;"><i class="fas fa-check-circle me-1"></i>Đã nhận</span>` 
-                                : `<button class="btn btn-sm btn-primary px-3 fw-bold rounded-pill" style="font-size: 0.75rem;" onclick="claimReward('${mailID}', this)">
-                                    <i class="fas fa-gift me-1"></i> Nhận
-                                   </button>`;
-
-                            html += `
-                            <div class="p-3 border-bottom position-relative ${isRead ? 'bg-light opacity-75' : 'bg-white'}" id="mail-card-${mailID}">
-                                <div class="d-flex justify-content-between align-items-start mb-1">
-                                    <h6 class="fw-bold mb-0 text-truncate pe-2 ${isRead ? 'text-secondary' : 'text-primary'}" style="max-width: 200px;">
-                                        <i class="fas ${icon} me-1"></i>${mail.Title || 'Thông báo'}
-                                    </h6>
-                                    <small class="text-muted" style="font-size: 0.7rem;">${dateStr}</small>
-                                </div>
-                                <div class="text-muted small mb-2" style="font-size: 0.8rem; line-height: 1.4;">
-                                    ${mail.Content || ''}
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div class="fw-bold small">
-                                        ${mail.Total_XP > 0 ? `<span class="me-2 text-info">+${mail.Total_XP} XP</span>` : ''}
-                                        ${mail.Total_Coins > 0 ? `<span class="text-warning">+${mail.Total_Coins} Coins</span>` : ''}
-                                    </div>
-                                    <div>${btnAction}</div>
-                                </div>
-                            </div>`;
-                        } catch (err) {
-                            console.error(`Lỗi render thư #${index}:`, err);
-                        }
+        // Logic Mailbox
+        function mailboxWidget() {
+            return {
+                mails: [], unreadCount: 0, loading: false,
+                init() { this.fetchMails(true); },
+                fetchMails(badgeOnly = false) {
+                    if (!badgeOnly) this.loading = true;
+                    fetch('/api/mailbox').then(r => r.json()).then(data => {
+                        this.mails = data.map(m => ({ ...m, processing: false }));
+                        this.unreadCount = data.filter(m => !m.IsClaimed).length;
+                        this.loading = false;
+                    }).catch(() => this.loading = false);
+                },
+                loadMailbox() { this.fetchMails(false); },
+                getIcon(mail) { if (mail.Total_Coins > 0) return 'fa-coins text-warning'; if (mail.Total_XP > 0) return 'fa-star text-info'; return 'fa-envelope'; },
+                formatDate(dateStr) { if (!dateStr) return 'Vừa xong'; try { return new Date(dateStr).toLocaleString('vi-VN'); } catch { return dateStr; } },
+                claimReward(mail) {
+                    mail.processing = true;
+                    fetch('/api/mailbox/claim', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({mail_id: mail.MailID || mail.id}) })
+                    .then(r => r.json()).then(data => {
+                        mail.processing = false;
+                        if(data.success) {
+                            mail.IsClaimed = true; this.unreadCount = Math.max(0, this.unreadCount - 1);
+                            this.handleEffects(data);
+                        } else { Swal.fire({ icon: 'error', title: 'Oops...', text: data.msg }); }
                     });
-
-                    container.innerHTML = html;
-                })
-                .catch(err => {
-                    console.error("🔥 Lỗi tải hòm thư:", err);
-                    container.innerHTML = `<div class="text-center py-3 text-danger small"><i class="fas fa-exclamation-circle me-1"></i> Lỗi hiển thị: ${err.message}</div>`;
-                });
-        }
-
-        // Hàm lấy số lượng badge (chạy ngầm khi load trang)
-        function initMailBadge() {
-             fetch('/api/mailbox')
-                .then(r => r.json())
-                .then(data => updateMailBadge(data))
-                .catch(e => console.log("Badge Error:", e));
-        }
-
-        // Cập nhật giao diện Badge
-        function updateMailBadge(data) {
-            const badge = document.getElementById('mail-badge');
-            if(!badge) return;
-            
-            const unreadCount = data.filter(m => !m.IsClaimed).length;
-            if (unreadCount > 0) {
-                badge.classList.remove('d-none');
-                badge.innerText = unreadCount > 9 ? '9+' : unreadCount;
-                badge.classList.add('notify-active');
-            } else {
-                badge.classList.add('d-none');
-                badge.classList.remove('notify-active');
-            }
-        }
-
-        // Hàm nhận thưởng
-        // Hàm nhận thưởng (Đã nâng cấp hiệu ứng)
-        function claimReward(mailId, btnElement) {
-            if(!mailId) return;
-            
-            // Hiệu ứng loading cho nút
-            const originalContent = btnElement.innerHTML;
-            btnElement.disabled = true;
-            btnElement.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-            fetch('/api/mailbox/claim', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({mail_id: mailId})
-            })
-            .then(r => r.json())
-            .then(data => {
-                if(data.success) {
-                    // 1. Update UI thẻ bài ngay lập tức (làm mờ, đổi nút)
-                    const card = document.getElementById(`mail-card-${mailId}`);
-                    if(card) {
-                        card.classList.add('bg-light', 'opacity-75');
-                        // Tìm div chứa nút và thay thế bằng text "Đã nhận"
-                        const actionDiv = btnElement.parentElement;
-                        actionDiv.innerHTML = `<span class="text-success small fw-bold"><i class="fas fa-check-circle me-1"></i>Đã nhận</span>`;
-                    }
-                    
-                    // 2. Giảm badge số lượng
-                    const badge = document.getElementById('mail-badge');
-                    if(badge && !badge.classList.contains('d-none')) {
-                        let count = parseInt(badge.innerText);
-                        if(count > 1) badge.innerText = count - 1;
-                        else badge.classList.add('d-none');
-                    }
-
-                    // --- 3. XỬ LÝ HIỆU ỨNG (LOGIC MỚI) ---
+                },
+                handleEffects(data) {
+                    if (typeof fireFireworks === 'function') fireFireworks();
                     if (data.level_up) {
-                        // A. Bắn pháo hoa
-                        fireFireworks();
-
-                        // B. Hiện Popup Hình Tròn Phát Sáng
                         Swal.fire({
-                            // Nội dung HTML bên trong
-                            html: `
-                                <div class="level-up-content">
-                                    <div style="font-size: 1.2rem; color: #E65100; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px;">
-                                        Level Up!
-                                    </div>
-                                    
-                                    <div style="font-size: 6rem; font-weight: 900; line-height: 1; color: #4318FF; text-shadow: 0 5px 15px rgba(67, 24, 255, 0.3); margin: 10px 0;">
-                                        ${data.new_level}
-                                    </div>
-                                    
-                                    <div style="font-size: 1.1rem; color: #555; margin-bottom: 20px;">
-                                        Chúc mừng bạn đã đạt cấp độ mới!
-                                    </div>
-                                    
-                                    <div class="badge rounded-pill bg-warning text-dark border border-light shadow-sm px-4 py-2" style="font-size: 1.1rem;">
-                                        <i class="fas fa-coins me-2"></i>+${data.coins_earned} Coins
-                                    </div>
-                                </div>
-                            `,
-                            // [QUAN TRỌNG] Tắt hết style mặc định để dùng style tròn
-                            icon: null,
-                            title: null,
-                            buttonsStyling: false, // Tắt style nút mặc định
-                            showConfirmButton: true,
-                            confirmButtonText: 'Tuyệt vời!',
-                            
-                            // Style nút bấm riêng cho đẹp
-                            customClass: {
-                                popup: 'round-glow-popup', // Class CSS hình tròn đã định nghĩa
-                                confirmButton: 'btn btn-primary rounded-pill px-4 fw-bold mt-3 shadow-lg'
-                                
-                            },
-                            
-                            // Ảnh nền mờ ảo phía sau (Backdrop)
-                            backdrop: `
-                                rgba(11, 20, 55, 0.8)
-                                url("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExNXBpeGcwanhwNDA2d3Ntd2VlazNqZm00c3JhaWRtemN0YmpuMTIwNCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/9qKNE5R7PE7VZjJ4La/giphy.gif")
-                                left top
-                                no-repeat
-                            `,
-                            
-                            // --- [FIX QUAN TRỌNG: TỰ ĐỘNG ĐÓNG] ---
-                            timer: 5000,             // 5 giây
-                            timerProgressBar: true,  // Hiện thanh đếm ngược
-                            allowOutsideClick: true, 
-                            allowEscapeKey: true,
-
-                            // [FIX MỚI]: Vô hiệu hóa tính năng "Pause on Hover"
-                            didOpen: (toast) => {
-                                toast.addEventListener('mouseenter', Swal.resumeTimer); // Chuột vào -> Vẫn chạy tiếp
-                                toast.addEventListener('mouseleave', Swal.resumeTimer); // Chuột ra -> Vẫn chạy tiếp
-                            }
+                            html: `<div class="level-up-content"><div style="font-size: 1.2rem; color: #E65100; font-weight: 700;">Level Up!</div><div style="font-size: 6rem; font-weight: 900; color: #4318FF;">${data.new_level}</div><div class="badge rounded-pill bg-warning text-dark px-4 py-2 mt-3"><i class="fas fa-coins me-2"></i>+${data.coins_earned} Coins</div></div>`,
+                            customClass: { popup: 'round-glow-popup', confirmButton: 'btn btn-primary rounded-pill px-4 fw-bold mt-3 shadow-lg' },
+                            backdrop: `rgba(11, 20, 55, 0.8) url("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExNXBpeGcwanhwNDA2d3Ntd2VlazNqZm00c3JhaWRtemN0YmpuMTIwNCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/9qKNE5R7PE7VZjJ4La/giphy.gif") left top no-repeat`,
+                            timer: 5000, timerProgressBar: true
                         });
-                    
                     } else {
-                        // C. Chỉ nhận quà thường (Toast nhỏ góc màn hình)
-                        const Toast = Swal.mixin({
-                            toast: true, position: 'top-end',
-                            showConfirmButton: false, timer: 3000,
-                            timerProgressBar: true,
-                            didOpen: (toast) => {
-                                toast.addEventListener('mouseenter', Swal.stopTimer)
-                                toast.addEventListener('mouseleave', Swal.resumeTimer)
-                            }
-                        });
-                        
-                        let msg = 'Đã nhận quà thành công!';
-                        if(data.coins_earned > 0) msg = `+${data.coins_earned} Coins vào ví!`;
-                        
-                        Toast.fire({ icon: 'success', title: msg });
+                        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+                        Toast.fire({ icon: 'success', title: 'Đã nhận quà thành công!' });
                     }
-
-                } else {
-                    // Lỗi
-                    Swal.fire({ icon: 'error', title: 'Oops...', text: data.msg });
-                    btnElement.disabled = false;
-                    btnElement.innerHTML = originalContent;
-                }
-            })
-            .catch(err => {
-                Swal.fire({ icon: 'error', title: 'Lỗi kết nối', text: 'Không thể nhận quà lúc này.' });
-                btnElement.disabled = false;
-                btnElement.innerHTML = originalContent;
-            });
-        }
-
-        // Hàm bắn pháo hoa (Confetti)
-        function fireFireworks() {
-            var duration = 3 * 1000;
-            var animationEnd = Date.now() + duration;
-            var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
-
-            function randomInRange(min, max) { return Math.random() * (max - min) + min; }
-
-            var interval = setInterval(function() {
-                var timeLeft = animationEnd - Date.now();
-
-                if (timeLeft <= 0) { return clearInterval(interval); }
-
-                var particleCount = 50 * (timeLeft / duration);
-                
-                // Bắn từ 2 bên góc
-                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
-                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
-            }, 250);
-        }
-
-        // ============================================================
-        // 2. CÁC HÀM TIỆN ÍCH KHÁC (Theme, Pet...)
-        // ============================================================
-        function setTheme(themeName, saveToDb = false) {
-            document.documentElement.setAttribute('data-theme', themeName);
-            localStorage.setItem('titan_theme', themeName);
-            
-            // ... (Logic đổi màu dropdown item giữ nguyên) ...
-
-            if (saveToDb) {
-                fetch('/api/user/set_theme', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ theme: themeName })
-                }).catch(e => console.error(e));
-            }
-        }
-
-        function togglePet(event) {
-            if(event) event.stopPropagation();
-            const wrapper = document.getElementById('titan-pet-wrapper');
-            const willMinimize = !wrapper.classList.contains('minimized');
-            applyMinimizeState(willMinimize);
-            localStorage.setItem('pet_minimized', willMinimize);
-        }
-
-        function applyMinimizeState(isMin) {
-            const wrapper = document.getElementById('titan-pet-wrapper');
-            const icon = document.getElementById('pet-toggle-icon');
-            const bubble = document.getElementById('pet-bubble');
-            
-            if (isMin) {
-                wrapper.classList.add('minimized');
-                icon.classList.remove('fa-minus'); icon.classList.add('fa-expand'); 
-                if(bubble) bubble.style.display = 'none'; 
-            } else {
-                wrapper.classList.remove('minimized');
-                icon.classList.remove('fa-expand'); icon.classList.add('fa-minus'); 
-                if(bubble) $(bubble).fadeIn().delay(5000).fadeOut();
-            }
-        }
-
-        function handlePetClick(event) {
-            const wrapper = document.getElementById('titan-pet-wrapper');
-            const container = document.getElementById('titan-pet-container');
-            const bubble = document.getElementById('pet-bubble');
-            const isAllowed = container.dataset.allowed === 'true';
-
-            if (wrapper.classList.contains('minimized')) {
-                togglePet(event);
-                return;
-            }
-            if (isAllowed) {
-                const url = "{{ url_for('chat_bp.chat_assistant_page') }}";
-                window.open(url, "_blank");
-            } else {
-                bubble.innerHTML = '<i class="fas fa-lock me-1"></i> Cần <b>Level 5</b> để mở khóa AI!';
-                bubble.style.color = '#dc3545'; bubble.style.borderColor = '#dc3545';
-                $(bubble).fadeIn().delay(3000).fadeOut();
-                container.style.animation = 'shake 0.5s';
-                setTimeout(() => container.style.animation = '', 500);
-            }
-        }
-
-        // ============================================================
-        // 3. KHỞI TẠO (CHẠY 1 LẦN DUY NHẤT)
-        // ============================================================
-        document.addEventListener('DOMContentLoaded', function() {
-            setTheme(DB_THEME, false);
-            
-            // Khôi phục trạng thái Pet
-            const petMin = localStorage.getItem('pet_minimized') === 'true';
-            if(petMin) {
-                applyMinimizeState(true);
-            } else {
-                const bubble = document.getElementById('pet-bubble');
-                if(bubble) {
-                    setTimeout(() => { $(bubble).fadeIn(); }, 2000);
-                    setTimeout(() => { $(bubble).fadeOut(); }, 10000);
                 }
             }
-
-            // Gọi hàm init để hiện badge số lượng (KHÔNG DÙNG fetchMailbox)
-            initMailBadge(); 
-        });
+        }
     </script>
-
+    
     {% block scripts %}{% endblock %}
 </body>
 </html>

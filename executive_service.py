@@ -7,138 +7,128 @@ import config
 
 class ExecutiveService:
     """
-    Service chuyên biệt cho CEO Cockpit.
-    Tổng hợp dữ liệu từ Tài chính, Kinh doanh, Kho vận và Vận hành.
+    Service chuyên biệt cho CEO Cockpit (Version 3.2 - Fix Conflict).
     """
     
     def __init__(self, db_manager: DBManager):
         self.db = db_manager
 
+    def get_dashboard_data_cached(self, year, month):
+        cache_key = f"ceo_cockpit_data_{year}_{month}"
+        try:
+            cached_data = current_app.cache.get(cache_key)
+            if cached_data:
+                current_app.logger.info(f"CEO Cockpit: HIT Global Cache ({cache_key})")
+                return cached_data
+        except Exception as e:
+            current_app.logger.warning(f"Cache Warning: {e}")
+
+        current_app.logger.info(f"CEO Cockpit: MISS Cache -> Calculating DB...")
+        data = self._calculate_dashboard_data(year, month)
+        
+        try:
+            current_app.cache.set(cache_key, data, timeout=600)
+        except Exception:
+            pass
+            
+        return data
+
+    def _calculate_dashboard_data(self, current_year, current_month):
+        kpi_data = self.get_kpi_scorecards(current_year, current_month)
+        
+        charts = {
+            'inventory': self.get_inventory_aging_chart_data(),
+            'category': self.get_top_categories_performance(current_year),
+            'financial': self.get_profit_trend_chart(),
+            'funnel': self.get_sales_funnel_data()
+        }
+        
+        lists = {
+            'top_sales': self.get_top_sales_leaderboard(current_year),
+            'actions': self.get_pending_actions_count()
+        }
+
+        profit_summary = {
+            'GrossProfit': kpi_data.get('GrossProfit_YTD', 0),
+            'AvgMargin': kpi_data.get('AvgMargin_YTD', 0)
+        }
+        finance_summary = {
+            'TotalExpenses': kpi_data.get('TotalExpenses_YTD', 0),
+            'CrossSellProfit': kpi_data.get('CrossSellProfit_YTD', 0)
+        }
+        risk_summary = {
+            'AR_Debt_Over_180': kpi_data.get('AR_Debt_Over_180', 0),
+            'AR_TotalOverdueDebt': kpi_data.get('AR_TotalOverdueDebt', 0),
+            'AP_Debt_Over_180': kpi_data.get('AP_Debt_Over_180', 0),
+            'AP_TotalOverdueDebt': kpi_data.get('AP_TotalOverdueDebt', 0),
+            'Inventory_Over_2Y': kpi_data.get('Inventory_Over_2Y', 0)
+        }
+
+        return { 
+            'kpi': kpi_data, 
+            'charts': charts, 
+            'lists': lists,
+            'profit_summary': profit_summary,
+            'finance_summary': finance_summary,
+            'risk_summary': risk_summary
+        }
+
     def get_kpi_scorecards(self, current_year, current_month):
-        """Lấy KPI tổng hợp (Đã cập nhật logic Gross Profit)."""
         kpi_data = {
             'Sales_YTD': 0, 'TargetYear': 0, 'Percent': 0,
             'GrossProfit_YTD': 0, 'AvgMargin_YTD': 0,
-            'TotalExpenses_YTD': 0, 'BudgetPlan_YTD': 0, 'OverBudgetCount': 0,
+            'TotalExpenses_YTD': 0, 'BudgetPlan_YTD': 0,
             'CrossSellProfit_YTD': 0, 'CrossSellCustCount': 0,
-            'OTIF_Month': 0, 'OTIF_YTD': 0,
-            
-            # [REMOVED] NewCust_Count, NewCust_Sales
-            # [KEPT] Risk
-            'TotalOverdueDebt': 0, 'Debt_Over_180': 0,
-            'Inventory_Over_2Y': 0
+            'AR_TotalOverdueDebt': 0, 'AR_Debt_Over_180': 0,
+            'AP_TotalOverdueDebt': 0, 'AP_Debt_Over_180': 0,
+            'Inventory_Over_2Y': 0,
+            'OTIF_Month': 0, 'OTIF_YTD': 0
         }
 
         try:
-            # 1. DOANH SỐ & LỢI NHUẬN (YTD) - [FIX: OTransactionID IS NOT NULL]
-            query_sales_profit = f"""
-                SELECT 
-                    SUM(CASE WHEN CreditAccountID LIKE '{config.ACC_DOANH_THU}' THEN ConvertedAmount ELSE 0 END) as Revenue,
-                    SUM(CASE WHEN DebitAccountID LIKE '{config.ACC_GIA_VON}' THEN ConvertedAmount ELSE 0 END) as COGS
-                FROM {config.ERP_GIAO_DICH} 
-                WHERE TranYear = ? AND TranMonth <= ?
-                AND OTransactionID IS NOT NULL -- [QUAN TRỌNG] Chỉ lấy giao dịch bán hàng chính thức
-            """
-            sp_data = self.db.get_data(query_sales_profit, (current_year, current_month))
-            if sp_data:
-                rev = safe_float(sp_data[0]['Revenue'])
-                cogs = safe_float(sp_data[0]['COGS'])
-                kpi_data['Sales_YTD'] = rev
-                kpi_data['GrossProfit_YTD'] = rev - cogs
-                kpi_data['AvgMargin_YTD'] = ((rev - cogs) / rev * 100) if rev > 0 else 0
+            result = self.db.execute_sp_multi('sp_GetExecutiveKPI', (current_year, current_month))
+            if result and result[0]:
+                row = result[0][0]
+                kpi_data['Sales_YTD'] = safe_float(row.get('Sales_YTD', 0))
+                kpi_data['GrossProfit_YTD'] = safe_float(row.get('GrossProfit_YTD', 0))
+                kpi_data['TotalExpenses_YTD'] = safe_float(row.get('TotalExpenses_YTD', 0))
+                kpi_data['BudgetPlan_YTD'] = safe_float(row.get('BudgetPlan_YTD', 0))
+                kpi_data['CrossSellProfit_YTD'] = safe_float(row.get('CrossSellProfit_YTD', 0))
+                kpi_data['CrossSellCustCount'] = int(row.get('CrossSellCustCount', 0))
+                kpi_data['AR_TotalOverdueDebt'] = safe_float(row.get('AR_Overdue', 0))
+                kpi_data['AR_Debt_Over_180'] = safe_float(row.get('AR_Risk', 0))
+                kpi_data['AP_TotalOverdueDebt'] = safe_float(row.get('AP_Overdue', 0))
+                kpi_data['AP_Debt_Over_180'] = safe_float(row.get('AP_Risk', 0))
+
+                sales = kpi_data['Sales_YTD']
+                profit = kpi_data['GrossProfit_YTD']
+                if sales > 0:
+                    kpi_data['AvgMargin_YTD'] = (profit / sales) * 100
+
+                kpi_data['TargetYear'] = 200000000000 
+                if kpi_data['TargetYear'] > 0:
+                    kpi_data['Percent'] = round((sales / kpi_data['TargetYear']) * 100, 1)
+
+            # 2. Inventory KPI (Dùng SP Summary mới cho nhanh)
+            # [FIX] Dùng SP Summary thay vì SP Detail
+            sp_inv = f"{{CALL {config.SP_GET_INVENTORY_AGING_SUMMARY} (?)}}"
             
-            if kpi_data['TargetYear'] > 0:
-                kpi_data['Percent'] = round((kpi_data['Sales_YTD'] / kpi_data['TargetYear']) * 100, 1)
-
-            # --- B. TÀI CHÍNH: CHI PHÍ & HIỆU QUẢ BÁN CHÉO ---
+            # SP Summary trả về: Bảng 1 (Tổng), Bảng 2 (Nhóm)
+            inv_results = self.db.execute_sp_multi(config.SP_GET_INVENTORY_AGING_SUMMARY, (None,))
             
-            # 1. Chi phí YTD (Thực tế)
-            # [FIXED]: Thêm điều kiện lọc tài khoản đầu 6 và 8 để khớp với Budget Report
-            query_exp_actual = f"""
-                SELECT SUM(ConvertedAmount) 
-                FROM {config.ERP_GIAO_DICH}
-                WHERE TranYear = ? AND TranMonth <= ?
-                AND Ana03ID IS NOT NULL AND Ana03ID <> '{config.EXCLUDE_ANA03_CP2014}'
-                AND (DebitAccountID LIKE '6%' OR DebitAccountID LIKE '8%') -- <--- THÊM DÒNG NÀY
-            """
-            act_data = self.db.get_data(query_exp_actual, (current_year, current_month))
-            kpi_data['TotalExpenses_YTD'] = safe_float(act_data[0].get('') or list(act_data[0].values())[0]) if act_data else 0
-
-            # 2. Chi phí YTD (Kế hoạch - Ngân sách)
-            query_exp_plan = f"""
-                SELECT SUM(BudgetAmount) 
-                FROM {config.TABLE_BUDGET_PLAN} 
-                WHERE FiscalYear = ? AND [Month] <= ?
-            """
-            plan_data = self.db.get_data(query_exp_plan, (current_year, current_month))
-            kpi_data['BudgetPlan_YTD'] = safe_float(plan_data[0].get('') or list(plan_data[0].values())[0]) if plan_data else 0
-
-            # 3. Đếm số khoản vượt ngân sách
-            # [FIXED]: Cũng cần thêm điều kiện lọc tài khoản ở đây
-            query_over_budget = f"""
-                SELECT COUNT(*) as OverCount FROM (
-                    SELECT T.Ana03ID, SUM(T.ConvertedAmount) as Actual, ISNULL(P.PlanAmount, 0) as PlanAmount
-                    FROM {config.ERP_GIAO_DICH} T
-                    LEFT JOIN (
-                        SELECT BudgetCode, SUM(BudgetAmount) as PlanAmount 
-                        FROM {config.TABLE_BUDGET_PLAN} 
-                        WHERE FiscalYear = ? AND [Month] <= ? 
-                        GROUP BY BudgetCode
-                    ) P ON T.Ana03ID = P.BudgetCode
-                    WHERE T.TranYear = ? AND T.TranMonth <= ? 
-                    AND T.Ana03ID IS NOT NULL AND T.Ana03ID <> '{config.EXCLUDE_ANA03_CP2014}'
-                    AND (T.DebitAccountID LIKE '6%' OR T.DebitAccountID LIKE '8%') -- <--- THÊM DÒNG NÀY
-                    GROUP BY T.Ana03ID, P.PlanAmount
-                ) AS Comparison
-                WHERE Actual > PlanAmount
-            """
-            over_data = self.db.get_data(query_over_budget, (current_year, current_month, current_year, current_month))
-            kpi_data['OverBudgetCount'] = over_data[0]['OverCount'] if over_data else 0
-
-            # 4. Hiệu quả Bán chéo (VIP Profit YTD)
-            # Logic: Tính Lợi nhuận gộp của KH mua >= 10 nhóm hàng (Rolling 12 tháng)
-            query_vip_cust = f"""
-                SELECT ObjectID
-                FROM {config.ERP_GIAO_DICH} T1
-                INNER JOIN {config.ERP_IT1302} T2 ON T1.InventoryID = T2.InventoryID
-                WHERE T1.VoucherDate >= DATEADD(day, -365, GETDATE())
-                AND T2.I04ID IS NOT NULL AND T2.I04ID <> ''
-                AND (T1.CreditAccountID LIKE '{config.ACC_DOANH_THU}' OR T1.DebitAccountID LIKE '{config.ACC_GIA_VON}')
-                GROUP BY T1.ObjectID
-                HAVING COUNT(DISTINCT T2.I04ID) >= 10
-            """
+            if inv_results and inv_results[0]:
+                 # Bảng 1, dòng 1, cột LongTerm hoặc tính tổng
+                 summary_row = inv_results[0][0]
+                 kpi_data['Inventory_Over_2Y'] = safe_float(summary_row.get('LongTerm', 0)) + safe_float(summary_row.get('Risk', 0))
             
-            # Tính lợi nhuận YTD của danh sách VIP này
-            query_cross_sell_profit = f"""
-                SELECT 
-                    SUM(CASE WHEN T1.CreditAccountID LIKE '{config.ACC_DOANH_THU}' THEN T1.ConvertedAmount ELSE 0 END) -
-                    SUM(CASE WHEN T1.DebitAccountID LIKE '{config.ACC_GIA_VON}' THEN T1.ConvertedAmount ELSE 0 END) as VipProfit
-                FROM {config.ERP_GIAO_DICH} T1
-                WHERE T1.TranYear = ? AND T1.TranMonth <= ?
-                AND T1.ObjectID IN ({query_vip_cust})
-            """
-            vip_data = self.db.get_data(query_cross_sell_profit, (current_year, current_month))
-            if vip_data:
-                kpi_data['CrossSellProfit_YTD'] = safe_float(vip_data[0]['VipProfit'])
-                
-            # Đếm số lượng KH VIP
-            vip_count_data = self.db.get_data(f"SELECT COUNT(*) as Cnt FROM ({query_vip_cust}) as Sub")
-            kpi_data['CrossSellCustCount'] = vip_count_data[0]['Cnt'] if vip_count_data else 0
-
-            # --- C. VẬN HÀNH: GIAO HÀNG (OTIF) & NEW BUSINESS ---
-            
-            # 1. OTIF (Giao hàng đúng hạn)
-            # [UPDATED]: Áp dụng độ trễ 7 ngày (DATEADD(day, 7, ...))
+            # 3. OTIF (View)
             query_otif = f"""
                 SELECT 
                     SUM(CASE WHEN MONTH(ActualDeliveryDate) = ? AND YEAR(ActualDeliveryDate) = ? THEN 1 ELSE 0 END) as Delivered_Month,
-                    
                     SUM(CASE WHEN MONTH(ActualDeliveryDate) = ? AND YEAR(ActualDeliveryDate) = ? 
                              AND ActualDeliveryDate <= DATEADD(day, 7, ISNULL(EarliestRequestDate, ActualDeliveryDate)) 
                         THEN 1 ELSE 0 END) as OnTime_Month,
-                    
                     COUNT(*) as Delivered_YTD,
-                    
                     SUM(CASE WHEN ActualDeliveryDate <= DATEADD(day, 7, ISNULL(EarliestRequestDate, ActualDeliveryDate)) 
                         THEN 1 ELSE 0 END) as OnTime_YTD
                 FROM {config.DELIVERY_WEEKLY_VIEW}
@@ -151,120 +141,94 @@ class ExecutiveService:
                 ont_m = safe_float(row['OnTime_Month'])
                 del_y = safe_float(row['Delivered_YTD'])
                 ont_y = safe_float(row['OnTime_YTD'])
-                
                 kpi_data['OTIF_Month'] = (ont_m / del_m * 100) if del_m > 0 else 100
                 kpi_data['OTIF_YTD'] = (ont_y / del_y * 100) if del_y > 0 else 100
 
-            # 2. New Business
-            # KH tạo trong 360 ngày qua VÀ có doanh số > 10 triệu
-            cutoff_date = datetime.now() - timedelta(days=config.NEW_BUSINESS_DAYS)
-            query_new_biz = f"""
-                SELECT COUNT(Sub.ObjectID) as NewCount, SUM(Sub.TotalSales) as NewSales
-                FROM (
-                    SELECT T1.ObjectID, SUM(T2.ConvertedAmount) as TotalSales
-                    FROM {config.ERP_IT1202} T1
-                    INNER JOIN {config.ERP_GIAO_DICH} T2 ON T1.ObjectID = T2.ObjectID
-                    WHERE T1.CreateDate >= ? 
-                    AND T2.VoucherDate >= ? 
-                    AND T2.CreditAccountID LIKE '{config.ACC_DOANH_THU}'
-                    GROUP BY T1.ObjectID
-                    HAVING SUM(T2.ConvertedAmount) > {config.NEW_BUSINESS_MIN_SALES}
-                ) AS Sub
-            """
-            try:
-                nb_data = self.db.get_data(query_new_biz, (cutoff_date, cutoff_date))
-                if nb_data:
-                    kpi_data['NewCust_Count'] = safe_float(nb_data[0]['NewCount'])
-                    kpi_data['NewCust_Sales'] = safe_float(nb_data[0]['NewSales'])
-            except Exception:
-                pass # Bỏ qua nếu lỗi (VD: thiếu cột CreateDate)
-
-            # --- D. RỦI RO: NỢ & TỒN KHO (UPDATED) ---
-            
-            # 1. NỢ PHẢI THU (AR) - Từ view AR Aging
-            query_ar = f"""
-                SELECT 
-                    SUM(TotalOverdueDebt) as TotalOverdue, 
-                    SUM(Debt_Over_180) as RiskDebt 
-                FROM {config.CRM_AR_AGING_SUMMARY}
-            """
-            ar_data = self.db.get_data(query_ar)
-            if ar_data:
-                kpi_data['AR_TotalOverdueDebt'] = safe_float(ar_data[0]['TotalOverdue'])
-                kpi_data['AR_Debt_Over_180'] = safe_float(ar_data[0]['RiskDebt'])
-
-            # 2. NỢ PHẢI TRẢ (AP) - [UPDATED: Chỉ lấy NCC (SUPPLIER)]
-            query_ap = f"""
-                SELECT 
-                    SUM(TotalOverdueDebt) as TotalOverdue, 
-                    SUM(Debt_Over_180) as RiskDebt 
-                FROM {config.CRM_AP_AGING_SUMMARY}
-                WHERE DebtType = 'SUPPLIER'  -- <-- ĐIỀU KIỆN LỌC MỚI
-            """
-            ap_data = self.db.get_data(query_ap)
-            if ap_data:
-                kpi_data['AP_TotalOverdueDebt'] = safe_float(ap_data[0]['TotalOverdue'])
-                kpi_data['AP_Debt_Over_180'] = safe_float(ap_data[0]['RiskDebt'])
-            
-            # 2. Tồn kho (Gọi SP)
-            sp_inventory = f"{{CALL {config.SP_GET_INVENTORY_AGING} (?)}}"
-            inv_data = self.db.get_data(sp_inventory, (None,))
-            if inv_data:
-                kpi_data['Inventory_Over_2Y'] = sum(safe_float(row['Range_Over_720_V']) for row in inv_data)
-
         except Exception as e:
-            current_app.logger.error(f"Lỗi tính toán KPI Scorecards: {e}")
+            current_app.logger.error(f"Lỗi tính KPI: {e}")
         
         return kpi_data
 
+    def get_inventory_aging_chart_data(self):
+        """
+        [FIXED] Sử dụng SP Summary (đã cộng gộp) để vẽ biểu đồ nhanh.
+        """
+        try:
+            # [FIX] Dùng biến config MỚI: SP_GET_INVENTORY_AGING_SUMMARY
+            sp_query = f"{{CALL {config.SP_GET_INVENTORY_AGING_SUMMARY} (?)}}"
+            results = self.db.execute_sp_multi(config.SP_GET_INVENTORY_AGING_SUMMARY, (None,))
+            
+            if not results or not results[0]: 
+                return {'labels': [], 'series': [], 'drilldown': {}}
+
+            # 1. Xử lý biểu đồ tổng (Donut Chart)
+            summary_row = results[0][0]
+            labels = ['An toàn (< 6 Tháng)', 'Ổn định (6-12 Tháng)', 'Chậm (1-2 Năm)', 'Tồn Lâu (> 2 Năm)', 'Hàng CLC (Rủi ro cao)']
+            series = [
+                safe_float(summary_row.get('Safe', 0)),
+                safe_float(summary_row.get('Stable', 0)),
+                safe_float(summary_row.get('Slow', 0)),
+                safe_float(summary_row.get('LongTerm', 0)),
+                safe_float(summary_row.get('Risk', 0))
+            ]
+
+            # 2. Xử lý Drill-down (Chi tiết nhóm)
+            drilldown = {label: [] for label in labels}
+            
+            if len(results) > 1:
+                detail_rows = results[1]
+                for row in detail_rows:
+                    group_name = row.get('GroupID', 'UNK')
+                    # Map dữ liệu vào từng nhóm drilldown
+                    drilldown['An toàn (< 6 Tháng)'].append({'name': group_name, 'value': safe_float(row['Safe'])})
+                    drilldown['Ổn định (6-12 Tháng)'].append({'name': group_name, 'value': safe_float(row['Stable'])})
+                    drilldown['Chậm (1-2 Năm)'].append({'name': group_name, 'value': safe_float(row['Slow'])})
+                    drilldown['Tồn Lâu (> 2 Năm)'].append({'name': group_name, 'value': safe_float(row['LongTerm'])})
+                    drilldown['Hàng CLC (Rủi ro cao)'].append({'name': group_name, 'value': safe_float(row['Risk'])})
+
+            return {'labels': labels, 'series': series, 'drilldown': drilldown}
+
+        except Exception as e:
+            current_app.logger.error(f"Lỗi chart tồn kho (Optimized): {e}")
+            return {'labels': [], 'series': [], 'drilldown': {}}
+
+    # ... (Giữ nguyên các hàm khác: get_profit_trend_chart, get_pending_actions_count...)
     def get_profit_trend_chart(self):
-        """Biểu đồ xu hướng (Đã cập nhật logic Gross Profit)."""
         query = f"""
             SELECT TOP 12 TranYear, TranMonth,
                 SUM(CASE WHEN CreditAccountID LIKE '{config.ACC_DOANH_THU}' THEN ConvertedAmount ELSE 0 END) as Revenue,
                 SUM(CASE WHEN DebitAccountID LIKE '{config.ACC_GIA_VON}' THEN ConvertedAmount ELSE 0 END) as COGS
             FROM {config.ERP_GIAO_DICH}
             WHERE VoucherDate >= DATEADD(month, -11, GETDATE())
-            AND OTransactionID IS NOT NULL -- [FIX]
+            AND OTransactionID IS NOT NULL
             GROUP BY TranYear, TranMonth
             ORDER BY TranYear ASC, TranMonth ASC
         """
         try:
             data = self.db.get_data(query)
-            chart_data = {'categories': [], 'revenue': [], 'profit': []}
+            chart_data = {'categories': [], 'revenue': [], 'profit': [], 'expenses': [], 'net_profit': []}
             if data:
                 for row in data:
                     rev = safe_float(row['Revenue'])
                     profit = rev - safe_float(row['COGS'])
-                    # Format tháng/năm
                     chart_data['categories'].append(f"T{row['TranMonth']}/{row['TranYear']}")
-                    # Chia đơn vị (Tỷ)
                     chart_data['revenue'].append(round(rev / config.DIVISOR_VIEW, 2))
                     chart_data['profit'].append(round(profit / config.DIVISOR_VIEW, 2))
+                    chart_data['expenses'].append(0) 
+                    chart_data['net_profit'].append(round(profit / config.DIVISOR_VIEW, 2)) 
             return chart_data
-        except Exception as e:
-            current_app.logger.error(f"Lỗi biểu đồ: {e}")
-            return {'categories': [], 'revenue': [], 'profit': []}
+        except Exception:
+            return {'categories': [], 'revenue': [], 'profit': [], 'expenses': [], 'net_profit': []}
 
     def get_pending_actions_count(self):
-        """
-        Đếm số lượng Action cần xử lý.
-        """
         counts = {'Quotes': 0, 'Budgets': 0, 'Orders': 0, 'UrgentTasks': 0, 'Total': 0}
         try:
-            # Báo giá
             c_q = self.db.get_data(f"SELECT COUNT(*) FROM {config.ERP_QUOTES} WHERE OrderStatus = 0")
             counts['Quotes'] = safe_float(list(c_q[0].values())[0]) if c_q else 0
-            
-            # Ngân sách
             c_b = self.db.get_data(f"SELECT COUNT(*) FROM {config.TABLE_EXPENSE_REQUEST} WHERE Status = 'PENDING'")
             counts['Budgets'] = safe_float(list(c_b[0].values())[0]) if c_b else 0
-            
-            # Đơn hàng
             c_o = self.db.get_data(f"SELECT COUNT(*) FROM {config.ERP_OT2001} WHERE OrderStatus = 0")
             counts['Orders'] = safe_float(list(c_o[0].values())[0]) if c_o else 0
-            
-            # Task
             q_task = f"""
                 SELECT COUNT(*) FROM {config.TASK_TABLE} 
                 WHERE Status IN ('{config.TASK_STATUS_BLOCKED}', '{config.TASK_STATUS_HELP}') 
@@ -272,16 +236,11 @@ class ExecutiveService:
             """
             c_t = self.db.get_data(q_task)
             counts['UrgentTasks'] = safe_float(list(c_t[0].values())[0]) if c_t else 0
-            
             counts['Total'] = int(counts['Quotes'] + counts['Budgets'] + counts['Orders'] + counts['UrgentTasks'])
-        except Exception: 
-            pass
+        except Exception: pass
         return counts
 
     def get_top_sales_leaderboard(self, current_year):
-        """
-        Lấy BXH Sales Top 5.
-        """
         query = f"""
             SELECT T1.[PHU TRACH DS] as UserCode, SUM(T1.DK) as Target, T2.SHORTNAME,
                    ISNULL(Actual.Sale, 0) as ActualSales
@@ -303,55 +262,11 @@ class ExecutiveService:
                 tgt = safe_float(row['Target'])
                 act = safe_float(row['ActualSales'])
                 pct = (act / tgt * 100) if tgt > 0 else 0
-                board.append({
-                    'UserCode': row['UserCode'], 
-                    'ShortName': row['SHORTNAME'], 
-                    'TotalSalesAmount': act, 
-                    'Percent': round(pct, 1)
-                })
+                board.append({'UserCode': row['UserCode'], 'ShortName': row['SHORTNAME'], 'TotalSalesAmount': act, 'Percent': round(pct, 1)})
         board.sort(key=lambda x: x['Percent'], reverse=True)
         return board[:5]
-    
-    def get_inventory_aging_chart_data(self):
-        """
-        [NEW] Tổng hợp Tuổi hàng tồn kho cho biểu đồ Donut.
-        Phân loại: An toàn (<6 tháng), Trung bình (6-12T), Chậm luân chuyển (1-2 năm), Rủi ro (>2 năm).
-        """
-        try:
-            # Gọi SP lấy dữ liệu tồn kho chi tiết
-            sp_query = f"{{CALL {config.SP_GET_INVENTORY_AGING} (?)}}"
-            data = self.db.get_data(sp_query, (None,))
-            
-            if not data: return {'labels': [], 'series': []}
-
-            # Tổng hợp theo các bucket
-            summary = {
-                'An toàn (< 6 Tháng)': 0.0,
-                'Ổn định (6-12 Tháng)': 0.0,
-                'Chậm (1-2 Năm)': 0.0,
-                'RỦI RO (> 2 Năm)': 0.0
-            }
-            
-            for row in data:
-                # Range_0_180_V
-                summary['An toàn (< 6 Tháng)'] += safe_float(row.get('Range_0_180_V'))
-                # Range_181_360_V
-                summary['Ổn định (6-12 Tháng)'] += safe_float(row.get('Range_181_360_V'))
-                # Range_361_540_V + Range_541_720_V
-                summary['Chậm (1-2 Năm)'] += (safe_float(row.get('Range_361_540_V')) + safe_float(row.get('Range_541_720_V')))
-                # Range_Over_720_V
-                summary['RỦI RO (> 2 Năm)'] += safe_float(row.get('Range_Over_720_V'))
-            
-            return {
-                'labels': list(summary.keys()),
-                'series': list(summary.values())
-            }
-        except Exception as e:
-            current_app.logger.error(f"Lỗi chart tồn kho: {e}")
-            return {'labels': [], 'series': []}
 
     def get_top_categories_performance(self, current_year):
-        """Top nhóm hàng (Đã cập nhật logic Gross Profit)."""
         query = f"""
             SELECT TOP 10
                 ISNULL(T3.TEN, T2.I04ID) as CategoryName,
@@ -361,215 +276,41 @@ class ExecutiveService:
             FROM {config.ERP_GIAO_DICH} T1
             INNER JOIN {config.ERP_IT1302} T2 ON T1.InventoryID = T2.InventoryID
             LEFT JOIN {config.TEN_BANG_NOI_DUNG_HD} T3 ON T2.I04ID = T3.LOAI 
-            WHERE T1.TranYear = ?
-            AND T1.OTransactionID IS NOT NULL -- [FIX]
+            WHERE T1.TranYear = ? AND T1.OTransactionID IS NOT NULL
             GROUP BY ISNULL(T3.TEN, T2.I04ID)
             ORDER BY Revenue DESC
         """
         data = self.db.get_data(query, (current_year,))
-        
         result = {'categories': [], 'revenue': [], 'profit': [], 'margin': []}
         if data:
             for row in data:
                 rev = safe_float(row['Revenue'])
                 prof = safe_float(row['GrossProfit'])
                 margin = (prof / rev * 100) if rev > 0 else 0
-                
                 result['categories'].append(row['CategoryName'])
                 result['revenue'].append(rev)
                 result['profit'].append(prof)
                 result['margin'].append(round(margin, 1))
-                
         return result
     
-    # [UPDATED] 1. Cập nhật hàm Inventory: Tách CLC & Chuẩn bị dữ liệu Drill-down
-    def get_inventory_aging_chart_data(self):
-        """
-        [UPDATED] Tổng hợp Tuổi hàng + Drill-down chi tiết theo I04ID.
-        """
-        try:
-            # Gọi SP lấy dữ liệu thô
-            sp_query = f"{{CALL {config.SP_GET_INVENTORY_AGING} (?)}}"
-            data = self.db.get_data(sp_query, (None,))
-            
-            if not data: return {'labels': [], 'series': [], 'drilldown': {}}
-
-            # Cấu trúc dữ liệu tổng hợp
-            # buckets chứa: 'val' (tổng tiền), 'items' (dict gom nhóm I04: { 'NSK': 100, 'JST': 50... })
-            buckets = {
-                'An toàn (< 6 Tháng)': {'val': 0.0, 'items': {}},
-                'Ổn định (6-12 Tháng)': {'val': 0.0, 'items': {}},
-                'Chậm (1-2 Năm)': {'val': 0.0, 'items': {}},
-                'Tồn Lâu (> 2 Năm)': {'val': 0.0, 'items': {}}, # >2 năm nhưng ko phải CLC
-                'Hàng CLC (Rủi ro cao)': {'val': 0.0, 'items': {}} # Hàng CLC riêng
-            }
-            
-            for row in data:
-                # Giả định: I04ID là 3 ký tự đầu của InventoryID (hoặc logic mapping của bạn)
-                # Nếu có cột I04ID trong SP thì dùng row['I04ID'], nếu chưa có thì cắt chuỗi
-                group_id = str(row.get('InventoryID', 'KHAC'))[:3].upper()
-                
-                # Hàm helper để cộng dồn vào bucket
-                def add_detail(bucket_key, val):
-                    if val > 0:
-                        buckets[bucket_key]['val'] += val
-                        current_val = buckets[bucket_key]['items'].get(group_id, 0)
-                        buckets[bucket_key]['items'][group_id] = current_val + val
-
-                # 1. Phân loại An toàn
-                add_detail('An toàn (< 6 Tháng)', safe_float(row.get('Range_0_180_V')))
-                
-                # 2. Phân loại Ổn định
-                add_detail('Ổn định (6-12 Tháng)', safe_float(row.get('Range_181_360_V')))
-                
-                # 3. Phân loại Chậm
-                val_1_2 = safe_float(row.get('Range_361_540_V')) + safe_float(row.get('Range_541_720_V'))
-                add_detail('Chậm (1-2 Năm)', val_1_2)
-                
-                # 4. Phân loại Rủi ro (>2 năm) & CLC
-                val_over_2 = safe_float(row.get('Range_Over_720_V'))
-                
-                # Logic xác định CLC (như yêu cầu: >2 năm và rủi ro)
-                # Nếu SP chưa tính Risk_CLC_Value, ta tính lại logic:
-                risk_clc = safe_float(row.get('Risk_CLC_Value', 0)) 
-                if 'Risk_CLC_Value' not in row:
-                    stock_class = str(row.get('StockClass', '')).strip().upper()
-                    # > 5 triệu và không phải loại D
-                    if stock_class != 'D' and val_over_2 > config.RISK_INVENTORY_VALUE:
-                        risk_clc = val_over_2
-                    else:
-                        risk_clc = 0
-
-                val_normal_over_2 = val_over_2 - risk_clc
-                
-                add_detail('Hàng CLC (Rủi ro cao)', risk_clc)
-                add_detail('Tồn Lâu (> 2 Năm)', val_normal_over_2)
-
-            # Format dữ liệu trả về cho Frontend
-            final_labels = []
-            final_series = []
-            final_drilldown = {}
-
-            for label, content in buckets.items():
-                # Chỉ thêm vào biểu đồ nếu có giá trị
-                # if content['val'] > 0: (Có thể bỏ comment nếu muốn ẩn phần = 0)
-                final_labels.append(label)
-                final_series.append(content['val'])
-                
-                # Sắp xếp Top 10 nhóm I04 chiếm tỷ trọng cao nhất trong phần đó
-                sorted_items = sorted(content['items'].items(), key=lambda x: x[1], reverse=True)[:15] 
-                
-                final_drilldown[label] = [{'name': k, 'value': v} for k, v in sorted_items]
-
-            return {
-                'labels': final_labels,
-                'series': final_series,
-                'drilldown': final_drilldown
-            }
-        except Exception as e:
-            current_app.logger.error(f"Lỗi chart tồn kho: {e}")
-            return {'labels': [], 'series': [], 'drilldown': {}}
-
-    # [UPDATED] 2. Cập nhật biểu đồ Xu hướng: Thêm Chi phí
-    def get_profit_trend_chart(self):
-        """
-        Lấy Doanh thu, Chi phí, Lợi nhuận ròng (Net) theo tháng (12 tháng gần nhất).
-        """
-        query = f"""
-            SELECT TOP 12 TranYear, TranMonth,
-                SUM(CASE WHEN CreditAccountID LIKE '{config.ACC_DOANH_THU}' THEN ConvertedAmount ELSE 0 END) as Revenue,
-                SUM(CASE WHEN DebitAccountID LIKE '{config.ACC_GIA_VON}' THEN ConvertedAmount ELSE 0 END) as COGS,
-                
-                -- Tính Chi phí (Các tài khoản đầu 641, 642, 811...)
-                (SELECT SUM(ConvertedAmount) 
-                 FROM {config.ERP_GIAO_DICH} Sub 
-                 WHERE Sub.TranMonth = Main.TranMonth AND Sub.TranYear = Main.TranYear
-                 AND Sub.Ana03ID IS NOT NULL AND Sub.Ana03ID <> '{config.EXCLUDE_ANA03_CP2014}'
-                 AND (Sub.DebitAccountID LIKE '64%' OR Sub.DebitAccountID LIKE '811%')
-                ) as Expenses
-
-            FROM {config.ERP_GIAO_DICH} Main
-            WHERE VoucherDate >= DATEADD(month, -11, GETDATE())
-            GROUP BY TranYear, TranMonth
-            ORDER BY TranYear ASC, TranMonth ASC
-        """
-        try:
-            data = self.db.get_data(query)
-            chart_data = {'categories': [], 'revenue': [], 'expenses': [], 'net_profit': []}
-            
-            if data:
-                for row in data:
-                    rev = safe_float(row['Revenue'])
-                    cogs = safe_float(row['COGS'])
-                    exp = safe_float(row['Expenses'])
-                    
-                    # Lợi nhuận ròng = Doanh thu - Giá vốn - Chi phí
-                    net = rev - cogs - exp
-                    
-                    chart_data['categories'].append(f"T{row['TranMonth']}/{row['TranYear']}")
-                    chart_data['revenue'].append(round(rev / config.DIVISOR_VIEW, 1))
-                    chart_data['expenses'].append(round(exp / config.DIVISOR_VIEW, 1))
-                    chart_data['net_profit'].append(round(net / config.DIVISOR_VIEW, 1))
-                    
-            return chart_data
-        except Exception as e:
-            current_app.logger.error(f"Lỗi biểu đồ trend: {e}")
-            return {'categories': [], 'revenue': [], 'expenses': [], 'net_profit': []}
-
-    # [NEW] 3. Biểu đồ Phễu Kinh doanh (Quote -> Order -> Revenue)
     def get_sales_funnel_data(self):
-        """
-        So sánh Số lượng Chào giá vs Số lượng Đơn hàng thành công vs Doanh số thực tế (6 tháng).
-        """
-        query = f"""
-            SELECT 
-                MONTH(T.DateRef) as Month, YEAR(T.DateRef) as Year,
-                
-                -- 1. Số lượng Chào giá
-                SUM(CASE WHEN T.Type = 'QUOTE' THEN 1 ELSE 0 END) as QuoteCount,
-                
-                -- 2. Số lượng Đơn hàng (SOrderID)
-                SUM(CASE WHEN T.Type = 'ORDER' THEN 1 ELSE 0 END) as OrderCount,
-                
-                -- 3. Doanh số thực tế (Hóa đơn/PXK)
-                SUM(CASE WHEN T.Type = 'SALES' THEN T.Amount ELSE 0 END) as Revenue
-                
-            FROM (
-                -- Lấy Quotes
-                SELECT QuotationDate as DateRef, 'QUOTE' as Type, 0 as Amount 
-                FROM {config.ERP_QUOTES} WHERE QuotationDate >= DATEADD(month, -5, GETDATE())
-                
-                UNION ALL
-                
-                -- Lấy Orders (Đã duyệt)
-                SELECT OrderDate as DateRef, 'ORDER' as Type, 0 as Amount
-                FROM {config.ERP_OT2001} WHERE OrderDate >= DATEADD(month, -5, GETDATE()) AND OrderStatus = 1
-                
-                UNION ALL
-                
-                -- Lấy Doanh thu
-                SELECT VoucherDate as DateRef, 'SALES' as Type, ConvertedAmount as Amount
-                FROM {config.ERP_GIAO_DICH} 
-                WHERE VoucherDate >= DATEADD(month, -5, GETDATE()) 
-                AND CreditAccountID LIKE '{config.ACC_DOANH_THU}'
-            ) T
-            GROUP BY YEAR(T.DateRef), MONTH(T.DateRef)
-            ORDER BY YEAR(T.DateRef), MONTH(T.DateRef)
-        """
         try:
-            data = self.db.get_data(query)
-            result = {'categories': [], 'quotes': [], 'orders': [], 'revenue': []}
-            
-            for row in data:
-                result['categories'].append(f"T{row['Month']}")
-                result['quotes'].append(row['QuoteCount'])
-                result['orders'].append(row['OrderCount'])
-                result['revenue'].append(round(safe_float(row['Revenue']) / config.DIVISOR_VIEW, 1))
-                
-            return result
-        except Exception as e:
-            current_app.logger.error(f"Lỗi funnel chart: {e}")
-            return {'categories': [], 'quotes': [], 'orders': [], 'revenue': []}
+            today = datetime.now()
+            start_date = f"{today.year}-01-01"
+            end_date = today.strftime('%Y-%m-%d')
+            result = self.db.execute_sp_multi('sp_GetSalesFunnel', (start_date, end_date))
+            data = {'categories': ['Chào giá', 'Đơn hàng', 'Doanh số (Tỷ)'], 'quotes': [], 'orders': [], 'revenue': []}
+            if result and result[0]:
+                rows = result[0]
+                val_quotes = next((r['Value'] for r in rows if r['Stage'] == 'Quotes'), 0)
+                val_orders = next((r['Value'] for r in rows if r['Stage'] == 'Orders'), 0)
+                val_revenue = next((r['Value'] for r in rows if r['Stage'] == 'Revenue'), 0)
+                data['quotes'] = [val_quotes, 0, 0]
+                data['orders'] = [0, val_orders, 0]
+                data['revenue'] = [0, 0, val_revenue]
+            return data
+        except Exception: return {}
+
     
     def get_comparison_data(self, year1, year2):
         """

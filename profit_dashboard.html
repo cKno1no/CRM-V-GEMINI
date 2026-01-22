@@ -13,22 +13,20 @@
     .kpi-title { font-size: 0.85rem; font-weight: 600; opacity: 0.9; letter-spacing: 0.5px; text-transform: uppercase; }
     .kpi-value { font-size: 1.8rem; font-weight: 800; margin-top: 10px; }
     
-    /* Gradients giữ nguyên vì là màu chỉ báo đặc thù */
+    /* Gradients */
     .bg-revenue { background: linear-gradient(135deg, #4318FF 0%, #7B61FF 100%); }
     .bg-cogs { background: linear-gradient(135deg, #FFB547 0%, #FFCA85 100%); }
     .bg-profit { background: linear-gradient(135deg, #05CD99 0%, #0BE8B0 100%); }
     .bg-margin { background: linear-gradient(135deg, #E31A1A 0%, #FF5F5F 100%); }
 
     /* TABLE STYLES */
-    .table { 
-        width: 100%; margin-bottom: 0; border-collapse: separate; border-spacing: 0;
-    }
+    .table { width: 100%; margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
     
     .table thead th { 
         background-color: var(--input-bg); color: var(--secondary); 
         font-weight: 700; font-size: 0.8rem; text-transform: uppercase; 
         padding: 15px; border-bottom: 2px solid var(--border-color); cursor: pointer;
-        white-space: nowrap;
+        white-space: nowrap; position: sticky; top: 0; z-index: 10;
     }
     .table thead th:hover { color: var(--primary); }
     
@@ -37,18 +35,15 @@
         padding: 12px 15px; color: var(--text-dark);
     }
 
-    /* Hierarchy Rows - Thích ứng Theme */
-    /* Level 1: Customer */
+    /* Hierarchy Rows */
     .row-lvl-1 { background-color: var(--card-bg); font-weight: 700; cursor: pointer; }
     .row-lvl-1:hover { background-color: var(--input-bg); }
     
-    /* Level 2: Order */
-    .row-lvl-2 { background-color: var(--input-bg); cursor: pointer; display: none; }
+    .row-lvl-2 { background-color: var(--input-bg); cursor: pointer; }
     .row-lvl-2 td { border-bottom: 1px dashed var(--border-color); color: var(--text-dark); opacity: 0.9; }
     .row-lvl-2:hover { background-color: rgba(0,0,0,0.05); }
 
-    /* Level 3: Item */
-    .row-lvl-3 { background-color: var(--bg-color); display: none; }
+    .row-lvl-3 { background-color: var(--bg-color); }
     .row-lvl-3 td { font-size: 0.85rem; color: var(--secondary); border-bottom: 1px solid var(--border-color); }
     
     /* Icons & Text Colors */
@@ -66,16 +61,8 @@
     .sort-icon { margin-left: 5px; font-size: 0.7rem; color: var(--secondary); }
     .sort-active { color: var(--primary); }
 
-    /* Mobile Responsive */
-    @media (max-width: 992px) {
-        .filter-container { flex-direction: column; width: 100%; gap: 10px; }
-        .filter-box { width: 100%; }
-        .table th:nth-child(2), .table td:nth-child(2) {
-            position: sticky; left: 0; background-color: var(--card-bg); z-index: 5;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.05); max-width: 150px;
-        }
-        .row-lvl-2 td:nth-child(2) { background-color: var(--input-bg); }
-    }
+    /* Helper Classes for Alpine */
+    [x-cloak] { display: none !important; }
 </style>
 {% endblock %}
 
@@ -83,14 +70,20 @@
 {% block page_sub %}Hiệu quả kinh doanh theo Khách hàng & Đơn hàng{% endblock %}
 
 {% block header_actions %}
-<div class="d-flex gap-2 filter-container">
+<div class="d-flex gap-2 filter-container" x-data>
     <div class="filter-box">
         <i class="fas fa-search text-muted"></i>
-        <input type="text" id="quickSearch" class="form-control form-control-sm border-0 shadow-none p-0 bg-transparent" 
+        <input type="text" 
+               @input="$dispatch('search-table', $el.value)"
+               class="form-control form-control-sm border-0 shadow-none p-0 bg-transparent" 
                placeholder="Tìm nhanh...">
     </div>
 
-    <form class="filter-box" method="POST">
+    <form class="filter-box" 
+          hx-post="{{ url_for('kpi_bp.profit_analysis_dashboard') }}" 
+          hx-target="body" 
+          hx-swap="outerHTML">
+          
         <input type="date" name="date_from" class="form-control form-control-sm border-0 bg-transparent p-0" value="{{ date_from }}" style="width: 110px;">
         <i class="fas fa-arrow-right text-muted small"></i>
         <input type="date" name="date_to" class="form-control form-control-sm border-0 bg-transparent p-0" value="{{ date_to }}" style="width: 110px;">
@@ -129,89 +122,105 @@
         </div>
     </div>
 
-    <div class="main-card">
+    <div class="main-card" x-data="profitTable()">
         <div class="table-responsive">
             <table class="table" id="mainTable">
                 <thead>
                     <tr>
                         <th style="width: 50px;"></th>
-                        <th onclick="sortTable('name')">ĐỐI TƯỢNG <i class="fas fa-sort sort-icon"></i></th>
-                        <th onclick="sortTable('sales')">NV <i class="fas fa-sort sort-icon"></i></th>
-                        <th class="text-end" onclick="sortTable('revenue')">DOANH THU <i class="fas fa-sort sort-icon"></i></th>
+                        <th @click="sort('name')">ĐỐI TƯỢNG <i class="fas fa-sort sort-icon" :class="getSortClass('name')"></i></th>
+                        <th @click="sort('sales')">NV <i class="fas fa-sort sort-icon" :class="getSortClass('sales')"></i></th>
+                        <th class="text-end" @click="sort('revenue')">DOANH THU <i class="fas fa-sort sort-icon" :class="getSortClass('revenue')"></i></th>
                         <th class="text-end">GIÁ VỐN</th>
-                        <th class="text-end" onclick="sortTable('profit')">LÃI GỘP <i class="fas fa-sort-down sort-active sort-icon"></i></th>
-                        <th class="text-center" onclick="sortTable('margin')">% <i class="fas fa-sort sort-icon"></i></th>
+                        <th class="text-end" @click="sort('profit')">LÃI GỘP <i class="fas fa-sort sort-icon" :class="getSortClass('profit')"></i></th>
+                        <th class="text-center" @click="sort('margin')">% <i class="fas fa-sort sort-icon" :class="getSortClass('margin')"></i></th>
                         <th class="text-center" style="width: 80px;">#</th>
                     </tr>
                 </thead>
                 
-                {% if details %}
-                    {% for cust in details %}
-                    {% set cust_loop = loop %}
-                    <tbody class="customer-group" 
-                           data-name="{{ cust.Name }} {{ cust.ID }}" 
-                           data-sales="{{ cust.SalesMan }}"
-                           data-revenue="{{ cust.Revenue }}"
-                           data-profit="{{ cust.Profit }}"
-                           data-margin="{{ cust.Margin }}">
+                {% for cust in details %}
+                <tbody class="customer-group" 
+                       x-data="{ expanded: false }"
+                       x-show="matchesSearch('{{ cust.Name }} {{ cust.ID }} {{ cust.SalesMan }}')"
+                       data-name="{{ cust.Name }}" 
+                       data-sales="{{ cust.SalesMan }}"
+                       data-revenue="{{ cust.Revenue }}"
+                       data-profit="{{ cust.Profit }}"
+                       data-margin="{{ cust.Margin }}">
+                    
+                    <tr class="row-lvl-1" @click="expanded = !expanded" :class="{'expanded': expanded}">
+                        <td class="text-center">
+                            <i class="fas fa-chevron-right icon-expand text-primary" :style="expanded ? 'transform: rotate(90deg)' : ''"></i>
+                        </td>
+                        <td>
+                            <div class="text-truncate fw-bold" style="max-width: 300px;" title="{{ cust.Name }}">{{ cust.Name }}</div>
+                            <div class="small text-muted">{{ cust.ID }}</div>
+                        </td>
+                        <td class="text-muted small">{{ cust.SalesMan }}</td>
+                        <td class="text-end fw-bold">{{ cust.Revenue | format_tr }}</td>
+                        <td class="text-end text-muted">{{ cust.COGS | format_tr }}</td>
+                        <td class="text-end fw-bold {{ 'text-loss' if cust.Profit < 0 else 'text-success-custom' }}">{{ cust.Profit | format_tr }}</td>
+                        <td class="text-center fw-bold {{ 'text-loss' if cust.Margin < 10 else '' }}">{{ "{:.1f}%".format(cust.Margin) }}</td>
+                        <td class="text-center" @click.stop>
+                            <a href="/customer_360/{{ cust.ID }}" target="_blank" 
+                               class="btn btn-sm btn-light border shadow-sm text-primary"
+                               title="360° View">
+                                <i class="fas fa-chart-pie"></i>
+                            </a>
+                        </td>
+                    </tr>
+
+                    {% for order in cust.Orders %}
+                    
+                    <tr class="row-lvl-2" 
+                        x-show="expanded" 
+                        x-cloak 
+                        x-transition
+                        @click="toggleOrder('{{ order.SoDonHang }}')" 
+                        :class="{'expanded': isOrderOpen('{{ order.SoDonHang }}')}">
                         
-                        <tr class="row-lvl-1" onclick="toggleLvl1('grp-{{ cust_loop.index }}', this)">
-                            <td class="text-center"><i class="fas fa-chevron-right icon-expand text-primary"></i></td>
-                            <td>
-                                <div class="text-truncate fw-bold" style="max-width: 300px;" title="{{ cust.Name }}">{{ cust.Name }}</div>
-                                <div class="small text-muted">{{ cust.ID }}</div>
-                            </td>
-                            <td class="text-muted small">{{ cust.SalesMan }}</td>
-                            <td class="text-end fw-bold">{{ cust.Revenue | format_tr }}</td>
-                            <td class="text-end text-muted">{{ cust.COGS | format_tr }}</td>
-                            <td class="text-end fw-bold {{ 'text-loss' if cust.Profit < 0 else 'text-success-custom' }}">{{ cust.Profit | format_tr }}</td>
-                            <td class="text-center fw-bold {{ 'text-loss' if cust.Margin < 10 else '' }}">{{ "{:.1f}%".format(cust.Margin) }}</td>
-                            <td class="text-center" onclick="event.stopPropagation()">
-                                <a href="/customer_360/{{ cust.ID }}" target="_blank" 
-                                   class="btn btn-sm btn-light border shadow-sm text-primary"
-                                   data-bs-toggle="tooltip" title="360° View">
-                                    <i class="fas fa-chart-pie"></i>
-                                </a>
-                            </td>
-                        </tr>
+                        <td class="text-center">
+                            <i class="fas fa-caret-right icon-expand text-secondary" 
+                               :style="isOrderOpen('{{ order.SoDonHang }}') ? 'transform: rotate(90deg)' : ''">
+                            </i>
+                        </td>
+                        <td class="ps-4">
+                            <span class="fw-bold">{{ order.SoDonHang }}</span>
+                            <span class="badge bg-white text-dark border ms-2">{{ order.VoucherNo }}</span>
+                        </td>
+                        <td class="small text-muted">{{ order.Date | format_date }}</td>
+                        <td class="text-end">{{ order.Revenue | format_tr }}</td>
+                        <td class="text-end small">{{ order.COGS | format_tr }}</td>
+                        <td class="text-end {{ 'text-loss' if order.Profit < 0 else '' }}">{{ order.Profit | format_tr }}</td>
+                        <td class="text-center small {{ 'text-loss' if order.Margin < 10 else 'text-muted' }}">{{ "{:.1f}%".format(order.Margin) }}</td>
+                        <td></td>
+                    </tr>
 
-                        {% for order in cust.Orders %}
-                        {% set order_loop = loop %}
-                        <tr class="row-lvl-2 grp-{{ cust_loop.index }} search-item" 
-                            data-search="{{ order.SoDonHang }} {{ order.VoucherNo }}"
-                            onclick="toggleLvl2('ord-{{ cust_loop.index }}-{{ order_loop.index }}', this)">
-                            <td class="text-center"><i class="fas fa-caret-right icon-expand text-secondary"></i></td>
-                            <td class="ps-4">
-                                <span class="fw-bold">{{ order.SoDonHang }}</span>
-                                <span class="badge bg-white text-dark border ms-2">{{ order.VoucherNo }}</span>
-                            </td>
-                            <td class="small text-muted">{{ order.Date | format_date }}</td>
-                            <td class="text-end">{{ order.Revenue | format_tr }}</td>
-                            <td class="text-end small">{{ order.COGS | format_tr }}</td>
-                            <td class="text-end {{ 'text-loss' if order.Profit < 0 else '' }}">{{ order.Profit | format_tr }}</td>
-                            <td class="text-center small {{ 'text-loss' if order.Margin < 10 else 'text-muted' }}">{{ "{:.1f}%".format(order.Margin) }}</td>
-                            <td></td>
-                        </tr>
-
-                        {% for item in order.Items %}
-                        <tr class="row-lvl-3 ord-{{ cust_loop.index }}-{{ order_loop.index }} search-item" data-search="{{ item.MaHang }} {{ item.TenHang }}">
-                            <td></td>
-                            <td class="ps-5">
-                                <div class="small fw-bold">{{ item.MaHang }}</div>
-                                <div class="text-muted text-truncate small" style="max-width: 250px;">{{ item.TenHang }}</div>
-                            </td>
-                            <td class="small text-muted">SL: {{ item.SoLuong | format_number }}</td>
-                            <td class="text-end small">{{ item.DoanhThu | format_tr }}</td>
-                            <td class="text-end small text-muted">{{ item.GiaVon | format_tr }}</td>
-                            <td class="text-end small {{ 'text-loss' if item.LaiGop < 0 else 'text-success-custom' }}">{{ item.LaiGop | format_tr }}</td>
-                            <td class="text-center small {{ 'text-loss' if item.TyLeLaiGop < 10 else 'text-muted' }}">{{ "{:.1f}%".format(item.TyLeLaiGop) }}</td>
-                            <td></td>
-                        </tr>
-                        {% endfor %} {% endfor %} 
-                    </tbody>
+                    {% for item in order.Items %}
+                    <tr class="row-lvl-3" 
+                        x-show="expanded && isOrderOpen('{{ order.SoDonHang }}')" 
+                        x-cloak 
+                        x-transition>
+                        <td></td>
+                        <td class="ps-5">
+                            <div class="small fw-bold">{{ item.MaHang }}</div>
+                            <div class="text-muted text-truncate small" style="max-width: 250px;">{{ item.TenHang }}</div>
+                        </td>
+                        <td class="small text-muted">SL: {{ item.SoLuong | format_number }}</td>
+                        <td class="text-end small">{{ item.DoanhThu | format_tr }}</td>
+                        <td class="text-end small text-muted">{{ item.GiaVon | format_tr }}</td>
+                        <td class="text-end small {{ 'text-loss' if item.LaiGop < 0 else 'text-success-custom' }}">{{ item.LaiGop | format_tr }}</td>
+                        <td class="text-center small {{ 'text-loss' if item.TyLeLaiGop < 10 else 'text-muted' }}">{{ "{:.1f}%".format(item.TyLeLaiGop) }}</td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+                    
                     {% endfor %} 
-                {% else %}
-                    <tbody><tr><td colspan="8" class="text-center py-5 text-muted">Không có dữ liệu phù hợp.</td></tr></tbody>
+                </tbody>
+                {% endfor %}
+                
+                {% if not details %}
+                <tbody><tr><td colspan="8" class="text-center py-5 text-muted">Không có dữ liệu phù hợp.</td></tr></tbody>
                 {% endif %}
             </table>
         </div>
@@ -220,108 +229,67 @@
 
 {% block scripts %}
 <script>
-    // Init Tooltips
-    document.addEventListener("DOMContentLoaded", function(){
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        })
-    });
+    function profitTable() {
+        return {
+            sortCol: 'profit',
+            sortAsc: false,
+            search: '',
+            openOrders: [], 
 
-    // 1. EXPAND/COLLAPSE LOGIC
-    function toggleLvl1(groupId, row) {
-        row.classList.toggle('expanded');
-        const isExpanded = row.classList.contains('expanded');
-        const lv2Rows = document.getElementsByClassName(groupId);
-        
-        for (let r of lv2Rows) {
-            if (isExpanded) {
-                r.style.display = 'table-row';
-            } else {
-                r.style.display = 'none';
-                r.classList.remove('expanded');
-                const subGroupId = r.getAttribute('onclick').match(/'([^']+)'/)[1];
-                const lv3Rows = document.getElementsByClassName(subGroupId);
-                for(let r3 of lv3Rows) r3.style.display = 'none';
-            }
-        }
-    }
+            init() {
+                // Lắng nghe sự kiện search từ input bên ngoài
+                window.addEventListener('search-table', (e) => {
+                    this.search = e.detail.toLowerCase();
+                });
+            },
 
-    function toggleLvl2(subGroupId, row) {
-        row.classList.toggle('expanded');
-        const isExpanded = row.classList.contains('expanded');
-        const lv3Rows = document.getElementsByClassName(subGroupId);
-        for (let r of lv3Rows) {
-            r.style.display = isExpanded ? 'table-row' : 'none';
-        }
-    }
+            matchesSearch(text) {
+                if (!this.search) return true;
+                return text.toLowerCase().includes(this.search);
+            },
 
-    // 2. FILTER LOGIC
-    function debounce(func, timeout = 500) {
-        let timer;
-        return (...args) => { clearTimeout(timer); timer = setTimeout(() => { func.apply(this, args); }, timeout); };
-    }
+            // Logic Sort
+            sort(col) {
+                if (this.sortCol === col) this.sortAsc = !this.sortAsc;
+                else { this.sortCol = col; this.sortAsc = false; }
 
-    function performFilter() {
-        const input = document.getElementById('quickSearch');
-        const filter = input.value.toLowerCase();
-        const bodies = document.querySelectorAll('tbody.customer-group');
+                const table = document.getElementById('mainTable');
+                const tbodies = Array.from(document.querySelectorAll('tbody.customer-group'));
 
-        bodies.forEach(body => {
-            const custName = body.getAttribute('data-name').toLowerCase();
-            const salesMan = body.getAttribute('data-sales').toLowerCase();
-            let childText = '';
-            body.querySelectorAll('.search-item').forEach(item => {
-                childText += item.getAttribute('data-search') + ' ';
-            });
-            childText = childText.toLowerCase();
+                tbodies.sort((a, b) => {
+                    let valA = a.dataset[col];
+                    let valB = b.dataset[col];
 
-            if (custName.includes(filter) || salesMan.includes(filter) || childText.includes(filter)) {
-                body.style.display = "";
-                if (filter.length > 2 && childText.includes(filter)) {
-                    const rowLvl1 = body.querySelector('.row-lvl-1');
-                    if (!rowLvl1.classList.contains('expanded')) {
-                        rowLvl1.click(); // Auto expand if match child
+                    if (col !== 'name' && col !== 'sales') {
+                        valA = parseFloat(valA) || 0;
+                        valB = parseFloat(valB) || 0;
                     }
+
+                    if (valA < valB) return this.sortAsc ? -1 : 1;
+                    if (valA > valB) return this.sortAsc ? 1 : -1;
+                    return 0;
+                });
+
+                tbodies.forEach(tbody => table.appendChild(tbody));
+            },
+
+            getSortClass(col) {
+                if (this.sortCol !== col) return 'text-muted';
+                return this.sortAsc ? 'fa-sort-up sort-active' : 'fa-sort-down sort-active';
+            },
+
+            toggleOrder(orderId) {
+                if (this.openOrders.includes(orderId)) {
+                    this.openOrders = this.openOrders.filter(id => id !== orderId);
+                } else {
+                    this.openOrders.push(orderId);
                 }
-            } else {
-                body.style.display = "none";
+            },
+            
+            isOrderOpen(orderId) {
+                return this.openOrders.includes(orderId);
             }
-        });
-    }
-    document.getElementById('quickSearch').addEventListener('input', debounce(performFilter));
-
-    // 3. SORT LOGIC
-    let currentSort = { column: 'profit', dir: 'desc' };
-
-    function sortTable(column) {
-        const table = document.getElementById('mainTable');
-        const bodies = Array.from(document.querySelectorAll('tbody.customer-group'));
-        
-        if (currentSort.column === column) {
-            currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
-        } else {
-            currentSort.column = column;
-            currentSort.dir = 'desc';
-            if(column === 'name' || column === 'sales') currentSort.dir = 'asc';
         }
-
-        document.querySelectorAll('.sort-icon').forEach(i => i.className = 'fas fa-sort sort-icon');
-        const th = document.querySelector(`th[onclick="sortTable('${column}')"] i`);
-        if(th) th.className = `fas fa-sort-${currentSort.dir === 'asc' ? 'up' : 'down'} sort-active sort-icon`;
-
-        bodies.sort((a, b) => {
-            let valA = a.getAttribute(`data-${column}`);
-            let valB = b.getAttribute(`data-${column}`);
-            if (column !== 'name' && column !== 'sales') {
-                valA = parseFloat(valA); valB = parseFloat(valB);
-            }
-            if (valA < valB) return currentSort.dir === 'asc' ? -1 : 1;
-            if (valA > valB) return currentSort.dir === 'asc' ? 1 : -1;
-            return 0;
-        });
-
-        bodies.forEach(body => table.appendChild(body));
     }
 </script>
 {% endblock %}

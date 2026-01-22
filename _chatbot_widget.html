@@ -1,0 +1,92 @@
+{# --- LOGIC KHỞI TẠO AN TOÀN (SAFE INIT) --- #}
+{# 1. Xử lý biến user_context có thể là None #}
+{% set safe_user = user_context if (user_context is defined and user_context is not none) else {} %}
+
+{# 2. Lấy Stats (Level & Pet) an toàn #}
+{% set u_stats = safe_user.stats if (safe_user.stats is defined and safe_user.stats) else {} %}
+{% set user_level = u_stats.Level if (u_stats.Level is defined and u_stats.Level) else 1 %}
+{% set equipped_pet = u_stats.EquippedPet if (u_stats.EquippedPet is defined and u_stats.EquippedPet) else 'fox' %}
+
+{# 3. Check Quyền (Hỗ trợ cả Object User có hàm .can() và Dict từ Session) #}
+{% set is_admin = (safe_user.role is defined and safe_user.role == 'ADMIN') %}
+{% set has_perm_func = (safe_user.can is defined and safe_user.can('USE_CHATBOT')) %}
+{# Kiểm tra list permissions nếu là Dict #}
+{% set perms_list = safe_user.permissions if (safe_user.permissions is defined and safe_user.permissions) else [] %}
+{% set has_perm_list = 'USE_CHATBOT' in perms_list %}
+
+{# Tổng hợp quyền: Admin HOẶC Có quyền HOẶC Level >= 5 #}
+{% set can_use_bot = is_admin or has_perm_func or has_perm_list or (user_level >= 5) %}
+
+{# --- GIAO DIỆN WIDGET --- #}
+<div id="titan-pet-wrapper" 
+     x-data="{ minimized: localStorage.getItem('pet_minimized') === 'true', showBubble: false }"
+     x-init="$watch('minimized', val => localStorage.setItem('pet_minimized', val)); setTimeout(() => showBubble = true, 2000); setTimeout(() => showBubble = false, 10000);"
+     :class="{ 'minimized': minimized }">
+
+    <div id="pet-bubble" class="pet-bubble" x-show="!minimized && showBubble" x-transition>
+        Chào sếp! 👇
+    </div>
+
+    <button class="pet-toggle-btn" @click.stop="minimized = !minimized" title="Thu nhỏ/Mở rộng">
+        <i class="fas" :class="minimized ? 'fa-expand' : 'fa-minus'"></i>
+    </button>
+
+    <div id="titan-pet-container" 
+         data-allowed="{{ 'true' if can_use_bot else 'false' }}"
+         @click="handlePetClick($el, {{ 'true' if can_use_bot else 'false' }})">
+         
+        <lottie-player 
+            src="{{ url_for('static', filename='assets/json/' + equipped_pet + '.json') }}" 
+            background="transparent" 
+            speed="1" 
+            style="width: 100%; height: 100%; {{ 'filter: grayscale(100%); opacity: 0.8;' if not can_use_bot else '' }}" 
+            loop 
+            autoplay>
+        </lottie-player>
+    </div>
+</div>
+
+<style>
+    /* CSS cho Pet Widget (Tách từ base.html) */
+    #titan-pet-wrapper { position: fixed; bottom: 20px; right: 20px; z-index: 9999; transition: all 0.3s ease; display: flex; flex-direction: column; align-items: flex-end; }
+    .pet-bubble { background: white; border: 2px solid var(--primary); padding: 10px 15px; border-radius: 15px; margin-bottom: 10px; font-weight: 600; color: var(--text-dark); max-width: 200px; animation: floatBubble 2s infinite ease-in-out; }
+    #titan-pet-container { width: 150px; height: 150px; cursor: pointer; transition: transform 0.2s; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2)); }
+    #titan-pet-container:hover { transform: scale(1.05); }
+    .pet-toggle-btn { position: absolute; top: 0; right: 0; background: rgba(255, 255, 255, 0.6); border: 1px solid var(--border-color); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10000; transition: all 0.2s; }
+    .pet-toggle-btn:hover { background: white; color: var(--primary); }
+    
+    /* Minimized state */
+    #titan-pet-wrapper.minimized { bottom: 10px; right: 10px; }
+    #titan-pet-wrapper.minimized #titan-pet-container { width: 60px; height: 60px; opacity: 0.8; }
+    
+    @keyframes floatBubble { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+    @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-5px) rotate(-5deg); } 75% { transform: translateX(5px) rotate(5deg); } 100% { transform: translateX(0); } }
+</style>
+
+<script>
+    function handlePetClick(el, isAllowed) {
+        // Nếu đang thu nhỏ thì mở rộng ra
+        if (el.parentElement.classList.contains('minimized')) {
+            el.parentElement.__x.$data.minimized = false;
+            return;
+        }
+
+        if (isAllowed) {
+            const url = "{{ url_for('chat_bp.chat_assistant_page') }}";
+            window.open(url, "_blank");
+        } else {
+            // Hiệu ứng rung lắc báo lỗi
+            el.style.animation = 'shake 0.5s';
+            setTimeout(() => el.style.animation = '', 500);
+            
+            // Hiện bong bóng thông báo
+            const bubble = document.getElementById('pet-bubble');
+            if(bubble) {
+                bubble.innerHTML = '<i class="fas fa-lock me-1"></i> Cần <b>Level 5</b>!';
+                bubble.style.color = '#dc3545'; bubble.style.borderColor = '#dc3545';
+                el.parentElement.__x.$data.showBubble = true;
+                setTimeout(() => el.parentElement.__x.$data.showBubble = false, 3000);
+            }
+        }
+    }
+</script>

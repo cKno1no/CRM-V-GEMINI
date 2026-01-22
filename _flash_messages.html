@@ -1,0 +1,19 @@
+<div id="flash-messages">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div x-data="{ show: true }" x-show="show" x-transition.opacity.duration.500ms
+                 class="alert alert-{{ category }} alert-custom alert-dismissible fade show mb-4" role="alert" 
+                 style="background-color: var(--card-bg); color: var(--text-dark); border-left: 5px solid var(--{{ category if category != 'message' else 'primary' }});">
+                
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-info-circle me-3 fs-4 text-{{ category }}"></i>
+                    <div>{{ message }}</div>
+                </div>
+                
+                <button type="button" class="btn-close" @click="show = false" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+</div>

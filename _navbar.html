@@ -1,0 +1,195 @@
+<div class="page-header d-flex justify-content-between align-items-center mb-4" x-data="mailboxWidget()">
+    <div>
+        <h1 class="page-title fw-bold m-0" style="font-size: 1.8rem; color: var(--text-dark);">
+            {% block page_title %}Titan OS{% endblock %}
+        </h1>
+        <p class="small mb-0" style="color: var(--secondary);">
+            {% block page_sub %}{% endblock %}
+        </p>
+    </div>
+    
+    <div class="d-flex align-items-center gap-2">
+        
+        <div class="dropdown d-inline-block">
+            <button class="btn btn-sm shadow-sm position-relative" type="button" 
+                    id="mailboxDropdown" data-bs-toggle="dropdown" aria-expanded="false" 
+                    @click="loadMailbox()"
+                    style="background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-dark);">
+                <i class="fas fa-envelope fs-6"></i>
+                
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light"
+                      x-show="unreadCount > 0"
+                      x-text="unreadCount > 9 ? '9+' : unreadCount"
+                      style="display: none;">
+                </span>
+            </button>
+            
+            <div class="dropdown-menu dropdown-menu-end shadow border-0 p-0" aria-labelledby="mailboxDropdown" 
+                 style="width: 320px; border-radius: 12px; background-color: var(--card-bg); max-height: 500px; overflow-y: auto; z-index: 1050;">
+                
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center" style="border-color: var(--border-color) !important;">
+                    <h6 class="m-0 fw-bold d-flex align-items-center" style="color: var(--text-dark);">
+                        <i class="fas fa-gift me-2 text-primary"></i>Hòm thư
+                    </h6>
+                    <button class="btn btn-sm btn-link text-muted p-0" @click.stop="loadMailbox()" title="Làm mới">
+                        <i class="fas fa-sync-alt" :class="{'fa-spin': loading}"></i>
+                    </button>
+                </div>
+
+                <div id="mailbox-list">
+                    <div x-show="loading" class="text-center py-4 text-muted small">
+                        <span class="spinner-border spinner-border-sm" role="status"></span> Đang tải...
+                    </div>
+
+                    <div x-show="!loading && mails.length === 0" class="text-center text-muted py-4 opacity-50">
+                        <i class="fas fa-inbox fa-3x mb-2"></i>
+                        <p class="small m-0">Hòm thư trống</p>
+                    </div>
+
+                    <template x-for="mail in mails" :key="mail.MailID || mail.id">
+                        <div class="p-3 border-bottom position-relative" 
+                             :class="mail.IsClaimed ? 'bg-light opacity-75' : 'bg-white'">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <h6 class="fw-bold mb-0 text-truncate pe-2" 
+                                    :class="mail.IsClaimed ? 'text-secondary' : 'text-primary'" 
+                                    style="max-width: 200px;">
+                                    <i class="fas" :class="getIcon(mail)"></i>
+                                    <span x-text="mail.Title || 'Thông báo'"></span>
+                                </h6>
+                                <small class="text-muted" style="font-size: 0.7rem;" x-text="formatDate(mail.CreatedTime)"></small>
+                            </div>
+                            <div class="text-muted small mb-2" style="font-size: 0.8rem; line-height: 1.4;" x-html="mail.Content"></div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="fw-bold small">
+                                    <span x-show="mail.Total_XP > 0" class="me-2 text-info" x-text="'+' + mail.Total_XP + ' XP'"></span>
+                                    <span x-show="mail.Total_Coins > 0" class="text-warning" x-text="'+' + mail.Total_Coins + ' Coins'"></span>
+                                </div>
+                                
+                                <div x-show="!mail.IsClaimed">
+                                    <button class="btn btn-sm btn-primary px-3 fw-bold rounded-pill" 
+                                            style="font-size: 0.75rem;" 
+                                            @click="claimReward(mail)"
+                                            :disabled="mail.processing">
+                                        <i class="fas fa-gift me-1"></i> <span x-text="mail.processing ? '...' : 'Nhận'"></span>
+                                    </button>
+                                </div>
+                                <div x-show="mail.IsClaimed">
+                                    <span class="text-success small fw-bold"><i class="fas fa-check-circle me-1"></i>Đã nhận</span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <div class="dropdown d-inline-block">
+            <button class="btn btn-sm shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" 
+                    style="background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-dark);">
+                <i class="fas fa-palette me-1"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 12px; background-color: var(--card-bg);">
+                <li><a class="dropdown-item py-2" href="#" @click.prevent="setTheme('light')"><i class="fas fa-sun me-2 text-warning"></i> Business</a></li>
+                {% if user_context.role == 'ADMIN' or user_context.can('THEME_DARK') %}
+                <li><a class="dropdown-item py-2" href="#" @click.prevent="setTheme('dark')"><i class="fas fa-moon me-2 text-primary"></i> Night Owl</a></li>
+                {% endif %}
+                {% if user_context.role == 'ADMIN' or user_context.can('THEME_FANTASY') %}
+                <li><a class="dropdown-item py-2" href="#" @click.prevent="setTheme('fantasy')"><i class="fas fa-magic me-2 text-danger"></i> Fantasy</a></li>
+                {% endif %}
+                {% if user_context.role == 'ADMIN' or user_context.can('THEME_ADORABLE') %}
+                <li><a class="dropdown-item py-2" href="#" @click.prevent="setTheme('adorable')"><i class="fas fa-heart me-2 text-danger"></i> Adorable</a></li>
+                {% endif %}
+            </ul>
+        </div>
+
+        {% block header_actions %}
+        <a href="/" class="btn btn-back"><i class="fas fa-home me-2"></i>Portal</a>
+        {% endblock %}
+    </div>
+</div>
+
+<script>
+    function mailboxWidget() {
+        return {
+            mails: [],
+            unreadCount: 0,
+            loading: false,
+
+            init() {
+                // Load badge on init
+                this.fetchMails(true);
+            },
+
+            fetchMails(badgeOnly = false) {
+                if (!badgeOnly) this.loading = true;
+                fetch('/api/mailbox')
+                    .then(r => r.json())
+                    .then(data => {
+                        this.mails = data.map(m => ({ ...m, processing: false })); // Add state for UI
+                        this.unreadCount = data.filter(m => !m.IsClaimed).length;
+                        this.loading = false;
+                    })
+                    .catch(() => this.loading = false);
+            },
+
+            loadMailbox() {
+                this.fetchMails(false);
+            },
+
+            getIcon(mail) {
+                if (mail.Total_Coins > 0) return 'fa-coins text-warning';
+                if (mail.Total_XP > 0) return 'fa-star text-info';
+                return 'fa-envelope';
+            },
+
+            formatDate(dateStr) {
+                if (!dateStr) return 'Vừa xong';
+                try { return new Date(dateStr).toLocaleString('vi-VN'); } catch { return dateStr; }
+            },
+
+            claimReward(mail) {
+                mail.processing = true;
+                fetch('/api/mailbox/claim', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({mail_id: mail.MailID || mail.id})
+                })
+                .then(r => r.json())
+                .then(data => {
+                    mail.processing = false;
+                    if(data.success) {
+                        mail.IsClaimed = true;
+                        this.unreadCount = Math.max(0, this.unreadCount - 1);
+                        this.handleEffects(data);
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Oops...', text: data.msg });
+                    }
+                });
+            },
+
+            handleEffects(data) {
+                // Logic pháo hoa và popup (Giữ nguyên logic cũ nhưng gọi từ Alpine)
+                if (typeof fireFireworks === 'function') fireFireworks();
+                
+                if (data.level_up) {
+                    Swal.fire({
+                        html: `
+                            <div class="level-up-content">
+                                <div style="font-size: 1.2rem; color: #E65100; font-weight: 700; text-transform: uppercase;">Level Up!</div>
+                                <div style="font-size: 6rem; font-weight: 900; line-height: 1; color: #4318FF;">${data.new_level}</div>
+                                <div class="badge rounded-pill bg-warning text-dark border border-light shadow-sm px-4 py-2 mt-3">
+                                    <i class="fas fa-coins me-2"></i>+${data.coins_earned} Coins
+                                </div>
+                            </div>`,
+                        customClass: { popup: 'round-glow-popup', confirmButton: 'btn btn-primary rounded-pill px-4 fw-bold mt-3 shadow-lg' },
+                        backdrop: `rgba(11, 20, 55, 0.8) url("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExNXBpeGcwanhwNDA2d3Ntd2VlazNqZm00c3JhaWRtemN0YmpuMTIwNCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/9qKNE5R7PE7VZjJ4La/giphy.gif") left top no-repeat`,
+                        timer: 5000, timerProgressBar: true
+                    });
+                } else {
+                    const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+                    Toast.fire({ icon: 'success', title: 'Đã nhận quà thành công!' });
+                }
+            }
+        }
+    }
+</script>

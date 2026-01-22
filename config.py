@@ -233,6 +233,7 @@ ERP_GENERAL_LEDGER = f'{ERP_DB}.[dbo].[GT9000]'
 ERP_GOODS_RECEIPT_MASTER = f'{ERP_DB}.[dbo].[WT2006]' 
 ERP_GOODS_RECEIPT_DETAIL = f'{ERP_DB}.[dbo].[WT2007]'
 ERP_DELIVERY_DETAIL = f'{ERP_DB}.[dbo].[OT2302]' 
+ERP_DELIVERY_MASTER = f'{ERP_DB}.[dbo].[OT2301]' 
 
 # --- C. VIEWS ---
 CRM_AR_AGING_SUMMARY = '[dbo].[CRM_AR_AGING_SUMMARY]' # Dùng bản HN
@@ -243,12 +244,19 @@ VIEW_BACK_ORDER = f'{ERP_DB}.[dbo].[CRM_TON KHO BACK ORDER]'
 VIEW_BACK_ORDER_DETAIL = f'{ERP_DB}.[dbo].[CRM_BACKORDER]'
 CRM_VIEW_DHB_FULL = f'{ERP_DB}.[dbo].[CRM_TV_THONG TIN DHB_FULL]'
 CRM_VIEW_DHB_FULL_2 = f'{ERP_DB}.[dbo].[CRM_TV_THONG TIN DHB_FULL 2]'
+# [NEW] View Tổng hợp Dòng chảy Kinh doanh (Sales Flow) cho Chatbot
+VIEW_CHATBOT_SALES_FLOW = "[dbo].[View_Chatbot_SalesFlow_Summary]"
+
 
 # --- D. STORED PROCEDURES (SP) ---
 # (Ánh xạ tên chuẩn -> Tên thực tế trong DB HN)
 SP_GET_SALES_LOOKUP = 'dbo.sp_GetSalesLookup_Block1'
 SP_GET_REALTIME_KPI = 'dbo.sp_GetRealtimeSalesKPI'
-SP_GET_INVENTORY_AGING = 'dbo.sp_GetInventoryAging'
+# 1. Dùng cho trang Chi tiết (Inventory Aging Page) -> Trỏ vào SP mới tạo ở Bước 1
+SP_GET_INVENTORY_AGING = 'dbo.sp_GetInventoryAging_Detail_Cache'
+
+# 2. [THÊM MỚI] Dùng cho Dashboard (CEO Cockpit) -> Trỏ vào SP cộng gộp bạn đã tạo trước đó
+SP_GET_INVENTORY_AGING_SUMMARY = 'dbo.sp_GetInventoryAging_Cache'
 SP_SALES_PERFORMANCE = 'dbo.sp_GetSalesPerformanceSummary'      # Cần kiểm tra xem có bản _HN không
 SP_CROSS_SELL_GAP = 'dbo.sp_GetCustomerReplenishmentSuggest'    # Cần kiểm tra xem có bản _HN không
 SP_AR_AGING_DETAIL = 'dbo.sp_GetARAgingDetail'                  # Cần kiểm tra xem có bản _HN không

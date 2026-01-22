@@ -1,7 +1,7 @@
 {% set is_high_priority = task.Priority == 'HIGH' %}
+{% set is_alert = task.Priority == 'ALERT' %}
 
-<div class="task-card" 
-     style="border-left: 5px solid {% if is_high_priority %}#DB4437{% else %}#4285F4{% endif %};"
+<div class="task-card {% if is_high_priority %}priority-high{% elif is_alert %}priority-alert{% endif %}" 
      onclick="openUpdateModal({{ task.TaskID }})">
     
     <span class="task-id-tag">#{{ task.TaskID }}</span>
@@ -10,15 +10,30 @@
         {% if is_high_priority %}
              <i class="fas fa-exclamation-circle text-danger ms-1"></i>
         {% endif %}
+        {% if is_alert %}
+             <i class="fas fa-bell text-warning ms-1"></i>
+        {% endif %}
     </div>
     
     <div style="margin-top: 5px; font-size: 0.8rem;">
-        <span class="badge bg-secondary">{{ task.TaskType }}</span>
+        <span class="badge bg-secondary">{{ task.UserCode }}</span>
         <span class="badge bg-light text-dark">{{ task.TaskDateDisplay }}</span>
+        
+        <span class="badge bg-primary-subtle text-primary-emphasis rounded-pill ms-1" title="Số lượng log">
+            <i class="fas fa-stream fa-xs"></i> {{ task.LogCount | default(0) }}
+        </span>
     </div>
     
     <p class="mt-2 mb-0 text-muted" style="font-size: 0.75rem;">
-        <i class="fas fa-user-tag me-1"></i> Đối tượng: {{ task.ObjectID or '—' }}
+        <i class="fas fa-user-tag me-1"></i> {{ task.ClientName or task.ObjectID or '—' }}
+        
+        {% if task.Attachments %}
+            <a href="{{ task.Attachments }}" target="_blank" class="text-danger ms-2 fw-bold" 
+               title="Mở Link đính kèm" onclick="event.stopPropagation();">
+                <i class="fas fa-external-link-alt"></i> Link
+            </a>
+        {% endif %}
+
         {% if task.NoteCapTren %}
              <span class="text-primary float-end"><i class="fas fa-comment-dots"></i> Note</span>
         {% endif %}

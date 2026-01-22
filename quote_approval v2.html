@@ -212,22 +212,10 @@
                         <div x-show="loading" class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Đang tải...</div>
                         <div class="table-responsive" x-show="!loading">
                             <table class="table table-sm table-striped table-bordered mb-0 table-detail">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 40px;" class="text-center">#</th>
-                                        <th class="text-center">Mã hàng</th>
-                                        <th>Tên hàng</th>
-                                        <th class="text-end">SL</th>
-                                        <th class="text-end">Đơn giá</th>
-                                        <th class="text-end">Giá QĐ</th>
-                                        <th class="text-end">Thành tiền</th>
-                                        <th>Ghi chú</th>
-                                    </tr>
-                                </thead>
+                                <thead><tr><th>Mã hàng</th><th>Tên hàng</th><th>SL</th><th>Đơn giá</th><th>Giá QĐ</th><th>Thành tiền</th><th>Ghi chú</th></tr></thead>
                                 <tbody>
-                                    <template x-for="(item, index) in details" :key="index">
+                                    <template x-for="item in details" :key="item.MaHang">
                                         <tr>
-                                            <td class="text-center text-muted small" x-text="index + 1"></td>
                                             <td class="text-center font-monospace" x-text="item.MaHang"></td>
                                             <td x-text="item.TenHang"></td>
                                             <td class="text-end" x-text="formatNum(item.SoLuong)"></td>
@@ -341,15 +329,11 @@
                 this.loading = true;
                 this.modals.detail.show();
                 
-                fetch(`/api/get_quote_details/${encodeURIComponent(id)}`)
+                fetch(`/api/get_quote_details/${id}`)
                     .then(r => r.json())
                     .then(data => {
                         this.details = data;
                         this.loading = false;
-                    })
-                    .catch(err => {
-                        this.loading = false;
-                        alert('Lỗi tải dữ liệu chi tiết.');
                     });
             },
 
@@ -368,6 +352,7 @@
                 .then(res => {
                     if(res.success) {
                         Swal.fire('Thành công', res.message, 'success');
+                        // Reload lại bảng bằng HTMX trigger hoặc reload trang
                         setTimeout(() => location.reload(), 1000); 
                     } else {
                         Swal.fire('Lỗi', res.message, 'error');
@@ -381,7 +366,7 @@
                 this.costItems = [];
                 this.modals.cost.show();
                 
-                fetch(`/api/get_quote_cost_details/${encodeURIComponent(id)}`)
+                fetch(`/api/get_quote_cost_details/${id}`)
                     .then(r => r.json())
                     .then(data => {
                         this.costItems = data.map(i => ({...i, NewCost: i.Cost || '', Note: i.NOTE || ''}));

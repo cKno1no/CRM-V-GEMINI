@@ -338,60 +338,82 @@ def realtime_dashboard():
 
 @kpi_bp.route('/inventory_aging', methods=['GET', 'POST'])
 @login_required
-@permission_required('VIEW_INVENTORY_AGING') # Áp dụng quyền mới
+@permission_required('VIEW_INVENTORY_AGING')
 def inventory_aging_dashboard():
-    """ROUTE: Phân tích Tuổi hàng Tồn kho."""
+    """ROUTE: Phân tích Tuổi hàng Tồn kho (HTMX Ready)."""
     
-    # FIX: Import Inventory Service Cục bộ
-    
-    db_manager  = current_app.db_manager
-    inventory_service  = current_app.inventory_service
+    db_manager = current_app.db_manager
+    inventory_service = current_app.inventory_service
+    DIVISOR = config.DIVISOR_VIEW # Dùng config chuẩn
 
-    DIVISOR = 1000000.0
-    
-    # Lấy điều kiện lọc từ form
-    item_filter_term = request.form.get('item_filter', '').strip()
-    category_filter = request.form.get('category_filter', '').strip() 
-    qty_filter = request.form.get('qty_filter', '').strip()      
-    value_filter = request.form.get('value_filter', '').strip()
-    i05id_filter = request.form.get('i05id_filter', '').strip() 
+    # Lấy filters (Hỗ trợ cả GET và POST từ HTMX)
+    if request.method == 'POST':
+        item_filter_term = request.form.get('item_filter', '').strip()
+        category_filter = request.form.get('category_filter', '').strip()
+        i05id_filter = request.form.get('i05id_filter', '').strip()
+        value_filter = request.form.get('value_filter', '').strip()
+        qty_filter = request.form.get('qty_filter', '').strip()
+    else:
+        item_filter_term = request.args.get('item_filter', '').strip()
+        category_filter = request.args.get('category_filter', '').strip()
+        i05id_filter = request.args.get('i05id_filter', '').strip()
+        value_filter = request.args.get('value_filter', '').strip()
+        qty_filter = request.args.get('qty_filter', '').strip()
 
-    # Gọi Inventory Service
+    # Gọi Service
     filtered_data, totals = inventory_service.get_inventory_aging_data(
-        item_filter_term, 
-        category_filter, 
-        qty_filter, 
-        value_filter, 
-        i05id_filter
+        item_filter_term, category_filter, qty_filter, value_filter, i05id_filter
     )
     
-    # LOG VIEW_INVENTORY_AGING (BỔ SUNG)
-    try:
-        db_manager.write_audit_log(
-            session.get('user_code'), 'VIEW_INVENTORY_AGING', 'WARNING', 
-            f"Truy cập Phân tích Tuổi hàng Tồn kho (Filter: {item_filter_term})", 
-            get_user_ip()
-        )
-    except Exception as e:
-        current_app.logger.error(f"Lỗi ghi log VIEW_INVENTORY_AGING: {e}")
+    # Context dữ liệu
+    context = {
+        'aging_data': filtered_data,
+        'totals': totals,
+        # Các biến filter để điền lại vào form nếu cần
+        'item_filter_term': item_filter_term,
+        'category_filter': category_filter,
+        # ... (các biến KPI tổng để hiển thị ở header)
+        'kpi_total_inventory': totals['total_inventory'],
+        'kpi_new_6_months': totals['total_new_6_months'],
+        'kpi_clc_value': totals['total_clc_value'],
+        'kpi_over_2_years': totals['total_over_2_years']
+    }
 
-    return render_template(
-        'inventory_aging.html', 
-        aging_data=filtered_data, 
-        item_filter_term=item_filter_term,
-        category_filter=category_filter,
-        qty_filter=qty_filter,
-        value_filter=value_filter,
-        i05id_filter=i05id_filter,
-        
-        # KPI Tổng: Chia cho DIVISOR để hiển thị triệu đồng
-        kpi_total_inventory=totals['total_inventory'] / DIVISOR,
-        kpi_total_quantity=totals['total_quantity'],
-        kpi_new_6_months=totals['total_new_6_months'] / DIVISOR,
-        kpi_over_2_years=totals['total_over_2_years'] / DIVISOR,
-        kpi_clc_value=totals['total_clc_value'] / DIVISOR
+    # [HTMX LOGIC] 
+    # Nếu request có header 'HX-Request', chỉ trả về phần dòng bảng (Partial)
+    if request.headers.get('HX-Request'):
+        return render_template('partials/_inventory_table_rows.html', **context)
+
+    # Nếu truy cập bình thường, trả về toàn trang (Full Layout)
+    return render_template('inventory_aging.html', **context)
+
+
+@kpi_bp.route('/api/inventory/group_detail/<string:group_id>', methods=['GET'])
+@login_required
+def api_inventory_group_detail(group_id):
+    """
+    API trả về các dòng chi tiết (<tr>) của một nhóm hàng.
+    Dùng cho Lazy Load HTMX.
+    """
+    inventory_service = current_app.inventory_service
+    
+    # 1. Lấy toàn bộ dữ liệu (Vì đang dùng Cache nên tốc độ rất nhanh, không lo query lại DB)
+    # Nếu muốn tối ưu hơn nữa, bạn cần viết hàm service get_items_by_group_id(group_id) riêng.
+    # Nhưng với Cache hiện tại, lọc từ RAM Python vẫn cực nhanh.
+    all_groups, _ = inventory_service.get_inventory_aging_data(
+        item_filter_term='', category_filter='', qty_filter='', value_filter='', i05id_filter=''
     )
     
+    # 2. Tìm nhóm đang cần
+    # Giả định GroupID là mã nhóm
+    group_data = next((g for g in all_groups if g['GroupID'] == group_id), None)
+    
+    if not group_data:
+        return '<tr class="bg-light"><td colspan="10" class="text-center text-muted p-3">Không tìm thấy dữ liệu.</td></tr>'
+
+    # 3. Trả về Partial HTML (chỉ các dòng tr)
+    return render_template('partials/_inventory_lazy_items.html', items=group_data['Items'])
+
 @kpi_bp.route('/ar_aging', methods=['GET', 'POST'])
 @login_required
 @permission_required('VIEW_AR_AGING') # Áp dụng quyền mới

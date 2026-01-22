@@ -121,7 +121,7 @@ def login():
     if session.get('logged_in'):
         user_role = session.get('user_role', '').strip().upper()
         if user_role in [config.ROLE_ADMIN]: 
-            return redirect(url_for('executive_bp.ceo_cockpit_dashboard'))
+            return redirect(url_for('executive_bp.ceo_cockpit_page'))
         return redirect(url_for('portal_bp.portal_dashboard'))
 
     message = None
@@ -197,7 +197,7 @@ def login():
             flash(f"Đăng nhập thành công! Chào mừng {user.get('SHORTNAME')}.", 'success')
             
             if user_role in [config.ROLE_ADMIN]: 
-                return redirect(url_for('executive_bp.ceo_cockpit_dashboard'))
+                return redirect(url_for('executive_bp.ceo_cockpit_page'))
             else:
                 return redirect(url_for('portal_bp.portal_dashboard'))
         else:
@@ -283,6 +283,12 @@ def index():
     """Trang chủ (Directory)"""
     user_code = session.get('user_code')
     return render_template('index_redesign.html', user_code=user_code)
+
+# 1. Inject Config vào Context để base.html đọc được biến 'config.DIVISOR_VIEW'
+@app.context_processor
+def inject_global_vars():
+    return dict(config=config)
+
 
 # =========================================================================
 # MAIN

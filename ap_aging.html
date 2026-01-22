@@ -32,7 +32,7 @@
     .kpi-sub-label { font-size: 0.75rem; color: var(--secondary); display: block; }
     .kpi-sub-val { font-size: 1.1rem; font-weight: 700; color: var(--text-dark); }
 
-    /* TABLE STYLES */
+    /* TABLE STYLES - Optimized for HTMX swap */
     .table-aging { width: 100%; border-collapse: separate; border-spacing: 0; }
     
     .table-aging th { 
@@ -82,10 +82,17 @@
     .btn-pay-bank { background-color: var(--warning); color: #000; }
     .btn-pay-bank:hover { background-color: #FF9E0F; }
 
-    /* DataTables Overrides for Theme */
-    .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_info { color: var(--secondary) !important; padding: 10px; }
-    .dataTables_wrapper .dataTables_paginate .paginate_button { color: var(--secondary) !important; }
-    .dataTables_wrapper .dataTables_filter { display: none; }
+    /* Loading Indicator Overlay */
+    .htmx-indicator {
+        opacity: 0;
+        transition: opacity 200ms ease-in;
+    }
+    .htmx-request .htmx-indicator {
+        opacity: 1;
+    }
+    .htmx-request.htmx-indicator {
+        opacity: 1;
+    }
 </style>
 {% endblock %}
 
@@ -100,7 +107,7 @@
 {% endblock %}
 
 {% block content %}
-    <div class="row g-4 mb-4">
+    <div class="row g-4 mb-4" x-data>
         <div class="col-md-4">
             <div class="kpi-card">
                 <div class="kpi-icon-box icon-total"><i class="fas fa-wallet"></i></div>
@@ -141,9 +148,14 @@
         </div>
     </div>
 
-    <div class="main-card mb-4">
+    <div class="main-card mb-4" x-data>
         <div class="card-body-custom" style="padding: 20px;">
-            <form method="POST" class="row g-3 align-items-end">
+            <form hx-post="{{ url_for('ap_bp.ap_aging_dashboard') }}" 
+                  hx-target="#ap-table-container" 
+                  hx-select="#ap-table-container"
+                  hx-swap="outerHTML"
+                  class="row g-3 align-items-end">
+                  
                 <div class="col-md-4">
                     <label class="form-label text-secondary">Đối tượng (NCC / Bank...)</label>
                     <div class="input-group">
@@ -167,15 +179,38 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary shadow-sm w-100">Lọc Dữ Liệu</button>
+                    <button type="submit" class="btn btn-primary shadow-sm w-100">
+                        <i class="fas fa-filter me-2"></i> Lọc Dữ Liệu
+                        <span class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status"></span>
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <div class="main-card">
-        <div class="card-body-custom p-0">
-            <div class="table-responsive">
+    <div class="main-card" x-data="{
+        planPayment(id, name, overdueAmount, type) {
+            let amountToFill = overdueAmount <= 0 ? 0 : overdueAmount;
+            let msg = type === 'BANK' ? `Lập đề nghị Trả vay / Gốc lãi cho Ngân hàng: ${name}?` : `Lập đề nghị thanh toán cho NCC: ${name}?`;
+            
+            Swal.fire({
+                title: 'Xác nhận lập đề nghị',
+                text: msg,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Đồng ý'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const url = `/budget/dashboard?create=1&obj_id=${encodeURIComponent(id)}&obj_name=${encodeURIComponent(name)}&amt=${amountToFill}&debt_type=${encodeURIComponent(type)}`;
+                    window.location.href = url;
+                }
+            })
+        }
+    }">
+        <div class="card-body-custom p-0" id="ap-table-container">
+            <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
                 <table id="apTable" class="table table-aging mb-0">
                     <thead>
                         <tr>
@@ -222,11 +257,11 @@
                             </td>
                             <td class="text-center small text-secondary">{{ row.ReDueDays }}</td>
                             
-                            <td class="text-end val-total" data-order="{{ row.TotalDebt }}">
+                            <td class="text-end val-total">
                                 {{ row.TotalDebt | format_tr }}
                             </td>
                             
-                            <td class="text-end" data-order="{{ row.TotalOverdueDebt }}">
+                            <td class="text-end">
                                 {% if row.TotalOverdueDebt > 0 %}
                                     <span class="val-overdue">{{ row.TotalOverdueDebt | format_tr }}</span>
                                 {% else %}
@@ -234,25 +269,28 @@
                                 {% endif %}
                             </td>
                             
-                            <td class="text-end val-current" data-order="{{ row.Debt_Current }}">
+                            <td class="text-end val-current">
                                 {{ row.Debt_Current | format_tr }}
                             </td>
                             
-                            <td class="text-end text-secondary small" data-order="{{ row.Debt_Range_1_30 }}">{{ row.Debt_Range_1_30 | format_tr }}</td>
-                            <td class="text-end text-secondary small" data-order="{{ row.Debt_Range_31_90 }}">{{ row.Debt_Range_31_90 | format_tr }}</td>
-                            <td class="text-end text-secondary small" data-order="{{ row.Debt_Range_91_180 }}">{{ row.Debt_Range_91_180 | format_tr }}</td>
-                            <td class="text-end text-danger fw-bold small" data-order="{{ row.Debt_Over_180 }}">{{ row.Debt_Over_180 | format_tr }}</td>
+                            <td class="text-end text-secondary small">{{ row.Debt_Range_1_30 | format_tr }}</td>
+                            <td class="text-end text-secondary small">{{ row.Debt_Range_31_90 | format_tr }}</td>
+                            <td class="text-end text-secondary small">{{ row.Debt_Range_91_180 | format_tr }}</td>
+                            <td class="text-end text-danger fw-bold small">{{ row.Debt_Over_180 | format_tr }}</td>
                             
                             <td class="text-center">
-                                {% if row.DebtType == 'BANK' %}
-                                    <button class="btn-pay btn-pay-bank" onclick="planPayment('{{ row.ObjectID }}', '{{ row.ObjectName }}', {{ row.TotalOverdueDebt }}, '{{ row.DebtType }}')">
-                                        <i class="fas fa-money-bill-wave"></i> Trả
-                                    </button>
-                                {% else %}
-                                    <button class="btn-pay" onclick="planPayment('{{ row.ObjectID }}', '{{ row.ObjectName }}', {{ row.TotalOverdueDebt }}, '{{ row.DebtType }}')">
-                                        <i class="fas fa-file-invoice"></i> Chi
-                                    </button>
-                                {% endif %}
+                                <button class="btn-pay {{ 'btn-pay-bank' if row.DebtType == 'BANK' else '' }}" 
+                                        @click="planPayment('{{ row.ObjectID }}', '{{ row.ObjectName | replace("'", "\\'") }}', {{ row.TotalOverdueDebt }}, '{{ row.DebtType }}')">
+                                    <i class="fas {{ 'fa-money-bill-wave' if row.DebtType == 'BANK' else 'fa-file-invoice' }}"></i> 
+                                    {{ 'Trả' if row.DebtType == 'BANK' else 'Chi' }}
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                             <td colspan="12" class="text-center text-muted py-5">
+                                <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i><br>
+                                Không tìm thấy dữ liệu phù hợp.
                             </td>
                         </tr>
                         {% endfor %}
@@ -263,32 +301,4 @@
     </div>
 {% endblock %}
 
-{% block scripts %}
-    <script>
-        $(document).ready(function() {
-            $('#apTable').DataTable({
-                "paging": true, 
-                "pageLength": 25, 
-                "ordering": true,
-                "order": [[5, "desc"], [4, "desc"]], // Sắp xếp theo Quá hạn giảm dần
-                "language": { 
-                    "search": "Lọc nhanh:", 
-                    "info": "Hiển thị _START_ - _END_ / _TOTAL_ dòng",
-                    "paginate": { "next": "Sau", "previous": "Trước" },
-                    "emptyTable": "Không tìm thấy dữ liệu công nợ phù hợp."
-                },
-                "columnDefs": [ { "orderable": false, "targets": 11 } ]
-            });
-        });
-
-        function planPayment(id, name, overdueAmount, type) {
-            let amountToFill = overdueAmount <= 0 ? 0 : overdueAmount; 
-            let msg = type === 'BANK' ? `Lập đề nghị Trả vay / Gốc lãi cho Ngân hàng: ${name}?` : `Lập đề nghị thanh toán cho NCC: ${name}?`;
-
-            if(!confirm(msg)) return;
-
-            const url = `/budget/dashboard?create=1&obj_id=${encodeURIComponent(id)}&obj_name=${encodeURIComponent(name)}&amt=${amountToFill}&debt_type=${encodeURIComponent(type)}`;
-            window.location.href = url;
-        }
-    </script>
-{% endblock %}
+{# Xóa block scripts cũ dùng jQuery DataTables #}

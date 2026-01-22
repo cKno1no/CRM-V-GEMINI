@@ -1,10 +1,21 @@
 # utils.py
-from flask import session, redirect, url_for, flash, request, current_app, jsonify
+from flask import session, redirect, url_for, flash, request, current_app, jsonify, g  # <--- Đã thêm 'g' vào đây
 from functools import wraps
 import config
 import os
 from datetime import datetime
 from werkzeug.utils import secure_filename
+
+
+# --- [BỔ SUNG HÀM NÀY] ---
+def get_db_value(row, key_name):
+    """Lấy giá trị từ dict row không phân biệt hoa thường"""
+    if not row: return None
+    if key_name in row: return row[key_name]
+    for k, v in row.items():
+        if k.upper() == key_name.upper():
+            return v
+    return None
 
 # [FIX] Đã thêm hàm này để khắc phục lỗi 'get_user_ip not found'
 def get_user_ip():
@@ -81,25 +92,66 @@ def permission_required(feature_code):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
+            # 1. Check Login cơ bản
             if not session.get('logged_in'):
                 return redirect(url_for('login'))
             
-            # 1. ADMIN luôn qua
-            if session.get('user_role') == config.ROLE_ADMIN:
+            # 2. Xác định Role hiện tại một cách chắc chắn nhất
+            user = getattr(g, 'user', None)
+            user_role = None
+
+            # Cách 1: Lấy từ g.user (Object)
+            if user and hasattr(user, 'role'):
+                user_role = user.role
+            
+            # Cách 2: Lấy từ g.user (Dict - nếu DB trả về dict)
+            elif user and isinstance(user, dict):
+                # Thử tìm các tên cột phổ biến
+                user_role = get_db_value(user, 'ROLE') or \
+                            get_db_value(user, 'USERROLE') or \
+                            get_db_value(user, 'GROUPID')
+
+            # Cách 3: Fallback lấy từ Session (Lưới an toàn cuối cùng)
+            if not user_role:
+                user_role = session.get('user_role')
+
+            # 3. Chuẩn hóa Role để so sánh (Tránh lỗi Admin vs ADMIN)
+            # Chuyển hết về chữ in hoa và xóa khoảng trắng thừa
+            current_role_str = str(user_role).strip().upper() if user_role else ''
+            admin_role_str = str(config.ROLE_ADMIN).strip().upper()
+
+            # --- DEBUG LOG (Giúp bạn nhìn thấy server đang hiểu role là gì) ---
+            # print(f"DEBUG AUTH: User={session.get('user_code')} | Role Found={user_role} | Normalized={current_role_str} vs Admin={admin_role_str}")
+            # ----------------------------------------------------------------
+
+            # 4. QUYỀN TỐI CAO: Nếu là ADMIN -> Luôn cho qua
+            if current_role_str == admin_role_str:
                 return f(*args, **kwargs)
 
-            # 2. Check quyền
-            if feature_code not in session.get('permissions', []):
+            # 5. Check quyền chi tiết (Nếu không phải Admin)
+            has_permission = False
+            
+            # Ưu tiên dùng hàm .can() của object User
+            if user and hasattr(user, 'can'):
+                has_permission = user.can(feature_code)
+            else:
+                # Fallback về session list
+                perms = session.get('permissions', [])
+                # Đảm bảo permissions là list
+                if isinstance(perms, str): 
+                    perms = [perms] 
+                has_permission = feature_code in perms
+
+            # 6. Xử lý khi KHÔNG có quyền
+            if not has_permission:
                 msg = f"Bạn không có quyền truy cập chức năng này ({feature_code})."
                 
-                # A. Nếu là API Call (AJAX/Fetch) -> Trả về JSON lỗi 403 Forbidden
+                # Nếu là gọi API (như biểu đồ CEO Cockpit) -> Trả JSON lỗi
                 if request.is_json or request.path.startswith('/api/'):
                     return jsonify({'success': False, 'message': msg}), 403
                 
-                # B. Nếu là truy cập Trang (GET) -> Flash message và Reload lại trang trước đó
+                # Nếu là trang thường -> Flash lỗi và đẩy về trang trước
                 flash(msg, "danger")
-                
-                # Redirect về referrer hoặc trang chủ
                 return redirect(request.referrer or url_for('index'))
             
             return f(*args, **kwargs)

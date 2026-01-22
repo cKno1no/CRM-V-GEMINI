@@ -4,12 +4,11 @@
 
 {% block extra_css %}
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-
 <style>
     /* Font đặc thù cho Dashboard CEO */
     h1, h2, h3, h4, h5, h6 { font-family: 'Plus Jakarta Sans', sans-serif; }
 
-    /* --- CARDS --- */
+    /* --- CARDS & LOADING SKELETON --- */
     .card-box {
         background: var(--card-bg); 
         border-radius: 20px;
@@ -32,100 +31,45 @@
     }
 
     /* Scorecard Styles */
-    .score-label {
-        color: var(--secondary);
-        font-size: 0.75rem;
-        font-weight: 700;
-        margin-bottom: 5px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .score-value {
-        color: var(--text-dark);
-        font-size: 1.8rem;
-        font-weight: 800;
-        line-height: 1.1;
-        margin-bottom: 8px;
-    }
-    .trend-badge {
-        font-size: 0.75rem;
-        font-weight: 700;
-        padding: 4px 10px;
-        border-radius: 20px;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-    }
+    .score-label { color: var(--secondary); font-size: 0.75rem; font-weight: 700; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .score-value { color: var(--text-dark); font-size: 1.8rem; font-weight: 800; line-height: 1.1; margin-bottom: 8px; }
     
-    /* Backgrounds cho Badge */
+    .trend-badge { font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 5px; }
     .bg-trend-up { background-color: rgba(5, 205, 153, 0.15); color: var(--success); }
     .bg-trend-down { background-color: rgba(227, 26, 26, 0.1); color: var(--danger); }
     .bg-trend-warn { background-color: rgba(255, 181, 71, 0.15); color: #B71C1C; }
 
     /* Gradient Card (Profit) */
-    .card-gradient {
-        background: linear-gradient(135deg, #4318FF 0%, #7B61FF 100%);
-        color: white !important;
-        border: none;
-    }
+    .card-gradient { background: linear-gradient(135deg, #4318FF 0%, #7B61FF 100%); color: white !important; border: none; }
     .card-gradient .score-label { color: rgba(255,255,255,0.8) !important; }
     .card-gradient .score-value { color: white !important; }
     .card-gradient .trend-badge { background-color: rgba(255,255,255,0.2); color: white; }
 
     /* Icon Box */
-    .icon-box {
-        width: 45px; height: 45px;
-        border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.3rem;
-    }
+    .icon-box { width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
     .ib-primary { background-color: var(--input-bg); color: var(--primary); }
     .ib-warning { background-color: rgba(255, 181, 71, 0.15); color: var(--warning); }
     .ib-danger { background-color: rgba(227, 26, 26, 0.1); color: var(--danger); }
     .ib-success { background-color: rgba(5, 205, 153, 0.15); color: var(--success); }
     .ib-info { background-color: rgba(51, 204, 255, 0.15); color: var(--info); }
 
-    /* --- ACTION CENTER --- */
-    .action-item {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: 15px 0; border-bottom: 1px solid var(--border-color);
-    }
-    .action-item:last-child { border-bottom: none; }
-    .action-icon {
-        width: 40px; height: 40px; border-radius: 50%;
-        background-color: var(--input-bg); color: var(--primary);
-        display: flex; align-items: center; justify-content: center; margin-right: 15px;
-    }
-    .btn-go {
-        width: 36px; height: 36px; border-radius: 10px;
-        background-color: var(--primary); color: white;
-        display: flex; align-items: center; justify-content: center;
-        text-decoration: none; transition: 0.2s;
-    }
-    .btn-go:hover { background-color: var(--primary-dark); color: white; }
-
-    /* --- LEADERBOARD TABLE --- */
-    .table-leaderboard th {
-        color: var(--secondary); font-weight: 600; text-transform: uppercase;
-        font-size: 0.75rem; border-bottom: 1px solid var(--border-color);
-        background: transparent;
-    }
-    .table-leaderboard td {
-        padding: 15px 10px; vertical-align: middle;
-        color: var(--text-dark); font-weight: 600;
-        border-bottom: 1px solid var(--border-color);
-        background: transparent;
-    }
-    .avatar-circle {
-        width: 32px; height: 32px; background-color: var(--input-bg);
-        border-radius: 50%; color: var(--primary);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 0.8rem; font-weight: 800; margin-right: 10px;
-    }
+    /* Leaderboard & Action */
+    .table-leaderboard th { color: var(--secondary); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; border-bottom: 1px solid var(--border-color); background: transparent; }
+    .table-leaderboard td { padding: 15px 10px; vertical-align: middle; color: var(--text-dark); font-weight: 600; border-bottom: 1px solid var(--border-color); background: transparent; }
+    .avatar-circle { width: 32px; height: 32px; background-color: var(--input-bg); border-radius: 50%; color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800; margin-right: 10px; }
     
-    /* Override Modal cho đẹp hơn */
+    /* LOADING SPINNER & SKELETON */
+    .chart-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 320px; color: var(--secondary); }
     .modal-header { padding: 20px 25px; }
     .modal-body { padding: 25px; }
+    
+    .skeleton-text {
+        display: inline-block; height: 1em; width: 100%;
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%; animation: skeleton-loading 1.5s infinite;
+        border-radius: 4px; opacity: 0.5;
+    }
+    @keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 </style>
 {% endblock %}
 
@@ -142,26 +86,29 @@
                 <i class="fas fa-palette"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 12px; background-color: var(--card-bg);">
-                <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('light', true)" style="color: var(--text-dark);"><i class="fas fa-sun me-2 text-warning"></i> Sáng</a></li>
+                <li><a class="dropdown-item py-2" href="#" @click.prevent="setTheme('light')" style="color: var(--text-dark);"><i class="fas fa-sun me-2 text-warning"></i> Sáng</a></li>
                 
-                {% if current_user.role == 'ADMIN' or current_user.can('THEME_DARK') %}
-                <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('dark', true)" style="color: var(--text-dark);"><i class="fas fa-moon me-2 text-primary"></i> Tối</a></li>
-                {% endif %}
-                
-                {% if current_user.role == 'ADMIN' or current_user.can('THEME_FANTASY') %}
-                <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('fantasy', true)" style="color: var(--text-dark);"><i class="fas fa-magic me-2 text-danger"></i> Fantasy</a></li>
+                {# Xử lý Logic Check Quyền an toàn (Support cả Object User và Dict) #}
+                {% set is_admin = (user_context and user_context.role == 'ADMIN') %}
+                {% set perms = user_context.permissions if user_context and user_context.permissions is defined else [] %}
+
+                {% if is_admin or (user_context and user_context.can is defined and user_context.can('THEME_DARK')) or ('THEME_DARK' in perms) %}
+                <li><a class="dropdown-item py-2" href="#" @click.prevent="setTheme('dark')" style="color: var(--text-dark);"><i class="fas fa-moon me-2 text-primary"></i> Tối</a></li>
                 {% endif %}
 
-                {% if current_user.role == 'ADMIN' or current_user.can('THEME_ADORABLE') %}
-                <li><hr class="dropdown-divider" style="border-color: var(--border-color);"></li>
-                <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="setTheme('adorable', true)" style="color: var(--text-dark);"><i class="fas fa-heart me-2 text-info"></i> Adorable</a></li>
+                {% if is_admin or (user_context and user_context.can is defined and user_context.can('THEME_FANTASY')) or ('THEME_FANTASY' in perms) %}
+                <li><a class="dropdown-item py-2" href="#" @click.prevent="setTheme('fantasy')" style="color: var(--text-dark);"><i class="fas fa-magic me-2 text-danger"></i> Fantasy</a></li>
+                {% endif %}
+
+                {% if is_admin or (user_context and user_context.can is defined and user_context.can('THEME_ADORABLE')) or ('THEME_ADORABLE' in perms) %}
+                <li><a class="dropdown-item py-2" href="#" @click.prevent="setTheme('adorable')" style="color: var(--text-dark);"><i class="fas fa-heart me-2 text-info"></i> Adorable</a></li>
                 {% endif %}
             </ul>
         </div>
 
         <span class="px-3 py-2 rounded-pill shadow-sm fw-bold small d-flex align-items-center" 
               style="background: var(--card-bg); color: var(--secondary); border: 1px solid var(--border-color);">
-            <i class="far fa-calendar-check me-2"></i> Dữ liệu Lũy kế năm (YTD)
+            <i class="far fa-calendar-check me-2"></i> YTD (Server Time)
         </span>
         <a href="/" class="btn btn-light fw-bold shadow-sm rounded-pill px-4" 
            style="background: var(--card-bg); color: var(--secondary); border: 1px solid var(--border-color);">
@@ -172,352 +119,371 @@
 {% endblock %}
 
 {% block content %}
-    <div class="row g-4 mb-4">
-        
-        <div class="col-xl-3 col-md-6">
-            <a href="/realtime_dashboard" target="_blank" class="card-box">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="score-label">DOANH SỐ YTD</div>
-                        <div class="score-value">{{ kpi_summary.Sales_YTD | format_tr }}</div>
-                        <div class="trend-badge bg-trend-up">
-                            <i class="fas fa-bullseye"></i> Target: {{ kpi_summary.TargetYear | format_tr }}
-                        </div>
-                    </div>
-                    <div class="icon-box ib-primary"><i class="fas fa-chart-line"></i></div>
-                </div>
-                <div class="mt-3">
-                    <div class="d-flex justify-content-between small mb-1" style="color: var(--secondary);">
-                        <span>Tiến độ năm</span>
-                        <span class="fw-bold">{{ kpi_summary.Percent }}%</span>
-                    </div>
-                    <div class="progress" style="height: 6px; border-radius: 10px; background-color: var(--input-bg);">
-                        <div class="progress-bar" style="background-color: var(--primary); width: {{ kpi_summary.Percent }}%"></div>
-                    </div>
-                </div>
-            </a>
-        </div>
+    <div x-data="ceoDashboard()" x-init="initDashboard()">
 
-        <div class="col-xl-3 col-md-6">
-            <a href="/sales/profit_analysis" target="_blank" class="card-box card-gradient">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="score-label text-white-50">LỢI NHUẬN GỘP YTD</div>
-                        <div class="score-value text-white">{{ profit_summary.GrossProfit | format_tr }}</div>
-                        <div class="trend-badge bg-white bg-opacity-25 text-white">
-                            <i class="fas fa-percentage"></i> Margin: {{ "{:.1f}".format(profit_summary.AvgMargin) }}%
-                        </div>
-                    </div>
-                    <div class="icon-box" style="background: rgba(255,255,255,0.2); color: white;">
-                        <i class="fas fa-coins"></i>
-                    </div>
-                </div>
-                <div class="mt-3 text-white-50 small">
-                    *Dữ liệu ước tính từ sổ cái TK 511 & 632.
-                </div>
-            </a>
-        </div>
-
-        <div class="col-xl-3 col-md-6">
-            <a href="/budget/report/ytd" target="_blank" class="card-box">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="score-label" style="color: var(--warning);">CHI PHÍ HOẠT ĐỘNG YTD</div>
-                        <div class="score-value mb-1" style="color: var(--text-dark);">
-                            {{ finance_summary.TotalExpenses | format_tr }}
-                        </div>
-                        <div class="small fw-bold mb-2" style="font-size: 0.8rem; color: var(--secondary);">
-                            / Ngân sách: {{ kpi_summary.BudgetPlan_YTD | format_tr }}
-                        </div>
-                        {% if kpi_summary.OverBudgetCount > 0 %}
-                        <div class="trend-badge bg-trend-down text-danger">
-                            <i class="fas fa-exclamation-circle"></i> {{ kpi_summary.OverBudgetCount }} khoản vượt
-                        </div>
-                        {% else %}
-                        <div class="trend-badge bg-trend-up">
-                            <i class="fas fa-check-circle"></i> Kiểm soát tốt
-                        </div>
-                        {% endif %}
-                    </div>
-                    <div class="icon-box ib-warning"><i class="fas fa-money-bill-wave"></i></div>
-                </div>
-                <div class="mt-3 small text-muted" style="font-size: 0.75rem;">
-                    Toàn bộ khoản mục chi vs Ngân sách.
-                </div>
-            </a>
-        </div>
-
-        <div class="col-xl-3 col-md-6">
-            <a href="/cross_sell_dashboard" target="_blank" class="card-box">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="score-label" style="color: var(--info);">LỢI NHUẬN VIP YTD</div>
-                        <div class="score-value" style="color: var(--text-dark);">
-                            {{ finance_summary.CrossSellProfit | format_tr }}
-                        </div>
-                        <div class="trend-badge bg-trend-up" style="color: var(--info);">
-                            <i class="fas fa-gem"></i> {{ kpi_summary.CrossSellCustCount }} KH Titan/Diamond
-                        </div>
-                    </div>
-                    <div class="icon-box ib-info"><i class="fas fa-dna"></i></div>
-                </div>
-                <div class="mt-3 small text-muted" style="font-size: 0.75rem;">
-                    Lợi nhuận từ KH có >=10 nhóm hàng.
-                </div>
-            </a>
-        </div>
-    </div>
-
-    <div class="row g-4 mb-4">
-        
-        <div class="col-xl-3 col-md-6">
-            <a href="/ar_aging" target="_blank" class="card-box">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="score-label text-danger">PHẢI THU RỦI RO (>180)</div>
-                        <div class="score-value text-danger">{{ risk_summary.AR_Debt_Over_180 | format_tr }}</div>
-                        <div class="trend-badge bg-trend-down">
-                            <i class="fas fa-skull-crossbones"></i> Thu hồi gấp
-                        </div>
-                    </div>
-                    <div class="icon-box ib-danger"><i class="fas fa-file-invoice-dollar"></i></div>
-                </div>
-                <div class="mt-3 small text-muted">
-                    Tổng AR quá hạn: <strong>{{ risk_summary.AR_TotalOverdueDebt | format_tr }}</strong>
-                </div>
-            </a>
-        </div>
-
-        <div class="col-xl-3 col-md-6">
-            <a href="/ap_aging" target="_blank" class="card-box">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="score-label" style="color: var(--warning);">PHẢI TRẢ RỦI RO (>180)</div>
-                        <div class="score-value" style="color: #E65100;">{{ risk_summary.AP_Debt_Over_180 | format_tr }}</div>
-                        <div class="trend-badge bg-trend-warn text-danger">
-                            <i class="fas fa-exclamation-triangle"></i> Cần thanh toán
-                        </div>
-                    </div>
-                    <div class="icon-box ib-warning"><i class="fas fa-file-invoice"></i></div>
-                </div>
-                <div class="mt-3 small text-muted">
-                    Tổng AP quá hạn: <strong>{{ risk_summary.AP_TotalOverdueDebt | format_tr }}</strong> (NCC)
-                </div>
-            </a>
-        </div>
-
-        <div class="col-xl-3 col-md-6">
-            <a href="/inventory_aging" target="_blank" class="card-box">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="score-label" style="color: var(--secondary);">HÀNG CLC (>2 NĂM)</div>
-                        <div class="score-value" style="color: var(--secondary);">{{ risk_summary.Inventory_Over_2Y | format_tr }}</div>
-                        <div class="trend-badge border" style="background-color: var(--input-bg); color: var(--secondary);">
-                            <i class="fas fa-box-open"></i> Khó thanh lý
-                        </div>
-                    </div>
-                    <div class="icon-box" style="background-color: var(--input-bg); color: var(--secondary);"><i class="fas fa-warehouse"></i></div>
-                </div>
-                <div class="mt-3 small text-muted">
-                    Hàng tồn kho lâu năm chất lượng kém.
-                </div>
-            </a>
-        </div>
-
-        <div class="col-xl-3 col-md-6">
-            <a href="/delivery_dashboard" target="_blank" class="card-box">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="score-label" style="color: var(--primary);">GIAO HÀNG ĐÚNG HẠN (OTIF)</div>
-                        <div class="score-value" style="color: var(--primary);">{{ "{:.1f}".format(kpi_summary.OTIF_YTD) }}%</div>
-                        <div class="trend-badge bg-trend-up">
-                            Tháng này: {{ "{:.1f}".format(kpi_summary.OTIF_Month) }}%
-                        </div>
-                    </div>
-                    <div class="icon-box ib-primary"><i class="fas fa-shipping-fast"></i></div>
-                </div>
-                <div class="mt-3 small text-muted">
-                    Tỷ lệ đơn giao đúng hẹn/tổng đơn đã giao.
-                </div>
-            </a>
-        </div>
-
-    </div>
-
-    <div class="row g-4 mb-4">
-        <div class="col-lg-5">
-            <div class="card-box">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h5 class="fw-bold m-0" style="color: var(--text-dark);">Sức khỏe Tồn kho (Aging)</h5>
-                        <small class="text-muted" style="font-size: 0.8rem;">
-                            <i class="fas fa-mouse-pointer me-1"></i> Click vào biểu đồ để xem chi tiết
-                        </small>
-                    </div>
-                    <a href="/inventory_aging" target="_blank" class="btn btn-sm fw-bold" 
-                       style="background: var(--input-bg); color: var(--danger); border: 1px solid var(--border-color);">
-                        <i class="fas fa-warehouse"></i> Full
-                    </a>
-                </div>
-                <div id="inventoryChart" style="height: 320px;"></div>
-                <div class="text-center mt-2 small text-muted">
-                    *Cảnh báo: Nhóm Rủi ro > 2 năm khó thanh lý.
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-7">
-            <div class="card-box">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="fw-bold m-0" style="color: var(--text-dark);">Hiệu quả Kinh doanh Top 10 Nhóm hàng</h5>
-                    <span class="badge" style="background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary);">Doanh thu vs Lợi nhuận gộp</span>
-                </div>
-                <div id="categoryChart" style="height: 320px;"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-4 mb-4">
-        <div class="col-lg-7">
-            <div class="card-box">
-                <h5 class="fw-bold m-0 mb-4" style="color: var(--text-dark);">Xu hướng Tài chính (12 Tháng)</h5>
-                <div id="financialTrendChart" style="height: 350px;"></div>
-            </div>
-        </div>
-        <div class="col-lg-5">
-            <div class="card-box">
-                <h5 class="fw-bold m-0 mb-4" style="color: var(--text-dark);">Phễu Chuyển đổi (Conversion)</h5>
-                <div id="funnelChart" style="height: 350px;"></div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="row g-4 mb-4">
-        <div class="col-lg-8">
-            <div class="card-box">
-                <h5 class="fw-bold mb-3" style="color: var(--text-dark);">Bảng Xếp Hạng Sales (YTD)</h5>
-                <div class="table-responsive">
-                    <table class="table table-borderless table-leaderboard m-0">
-                        <thead>
-                            <tr>
-                                <th>Nhân viên</th>
-                                <th class="text-end">Doanh số</th>
-                                <th class="text-center">% KPI</th>
-                                <th>Hạng</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for sale in top_sales %}
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar-circle">{{ sale.ShortName[:2] }}</div>
-                                        <div>
-                                            <div style="color: var(--text-dark);">{{ sale.ShortName }}</div>
-                                            <div class="small text-muted" style="font-size: 0.7rem;">{{ sale.UserCode }}</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-end">{{ sale.TotalSalesAmount | format_tr }}</td>
-                                <td class="text-center">
-                                    <div class="d-flex align-items-center justify-content-center">
-                                        <span class="me-2 small fw-bold">{{ sale.Percent }}%</span>
-                                        <div class="progress" style="width: 50px; height: 4px; background-color: var(--input-bg);">
-                                            <div class="progress-bar {{ 'bg-success' if sale.Percent >= 100 else 'bg-primary' }}" 
-                                                 style="width: {{ sale.Percent }}%"></div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-center">
-                                    {% if loop.index == 1 %} <i class="fas fa-medal text-warning"></i>
-                                    {% elif loop.index == 2 %} <i class="fas fa-medal text-secondary"></i>
-                                    {% elif loop.index == 3 %} <i class="fas fa-medal" style="color: #CD7F32;"></i>
-                                    {% else %} <span class="text-muted fw-bold">#{{ loop.index }}</span> {% endif %}
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr><td colspan="4" class="text-center text-muted">Đang cập nhật dữ liệu...</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <div class="card-box">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="fw-bold m-0"><i class="fas fa-bolt text-warning me-2"></i>Trung Tâm Hành Động</h5>
-                    <span class="badge bg-danger rounded-pill">{{ pending_actions.Total }} việc cần xử lý</span>
-                </div>
-
-                <div class="action-item">
-                    <div class="d-flex align-items-center">
-                        <div class="action-icon">
-                            <i class="fas fa-file-signature"></i>
-                        </div>
+        <div class="row g-4 mb-4">
+            <div class="col-xl-3 col-md-6">
+                <a href="/realtime_dashboard" target="_blank" class="card-box">
+                    <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <div class="fw-bold" style="color: var(--text-dark);">Phê duyệt Chào giá biên thấp</div>
-                            <div class="small text-secondary">Có <strong>{{ pending_actions.Quotes }}</strong> phiếu đang chờ.</div>
+                            <div class="score-label">DOANH SỐ YTD</div>
+                            <div x-show="loading" class="skeleton-text mt-2" style="width: 120px;"></div>
+                            <div x-show="!loading" class="score-value" x-text="formatCurrency(data.kpi?.Sales_YTD)"></div>
+                            
+                            <div x-show="!loading" class="trend-badge bg-trend-up">
+                                <i class="fas fa-bullseye"></i> Target: <span x-text="formatCurrency(data.kpi?.TargetYear)"></span>
+                            </div>
                         </div>
+                        <div class="icon-box ib-primary"><i class="fas fa-chart-line"></i></div>
                     </div>
-                    <a href="/quote_approval" class="btn-go"><i class="fas fa-arrow-right"></i></a>
-                </div>
-                
-                <div class="action-item border-0">
-                    <div class="d-flex align-items-center">
-                        <div class="action-icon text-warning" style="background-color: rgba(255, 181, 71, 0.15);">
-                            <i class="fas fa-tasks"></i>
-                        </div>
+                </a>
+            </div>
+
+            <div class="col-xl-3 col-md-6">
+                <a href="/sales/profit_analysis" target="_blank" class="card-box card-gradient">
+                    <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <div class="fw-bold" style="color: var(--text-dark);">Các sự vụ "Báo động"</div>
-                            <div class="small text-secondary">Có <strong>{{ pending_actions.UrgentTasks }}</strong> task khẩn cấp.</div>
+                            <div class="score-label text-white-50">LỢI NHUẬN GỘP YTD</div>
+                            <div x-show="loading" class="skeleton-text mt-2 bg-white bg-opacity-25" style="width: 100px;"></div>
+                            <div x-show="!loading" class="score-value text-white" x-text="formatCurrency(data.profit_summary?.GrossProfit)"></div>
+                            
+                            <div x-show="!loading" class="trend-badge bg-white bg-opacity-25 text-white">
+                                <i class="fas fa-percentage"></i> Margin: <span x-text="(data.profit_summary?.AvgMargin || 0).toFixed(1) + '%'"></span>
+                            </div>
+                        </div>
+                        <div class="icon-box" style="background: rgba(255,255,255,0.2); color: white;"><i class="fas fa-coins"></i></div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-xl-3 col-md-6">
+                <a href="/budget/report/ytd" target="_blank" class="card-box">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="score-label text-warning">CHI PHÍ HOẠT ĐỘNG YTD</div>
+                            <div x-show="loading" class="skeleton-text mt-2" style="width: 120px;"></div>
+                            <div x-show="!loading" class="score-value" x-text="formatCurrency(data.finance_summary?.TotalExpenses)"></div>
+                            <div x-show="!loading" class="small text-muted">/ Ngân sách: <span x-text="formatCurrency(data.kpi?.BudgetPlan_YTD)"></span></div>
+                            <div x-show="!loading" class="trend-badge bg-trend-warn mt-1"><i class="fas fa-exclamation-circle"></i> 16 khoản vượt</div>
+                        </div>
+                        <div class="icon-box ib-warning"><i class="fas fa-money-bill-wave"></i></div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-xl-3 col-md-6">
+                <a href="/ar_aging" target="_blank" class="card-box">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="score-label text-danger">PHẢI THU RỦI RO (>180)</div>
+                            <div x-show="loading" class="skeleton-text mt-2" style="width: 100px;"></div>
+                            <div x-show="!loading" class="score-value text-danger" x-text="formatCurrency(data.risk_summary?.AR_Debt_Over_180)"></div>
+                            <div x-show="!loading" class="trend-badge bg-trend-down"><i class="fas fa-skull-crossbones"></i> Thu hồi gấp</div>
+                            <div x-show="!loading" class="small text-muted mt-1">Tổng AR quá hạn: <span x-text="formatCurrency(data.risk_summary?.AR_TotalOverdueDebt)"></span></div>
+                        </div>
+                        <div class="icon-box ib-danger"><i class="fas fa-file-invoice-dollar"></i></div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-3 col-md-6">
+                <a href="/ap_aging" target="_blank" class="card-box">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="score-label text-warning">PHẢI TRẢ RỦI RO (>180)</div>
+                            <div x-show="loading" class="skeleton-text mt-2" style="width: 100px;"></div>
+                            <div x-show="!loading" class="score-value text-warning" x-text="formatCurrency(data.risk_summary?.AP_Debt_Over_180 || data.risk_summary?.AP_TotalOverdueDebt)"></div>
+                            <div x-show="!loading" class="trend-badge bg-trend-warn"><i class="fas fa-exclamation-triangle"></i> Cần thanh toán</div>
+                            <div x-show="!loading" class="small text-muted mt-1">Tổng AP quá hạn: <span x-text="formatCurrency(data.risk_summary?.AP_TotalOverdueDebt)"></span> (NCC)</div>
+                        </div>
+                        <div class="icon-box" style="background: rgba(255, 181, 71, 0.1); color: #FF8F00;"><i class="fas fa-file-invoice"></i></div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-xl-3 col-md-6">
+                <a href="/inventory_aging" target="_blank" class="card-box">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="score-label text-secondary">HÀNG CLC (>2 NĂM)</div>
+                            <div x-show="loading" class="skeleton-text mt-2" style="width: 100px;"></div>
+                            <div x-show="!loading" class="score-value text-secondary" x-text="formatCurrency(data.risk_summary?.Inventory_Over_2Y)"></div>
+                            <div x-show="!loading" class="trend-badge" style="background: #E0E0E0; color: #616161;"><i class="fas fa-box-open"></i> Khó thanh lý</div>
+                            <div x-show="!loading" class="small text-muted mt-1">Hàng tồn kho lâu năm chất lượng kém.</div>
+                        </div>
+                        <div class="icon-box" style="background: #F5F7FA; color: #5E6C84;"><i class="fas fa-warehouse"></i></div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-xl-3 col-md-6">
+                <div class="card-box">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="score-label text-info">LỢI NHUẬN VIP YTD</div>
+                            <div x-show="loading" class="skeleton-text mt-2" style="width: 100px;"></div>
+                            <div x-show="!loading" class="score-value text-dark" x-text="formatCurrency(data.finance_summary?.CrossSellProfit)"></div>
+                            <div x-show="!loading" class="trend-badge bg-trend-up" style="background: rgba(51, 204, 255, 0.15); color: var(--info);">
+                                <i class="fas fa-gem"></i> <span x-text="data.kpi?.CrossSellCustCount || 0"></span> KH Titan/Diamond
+                            </div>
+                            <div x-show="!loading" class="small text-muted mt-1">Lợi nhuận từ KH có >=10 nhóm hàng.</div>
+                        </div>
+                        <div class="icon-box ib-info"><i class="fas fa-hourglass-half"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6">
+                <a href="/delivery_dashboard" target="_blank" class="card-box">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="score-label text-primary">GIAO HÀNG ĐÚNG HẠN (OTIF)</div>
+                            <div x-show="loading" class="skeleton-text mt-2" style="width: 100px;"></div>
+                            <div x-show="!loading" class="score-value text-primary" x-text="(data.kpi?.OTIF_YTD || 0).toFixed(1) + '%'"></div>
+                            <div x-show="!loading" class="trend-badge bg-trend-up">Tháng này: <span x-text="(data.kpi?.OTIF_Month || 0).toFixed(1) + '%'"></span></div>
+                            <div x-show="!loading" class="small text-muted mt-1">Tỷ lệ đơn giao đúng hẹn/tổng đơn đã giao.</div>
+                        </div>
+                        <div class="icon-box ib-primary"><i class="fas fa-shipping-fast"></i></div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-5">
+                <div class="card-box">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="fw-bold m-0" style="color: var(--text-dark);">Sức khỏe Tồn kho</h5>
+                        <a href="/inventory_aging" target="_blank" class="btn btn-sm fw-bold" style="background: var(--input-bg); color: var(--danger); border: 1px solid var(--border-color);"><i class="fas fa-warehouse"></i> Full</a>
+                    </div>
+                    <div id="inventoryChart" style="min-height: 320px;" class="d-flex align-items-center justify-content-center">
+                        <div x-show="loading" class="spinner-border text-primary"></div>
+                    </div>
+                    <div class="text-center mt-2 small text-muted">*Dữ liệu từ bảng Cache (Job chạy 12H/lần).</div>
+                </div>
+            </div>
+
+            <div class="col-lg-7">
+                <div class="card-box">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="fw-bold m-0" style="color: var(--text-dark);">Hiệu quả Kinh doanh Top 10 Nhóm hàng</h5>
+                    </div>
+                    <div id="categoryChart" style="min-height: 320px;" class="d-flex align-items-center justify-content-center">
+                        <div x-show="loading" class="spinner-border text-primary"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-7">
+                <div class="card-box">
+                    <h5 class="fw-bold m-0 mb-4" style="color: var(--text-dark);">Xu hướng Tài chính (12 Tháng)</h5>
+                    <div id="financialTrendChart" style="min-height: 350px;" class="d-flex align-items-center justify-content-center">
+                        <div x-show="loading" class="spinner-border text-primary"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="card-box">
+                    <h5 class="fw-bold m-0 mb-4" style="color: var(--text-dark);">Phễu Chuyển đổi</h5>
+                    <div id="funnelChart" style="min-height: 350px;" class="d-flex align-items-center justify-content-center">
+                        <div x-show="loading" class="spinner-border text-primary"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal fade" id="inventoryDetailModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header" style="background: var(--card-bg); border-bottom: 1px solid var(--border-color);">
+                        <h5 class="modal-title fw-bold" style="color: var(--text-dark);">Chi tiết Tồn kho: <span x-text="modalTitle" class="text-primary"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-0" style="background: var(--card-bg);">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0" style="color: var(--text-dark);">
+                                <thead class="sticky-top" style="background: var(--input-bg);">
+                                    <tr>
+                                        <th class="ps-4" style="color: var(--secondary);">Mã Nhóm (I04)</th>
+                                        <th class="text-end pe-4" style="color: var(--secondary);">Giá trị (VNĐ)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="item in modalItems" :key="item.name">
+                                        <tr>
+                                            <td class="ps-4 fw-medium" x-text="item.name"></td>
+                                            <td class="text-end pe-4 fw-bold font-monospace" x-text="formatNumber(item.value)"></td>
+                                        </tr>
+                                    </template>
+                                    <tr x-show="modalItems.length === 0">
+                                        <td colspan="2" class="text-center text-muted py-3">Không có dữ liệu chi tiết.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                    <a href="/task_dashboard?filter=RISK" class="btn-go" style="background-color: var(--warning); color: #B71C1C;"><i class="fas fa-arrow-right"></i></a>
-                </div>
-
-            </div>
-        </div>
-    </div>
-    
-    <div class="modal fade" id="inventoryDetailModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header" style="background: var(--card-bg); border-bottom: 1px solid var(--border-color);">
-                    <h5 class="modal-title fw-bold" style="color: var(--text-dark);">Chi tiết Tồn kho: <span id="invModalTitle" class="text-primary"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-0" style="background: var(--card-bg);">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0" id="invDetailTable" style="color: var(--text-dark);">
-                            <thead class="sticky-top" style="background: var(--input-bg);">
-                                <tr>
-                                    <th class="ps-4" style="color: var(--secondary);">Mã Nhóm (I04)</th>
-                                    <th class="text-end pe-4" style="color: var(--secondary);">Giá trị (VNĐ)</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                    <div class="modal-footer" style="background: var(--card-bg); border-top: 1px solid var(--border-color);">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
                     </div>
                 </div>
-                <div class="modal-footer" style="background: var(--card-bg); border-top: 1px solid var(--border-color);">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
-                </div>
             </div>
         </div>
-    </div>
 
-    <div id="ceo-context"
-         data-inventory='{{ inventory_chart_data | tojson | safe }}'
-         data-financial='{{ chart_data | tojson | safe }}'
-         data-category='{{ category_perf_data | tojson | safe }}'
-         data-funnel='{{ sales_funnel_data | tojson | safe }}'>
-    </div>
-
+    </div> 
 {% endblock %}
 
 {% block scripts %}
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <script src="{{ url_for('static', filename='js/ceo_cockpit.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+<script>
+    function formatCurrency(val) {
+        // Gọi hàm chuẩn của TitanUtils (đã tự động chia 1.000.000 và thêm chữ 'tr')
+        return TitanUtils.formatCurrency(val);
+    }
+
+    function formatNumber(val) {
+        return TitanUtils.formatNumber(val);
+    }
+
+    function ceoDashboard() {
+        return {
+            loading: true,
+            data: { 
+                kpi: {}, 
+                profit_summary: {}, 
+                risk_summary: {},
+                finance_summary: {}
+            },
+            modalTitle: '',
+            modalItems: [],
+            inventoryModal: null,
+
+            initDashboard() {
+                // Gọi API lấy dữ liệu bất đồng bộ
+                fetch('/api/executive/dashboard_data')
+                    .then(r => r.json())
+                    .then(res => {
+                        if(res.success) {
+                            this.data = res.data;
+                            this.loading = false;
+                            
+                            // Đợi DOM cập nhật rồi vẽ chart
+                            setTimeout(() => {
+                                this.renderCharts(res.data.charts);
+                            }, 50);
+                        } else {
+                            console.error("API Error:", res.message);
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Network Error:", err);
+                        this.loading = false;
+                    });
+            },
+
+            renderCharts(charts) {
+                // 1. Inventory Chart
+                if(charts.inventory && charts.inventory.series && charts.inventory.series.length > 0) {
+                    document.getElementById('inventoryChart').innerHTML = '';
+                    const self = this;
+                    new ApexCharts(document.querySelector("#inventoryChart"), {
+                        series: charts.inventory.series,
+                        labels: charts.inventory.labels,
+                        chart: {
+                            type: 'donut', height: 320, fontFamily: 'Inter',
+                            events: {
+                                dataPointSelection: function(event, chartContext, config) {
+                                    const label = config.w.config.labels[config.dataPointIndex];
+                                    const details = charts.inventory.drilldown ? charts.inventory.drilldown[label] : [];
+                                    self.showModal(label, details);
+                                }
+                            }
+                        },
+                        colors: ['#05CD99', '#4318FF', '#FFB547', '#FF8F00', '#E31A1A'],
+                        plotOptions: {
+                            pie: { donut: { size: '60%', labels: { show: true, total: { show: true, label: 'Tổng Tồn', formatter: (w) => (w.globals.seriesTotals.reduce((a, b) => a + b, 0) / 1000000).toFixed(0) + 'M' } } } }
+                        },
+                        dataLabels: { enabled: false },
+                        legend: { position: 'bottom', fontSize: '11px' }
+                    }).render();
+                }
+
+                // 2. Category Chart
+                if(charts.category && charts.category.revenue) {
+                    document.getElementById('categoryChart').innerHTML = '';
+                    new ApexCharts(document.querySelector("#categoryChart"), {
+                        series: [
+                            { name: 'Doanh thu', type: 'column', data: charts.category.revenue.map(x=>(x/1000000).toFixed(0)) },
+                            { name: 'Lợi nhuận', type: 'column', data: charts.category.profit.map(x=>(x/1000000).toFixed(0)) },
+                            { name: '% Margin', type: 'line', data: charts.category.margin }
+                        ],
+                        chart: { type: 'line', height: 320, toolbar: {show:false}, fontFamily: 'Inter' },
+                        colors: ['#4318FF', '#05CD99', '#FFB547'],
+                        xaxis: { categories: charts.category.categories },
+                        yaxis: [
+                            { title: {text: 'Triệu VNĐ'} }, 
+                            { opposite: true, title: {text: '%'} }
+                        ],
+                        plotOptions: { bar: { columnWidth: '60%', borderRadius: 3 } },
+                        dataLabels: { enabled: true, enabledOnSeries: [2], formatter: (val) => val + "%" },
+                        legend: { position: 'top' }
+                    }).render();
+                }
+
+                // 3. Financial Trend
+                if(charts.financial && charts.financial.revenue) {
+                    document.getElementById('financialTrendChart').innerHTML = '';
+                    new ApexCharts(document.querySelector("#financialTrendChart"), {
+                        series: [
+                            { name: 'Doanh thu', type: 'column', data: charts.financial.revenue },
+                            { name: 'Chi phí', type: 'column', data: charts.financial.expenses },
+                            { name: 'Lợi nhuận', type: 'line', data: charts.financial.net_profit }
+                        ],
+                        chart: { type: 'line', height: 350, toolbar: {show:false}, fontFamily: 'Inter' },
+                        colors: ['#4318FF', '#FFB547', '#05CD99'],
+                        xaxis: { categories: charts.financial.categories },
+                        yaxis: { title: { text: 'Tỷ VNĐ' } },
+                        plotOptions: { bar: { columnWidth: '55%', borderRadius: 2 } },
+                        legend: { position: 'top' }
+                    }).render();
+                }
+
+                // 4. Funnel Chart
+                if(charts.funnel && charts.funnel.quotes) {
+                    document.getElementById('funnelChart').innerHTML = '';
+                    new ApexCharts(document.querySelector("#funnelChart"), {
+                        series: [
+                            { name: 'Chào giá', type: 'column', data: charts.funnel.quotes },
+                            { name: 'Đơn hàng', type: 'column', data: charts.funnel.orders },
+                            { name: 'Doanh số (Tỷ)', type: 'line', data: charts.funnel.revenue }
+                        ],
+                        chart: { type: 'line', height: 350, toolbar: {show:false}, fontFamily: 'Inter' },
+                        colors: ['#A3AED0', '#4318FF', '#05CD99'],
+                        xaxis: { categories: charts.funnel.categories },
+                        yaxis: [
+                            { title: { text: 'Số lượng' }, labels: { formatter: (val) => val.toFixed(0) } },
+                            { opposite: true, title: { text: 'Tỷ VNĐ' } }
+                        ],
+                        plotOptions: { bar: { columnWidth: '60%', borderRadius: 2 } },
+                        legend: { position: 'top' }
+                    }).render();
+                }
+            },
+
+            showModal(label, details) {
+                this.modalTitle = label;
+                this.modalItems = details || [];
+                
+                if (!this.inventoryModal) {
+                    this.inventoryModal = new bootstrap.Modal(document.getElementById('inventoryDetailModal'));
+                }
+                this.inventoryModal.show();
+            }
+        }
+    }
+</script>
 {% endblock %}
