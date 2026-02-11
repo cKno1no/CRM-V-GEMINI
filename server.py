@@ -6,21 +6,50 @@ from datetime import datetime
 import os
 import schedule
 import time
-import threading # [QUAN TRỌNG] Để chạy song song Scheduler và Server
+import threading
 
-# Import ứng dụng Flask
+# Import ứng dụng Flask (Biến 'app' này đã chứa sẵn chatbot_service nhờ factory.py)
 from app import app
 from waitress import serve
+from apscheduler.schedulers.background import BackgroundScheduler
+
+# =======================================================
+# 1. ĐỊNH NGHĨA HÀM SCHEDULER (SỬ DỤNG SERVICE CỦA APP)
+# =======================================================
+def run_daily_challenge_job():
+    print(f"⏰ [Cron] Kích hoạt Daily Challenge Batch: {datetime.now().strftime('%H:%M:%S')}")
+    
+    # [QUAN TRỌNG] Sử dụng app_context để truy cập vào biến 'app' an toàn
+    with app.app_context():
+        try:
+            # Truy cập chatbot_service đã được gắn vào app ở factory.py
+            if hasattr(app, 'chatbot_service'):
+                # Gọi hàm phân phối câu hỏi
+                # Đổi .training thành .training_service cho khớp với chatbot_service.py
+                messages = app.chatbot_service.training_service.distribute_daily_questions()
+                
+                
+                count = 0
+                if messages:
+                    for item in messages:
+                        # [TODO] Sếp thêm logic gửi tin nhắn (Zalo/Socket) ở đây
+                        # Ví dụ: notification_service.send(item['user_code'], item['message'])
+                        print(f"   -> Gửi challenge cho {item['user_code']}")
+                        count += 1
+                print(f"✅ Đã gửi {count} câu hỏi daily.")
+            else:
+                print("❌ Lỗi: app.chatbot_service chưa được khởi tạo.")
+                
+        except Exception as e:
+            print(f"❌ Lỗi Scheduler Daily Challenge: {e}")
 
 # =========================================================================
-# 1. CẤU HÌNH LOGGING (Giữ nguyên từ hệ thống cũ)
+# 2. CẤU HÌNH LOGGING
 # =========================================================================
 def logger_setup():
-    # Tạo thư mục logs nếu chưa có
     if not os.path.exists('logs'):
         os.makedirs('logs')
 
-    # Cấu hình logging cơ bản
     logging.basicConfig(
         level=logging.INFO,
         format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
@@ -32,76 +61,61 @@ def logger_setup():
     logging.info("Titan OS Startup: Hệ thống Logging đã kích hoạt.")
 
 # =========================================================================
-# 2. CÁC JOB CHẠY NGẦM (SCHEDULER JOBS)
+# 3. CÁC JOB KHÁC
 # =========================================================================
 def run_daily_gamification():
-    """
-    Job chạy định kỳ (20:00 hàng ngày) để tổng kết điểm thưởng và gửi thư.
-    """
+    """Job chạy định kỳ (20:00 hàng ngày) tổng kết điểm."""
     with app.app_context():
         try:
-            print(f">>> [Job Scheduler] Bắt đầu tổng kết Gamification: {datetime.now().strftime('%H:%M:%S')}")
-            
+            print(f">>> [Job Scheduler] Bắt đầu tổng kết Gamification...")
             if hasattr(app, 'gamification_service'):
-                # Gọi service xử lý logic tính điểm
                 app.gamification_service.process_daily_rewards()
-                logging.info("[Job Scheduler] Đã chạy xong process_daily_rewards.")
             else:
-                err_msg = "[Job Scheduler] Lỗi: Gamification Service chưa được khởi tạo trong app."
-                print(err_msg)
-                logging.error(err_msg)
-                
-            print(">>> [Job Scheduler] Hoàn tất tổng kết.")
-            
+                print("❌ Lỗi: Gamification Service chưa khởi tạo.")
         except Exception as e:
-            err_msg = f"[Job Scheduler] Lỗi nghiêm trọng khi chạy job: {e}"
-            print(err_msg)
-            logging.error(err_msg)
+            print(f"❌ Lỗi Gamification Job: {e}")
 
 def run_schedule_loop():
-    """
-    Vòng lặp vô tận để kiểm tra và kích hoạt các job đã lên lịch.
-    Chạy trên một luồng (Thread) riêng biệt.
-    """
+    """Vòng lặp cho thư viện 'schedule' (nếu sếp dùng song song với apscheduler)"""
     while True:
         try:
             schedule.run_pending()
-            # Ngủ 20 giây để tiết kiệm CPU, độ trễ tối đa chỉ 20s
-            time.sleep(120) 
+            time.sleep(60) 
         except Exception as e:
-            logging.error(f"Lỗi trong luồng Scheduler Loop: {e}")
-            time.sleep(120) # Nghỉ 5s rồi thử lại nếu lỗi
+            logging.error(f"Lỗi Scheduler Loop: {e}")
+            time.sleep(60)
 
 # =========================================================================
-# 3. MAIN ENTRY POINT
+# 4. MAIN ENTRY POINT
 # =========================================================================
 if __name__ == '__main__':
-    # A. Khởi tạo Logging
     logger_setup()
+
+    # --- CẤU HÌNH APSCHEDULER ---
+    scheduler = BackgroundScheduler()
     
-    # B. Cấu hình Lịch chạy (Scheduler)
-    # Chạy vào 20:00 mỗi ngày
+    # Lên lịch gửi câu hỏi (9:05, 13:05, 17:05)
+    scheduler.add_job(run_daily_challenge_job, 'cron', hour=9, minute=5)
+    scheduler.add_job(run_daily_challenge_job, 'cron', hour=14, minute=47)
+    scheduler.add_job(run_daily_challenge_job, 'cron', hour=17, minute=5)
+    
+    # Lên lịch quét quà (20:00) - Dùng lambda để wrap trong app context nếu cần
+    scheduler.add_job(run_daily_gamification, 'cron', hour=20, minute=0)
+    
+    scheduler.start()
+
+    # --- CẤU HÌNH SCHEDULE (LEGACY) ---
     schedule.every().day.at("20:20").do(run_daily_gamification)
     
-    # [DEV ONLY] Bỏ comment dòng dưới để test chạy mỗi phút
-    # schedule.every(1).minutes.do(run_daily_gamification)
-
-    # C. Khởi động Luồng Scheduler (Daemon Thread)
-    # Daemon=True nghĩa là khi tắt Server chính, luồng này cũng tự tắt theo
     scheduler_thread = threading.Thread(target=run_schedule_loop, daemon=True)
     scheduler_thread.start()
     
-    print(f">>> Titan OS Scheduler đã khởi động song song (Check mỗi 20s)...")
-    logging.info("Titan OS Scheduler started in background thread.")
+    print(f">>> Titan OS Scheduler đã khởi động song song...")
 
-    # D. Khởi động Web Server (Waitress) - Đây là Luồng chính (Blocking)
+    # --- KHỞI CHẠY SERVER ---
     print("-------------------------------------------------------")
     print("TITAN OS - PRODUCTION SERVER (WAITRESS)")
-    print("System CPU: 8 logical cores") 
-    print("Worker Threads: 12")
     print("Server is running at: http://0.0.0.0:5000")
-    print("Press Ctrl+C to stop.")
     print("-------------------------------------------------------")
     
-    # Waitress sẽ chiếm giữ luồng chính tại đây
     serve(app, host='0.0.0.0', port=5000, threads=12)

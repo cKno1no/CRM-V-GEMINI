@@ -32,6 +32,7 @@ from services.portal_service import PortalService
 from services.user_service import UserService
 from services.customer_analysis_service import CustomerAnalysisService
 from services.gamification_service import GamificationService
+from services.training_service import TrainingService  # <--- [THÊM MỚI]
 
 # 2. Import Blueprints
 from blueprints.crm_bp import crm_bp
@@ -49,7 +50,7 @@ from blueprints.cross_sell_bp import cross_sell_bp
 from blueprints.ap_bp import ap_bp
 from blueprints.user_bp import user_bp
 from blueprints.customer_analysis_bp import customer_analysis_bp
-
+from blueprints.training_bp import training_bp         # <--- [THÊM MỚI]
 # Khởi tạo đối tượng Cache (chưa gắn app)
 cache = Cache()
 
@@ -148,7 +149,8 @@ def create_app():
     app.portal_service = PortalService(db_manager)
     app.user_service = UserService(db_manager)
     app.gamification_service = GamificationService(db_manager)
-    
+    # [THÊM MỚI] Khởi tạo Training Service và gắn vào App
+    app.training_service = TrainingService(db_manager, app.gamification_service)
     app.chatbot_service = ChatbotService(
         app.lookup_service,
         app.customer_service,
@@ -174,7 +176,7 @@ def create_app():
     app.register_blueprint(ap_bp)
     app.register_blueprint(user_bp)
     app.register_blueprint(customer_analysis_bp) # Đường dẫn mặc định sẽ theo định nghĩa trong bp
-
+    app.register_blueprint(training_bp) # <--- [THÊM MỚI] Đăng ký đường dẫn /training
     # 5. Inject User Context
    
     @app.context_processor
