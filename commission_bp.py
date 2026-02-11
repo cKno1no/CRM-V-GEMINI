@@ -1,9 +1,10 @@
 # blueprints/commission_bp.py
 
 from flask import Blueprint, render_template, request, jsonify, session, current_app
-from utils import login_required, permission_required # Import thêm
+from utils import login_required, permission_required 
 from datetime import datetime
 import config
+
 commission_bp = Blueprint('commission_bp', __name__)
 
 @commission_bp.route('/commission/request', methods=['GET'])
@@ -24,90 +25,88 @@ def commission_request_page():
 @commission_bp.route('/api/commission/create', methods=['POST'])
 @login_required
 def api_create_proposal():
-    """API: Tạo phiếu mới và lấy danh sách hóa đơn."""
     db_manager = current_app.db_manager
     from services.commission_service import CommissionService
-    
     service = CommissionService(db_manager)
     data = request.json
-    user_code = session.get('user_code')
     
-    # 1. Gọi Service tạo phiếu (Stored Procedure)
     ma_so = service.create_proposal(
-        user_code=user_code,
+        user_code=session.get('user_code'),
         customer_id=data.get('customer_id'),
         date_from=data.get('date_from'),
         date_to=data.get('date_to'),
-        commission_rate_percent=float(data.get('rate'))
+        commission_rate_percent=float(data.get('rate')),
+        note=data.get('note', '')
     )
     
     if ma_so:
-        # 1. Lấy Chi tiết (Sửa ORDER BY VoucherDate)
-        details = db_manager.get_data(
-            f"SELECT * FROM {config.TABLE_COMMISSION_DETAIL} WHERE MA_SO = ? ORDER BY VoucherDate DESC", 
-            (ma_so,)
-        ) or [] 
+        # Lấy Details
+        details = db_manager.get_data(f"SELECT * FROM {config.TABLE_COMMISSION_DETAIL} WHERE MA_SO = ? ORDER BY VoucherDate DESC", (ma_so,)) or []
+        master = db_manager.get_data(f"SELECT * FROM {config.TABLE_COMMISSION_MASTER} WHERE MA_SO = ?", (ma_so,))[0]
         
-        master_data = db_manager.get_data(
-            f"SELECT * FROM {config.TABLE_COMMISSION_MASTER} WHERE MA_SO = ?", 
-            (ma_so,)
-        )
-        
-        if master_data:
-            master = master_data[0]
-            return jsonify({
-                'success': True, 
-                'ma_so': ma_so,
-                'master': master,
-                'details': details
-            })
-        else:
-            # Trường hợp hiếm: SP chạy xong nhưng không Select lại được Master
-            return jsonify({'success': False, 'message': 'Lỗi: Không tìm thấy thông tin phiếu vừa tạo.'}), 500
+        # [MỚI] Lấy Recipients (Lúc tạo mới thường rỗng, nhưng cứ trả về cho chuẩn)
+        recipients = service.get_proposal_recipients(ma_so) or []
+
+        return jsonify({
+            'success': True, 
+            'ma_so': ma_so,
+            'master': master,
+            'details': details,
+            'recipients': recipients # [MỚI]
+        })
     else:
-        return jsonify({'success': False, 'message': 'Lỗi khi thực thi tạo phiếu (SP trả về null).'}), 500
+        return jsonify({'success': False, 'message': 'Lỗi tạo phiếu.'}), 500
 
 @commission_bp.route('/api/commission/toggle_item', methods=['POST'])
 @login_required
 def api_toggle_item():
-    """API: Tick chọn/bỏ chọn hóa đơn."""
     db_manager = current_app.db_manager
     from services.commission_service import CommissionService
-    
     service = CommissionService(db_manager)
     data = request.json
     
-    success = service.toggle_invoice(
-        detail_id=data.get('detail_id'),
-        is_checked=data.get('is_checked')
+    if service.toggle_invoice(data.get('detail_id'), data.get('is_checked')):
+        master = db_manager.get_data(f"SELECT DOANH_SO_CHON, GIA_TRI_CHI FROM {config.TABLE_COMMISSION_MASTER} WHERE MA_SO = ?", (data.get('ma_so'),))
+        return jsonify({'success': True, 'master': master[0]})
+    return jsonify({'success': False}), 500
+
+# [MỚI] API Thêm người nhận tiền thủ công
+@commission_bp.route('/api/commission/add_contact', methods=['POST'])
+@login_required
+def api_add_contact_manual():
+    db_manager = current_app.db_manager
+    from services.commission_service import CommissionService
+    service = CommissionService(db_manager)
+    data = request.json
+    ma_so = data.get('ma_so')
+    
+    success = service.add_manual_detail(
+        ma_so=ma_so,
+        contact_name=data.get('contact_name'),
+        bank_name=data.get('bank_name'),
+        bank_account=data.get('bank_account'),
+        amount=float(data.get('amount', 0))
     )
     
     if success:
-        ma_so = data.get('ma_so')
+        # [MỚI] Trả về danh sách Recipients mới nhất để vẽ bảng
+        recipients = service.get_proposal_recipients(ma_so)
+        master = db_manager.get_data(f"SELECT DOANH_SO_CHON, GIA_TRI_CHI FROM {config.TABLE_COMMISSION_MASTER} WHERE MA_SO = ?", (ma_so,))
         
-        # [FIX]: Dùng f-string với config
-        master_data = db_manager.get_data(
-            f"SELECT DOANH_SO_CHON, GIA_TRI_CHI FROM {config.TABLE_COMMISSION_MASTER} WHERE MA_SO = ?", 
-            (ma_so,)
-        )
+        return jsonify({
+            'success': True, 
+            'master': master[0],
+            'recipients': recipients # [MỚI]
+        })
         
-        if master_data:
-            return jsonify({'success': True, 'master': master_data[0]})
-            
-    return jsonify({'success': False}), 500
+    return jsonify({'success': False, 'message': 'Lỗi thêm người nhận'}), 500
 
 @commission_bp.route('/api/commission/submit', methods=['POST'])
 @login_required
 def api_submit_proposal():
-    """API: Gửi duyệt."""
     db_manager = current_app.db_manager
     from services.commission_service import CommissionService
-    
     service = CommissionService(db_manager)
     data = request.json
-    
-    result = service.submit_to_payment_request(
-        ma_so=data.get('ma_so'),
-        user_code=session.get('user_code')
-    )
+    result = service.submit_to_payment_request(data.get('ma_so'), session.get('user_code'))
     return jsonify(result)

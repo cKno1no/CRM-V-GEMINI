@@ -175,11 +175,17 @@ def change_password():
 @user_bp.route('/api/mailbox', methods=['GET'])
 @login_required
 def get_mailbox():
-    """Lấy danh sách thư (Xử lý lỗi NaTType của Pandas)."""
+    """Lấy danh sách thư (Chuẩn hóa Key cho Frontend)."""
     user_code = session.get('user_code')
     db_manager = current_app.db_manager
     
-    sql = "SELECT * FROM TitanOS_Game_Mailbox WHERE UserCode = ? ORDER BY IsClaimed ASC, CreatedTime DESC"
+    # Lấy 50 thư mới nhất
+    sql = """
+        SELECT TOP 50 MailID, Title, Content, Total_XP, Total_Coins, CreatedTime, IsClaimed, ClaimedTime 
+        FROM TitanOS_Game_Mailbox 
+        WHERE UserCode = ? 
+        ORDER BY IsClaimed ASC, CreatedTime DESC
+    """
     
     try:
         rows = db_manager.get_data(sql, (user_code,))
@@ -187,13 +193,24 @@ def get_mailbox():
             
         clean_mails = []
         for row in rows:
-            mail = dict(row)
+            # [FIX] Tạo dict thủ công để đảm bảo Key viết Hoa khớp với base.html
+            # (Tránh trường hợp SQL Driver trả về chữ thường 'title' làm HTML không hiện)
+            mail = {
+                'MailID': row.get('MailID'),
+                'Title': row.get('Title'),
+                'Content': row.get('Content'), # Nội dung HTML
+                'Total_XP': row.get('Total_XP', 0),
+                'Total_Coins': row.get('Total_Coins', 0),
+                'IsClaimed': bool(row.get('IsClaimed')),
+                'CreatedTime': row.get('CreatedTime'),
+                'ClaimedTime': row.get('ClaimedTime')
+            }
             
-            # [FIX] Dùng pd.isna() để bắt NaT và None chuẩn xác
-            if 'ClaimedTime' in mail and pd.isna(mail['ClaimedTime']):
-                mail['ClaimedTime'] = None
-            if 'CreatedTime' in mail and pd.isna(mail['CreatedTime']):
-                mail['CreatedTime'] = None
+            # Xử lý ngày tháng NaT/None
+            for date_field in ['CreatedTime', 'ClaimedTime']:
+                val = mail[date_field]
+                if val is None or str(val) in ['NaT', 'NaTType', 'nan']:
+                    mail[date_field] = None
             
             clean_mails.append(mail)
 

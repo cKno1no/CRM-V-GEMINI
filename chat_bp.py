@@ -103,3 +103,25 @@ def chat_assistant_page():
     # 4. Cho phép truy cập
     user_name = session.get('user_name', 'Sếp')
     return render_template('chat_assistant.html', user_name=user_name)
+
+@chat_bp.route('/api/check_daily_challenge', methods=['GET'])
+@login_required
+def check_daily_challenge():
+    user_code = session.get('user_code')
+    if not user_code: return jsonify({'has_challenge': False})
+
+    try:
+        # Gọi service
+        msg = current_app.chatbot_service.training_service.get_pending_challenge(user_code)
+        
+        # [DEBUG] In ra console server để xem có lấy được tin không
+        if msg:
+            print(f"✅ DEBUG: Tìm thấy challenge cho {user_code}")
+            return jsonify({'has_challenge': True, 'message': msg})
+        else:
+            print(f"ℹ️ DEBUG: Không có challenge nào cho {user_code} (hoặc đã hết hạn)")
+            return jsonify({'has_challenge': False})
+            
+    except Exception as e:
+        current_app.logger.error(f"Error checking challenge: {e}")
+        return jsonify({'has_challenge': False})
