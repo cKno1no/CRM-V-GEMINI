@@ -48,7 +48,7 @@ class ChatbotService:
         self.analysis_service = CustomerAnalysisService(db_manager) 
 
         # 1. Cấu hình API
-        api_key = "AIzaSyCC_qWqKqqupwwUT7mOR_Z75M9eKv8Vil4"
+        api_key = "xxxx"
         if not api_key:
             # [FIX] Dùng logger chuẩn thay vì current_app.logger
             logger.error("⚠️ CRITICAL: GEMINI_API_KEY not found in config!")
@@ -1330,4 +1330,5 @@ class ChatbotService:
             
         return "\n".join(response_lines)
     
+
     
