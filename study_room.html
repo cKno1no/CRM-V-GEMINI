@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block title %}Học: {{ material.FileName }}{% endblock %}
+
+{% block content %}
+<style>
+    /* Chế độ Focus: Ẩn Header/Sidebar/Footer của Base Layout để tập trung học */
+    .page-header, .sidebar, .main-footer, .navbar { display: none !important; }
+    .container-fluid { padding: 0 !important; max-width: 100% !important; margin: 0 !important; }
+    body { overflow: hidden; background: #2b2d31; } 
+    
+    /* Tùy chỉnh Scrollbar cho đẹp */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+    /* Các class phụ trợ */
+    .hover-bg-light:hover { background-color: #f8f9fa; }
+    .cursor-pointer { cursor: pointer; }
+    
+    /* CSS cho vòng tròn tiến độ (Circular Progress) */
+    .circular-chart { display: block; margin: 0 auto; max-width: 80%; max-height: 250px; }
+    .circle-bg { fill: none; stroke: #eee; stroke-width: 3.8; }
+    .circle { 
+        fill: none; 
+        stroke-width: 2.8; 
+        stroke-linecap: round; 
+        animation: progress 1s ease-out forwards; 
+        stroke: #0d6efd; 
+        transition: stroke-dasharray 0.3s; 
+    }
+</style>
+
+<div class="d-flex h-100vh w-100">
+    
+    <div class="flex-grow-1 position-relative bg-dark d-flex flex-column" style="height: 100vh;">
+        <div class="bg-secondary text-white p-2 d-flex justify-content-between align-items-center shadow-sm z-10">
+            <a href="/training/course/{{ material.CourseID }}" class="btn btn-sm btn-dark border-0">
+                <i class="fas fa-arrow-left me-1"></i> Trở về khóa học
+            </a>
+            <span class="fw-bold small text-truncate" style="max-width: 400px;">{{ material.FileName }}</span>
+            <div class="d-flex align-items-center">
+                <button class="btn btn-sm btn-dark mx-1" onclick="changePage(-1)"><i class="fas fa-chevron-left"></i></button>
+                <span class="mx-2 small user-select-none">Trang <span id="page_num">1</span> / <span id="page_count">--</span></span>
+                <button class="btn btn-sm btn-dark mx-1" onclick="changePage(1)"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+
+        <div id="pdf-container" class="flex-grow-1 overflow-auto d-flex justify-content-center p-4" style="background: #525659;">
+            <canvas id="the-canvas" class="shadow-lg"></canvas>
+        </div>
+    </div>
+
+    <div class="bg-white border-start d-flex flex-column shadow-lg position-relative" style="width: 400px; height: 100vh; min-width: 350px;">
+        
+        <div class="p-3 border-bottom bg-light d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                <div class="avatar bg-gradient-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div>
+                    <h6 class="m-0 fw-bold text-dark">Titan Tutor</h6>
+                    <small class="text-success" style="font-size: 0.7rem;"><i class="fas fa-circle me-1"></i>Online</small>
+                </div>
+            </div>
+            <div class="position-relative d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                 <svg viewBox="0 0 36 36" class="circular-chart text-primary w-100 h-100">
+                    <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    <path class="circle" id="prog-circle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                </svg>
+                <span class="position-absolute small fw-bold" id="read-percent">0%</span>
+            </div>
+        </div>
+
+        <div id="chat-history" class="flex-grow-1 p-3 overflow-auto" style="background: #f8f9fa;">
+            <div class="d-flex mb-3">
+                <div class="bg-white p-3 rounded-3 shadow-sm border" style="max-width: 90%;">
+                    <p class="m-0 small">Chào <strong>{{ session.get('shortname') }}</strong>! Mình là trợ lý AI. Mình đã đọc hiểu toàn bộ tài liệu này.</p>
+                    <div class="mt-2 pt-2 border-top">
+                        <p class="small text-muted mb-1">Gợi ý:</p>
+                        <button onclick="sendQuick('Tóm tắt tài liệu này')" class="btn btn-xs btn-outline-primary rounded-pill mb-1" style="font-size: 0.75rem;">📝 Tóm tắt ý chính</button>
+                        <button onclick="sendQuick('5 câu hỏi ôn tập')" class="btn btn-xs btn-outline-primary rounded-pill mb-1" style="font-size: 0.75rem;">❓ Đặt câu hỏi ôn tập</button>
+                        <button onclick="sendQuick('Quy trình này áp dụng khi nào?')" class="btn btn-xs btn-outline-primary rounded-pill mb-1" style="font-size: 0.75rem;">💡 Ứng dụng thực tế</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-3 bg-light border-top">
+            <button id="btn-take-quiz" class="btn btn-warning w-100 fw-bold rounded-pill shadow-sm mb-3" onclick="openQuizModal()" disabled>
+                <i class="fas fa-lock me-2"></i> Hoàn thành bài học để mở Test
+            </button>
+
+            <div class="input-group">
+                <input type="text" id="user-input" class="form-control border-end-0 rounded-start-pill ps-3 bg-white" placeholder="Hỏi Titan về tài liệu..." onkeydown="if(event.key==='Enter') sendMessage()">
+                <button class="btn btn-white border border-start-0 rounded-end-pill" onclick="sendMessage()">
+                    <i class="fas fa-paper-plane text-primary"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="quizModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold"><i class="fas fa-file-signature me-2"></i>Bài kiểm tra: {{ material.FileName }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="alert alert-warning border-0 rounded-0 m-0 d-flex align-items-center">
+                <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                <div>
+                    <strong>Quy định liêm chính học thuật:</strong><br>
+                    Vui lòng trả lời bằng chính kiến thức bạn đã học. <br>
+                    <span class="text-danger fw-bold">Hạn chế sử dụng ChatGPT/Google để sao chép đáp án.</span>
+                    AI sẽ phát hiện nếu câu trả lời quá giống văn mẫu.
+                </div>
+            </div>
+
+            <div class="modal-body bg-light p-4" id="quiz-body">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2">Đang tải đề thi từ ngân hàng câu hỏi...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-success rounded-pill px-4 fw-bold" onclick="submitQuiz()" id="btn-submit-quiz" disabled>Nộp bài</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
+<script>
+    // --- 1. CẤU HÌNH VÀ BIẾN TOÀN CỤC ---
+    const pdfUrl = "{{ material.WebPath }}";
+    const materialId = {{ material.MaterialID }};
+    const userCode = "{{ session.get('user_code') }}";
+    const userName = "{{ session.get('shortname') }}";
+    
+    let pdfDoc = null,
+        pageNum = {{ material.last_page or 1 }},
+        pageRendering = false,
+        pageNumPending = null,
+        scale = 1.3, // Tỷ lệ zoom mặc định
+        canvas = document.getElementById('the-canvas'),
+        ctx = canvas.getContext('2d');
+    
+    // Biến lưu trữ cho Quiz
+    let quizData = [];
+    let userAnswers = {};
+
+    // --- 2. BẢO MẬT (CHỐNG IN & CLICK PHẢI) ---
+    document.addEventListener('contextmenu', event => event.preventDefault());
+    document.addEventListener('keydown', function(e) {
+        // Chặn Ctrl+P (Print) và Ctrl+S (Save)
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 's')) {
+            e.preventDefault();
+            Swal.fire('Cảnh báo bảo mật', 'Tài liệu nội bộ. Vui lòng không in hoặc lưu!', 'warning');
+        }
+    });
+
+    // --- 3. XỬ LÝ HIỂN THỊ PDF ---
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+    // Tải PDF
+    pdfjsLib.getDocument(pdfUrl).promise.then(function(pdfDoc_) {
+        pdfDoc = pdfDoc_;
+        document.getElementById('page_count').textContent = pdfDoc.numPages;
+        renderPage(pageNum);
+    }).catch(err => {
+        console.error("Lỗi PDF:", err);
+        Swal.fire('Lỗi tải tài liệu', 'Không tìm thấy file hoặc file bị lỗi.', 'error');
+    });
+
+    // Hàm render từng trang
+    function renderPage(num) {
+        pageRendering = true;
+        
+        // 3.1. Cập nhật thanh tiến độ (Progress Circle)
+        if (pdfDoc) {
+            let percent = Math.round((num / pdfDoc.numPages) * 100);
+            document.getElementById('read-percent').textContent = percent + '%';
+            document.getElementById('prog-circle').setAttribute('stroke-dasharray', `${percent}, 100`);
+            
+            // 3.2. Logic Mở khóa bài kiểm tra (Unlock Quiz)
+            const btnQuiz = document.getElementById('btn-take-quiz');
+            // Điều kiện: Đọc đến trang cuối HOẶC đã đọc > 90%
+            if (num >= pdfDoc.numPages - 1 || percent >= 90) { 
+                btnQuiz.disabled = false;
+                btnQuiz.innerHTML = '<i class="fas fa-file-signature me-2"></i> Làm bài kiểm tra';
+                btnQuiz.classList.remove('btn-warning');
+                btnQuiz.classList.add('btn-success', 'animate__animated', 'animate__pulse', 'animate__infinite');
+            }
+        }
+
+        // 3.3. Gọi API lưu tiến độ ngầm
+        saveProgress(num);
+
+        // 3.4. Vẽ PDF lên Canvas
+        pdfDoc.getPage(num).then(function(page) {
+            var viewport = page.getViewport({scale: scale});
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            var renderContext = {
+                canvasContext: ctx,
+                viewport: viewport
+            };
+            var renderTask = page.render(renderContext);
+
+            // Chờ render xong để vẽ Watermark đè lên
+            renderTask.promise.then(function() {
+                pageRendering = false;
+                
+                // --- VẼ WATERMARK BẢO MẬT ---
+                ctx.save();
+                ctx.globalAlpha = 0.1; // Độ trong suốt thấp (mờ)
+                ctx.font = "bold 30px Arial";
+                ctx.fillStyle = "red";
+                ctx.rotate(-35 * Math.PI / 180); // Xoay chéo
+                
+                const wmText = `${userCode} - ${userName}`;
+                
+                // Vẽ lặp lại kín trang
+                for (let x = -300; x < canvas.width; x += 350) {
+                    for (let y = -300; y < canvas.height; y += 250) {
+                        ctx.fillText(wmText, x, y);
+                    }
+                }
+                ctx.restore();
+                // -----------------------------
+
+                if (pageNumPending !== null) {
+                    renderPage(pageNumPending);
+                    pageNumPending = null;
+                }
+            });
+        });
+
+        // Cập nhật số trang hiển thị
+        document.getElementById('page_num').textContent = num;
+    }
+
+    function queueRenderPage(num) {
+        if (pageRendering) {
+            pageNumPending = num;
+        } else {
+            renderPage(num);
+        }
+    }
+
+    // Chuyển trang Next/Prev
+    function changePage(offset) {
+        if (pageNum + offset >= 1 && pageNum + offset <= pdfDoc.numPages) {
+            pageNum += offset;
+            queueRenderPage(pageNum);
+        }
+    }
+
+    // Lưu tiến độ đọc vào DB
+    function saveProgress(page) {
+        fetch('/api/training/progress', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ material_id: materialId, page: page })
+        });
+    }
+
+    // --- 4. XỬ LÝ QUIZ (TRẮC NGHIỆM + TỰ LUẬN) ---
+    
+    // Mở Modal và tải đề
+    function openQuizModal() {
+        const modal = new bootstrap.Modal(document.getElementById('quizModal'));
+        modal.show();
+        loadQuiz();
+    }
+
+    // Tải danh sách câu hỏi
+    function loadQuiz() {
+        const body = document.getElementById('quiz-body');
+        
+        fetch('/api/quiz/get', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ material_id: materialId })
+        })
+        .then(r => r.json())
+        .then(questions => {
+            quizData = questions;
+            userAnswers = {}; // Reset câu trả lời
+            
+            if (questions.length === 0) {
+                body.innerHTML = `<div class="text-center p-4"><i class="fas fa-check-circle text-success fa-3x mb-3"></i><h5>Chưa có bài kiểm tra cho tài liệu này.</h5><p>Sếp đã hoàn thành việc đọc!</p></div>`;
+                document.getElementById('btn-submit-quiz').style.display = 'none';
+                return;
+            }
+            
+            let html = '';
+            questions.forEach((q, index) => {
+                // Kiểm tra loại câu hỏi: Nếu OptionA có dữ liệu -> Trắc nghiệm, ngược lại -> Tự luận
+                const isMCQ = q.OptionA && q.OptionA.trim() !== "";
+                
+                html += `
+                <div class="card mb-4 border-0 shadow-sm">
+                    <div class="card-body">
+                        <h6 class="fw-bold text-primary mb-3">
+                            <span class="badge bg-primary me-2">Câu ${index + 1}</span> 
+                            ${q.Content}
+                        </h6>`;
+                
+                if (isMCQ) {
+                    // Render Trắc nghiệm (Radio buttons)
+                    html += `
+                        <div class="mt-2">
+                            ${renderOption(q.ID, 'A', q.OptionA)}
+                            ${renderOption(q.ID, 'B', q.OptionB)}
+                            ${renderOption(q.ID, 'C', q.OptionC)}
+                            ${renderOption(q.ID, 'D', q.OptionD)}
+                        </div>`;
+                } else {
+                    // Render Tự luận (Textarea)
+                    html += `
+                        <div class="mt-2">
+                            <textarea class="form-control bg-white" rows="4" 
+                                placeholder="Nhập câu trả lời của bạn..." 
+                                oninput="inputText(this, ${q.ID})"></textarea>
+                            <small class="text-muted fst-italic mt-2 d-block"><i class="fas fa-pen-fancy me-1"></i> Trả lời tự luận (AI sẽ chấm điểm)</small>
+                        </div>`;
+                }
+
+                html += `</div></div>`;
+            });
+            body.innerHTML = html;
+            document.getElementById('btn-submit-quiz').disabled = false;
+        });
+    }
+
+    // Helper render đáp án trắc nghiệm
+    function renderOption(qId, key, text) {
+        if (!text) return '';
+        return `
+        <div class="form-check mb-2 p-3 border rounded-3 hover-bg-light cursor-pointer" onclick="document.getElementById('opt_${qId}_${key}').click()">
+            <input class="form-check-input" type="radio" name="q_${qId}" id="opt_${qId}_${key}" value="${key}" onchange="selectAnswer(${qId}, '${key}')">
+            <label class="form-check-label w-100 cursor-pointer" for="opt_${qId}_${key}">
+                <strong>${key}.</strong> ${text}
+            </label>
+        </div>`;
+    }
+
+    // Lưu đáp án user chọn/nhập
+    function selectAnswer(qId, val) { userAnswers[qId] = val; }
+    function inputText(el, qId) { userAnswers[qId] = el.value.trim(); }
+
+    // Nộp bài
+    function submitQuiz() {
+        // Validate: Phải làm hết
+        if (Object.keys(userAnswers).length < quizData.length) {
+            Swal.fire('Chưa làm xong', 'Sếp vui lòng trả lời hết các câu hỏi.', 'warning');
+            return;
+        }
+
+        // Disable nút để tránh spam
+        const btn = document.getElementById('btn-submit-quiz');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> AI đang chấm...';
+
+        // Gửi về Server
+        fetch('/api/quiz/submit', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ material_id: materialId, answers: userAnswers })
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.passed) {
+                Swal.fire({
+                    title: 'Đạt yêu cầu! 🎉',
+                    html: `Lần thi thứ <b>${res.attempt}</b>.<br>Điểm: <b>${res.score}/${res.total}</b>.<br>Đã ghi nhận hoàn thành!`,
+                    icon: 'success'
+                }).then(() => location.reload());
+            } else {
+                Swal.fire({
+                    title: 'Chưa đạt',
+                    html: `Lần thi thứ <b>${res.attempt}</b>.<br>Điểm: <b>${res.score}/${res.total}</b>.<br>Bạn cần đúng ít nhất 4/5 câu.<br><br><b>Hệ thống sẽ đổi 1 câu hỏi mới trong lần thi sau.</b> Hãy ôn lại bài kỹ hơn!`,
+                    icon: 'warning'
+                });
+                // Reset nút nộp bài
+                btn.disabled = false;
+                btn.innerHTML = 'Nộp bài';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            Swal.fire('Lỗi', 'Có lỗi xảy ra khi chấm bài.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = 'Nộp bài';
+        });
+    }
+
+    // --- 5. CHAT LOGIC (TITAN TUTOR) ---
+    function sendQuick(text) {
+        document.getElementById('user-input').value = text;
+        sendMessage();
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('user-input');
+        const text = input.value.trim();
+        if (!text) return;
+
+        // Hiện tin nhắn user
+        addBubble('user', text);
+        input.value = '';
+        
+        // Hiện typing
+        const typingId = addBubble('bot', '<i class="fas fa-ellipsis-h fa-beat"></i>');
+
+        try {
+            const res = await fetch('/api/library/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    material_id: materialId, 
+                    question: text 
+                })
+            });
+            const data = await res.json();
+            
+            document.getElementById(typingId).remove();
+            addBubble('bot', data.text);
+
+            // Nếu AI trả về trang -> Jump tới trang đó
+            if (data.page) {
+                pageNum = data.page;
+                queueRenderPage(pageNum);
+            }
+
+        } catch (e) {
+            console.error(e);
+            document.getElementById(typingId).remove();
+            addBubble('bot', '❌ Lỗi kết nối AI.');
+        }
+    }
+
+    function addBubble(role, htmlContent) {
+        const history = document.getElementById('chat-history');
+        const id = 'msg-' + Date.now();
+        
+        const align = role === 'user' ? 'justify-content-end' : '';
+        const bg = role === 'user' ? 'bg-primary text-white' : 'bg-white border';
+        
+        const html = `
+        <div class="d-flex mb-3 ${align}" id="${id}">
+            <div class="${bg} p-3 rounded-3 shadow-sm" style="max-width: 90%; font-size: 0.9rem;">
+                ${htmlContent}
+            </div>
+        </div>`;
+        
+        history.insertAdjacentHTML('beforeend', html);
+        history.scrollTop = history.scrollHeight;
+        return id;
+    }
+</script>
+{% endblock %}

@@ -159,11 +159,11 @@
                                 <div class="p-3 border-bottom position-relative" :class="mail.IsClaimed ? 'bg-light opacity-75' : 'bg-white'">
                                     <div class="d-flex justify-content-between align-items-start mb-1">
                                         <h6 class="fw-bold mb-0 text-truncate pe-2" :class="mail.IsClaimed ? 'text-secondary' : 'text-primary'" style="max-width: 200px;">
-                                            <i class="fas" :class="getIcon(mail)"></i> <span x-text="mail.Title || 'Thông báo'"></span>
+                                            <i class="fas" :class="getIcon(mail)"></i> <span x-text="mail.Title || mail.title || 'Thông báo'"></span>
                                         </h6>
                                         <small class="text-muted" style="font-size: 0.7rem;" x-text="formatDate(mail.CreatedTime)"></small>
                                     </div>
-                                    <div class="text-muted small mb-2" style="font-size: 0.8rem; line-height: 1.4;" x-html="mail.Content"></div>
+                                    <div class="text-muted small mb-2" style="font-size: 0.8rem; line-height: 1.4;" x-html="mail.Content || mail.content"></div>
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div class="fw-bold small">
                                             <span x-show="mail.Total_XP > 0" class="me-2 text-info" x-text="'+' + mail.Total_XP + ' XP'"></span>
@@ -243,7 +243,13 @@
                     if (!badgeOnly) this.loading = true;
                     fetch('/api/mailbox').then(r => r.json()).then(data => {
                         this.mails = data.map(m => ({ ...m, processing: false }));
+                        
+                        // [FIX] Badge đỏ chỉ đếm những thư CHƯA ĐỌC hoặc CHƯA NHẬN QUÀ
+                        // Nếu sếp muốn thông báo Challenge cũng hiện đỏ, sếp cần thêm cột IsRead vào DB
+                        // Hiện tại tạm thời đếm IsClaimed=0 (với thư có quà) hoặc thư mới trong ngày
+                        
                         this.unreadCount = data.filter(m => !m.IsClaimed).length;
+                        
                         this.loading = false;
                     }).catch(() => this.loading = false);
                 },

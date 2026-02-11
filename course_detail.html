@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Khóa học: {{ course.Title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/training" class="text-decoration-none">Học viện</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ course.Title }}</li>
+        </ol>
+    </nav>
+
+    <div class="row g-5">
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 text-center sticky-top" style="top: 20px; z-index: 10;">
+                <div class="bg-light rounded-4 p-4 mb-3 d-flex align-items-center justify-content-center" style="min-height: 200px;">
+                    <img src="{{ course.ThumbnailUrl }}" class="img-fluid drop-shadow" style="max-height: 180px;">
+                </div>
+                
+                <h4 class="fw-bold text-dark mb-2">{{ course.Title }}</h4>
+                <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill mb-3">{{ course.Category }}</span>
+                
+                <p class="text-muted small text-start mb-4" style="line-height: 1.6;">
+                    {{ course.Description }}
+                </p>
+
+                <div class="d-flex justify-content-between border-top border-bottom py-3 mb-3">
+                    <div class="text-center">
+                        <h6 class="fw-bold m-0">{{ materials|length }}</h6>
+                        <small class="text-muted" style="font-size: 0.75rem;">BÀI HỌC</small>
+                    </div>
+                    <div class="text-center border-start ps-3 border-end pe-3">
+                        <h6 class="fw-bold m-0 text-warning">+{{ course.XP_Reward }}</h6>
+                        <small class="text-muted" style="font-size: 0.75rem;">XP THƯỞNG</small>
+                    </div>
+                    <div class="text-center">
+                        <h6 class="fw-bold m-0">
+                            {% set completed = materials | selectattr("Status", "equalto", "COMPLETED") | list | length %}
+                            {{ ((completed / (materials|length)) * 100) | int if materials|length > 0 else 0 }}%
+                        </h6>
+                        <small class="text-muted" style="font-size: 0.75rem;">TIẾN ĐỘ</small>
+                    </div>
+                </div>
+
+                {% set first_incomplete = materials | selectattr("Status", "ne", "COMPLETED") | first %}
+                {% if first_incomplete %}
+                    <a href="/training/study-room/{{ first_incomplete.MaterialID }}" class="btn btn-primary w-100 rounded-pill py-2 fw-bold hover-scale">
+                        <i class="fas fa-play me-2"></i> Tiếp tục học
+                    </a>
+                {% else %}
+                    <button class="btn btn-success w-100 rounded-pill py-2 fw-bold" disabled>
+                        <i class="fas fa-check me-2"></i> Đã hoàn thành
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <h5 class="fw-bold mb-4 text-dark border-start border-4 border-primary ps-3">Nội dung bài học</h5>
+            
+            <div class="list-group rounded-4 shadow-sm border-0 overflow-hidden">
+                {% for m in materials %}
+                <a href="/training/study-room/{{ m.MaterialID }}" 
+                   class="list-group-item list-group-item-action p-4 d-flex align-items-center justify-content-between border-bottom transition-bg">
+                    
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center me-4 flex-shrink-0 status-icon
+                            {% if m.Status == 'COMPLETED' %} bg-success text-white
+                            {% elif m.Status == 'IN_PROGRESS' %} bg-primary text-white
+                            {% else %} bg-light text-muted {% endif %}" 
+                             style="width: 50px; height: 50px;">
+                            
+                            {% if m.Status == 'COMPLETED' %}
+                                <i class="fas fa-check"></i>
+                            {% elif m.Status == 'IN_PROGRESS' %}
+                                <i class="fas fa-play fa-xs"></i>
+                            {% else %}
+                                <i class="fas fa-lock fa-xs"></i>
+                            {% endif %}
+                        </div>
+
+                        <div>
+                            <h6 class="mb-1 fw-bold text-dark">{{ m.FileName | replace('.pdf', '') }}</h6>
+                            <div class="d-flex align-items-center text-muted small">
+                                <span class="me-3"><i class="far fa-file-pdf me-1"></i> {{ m.TotalPages }} trang</span>
+                                
+                                {% if m.Status == 'IN_PROGRESS' %}
+                                    <span class="text-primary"><i class="fas fa-spinner fa-spin me-1"></i> Đang học dở</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        {% if m.Status == 'COMPLETED' %}
+                            <span class="badge bg-success-subtle text-success rounded-pill px-3">Xong</span>
+                        {% elif m.Status == 'IN_PROGRESS' %}
+                            <span class="badge bg-primary-subtle text-primary rounded-pill px-3">Tiếp tục</span>
+                        {% else %}
+                            <span class="badge bg-light text-dark border rounded-pill px-3">Bắt đầu</span>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+                
+                {% if materials|length == 0 %}
+                <div class="p-5 text-center text-muted">
+                    <i class="fas fa-box-open fa-3x mb-3 opacity-50"></i>
+                    <p>Khóa học này đang được cập nhật nội dung.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-scale:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); transition: 0.3s; }
+    .drop-shadow { filter: drop-shadow(0 10px 20px rgba(0,0,0,0.15)); }
+    .transition-bg { transition: background-color 0.2s; }
+    .list-group-item:hover { background-color: #f8f9fa; }
+    .status-icon { transition: all 0.3s; }
+    .list-group-item:hover .status-icon { transform: scale(1.1); }
+</style>
+{% endblock %}

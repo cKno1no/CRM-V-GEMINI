@@ -8,6 +8,8 @@ from datetime import datetime
 import traceback
 import config
 from db_manager import safe_float
+from services.training_service import TrainingService
+from services.gamification_service import GamificationService
 import logging # [FIX] Import logging chuẩn để dùng trong __init__
 
 # [FIX] Cấu hình logger cho module này
@@ -34,13 +36,19 @@ class ChatbotService:
         self.task_service = task_service
         self.db = db_manager
         self.app_config = app_config
+        # --- [FIX LỖI TẠI ĐÂY] ---
+        # Phải khởi tạo Gamification trước vì Training cần dùng nó
+        self.gamification = GamificationService(db_manager)
         
+        # Khởi tạo TrainingService và gán vào biến self.training_service
+        self.training_service = TrainingService(db_manager, self.gamification)
+
         # [DEPENDENCY] Khởi tạo CustomerAnalysisService
         from services.customer_analysis_service import CustomerAnalysisService
         self.analysis_service = CustomerAnalysisService(db_manager) 
 
         # 1. Cấu hình API
-        api_key = "x"   
+        api_key = "AIzaSyCC_qWqKqqupwwUT7mOR_Z75M9eKv8Vil4"
         if not api_key:
             # [FIX] Dùng logger chuẩn thay vì current_app.logger
             logger.error("⚠️ CRITICAL: GEMINI_API_KEY not found in config!")
@@ -172,6 +180,22 @@ class ChatbotService:
             ),
 
             FunctionDeclaration(
+                name="lookup_internal_knowledge",
+                # [QUAN TRỌNG] Dạy AI: Nếu user chọn câu hỏi gợi ý, hãy gửi nội dung câu đó vào đây
+                description="Tra cứu Kiến thức Nội bộ (N3H). Dùng khi user hỏi quy trình, kỹ thuật HOẶC khi user chọn một câu hỏi từ danh sách gợi ý (VD: 'Chọn câu 1').",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "search_query": {
+                            "type": "string", 
+                            "description": "Từ khóa tìm kiếm HOẶC nội dung câu hỏi user vừa chọn (VD: 'Miền nhiệt độ làm việc...')."
+                        }
+                    },
+                    "required": ["search_query"]
+                }
+            ),
+        
+            FunctionDeclaration(
                 name="get_titan_stories",
                 # [FIX] Dùng từ khóa mạnh để ép AI hiểu STDD là đối tượng hợp lệ
                 description="Kể chuyện Hall of Fame. Đối tượng hợp lệ bao gồm: 1. Các nhân sự (Titan). 2. CÔNG TY STDD (Ngôi nhà chung). Nếu hỏi về STDD, BẮT BUỘC dùng tool này.",
@@ -210,6 +234,7 @@ class ChatbotService:
             'summarize_customer_report': self._wrapper_summarize_report,
             'analyze_customer_deep_dive': self._wrapper_analyze_deep_dive,
             'lookup_sales_flow' : self._wrapper_lookup_sales_flow,
+            'lookup_internal_knowledge': self._wrapper_lookup_knowledge,
             'get_titan_stories': self._wrapper_titan_stories
         }
     
@@ -400,6 +425,16 @@ class ChatbotService:
             response = chat.send_message(full_prompt)
             
             final_text = ""
+            # -----------------------------------------------------------
+            # [LOGIC 1] CHECK DAILY CHALLENGE ANSWER (Ưu tiên số 1)
+            # -----------------------------------------------------------
+            # 1. [GIỮ NGUYÊN] ƯU TIÊN SỐ 1: Check trả lời Quiz (A, B, C, D)
+            # Vì cái này cần chính xác tuyệt đối, không cần AI suy luận
+            clean_msg = message_text.strip().upper()
+            if len(clean_msg) == 1 and clean_msg in ['A', 'B', 'C', 'D']:
+                res = self.training_service.check_daily_answer(user_code, clean_msg)
+                if res: return res
+
             
             # 5. Xử lý Function Call
             function_call_part = None
@@ -452,7 +487,10 @@ class ChatbotService:
                     'titan-card-wrapper' in api_result or 
                     '### 📦 Kết quả tra cứu' in api_result or
                     '🚚 **Tình trạng Vận chuyển' in api_result or
-                    '🔍 Tìm thấy' in api_result # Multiple customers selection
+                    '🔍 Tìm thấy' in api_result or
+                    '📚 **Kiến thức N3H' in api_result or   # <--- THÊM DÒNG NÀY (Để hiện đáp án)
+                    '🤔 **Có phải ý Sếp' in api_result or   # <--- THÊM DÒNG NÀY (Để hiện gợi ý)
+                    '⚠️' in api_result                       # <--- THÊM DÒNG NÀY (Để hiện cảnh báo)
                 ):
                     final_text = api_result
                 
@@ -987,6 +1025,21 @@ class ChatbotService:
 
         return "\n".join(res_lines)
     
+    # =========================================================================
+    # HÀM WRAPPER MỚI (Cầu nối giữa AI và Database)
+    # =========================================================================
+    def _wrapper_lookup_knowledge(self, search_query):
+        """
+        AI gọi hàm này khi thấy user hỏi kiến thức.
+        """
+        # Gọi sang TrainingService (Hàm search thông minh sếp đã có)
+        result = self.training_service.search_knowledge(search_query)
+        
+        if result:
+            return result
+        else:
+            # Trả về thông báo để AI biết mà tự chém gió hoặc xin lỗi
+            return "NOT_FOUND_IN_DB: Không tìm thấy kiến thức này trong Ngân hàng câu hỏi nội bộ (N3H)."
     # =========================================================================
     # [NEW] TITAN HALL OF FAME HANDLERS
     # =========================================================================

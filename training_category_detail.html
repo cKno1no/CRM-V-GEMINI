@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}{{ category_name }} - Titan Academy{% endblock %}
+
+{% block extra_css %}
+<style>
+    body { background-color: #f3f4f6 !important; } /* Nền xám nhạt sáng sủa */
+    
+    .header-area { padding: 40px 5%; margin-bottom: 20px; }
+    .header-area h1 { font-weight: 800; color: #1f2937; }
+
+    /* --- NEW CARD STYLE (LIKE IMAGE 2) --- */
+    .course-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 25px;
+        padding: 0 5% 60px;
+    }
+
+    .clean-card {
+        background: white;
+        border-radius: 24px;
+        padding: 25px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        border: 1px solid #f0f0f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        transition: all 0.3s ease;
+        height: 100%;
+        position: relative;
+    }
+
+    .clean-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.01);
+        border-color: #e5e7eb;
+    }
+
+    /* Thumbnail giờ là Icon nhỏ 80x80 hoặc 64x64, object-fit contain */
+    .clean-thumb {
+        width: 80px;
+        height: 80px;
+        object-fit: contain;
+        margin-bottom: 20px;
+        /* Fallback icon style nếu ảnh lỗi */
+        background-color: #f9fafb;
+        border-radius: 16px;
+        padding: 10px;
+    }
+
+    .lesson-badge {
+        position: absolute; top: 20px; right: 20px;
+        background: #f3f4f6; color: #6b7280;
+        font-size: 0.75rem; font-weight: 600;
+        padding: 4px 10px; border-radius: 8px;
+    }
+
+    .clean-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 10px;
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 2; /* Giới hạn 2 dòng */
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        height: 3em;
+    }
+
+    .progress-area { width: 100%; margin: 15px 0; }
+    .progress-label { display: flex; justify-content: space-between; font-size: 0.75rem; color: #9ca3af; margin-bottom: 5px; }
+    .progress-bar-bg { width: 100%; height: 6px; background: #f3f4f6; border-radius: 10px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #3b82f6; border-radius: 10px; transition: width 0.5s; }
+
+    .card-footer-custom {
+        width: 100%;
+        display: flex; justify-content: space-between; align-items: center;
+        margin-top: auto; padding-top: 15px;
+        border-top: 1px dashed #f3f4f6;
+    }
+    
+    .xp-tag { color: #f59e0b; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; }
+    .btn-detail { color: #2563eb; font-weight: 600; font-size: 0.85rem; text-decoration: none; display: flex; align-items: center; gap: 5px; transition: gap 0.2s; }
+    .btn-detail:hover { gap: 8px; }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="categoryApp()">
+    
+    <div class="header-area">
+        <a href="/training" class="text-secondary text-decoration-none fw-bold mb-2 d-inline-block"><i class="fas fa-chevron-left me-1"></i> Dashboard</a>
+        <h1 x-text="categoryName"></h1>
+        
+        <div class="d-flex gap-2 mt-4 overflow-auto pb-2">
+            <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" 
+                    :class="{ 'bg-primary text-white': selectedSub === 'all' }"
+                    @click="filter('all')">Tất cả</button>
+            
+            <template x-for="sub in subCategories" :key="sub">
+                <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm"
+                        :class="{ 'bg-primary text-white': selectedSub === sub }"
+                        @click="filter(sub)" x-text="sub"></button>
+            </template>
+        </div>
+    </div>
+
+    <div class="course-grid">
+        <template x-for="course in filteredCourses" :key="course.id">
+            <div class="clean-card" @click="window.location.href='/training/course/' + course.id" style="cursor: pointer;">
+                
+                <span class="lesson-badge" x-text="course.lessons + ' bài'"></span>
+
+                <img :src="course.thumbnail || 'https://cdn-icons-png.flaticon.com/512/2641/2641457.png'" 
+                     class="clean-thumb" 
+                     onerror="this.src='https://cdn-icons-png.flaticon.com/512/2641/2641457.png'">
+
+                <h3 class="clean-title" x-text="course.title" :title="course.title"></h3>
+                
+                <div class="progress-area">
+                    <div class="progress-label">
+                        <span>Tiến độ</span>
+                        <span x-text="course.progress + '%'"></span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-fill" :class="course.progress >= 100 ? 'bg-success' : 'bg-primary'" :style="'width: ' + course.progress + '%'"></div>
+                    </div>
+                </div>
+
+                <div class="card-footer-custom">
+                    <span class="xp-tag"><i class="fas fa-star"></i> <span x-text="'+' + course.xp + ' XP'"></span></span>
+                    <span class="btn-detail">Chi tiết <i class="fas fa-arrow-right"></i></span>
+                </div>
+            </div>
+        </template>
+        
+        <div x-show="filteredCourses.length === 0" class="col-12 text-center py-5 text-muted" style="grid-column: 1/-1;">
+            <p>Chưa có khóa học nào trong mục này.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function categoryApp() {
+        return {
+            selectedSub: 'all',
+            // Load dữ liệu & lọc trùng lặp ID
+            allCourses: [],
+            filteredCourses: [],
+            subCategories: {{ sub_categories | tojson }},
+            categoryName: '{{ category_name }}',
+
+            init() {
+                // Lấy dữ liệu raw từ server
+                const rawData = {{ courses | tojson }};
+                
+                // [QUAN TRỌNG] Lọc trùng lặp ID ngay khi nhận dữ liệu
+                const uniqueIds = new Set();
+                this.allCourses = rawData.filter(course => {
+                    if (uniqueIds.has(course.id)) return false;
+                    uniqueIds.add(course.id);
+                    return true;
+                });
+
+                this.filteredCourses = this.allCourses;
+            },
+
+            filter(subName) {
+                this.selectedSub = subName;
+                if (subName === 'all') {
+                    this.filteredCourses = this.allCourses;
+                } else {
+                    this.filteredCourses = this.allCourses.filter(c => c.sub_cat_display === subName);
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

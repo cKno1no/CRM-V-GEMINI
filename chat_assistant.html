@@ -328,11 +328,10 @@
 
                 initApp() {
                     this.setTheme(this.theme);
-                    // Welcome message
                     setTimeout(() => {
                         this.addMsg('bot', "Chào Sếp! Em đã sẵn sàng nhận lệnh. Hôm nay Sếp cần kiểm tra gì không ạ? 🦊");
                     }, 500);
-                    // Start wandering pet loop
+                    
                     this.schedulePet();
                 },
 

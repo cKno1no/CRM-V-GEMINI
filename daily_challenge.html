@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Đấu Trường N3H{% endblock %}
+
+{% block content %}
+<div class="container py-5" x-data="dailyGame()" x-init="init()">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            
+            <div class="text-center mb-5">
+                <h1 class="fw-black text-primary display-4 mb-2"><i class="fas fa-meteor text-warning me-2"></i>ĐẤU TRƯỜNG N3H</h1>
+                <p class="text-muted lead">Săn XP mỗi ngày - Nhận thưởng liền tay</p>
+            </div>
+
+            <div x-show="loading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-3 text-muted">Đang kết nối đấu trường...</p>
+            </div>
+
+            <div x-show="!loading && status === 'WAITING'" class="card shadow-lg border-0 rounded-4 text-center p-5 animate__animated animate__fadeIn">
+                <div class="mb-4">
+                    <img src="https://cdn3d.iconscout.com/3d/premium/thumb/clock-5206700-4352236.png" width="150" class="floating-anim">
+                </div>
+                <h3 class="fw-bold text-dark">Chưa đến giờ thi đấu!</h3>
+                <p class="text-muted mb-4">
+                    Đấu trường sẽ mở cửa vào lúc: <strong class="text-primary fs-5" x-text="nextSlot"></strong>
+                </p>
+                <div class="alert alert-light border border-primary border-opacity-25 rounded-3 d-inline-block px-4">
+                    <i class="fas fa-info-circle me-2 text-primary"></i>Hãy quay lại sau nhé Sếp!
+                </div>
+                <div class="mt-4">
+                    <a href="/training" class="btn btn-outline-secondary rounded-pill px-4">Về trang học tập</a>
+                </div>
+            </div>
+
+            <div x-show="!loading && status === 'AVAILABLE'" class="card shadow-lg border-0 rounded-4 overflow-hidden animate__animated animate__fadeInUp">
+                <div class="card-header bg-primary text-white p-4 d-flex justify-content-between align-items-center">
+                    <span class="badge bg-white text-primary fw-bold px-3 py-2"><i class="fas fa-fire me-1"></i> ĐANG DIỄN RA</span>
+                    <div class="h4 m-0 fw-bold font-monospace" x-text="formatTime(secondsLeft)"></div>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-light border-start border-4 border-warning fs-5 fw-medium text-dark mb-4" x-text="question"></div>
+                    
+                    <div class="mb-3">
+                        <textarea class="form-control form-control-lg bg-light" rows="4" x-model="answer" placeholder="Nhập câu trả lời..."></textarea>
+                    </div>
+                    
+                    <button @click="submit()" class="btn btn-primary w-100 py-3 fw-bold rounded-3 shadow-sm" :disabled="submitting || !answer">
+                        <span x-show="!submitting">Gửi Trả Lời 🚀</span>
+                        <span x-show="submitting">Đang chấm điểm...</span>
+                    </button>
+                </div>
+            </div>
+
+            <div x-show="!loading && status === 'DONE'" class="card shadow-lg border-0 rounded-4 text-center p-5 animate__animated animate__zoomIn">
+                <div class="mb-3 display-1">🎉</div>
+                <h2 class="fw-bold text-success">Bạn đã hoàn thành phiên này!</h2>
+                <p class="text-muted">Điểm số của bạn: <strong x-text="result ? result.score : '??'"></strong>/10</p>
+                <a href="/training" class="btn btn-primary rounded-pill px-5 mt-3">Quay lại Học viện</a>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    function dailyGame() {
+        return {
+            loading: true,
+            status: '',
+            nextSlot: '',
+            question: '',
+            sessionId: null,
+            secondsLeft: 0,
+            answer: '',
+            submitting: false,
+            result: null,
+            timer: null,
+
+            init() { this.checkStatus(); },
+
+            checkStatus() {
+                this.loading = true;
+                fetch('/api/challenge/status').then(r => r.json()).then(data => {
+                    this.status = data.status;
+                    if (data.status === 'AVAILABLE') {
+                        this.question = data.question;
+                        this.sessionId = data.session_id;
+                        this.secondsLeft = data.seconds_left;
+                        this.startTimer();
+                    } else if (data.status === 'WAITING') {
+                        this.nextSlot = data.next_slot;
+                    }
+                    this.loading = false;
+                });
+            },
+
+            startTimer() {
+                if (this.timer) clearInterval(this.timer);
+                this.timer = setInterval(() => {
+                    this.secondsLeft--;
+                    if (this.secondsLeft <= 0) {
+                        this.status = 'WAITING';
+                        this.nextSlot = 'Phiên sau'; // Hoặc reload lại để lấy giờ mới
+                        clearInterval(this.timer);
+                        Swal.fire('Hết giờ!', 'Phiên đấu giá đã kết thúc.', 'warning');
+                    }
+                }, 1000);
+            },
+
+            submit() {
+                this.submitting = true;
+                fetch('/api/challenge/submit', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({session_id: this.sessionId, answer: this.answer})
+                }).then(r => r.json()).then(data => {
+                    this.result = data;
+                    this.status = 'DONE';
+                    if (this.timer) clearInterval(this.timer);
+                    if (data.score >= 5) confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+                }).finally(() => this.submitting = false);
+            },
+
+            formatTime(s) {
+                const m = Math.floor(s / 60);
+                const sec = s % 60;
+                return `${m}:${sec < 10 ? '0'+sec : sec}`;
+            }
+        }
+    }
+</script>
+<style>
+    .floating-anim { animation: float 3s ease-in-out infinite; }
+    @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
+</style>
+{% endblock %}

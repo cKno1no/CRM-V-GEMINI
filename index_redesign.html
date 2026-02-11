@@ -139,10 +139,12 @@
                         <a href="/realtime_dashboard" class="menu-link module-kpi" target="_blank"><i class="fas fa-tachometer-alt me-3"></i> Chỉ số kinh doanh - Realtime</a>
                         <a href="/quote_input_table" class="menu-link module-kpi" target="_blank"><i class="fas fa-bullseye me-3"></i> Bám sát & Hành động</a>
                         <a href="/budget/dashboard" class="menu-link module-kpi" target="_blank"><i class="fas fa-wallet me-3"></i> Ngân sách & Chi tiêu</a>
-                        {% set is_finance_user = user_context.role|upper == 'ADMIN' or 'KTTC' in user_context.bo_phan %}
-                        <a href="{% if is_finance_user %}/ar_aging{% else %}#{% endif %}" class="menu-link module-kpi {% if not is_finance_user %}planned{% endif %}" target="{% if is_finance_user %}_blank{% else %}_self{% endif %}" {% if not is_finance_user %}onclick="alert('Bạn không có quyền truy cập module Tài chính.'); return false;"{% endif %}>
-                            <i class="fas fa-hand-holding-usd me-3"></i> Nhắc nợ & Thu tiền (AR)
+                        {% if user_context.can('CREATE_COMMISSION') %}
+                        <a href="/commission/request" class="menu-link module-kpi" target="_blank">
+                            <i class="fas fa-percent me-3"></i> Đề nghị Bảo hành
                         </a>
+                        {% endif %}
+                        <a href="/ar_aging" class="menu-link module-kpi" target="_blank"><i class="fas fa-wallet me-3"></i> Nhắc nợ & Thu tiền (AR)</a>
                     </div>
                 </div>
             </div>

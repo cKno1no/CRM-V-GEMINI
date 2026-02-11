@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Học Viện Số STD&D - Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 1. DARK THEME BASE */
+    :root {
+        --bg-dark: #0f1115;
+        --card-bg: #1c1f26;
+        --text-primary: #ffffff;
+        --text-secondary: #9ca3af;
+        --accent-color: #3b82f6; /* Blue 500 */
+        --mandatory-color: #ef4444; /* Red 500 */
+    }
+
+    body { background-color: var(--bg-dark) !important; color: var(--text-primary) !important; font-family: 'Inter', sans-serif; }
+    
+    /* 2. HERO BANNER - NÂNG CẤP VISUAL */
+    .hero-wrapper {
+        position: relative;
+        padding: 80px 5% 40px;
+        background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.15), transparent 40%),
+                    radial-gradient(circle at bottom left, rgba(239, 68, 68, 0.1), transparent 40%);
+        overflow: hidden;
+    }
+    
+    .hero-content h1 { font-size: 2.5rem; font-weight: 800; letter-spacing: -1px; margin-bottom: 1rem; }
+    .hero-content p { font-size: 1.1rem; color: var(--text-secondary); max-width: 600px; }
+
+    /* SEARCH BAR GLOW EFFECT */
+    .search-box {
+        position: relative;
+        max-width: 700px;
+        margin-top: 30px;
+    }
+    .search-input {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+        height: 55px;
+        border-radius: 16px;
+        padding-left: 50px;
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+    }
+    .search-input:focus {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+        color: white;
+    }
+    .search-icon { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); }
+
+    /* 3. MANDATORY SECTION (KHÓA BẮT BUỘC) */
+    .section-header { display: flex; align-items: center; gap: 10px; margin: 40px 5% 20px; }
+    .section-title { font-size: 1.25rem; font-weight: 700; color: white; margin: 0; }
+    .mandatory-badge { background: rgba(239, 68, 68, 0.2); color: #fca5a5; font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; font-weight: 600; }
+
+    .mandatory-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        padding: 0 5%;
+    }
+    
+    .mandatory-card {
+        background: linear-gradient(145deg, #1c1f26, #232730);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 16px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        transition: transform 0.2s;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+    .mandatory-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--mandatory-color); }
+    .mandatory-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.1); }
+    
+    .m-icon { width: 48px; height: 48px; background: rgba(239, 68, 68, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--mandatory-color); font-size: 1.2rem; }
+
+    /* 4. CATEGORY GRID (SỬA LỖI TRÙNG LẶP) */
+    .cat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
+        padding: 40px 5% 80px;
+    }
+    @media (max-width: 1200px) { .cat-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 768px) { .cat-grid { grid-template-columns: 1fr; } }
+
+    .cat-card {
+        height: 160px;
+        border-radius: 20px;
+        background-size: cover;
+        background-position: center;
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        border: 1px solid rgba(255,255,255,0.05);
+    }
+    .cat-card::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.2));
+        transition: opacity 0.3s;
+    }
+    .cat-card:hover { transform: scale(1.02); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+    
+    .cat-content { position: absolute; bottom: 20px; left: 20px; z-index: 2; }
+    .cat-name { font-size: 1.1rem; font-weight: 800; text-transform: uppercase; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+    .cat-count { font-size: 0.85rem; opacity: 0.8; }
+    
+    .cat-icon-float {
+        position: absolute; top: 15px; right: 15px; font-size: 1.5rem;
+        background: rgba(255,255,255,0.1); backdrop-filter: blur(5px);
+        width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+        border-radius: 50%; z-index: 2; color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="homeApp()">
+
+    <div class="hero-wrapper">
+        <div class="hero-content">
+            <h1>Hệ thống Đào tạo <span class="text-primary">Titan Academy</span></h1>
+            <p>Nâng cao năng lực chuyên môn và kỹ năng quản lý. Truy cập kho tri thức nội bộ mọi lúc, mọi nơi.</p>
+            
+            <div class="search-box">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" class="form-control search-input" 
+                       placeholder="Tìm kiếm khóa học, tài liệu, quy trình..."
+                       x-model="query" @input.debounce.500ms="search()">
+                
+                <div class="position-absolute w-100 bg-dark border border-secondary rounded-3 mt-2 shadow-lg overflow-hidden" 
+                     x-show="results.length > 0" x-cloak style="z-index: 100;">
+                    <template x-for="item in results" :key="item.id">
+                        <a :href="'/training/course/' + item.id" class="d-flex align-items-center p-3 text-white text-decoration-none border-bottom border-secondary hover-bg-light">
+                            <img :src="item.thumbnail || 'https://via.placeholder.com/40'" width="40" height="40" class="rounded me-3">
+                            <div>
+                                <div class="fw-bold" x-text="item.title"></div>
+                                <small class="text-muted" x-text="item.category"></small>
+                            </div>
+                        </a>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="mandatoryCourses.length > 0" x-cloak>
+        <div class="section-header">
+            <h2 class="section-title">Nhiệm vụ bắt buộc</h2>
+            <span class="mandatory-badge" x-text="mandatoryCourses.length + ' khóa'"></span>
+        </div>
+        
+        <div class="mandatory-grid">
+            <template x-for="c in mandatoryCourses" :key="c.id">
+                <div class="mandatory-card" @click="window.location.href='/training/course/' + c.id">
+                    <div class="m-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="flex-grow-1">
+                        <div class="fw-bold text-white text-truncate mb-1" style="max-width: 200px;" x-text="c.title"></div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <small class="text-secondary" x-text="c.progress + '% hoàn thành'"></small>
+                        </div>
+                        <div class="progress" style="height: 4px; background: rgba(255,255,255,0.1);">
+                            <div class="progress-bar bg-danger" :style="'width: ' + c.progress + '%'"></div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <div class="section-header mt-5">
+        <h2 class="section-title">Danh mục đào tạo</h2>
+    </div>
+    
+    <div class="cat-grid">
+        <template x-for="cat in categories" :key="cat.id">
+            <div class="cat-card" 
+                 :style="`background-image: url('${cat.bg}')`"
+                 @click="window.location.href = '/training/category/' + encodeURIComponent(cat.name)">
+                
+                <div class="cat-icon-float" x-html="cat.icon"></div>
+                <div class="cat-content">
+                    <h3 class="cat-name" x-text="cat.name"></h3>
+                    <div class="cat-count" x-text="cat.count + ' khóa học'"></div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+</div>
+
+<script>
+    function homeApp() {
+        return {
+            query: '',
+            results: [],
+            mandatoryCourses: [],
+            // Danh sách cứng 8 Category, không được duplicate
+            categories: [
+                { id: 1, name: 'Kỹ thuật', icon: '<i class="fas fa-cog"></i>', bg: 'https://images.unsplash.com/photo-1581092921461-eab62e97a782?w=500&q=80', count: 0 },
+                { id: 2, name: 'Kinh doanh', icon: '<i class="fas fa-chart-line"></i>', bg: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500&q=80', count: 0 },
+                { id: 3, name: 'Kỹ năng mềm', icon: '<i class="fas fa-users"></i>', bg: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&q=80', count: 0 },
+                { id: 4, name: 'Quy định & Chính sách', icon: '<i class="fas fa-balance-scale"></i>', bg: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=500&q=80', count: 0 },
+                { id: 5, name: 'Quy trình Vận hành', icon: '<i class="fas fa-tasks"></i>', bg: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=500&q=80', count: 0 },
+                { id: 6, name: 'Công cụ & Biểu mẫu', icon: '<i class="fas fa-file-alt"></i>', bg: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=500&q=80', count: 0 },
+                { id: 7, name: 'Phát triển Tư duy', icon: '<i class="fas fa-brain"></i>', bg: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=500&q=80', count: 0 },
+                { id: 8, name: 'Khác', icon: '<i class="fas fa-folder-open"></i>', bg: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=500&q=80', count: 0 }
+            ],
+
+            async init() {
+                try {
+                    const res = await fetch('/api/training/dashboard_v2');
+                    const data = await res.json();
+                    
+                    let mandatories = [];
+                    
+                    // Reset counts để tránh cộng dồn nếu init chạy lại
+                    this.categories.forEach(c => c.count = 0);
+
+                    // Map dữ liệu
+                    for (const [catName, subCats] of Object.entries(data)) {
+                        // Tính tổng số bài của Category
+                        let totalInCat = 0;
+                        for (const list of Object.values(subCats)) {
+                            totalInCat += list.length;
+                            // Lọc khóa bắt buộc
+                            list.forEach(c => { 
+                                if(c.is_mandatory) {
+                                    // Kiểm tra trùng lặp ID trước khi push
+                                    if(!mandatories.some(m => m.id === c.id)) mandatories.push(c);
+                                }
+                            });
+                        }
+
+                        // Update UI Count
+                        const target = this.categories.find(c => 
+                            c.name.toLowerCase() === catName.toLowerCase() || 
+                            catName.toLowerCase().includes(c.name.toLowerCase())
+                        );
+                        if(target) target.count = totalInCat;
+                    }
+                    
+                    this.mandatoryCourses = mandatories;
+                } catch(e) { console.error("Lỗi tải dashboard:", e); }
+            },
+            
+            async search() {
+                if(this.query.length < 2) { this.results = []; return; }
+                const res = await fetch(`/api/training/search?q=${encodeURIComponent(this.query)}`);
+                this.results = await res.json();
+            }
+        }
+    }
+</script>
+{% endblock %}
