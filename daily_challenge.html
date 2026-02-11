@@ -1,6 +1,34 @@
 {% extends "base.html" %}
 
-{% block title %}Đấu Trường N3H{% endblock %}
+{% block title %}Đấu Trường N3H | Titan OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .floating-anim { animation: float 3s ease-in-out infinite; }
+    @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
+    
+    .timer-badge {
+        font-family: 'JetBrains Mono', monospace;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+    }
+    .timer-danger {
+        color: #ff4444 !important;
+        animation: blink 1s infinite;
+    }
+    @keyframes blink { 50% { opacity: 0.5; } }
+    
+    .status-card {
+        border-radius: 24px;
+        border: 1px solid var(--border-color);
+        background: var(--card-bg);
+    }
+    .alert-custom {
+        border-radius: 12px;
+        box-shadow: var(--shadow-sm);
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container py-5" x-data="dailyGame()" x-init="init()">
@@ -8,7 +36,9 @@
         <div class="col-md-8 col-lg-6">
             
             <div class="text-center mb-5">
-                <h1 class="fw-black text-primary display-4 mb-2"><i class="fas fa-meteor text-warning me-2"></i>ĐẤU TRƯỜNG N3H</h1>
+                <h1 class="fw-black text-primary display-4 mb-2">
+                    <i class="fas fa-meteor text-warning me-2"></i>ĐẤU TRƯỜNG N3H
+                </h1>
                 <p class="text-muted lead">Săn XP mỗi ngày - Nhận thưởng liền tay</p>
             </div>
 
@@ -29,108 +59,204 @@
                     <i class="fas fa-info-circle me-2 text-primary"></i>Hãy quay lại sau nhé Sếp!
                 </div>
                 <div class="mt-4">
-                    <a href="/training" class="btn btn-outline-secondary rounded-pill px-4">Về trang học tập</a>
+                    <a href="/" class="btn btn-outline-secondary rounded-pill px-4">Về trang chủ</a>
                 </div>
             </div>
 
             <div x-show="!loading && status === 'AVAILABLE'" class="card shadow-lg border-0 rounded-4 overflow-hidden animate__animated animate__fadeInUp">
                 <div class="card-header bg-primary text-white p-4 d-flex justify-content-between align-items-center">
-                    <span class="badge bg-white text-primary fw-bold px-3 py-2"><i class="fas fa-fire me-1"></i> ĐANG DIỄN RA</span>
-                    <div class="h4 m-0 fw-bold font-monospace" x-text="formatTime(secondsLeft)"></div>
+                    <span class="badge bg-white text-primary fw-bold px-3 py-2">
+                        <i class="fas fa-fire me-1"></i> ĐANG DIỄN RA
+                    </span>
+                    <div class="h4 m-0 fw-bold timer-badge" :class="secondsLeft < 60 ? 'timer-danger' : ''">
+                        <i class="fas fa-clock me-2"></i><span x-text="formatTime(secondsLeft)">15:00</span>
+                    </div>
                 </div>
                 <div class="card-body p-4">
-                    <div class="alert alert-light border-start border-4 border-warning fs-5 fw-medium text-dark mb-4" x-text="question"></div>
-                    
-                    <div class="mb-3">
-                        <textarea class="form-control form-control-lg bg-light" rows="4" x-model="answer" placeholder="Nhập câu trả lời..."></textarea>
+                    <div class="alert alert-custom border-start border-4 border-primary bg-light fs-5 fw-bold text-dark mb-4 shadow-sm">
+                        <i class="fas fa-question-circle me-2 text-primary"></i>
+                        <span x-text="question"></span>
                     </div>
                     
-                    <button @click="submit()" class="btn btn-primary w-100 py-3 fw-bold rounded-3 shadow-sm" :disabled="submitting || !answer">
-                        <span x-show="!submitting">Gửi Trả Lời 🚀</span>
-                        <span x-show="submitting">Đang chấm điểm...</span>
+                    <div class="options-list mb-4" x-show="options && (options.A || options.B || options.C || options.D)">
+                        <p class="text-secondary small fw-bold mb-2 uppercase"><i class="fas fa-list-ul me-2"></i>Thông tin bổ trợ / Câu hỏi phụ:</p>
+                        <div class="d-flex flex-column gap-2">
+                            <template x-if="options.A">
+                                <div class="p-3 rounded-3 border bg-white d-flex align-items-start animate__animated animate__fadeInLeft">
+                                    <b class="text-primary me-2">A.</b> <span class="text-dark" x-text="options.A"></span>
+                                </div>
+                            </template>
+                            <template x-if="options.B">
+                                <div class="p-3 rounded-3 border bg-white d-flex align-items-start animate__animated animate__fadeInLeft" style="animation-delay: 0.1s">
+                                    <b class="text-primary me-2">B.</b> <span class="text-dark" x-text="options.B"></span>
+                                </div>
+                            </template>
+                            <template x-if="options.C">
+                                <div class="p-3 rounded-3 border bg-white d-flex align-items-start animate__animated animate__fadeInLeft" style="animation-delay: 0.2s">
+                                    <b class="text-primary me-2">C.</b> <span class="text-dark" x-text="options.C"></span>
+                                </div>
+                            </template>
+                            <template x-if="options.D">
+                                <div class="p-3 rounded-3 border bg-white d-flex align-items-start animate__animated animate__fadeInLeft" style="animation-delay: 0.3s">
+                                    <b class="text-primary me-2">D.</b> <span class="text-dark" x-text="options.D"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-primary">
+                            <i class="fas fa-pen-fancy me-2"></i>Bài làm của sếp:
+                        </label>
+                        <textarea class="form-control form-control-lg border-2 shadow-sm" rows="6" 
+                                x-model="answer" 
+                                placeholder="Dựa vào các gợi ý trên, sếp hãy nhập câu trả lời chi tiết tại đây..."></textarea>
+                        <div class="text-end mt-1">
+                            <small class="text-muted" x-text="'Độ dài: ' + answer.length + ' ký tự'"></small>
+                        </div>
+                    </div>
+                    
+                    <button @click="submit()" class="btn btn-primary w-100 py-3 fw-bold rounded-3 shadow text-uppercase" 
+                            :disabled="submitting || answer.trim().length < 10">
+                        <span x-show="!submitting">Nộp bài hệ thống <i class="fas fa-paper-plane ms-2"></i></span>
+                        <span x-show="submitting"><i class="fas fa-spinner fa-spin me-2"></i>Đang gửi bài...</span>
                     </button>
+                </div>
+            </div>
+
+            <div x-show="!loading && status === 'SUBMITTED'" class="card shadow-lg border-0 rounded-4 text-center p-5 animate__animated animate__zoomIn status-card">
+                <div class="mb-4">
+                    <lottie-player src="https://assets10.lottiefiles.com/packages/lf20_9n6mxtis.json" 
+                                   background="transparent" speed="1" style="width: 200px; height: 200px; margin: auto;" loop autoplay></lottie-player>
+                </div>
+                <h3 class="fw-bold text-primary">Bài làm đã được ghi nhận!</h3>
+                <div class="alert alert-info border-0 shadow-sm mt-3 text-start">
+                    <i class="fas fa-info-circle me-2"></i>
+                    AI sẽ bắt đầu chấm điểm và gửi thông báo kết quả vào hòm thư sau khi <b>kết thúc thời gian thi (15 phút)</b>. Sếp hãy yên tâm nghỉ ngơi nhé!
+                </div>
+                <div class="mt-4">
+                    <a href="/" class="btn btn-primary rounded-pill px-5">Quay lại Dashboard</a>
                 </div>
             </div>
 
             <div x-show="!loading && status === 'DONE'" class="card shadow-lg border-0 rounded-4 text-center p-5 animate__animated animate__zoomIn">
                 <div class="mb-3 display-1">🎉</div>
-                <h2 class="fw-bold text-success">Bạn đã hoàn thành phiên này!</h2>
-                <p class="text-muted">Điểm số của bạn: <strong x-text="result ? result.score : '??'"></strong>/10</p>
-                <a href="/training" class="btn btn-primary rounded-pill px-5 mt-3">Quay lại Học viện</a>
+                <h2 class="fw-bold text-success">Phiên này sếp đã hoàn thành!</h2>
+                <p class="text-muted">Kết quả ghi nhận: <strong class="fs-4 text-primary" x-text="score"></strong>/10</p>
+                <div class="p-3 bg-light rounded-3 mb-4">
+                    <small class="text-secondary italic" x-text="feedback"></small>
+                </div>
+                <a href="/" class="btn btn-primary rounded-pill px-5">Về trang chủ</a>
             </div>
 
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
     function dailyGame() {
         return {
             loading: true,
-            status: '',
+            status: 'WAITING',
             nextSlot: '',
             question: '',
+            options: { A: '', B: '', C: '', D: '' },
             sessionId: null,
-            secondsLeft: 0,
+            secondsLeft: 900, // Mặc định 15 phút
             answer: '',
             submitting: false,
-            result: null,
+            score: 0,
+            feedback: '',
             timer: null,
 
-            init() { this.checkStatus(); },
+            init() { 
+                this.checkStatus();
+            },
 
             checkStatus() {
                 this.loading = true;
-                fetch('/api/challenge/status').then(r => r.json()).then(data => {
-                    this.status = data.status;
-                    if (data.status === 'AVAILABLE') {
-                        this.question = data.question;
-                        this.sessionId = data.session_id;
-                        this.secondsLeft = data.seconds_left;
-                        this.startTimer();
-                    } else if (data.status === 'WAITING') {
-                        this.nextSlot = data.next_slot;
-                    }
-                    this.loading = false;
-                });
+                fetch('/api/challenge/status')
+                    .then(r => r.json())
+                    .then(data => {
+                        this.status = data.status; // WAITING, AVAILABLE, SUBMITTED, DONE
+                        if (data.status === 'AVAILABLE') {
+                            this.question = data.question;
+                            this.options = data.options || { A: '', B: '', C: '', D: '' };
+                            this.sessionId = data.session_id;
+                            this.secondsLeft = data.seconds_left || 900;
+                            this.startTimer();
+                        } else if (data.status === 'WAITING') {
+                            this.nextSlot = data.next_slot;
+                        } else if (data.status === 'DONE') {
+                            this.score = data.score;
+                            this.feedback = data.feedback;
+                        }
+                        this.loading = false;
+                    })
+                    .catch(err => {
+                        console.error("Lỗi kết nối:", err);
+                        this.status = 'WAITING';
+                        this.nextSlot = 'Lỗi kết nối server';
+                        this.loading = false;
+                    });
             },
 
             startTimer() {
                 if (this.timer) clearInterval(this.timer);
                 this.timer = setInterval(() => {
-                    this.secondsLeft--;
                     if (this.secondsLeft <= 0) {
-                        this.status = 'WAITING';
-                        this.nextSlot = 'Phiên sau'; // Hoặc reload lại để lấy giờ mới
                         clearInterval(this.timer);
-                        Swal.fire('Hết giờ!', 'Phiên đấu giá đã kết thúc.', 'warning');
+                        this.status = 'WAITING';
+                        Swal.fire({
+                            title: 'Hết giờ!',
+                            text: 'Thời gian làm bài 15 phút đã kết thúc.',
+                            icon: 'error',
+                            confirmButtonText: 'Quay lại'
+                        }).then(() => window.location.reload());
+                        return;
                     }
+                    this.secondsLeft--;
                 }, 1000);
             },
 
-            submit() {
+            async submit() {
+                if (!this.answer.trim()) return;
+                
                 this.submitting = true;
-                fetch('/api/challenge/submit', {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({session_id: this.sessionId, answer: this.answer})
-                }).then(r => r.json()).then(data => {
-                    this.result = data;
-                    this.status = 'DONE';
-                    if (this.timer) clearInterval(this.timer);
-                    if (data.score >= 5) confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-                }).finally(() => this.submitting = false);
+                try {
+                    const res = await fetch('/api/challenge/submit', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            session_id: this.sessionId,
+                            answer: this.answer
+                        })
+                    });
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        this.status = 'SUBMITTED'; // Chuyển sang giao diện chờ AI chấm
+                        if (this.timer) clearInterval(this.timer);
+                        Swal.fire('Thành công!', data.msg, 'success');
+                    } else {
+                        Swal.fire('Thông báo', data.msg, 'warning');
+                    }
+                } catch (e) {
+                    Swal.fire('Lỗi', 'Không thể gửi bài. Vui lòng kiểm tra mạng.', 'error');
+                } finally {
+                    this.submitting = false;
+                }
             },
 
             formatTime(s) {
+                if (s < 0) return "00:00";
                 const m = Math.floor(s / 60);
                 const sec = s % 60;
-                return `${m}:${sec < 10 ? '0'+sec : sec}`;
+                return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
             }
         }
     }
 </script>
-<style>
-    .floating-anim { animation: float 3s ease-in-out infinite; }
-    @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
-</style>
 {% endblock %}

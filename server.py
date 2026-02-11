@@ -85,8 +85,25 @@ def run_schedule_loop():
             logging.error(f"Lỗi Scheduler Loop: {e}")
             time.sleep(60)
 
+# =======================================================
+# 1. ĐỊNH NGHĨA HÀM SCHEDULER CHẤM ĐIỂM AI
+# =======================================================
+def run_grading_job():
+    """Quét và chấm điểm tự động các bài Daily Challenge đã hết hạn."""
+    print(f"🤖 [Cron] Kích hoạt AI Grading Batch: {datetime.now().strftime('%H:%M:%S')}")
+    with app.app_context():
+        try:
+            if hasattr(app, 'training_service'):
+                # Gọi hàm xử lý chấm điểm hàng loạt đã viết trong Service
+                app.training_service.process_pending_grading()
+                print("✅ Đã hoàn tất đợt chấm điểm AI.")
+            else:
+                print("❌ Lỗi: training_service chưa được khởi tạo trong app.")
+        except Exception as e:
+            print(f"❌ Lỗi Job chấm điểm: {e}")
+
 # =========================================================================
-# 4. MAIN ENTRY POINT
+# 4. MAIN ENTRY POINT (CẬP NHẬT SCHEDULER)
 # =========================================================================
 if __name__ == '__main__':
     logger_setup()
@@ -94,25 +111,26 @@ if __name__ == '__main__':
     # --- CẤU HÌNH APSCHEDULER ---
     scheduler = BackgroundScheduler()
     
-    # Lên lịch gửi câu hỏi (9:05, 13:05, 17:05)
+    # [1] Lên lịch gửi câu hỏi (Các mốc sếp đang chạy)
     scheduler.add_job(run_daily_challenge_job, 'cron', hour=9, minute=5)
     scheduler.add_job(run_daily_challenge_job, 'cron', hour=14, minute=47)
-    scheduler.add_job(run_daily_challenge_job, 'cron', hour=17, minute=5)
+    scheduler.add_job(run_daily_challenge_job, 'cron', hour=21, minute=11)
     
-    # Lên lịch quét quà (20:00) - Dùng lambda để wrap trong app context nếu cần
+    # [2] Lên lịch CHẤM ĐIỂM tự động (Trễ hơn 16 phút so với mốc phát đề)
+    # 9:05 + 16p = 9:21
+    scheduler.add_job(run_grading_job, 'cron', hour=9, minute=21)
+    # 14:47 + 16p = 15:03
+    scheduler.add_job(run_grading_job, 'cron', hour=15, minute=3)
+    # 17:05 + 16p = 17:21
+    scheduler.add_job(run_grading_job, 'cron', hour=21, minute=12)
+    
+    # [3] Lên lịch quét quà tổng kết ngày (20:00)
     scheduler.add_job(run_daily_gamification, 'cron', hour=20, minute=0)
     
     scheduler.start()
 
-    # --- CẤU HÌNH SCHEDULE (LEGACY) ---
-    schedule.every().day.at("20:20").do(run_daily_gamification)
-    
-    scheduler_thread = threading.Thread(target=run_schedule_loop, daemon=True)
-    scheduler_thread.start()
-    
-    print(f">>> Titan OS Scheduler đã khởi động song song...")
-
     # --- KHỞI CHẠY SERVER ---
+    # (Các dòng code bên dưới giữ nguyên như file của sếp)
     print("-------------------------------------------------------")
     print("TITAN OS - PRODUCTION SERVER (WAITRESS)")
     print("Server is running at: http://0.0.0.0:5000")
